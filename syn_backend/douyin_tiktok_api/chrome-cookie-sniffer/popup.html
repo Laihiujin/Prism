@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 400px;
+            padding: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            margin-bottom: 20px;
+        }
+        
+        .header h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .webhook-config {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #e1e8ed;
+        }
+        
+        .webhook-config label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .webhook-config input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            margin: 0 3px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #1e7e34; }
+        
+        .service-card {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #e1e8ed;
+            overflow: hidden;
+            transition: box-shadow 0.2s;
+        }
+        
+        .service-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e1e8ed;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .service-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        
+        .service-status {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .status-active { background: #28a745; }
+        .status-inactive { background: #6c757d; }
+        
+        .card-body {
+            padding: 12px 15px;
+        }
+        
+        .last-update {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px 20px;
+        }
+        
+        .status-info {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #17a2b8;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h3>Cookie Sniffer</h3>
+        
+        <div class="webhook-config">
+            <label>Webhook回调地址</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="url" id="webhookUrl" placeholder="https://your-server.com/webhook" style="flex: 1;">
+                <button class="btn btn-sm" id="testWebhook" style="background: #17a2b8; color: white; white-space: nowrap;" disabled>
+                    🔧 测试
+                </button>
+            </div>
+            <div id="webhookStatus" style="font-size: 11px; color: #666; margin-top: 4px; min-height: 14px;"></div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn btn-primary" id="refresh">刷新</button>
+        <button class="btn btn-danger" id="clear">清空所有</button>
+        <button class="btn btn-success" id="export">导出JSON</button>
+    </div>
+    
+    <div id="statusInfo" class="status-info" style="display: none;"></div>
+    
+    <div id="serviceCards"></div>
+    
+    <div id="emptyState" class="empty-state" style="display: none;">
+        暂未抓取到任何Cookie数据<br>
+        请访问相关网站触发请求
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>

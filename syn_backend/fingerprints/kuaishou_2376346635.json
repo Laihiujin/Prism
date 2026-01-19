@@ -1,0 +1,122 @@
+{
+  "device_id": "1bf475d5863ab547",
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+  "viewport": {
+    "width": 1920,
+    "height": 980
+  },
+  "screen": {
+    "width": 1920,
+    "height": 1080
+  },
+  "timezone": "Asia/Shanghai",
+  "language": "zh-CN",
+  "languages": [
+    "zh-CN",
+    "zh",
+    "en-US",
+    "en"
+  ],
+  "platform": "Win32",
+  "webgl_vendor": "Google Inc. (Intel)",
+  "webgl_renderer": "ANGLE (NVIDIA GeForce GTX 1050 Ti Direct3D11 vs_5_0 ps_5_0)",
+  "canvas_fp": "xcJPRyksK5ymOquCqk1I9dN4caFlfzB6",
+  "audio_fp": "82436db1749753a1",
+  "hardware_concurrency": 8,
+  "device_memory": 8,
+  "max_touch_points": 0,
+  "color_depth": 24,
+  "pixel_depth": 24,
+  "fonts": [
+    "Segoe UI Symbol",
+    "Segoe UI",
+    "Verdana",
+    "Cambria Math",
+    "Microsoft YaHei UI",
+    "Tahoma",
+    "Trebuchet MS",
+    "Courier New",
+    "Consolas",
+    "Microsoft YaHei",
+    "Microsoft Sans Serif",
+    "Comic Sans MS",
+    "Impact"
+  ],
+  "plugins": [
+    {
+      "name": "Chrome PDF Plugin",
+      "filename": "internal-pdf-viewer",
+      "description": "Portable Document Format"
+    },
+    {
+      "name": "Chrome PDF Viewer",
+      "filename": "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+      "description": ""
+    },
+    {
+      "name": "Native Client",
+      "filename": "internal-nacl-plugin",
+      "description": ""
+    }
+  ],
+  "mime_types": [
+    {
+      "type": "application/pdf",
+      "suffixes": "pdf",
+      "description": "Portable Document Format"
+    },
+    {
+      "type": "application/x-nacl",
+      "suffixes": "",
+      "description": "Native Client Executable"
+    },
+    {
+      "type": "application/x-pnacl",
+      "suffixes": "",
+      "description": "Portable Native Client Executable"
+    }
+  ],
+  "media_devices": [
+    {
+      "kind": "audioinput",
+      "label": "Microphone (Realtek(R) Audio)",
+      "groupId": "audio-group-1"
+    },
+    {
+      "kind": "audiooutput",
+      "label": "Speakers (Realtek(R) Audio)",
+      "groupId": "audio-group-1"
+    },
+    {
+      "kind": "videoinput",
+      "label": "Integrated Camera",
+      "groupId": "video-group-1"
+    }
+  ],
+  "client_hints": {
+    "brands": [
+      {
+        "brand": "Chromium",
+        "version": "120"
+      },
+      {
+        "brand": "Google Chrome",
+        "version": "120"
+      },
+      {
+        "brand": "Not A(Brand",
+        "version": "99"
+      }
+    ],
+    "mobile": false,
+    "platform": "Windows",
+    "ua_full_version": "120.0.0.0",
+    "platform_version": "10.0.0",
+    "architecture": "x86",
+    "model": "",
+    "bitness": "64",
+    "wow64": false
+  },
+  "webrtc_mode": "mask",
+  "audio_noise": 0.0001
+}

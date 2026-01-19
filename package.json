@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "baseline-browser-mapping": "^2.9.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6"
+  },
+  "dependencies": {
+    "@assistant-ui/react-devtools": "^0.1.9"
+  },
+  "scripts": {
+    "prepare": "husky"
+  }
+}

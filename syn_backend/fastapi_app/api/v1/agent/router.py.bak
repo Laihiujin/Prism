@@ -1,0 +1,267 @@
+"""
+Agent API路由 - AI驱动的发布系统
+"""
+from fastapi import APIRouter, HTTPException, status
+from typing import Dict, Any
+
+from .models import (
+    SaveScriptRequest,
+    SaveScriptResponse,
+    ExecuteScriptRequest,
+    ExecuteScriptResponse,
+    SystemContext
+)
+from .services import agent_service
+from ....core.logger import logger
+from ....schemas.common import Response
+
+
+router = APIRouter(prefix="/agent", tags=["AI Agent"])
+
+
+@router.post("/save-script", response_model=Response[SaveScriptResponse])
+async def save_script(request: SaveScriptRequest):
+    """
+    保存AI生成的脚本
+
+    - 支持JSON和Python脚本
+    - 自动生成script_id
+    - 落盘到storage/scripts目录
+    - 记录到数据库
+
+    Args:
+        request: 脚本内容和元数据
+
+    Returns:
+        {script_id, path}
+    """
+    try:
+        result = await agent_service.save_script(request)
+        return Response(
+            success=True,
+            data=SaveScriptResponse(
+                status="success",
+                script_id=result['script_id'],
+                path=result['path']
+            )
+        )
+    except Exception as e:
+        logger.error(f"Save script failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post("/execute-script", response_model=Response[ExecuteScriptResponse])
+async def execute_script(request: ExecuteScriptRequest):
+    """
+    执行脚本
+
+    - execute模式: 真实创建任务并执行
+    - dry-run模式: 仅验证计划不执行
+
+    Args:
+        request: 脚本ID和执行选项
+
+    Returns:
+        {task_batch_id, tasks_created, estimated_time}
+    """
+    try:
+        result = await agent_service.execute_script(
+            script_id=request.script_id,
+            mode=request.mode,
+            options=request.options.dict() if request.options else {}
+        )
+
+        return Response(
+            success=True,
+            data=ExecuteScriptResponse(
+                status="accepted",
+                task_batch_id=result['task_batch_id'],
+                tasks_created=result['tasks_created'],
+                estimated_time=result['estimated_time']
+            )
+        )
+    except ValueError as e:
+        logger.error(f"Execute script failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Execute script failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/context", response_model=Response[SystemContext])
+async def get_system_context():
+    """
+    获取系统上下文
+
+    供AI使用,包含:
+    - 所有可用账号信息
+    - 素材库视频列表
+    - 已发布历史
+
+    Returns:
+        {accounts: [...], videos: [...]}
+    """
+    try:
+        context = await agent_service.get_system_context()
+        return Response(
+            success=True,
+            data=context
+        )
+    except Exception as e:
+        logger.error(f"Get context failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/scripts")
+async def list_scripts(skip: int = 0, limit: int = 20):
+    """
+    获取脚本列表
+
+    Args:
+        skip: 跳过数量
+        limit: 限制数量
+
+    Returns:
+        脚本列表
+    """
+    try:
+        import sqlite3
+        from pathlib import Path
+
+        db_path = Path(agent_service.db_path)
+
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("""
+                SELECT script_id, filename, script_type, plan_name,
+                       description, generated_by, created_at, status
+                FROM scripts
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """, (limit, skip))
+
+            scripts = [dict(row) for row in cursor.fetchall()]
+
+            # 获取总数
+            count_cursor = conn.execute("SELECT COUNT(*) FROM scripts")
+            total = count_cursor.fetchone()[0]
+
+        return Response(
+            success=True,
+            data={
+                "total": total,
+                "items": scripts
+            }
+        )
+    except Exception as e:
+        logger.error(f"List scripts failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/scripts/{script_id}")
+async def get_script(script_id: str):
+    """
+    获取脚本详情
+
+    Args:
+        script_id: 脚本ID
+
+    Returns:
+        脚本详细信息
+    """
+    try:
+        import sqlite3
+        from pathlib import Path
+
+        db_path = Path(agent_service.db_path)
+
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM scripts WHERE script_id = ?",
+                (script_id,)
+            )
+            script = cursor.fetchone()
+
+            if not script:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Script not found: {script_id}"
+                )
+
+            return Response(
+                success=True,
+                data=dict(script)
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get script failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get("/executions")
+async def list_executions(skip: int = 0, limit: int = 20):
+    """
+    获取执行历史
+
+    Args:
+        skip: 跳过数量
+        limit: 限制数量
+
+    Returns:
+        执行历史列表
+    """
+    try:
+        import sqlite3
+        from pathlib import Path
+
+        db_path = Path(agent_service.db_path)
+
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("""
+                SELECT e.*, s.filename, s.plan_name
+                FROM script_executions e
+                LEFT JOIN scripts s ON e.script_id = s.script_id
+                ORDER BY e.started_at DESC
+                LIMIT ? OFFSET ?
+            """, (limit, skip))
+
+            executions = [dict(row) for row in cursor.fetchall()]
+
+            # 获取总数
+            count_cursor = conn.execute("SELECT COUNT(*) FROM script_executions")
+            total = count_cursor.fetchone()[0]
+
+        return Response(
+            success=True,
+            data={
+                "total": total,
+                "items": executions
+            }
+        )
+    except Exception as e:
+        logger.error(f"List executions failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )

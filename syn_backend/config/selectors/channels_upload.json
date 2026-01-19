@@ -1,0 +1,193 @@
+{
+  "platform": "channels",
+  "version": "2024.12",
+  "last_updated": "2025-12-10",
+  "description": "视频号上传页面 DOM 选择器配置",
+
+  "selectors": {
+    "file_upload": {
+      "description": "文件上传输入框",
+      "priority": [
+        {
+          "type": "css",
+          "value": "input[type='file']",
+          "timeout": 3000,
+          "note": "最通用的文件上传选择器"
+        },
+        {
+          "type": "css",
+          "value": "input[accept*='video']",
+          "timeout": 2000,
+          "note": "视频上传专用输入框"
+        },
+        {
+          "type": "css",
+          "value": ".upload-area input[type='file']",
+          "timeout": 2000,
+          "note": "上传区域内的文件输入"
+        },
+        {
+          "type": "css",
+          "value": "input[id*='upload']",
+          "timeout": 2000,
+          "note": "ID 包含 upload 的输入框"
+        }
+      ],
+      "trigger_buttons": [
+        {
+          "type": "css",
+          "value": "div.upload-content",
+          "action": "click",
+          "note": "2024 年最新版本的上传区域"
+        },
+        {
+          "type": "css",
+          "value": "span.weui-icon-outlined-add",
+          "action": "click",
+          "note": "添加图标按钮"
+        },
+        {
+          "type": "text",
+          "value": "上传视频",
+          "action": "click",
+          "note": "文本按钮"
+        }
+      ],
+      "fallback": "manual_intervention"
+    },
+
+    "title_input": {
+      "description": "标题输入框",
+      "priority": [
+        {
+          "type": "css",
+          "value": "div.input-editor",
+          "timeout": 2000,
+          "note": "主标题编辑器"
+        },
+        {
+          "type": "xpath",
+          "value": "//div[@contenteditable='true']",
+          "timeout": 2000,
+          "note": "可编辑 DIV"
+        },
+        {
+          "type": "css",
+          "value": ".weui-desktop-form__input textarea",
+          "timeout": 2000,
+          "note": "备用 textarea"
+        }
+      ],
+      "fallback": "manual_intervention"
+    },
+
+    "description_input": {
+      "description": "简介输入框",
+      "priority": [
+        {
+          "type": "css",
+          "value": "textarea[placeholder*='简介']",
+          "timeout": 2000
+        },
+        {
+          "type": "css",
+          "value": "div.description-editor",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "location_select": {
+      "description": "地理位置选择",
+      "priority": [
+        {
+          "type": "text",
+          "value": "位置",
+          "timeout": 2000
+        },
+        {
+          "type": "css",
+          "value": ".location-selector",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "schedule_time_input": {
+      "description": "定时发布时间选择器",
+      "priority": [
+        {
+          "type": "css",
+          "value": "input[placeholder='请选择发表时间']",
+          "timeout": 2000,
+          "note": "定时发布时间输入"
+        },
+        {
+          "type": "css",
+          "value": "input[placeholder='请选择时间']",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "schedule_radio": {
+      "description": "定时发布单选按钮",
+      "priority": [
+        {
+          "type": "css",
+          "value": "label:has-text('定时')",
+          "timeout": 2000,
+          "note": "定时发布标签"
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "publish_button": {
+      "description": "发布按钮",
+      "priority": [
+        {
+          "type": "css",
+          "value": "div.form-btns button:has-text('发表')",
+          "timeout": 2000,
+          "note": "发表按钮（新版）"
+        },
+        {
+          "type": "role",
+          "value": "button",
+          "name": "发表",
+          "timeout": 2000,
+          "note": "通过角色查找"
+        },
+        {
+          "type": "text",
+          "value": "发表",
+          "timeout": 2000,
+          "note": "文本匹配（兜底）"
+        }
+      ],
+      "success_indicators": [
+        {
+          "type": "url",
+          "pattern": "platform/post/list",
+          "note": "跳转到列表页"
+        },
+        {
+          "type": "text",
+          "value": "发布成功",
+          "note": "成功提示"
+        }
+      ],
+      "fallback": "error"
+    }
+  },
+
+  "dynamic_detection": {
+    "enabled": true,
+    "snapshot_on_failure": true,
+    "auto_report_changes": false
+  }
+}

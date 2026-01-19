@@ -1,0 +1,282 @@
+# ============================================
+# SynapseAutomation - 统一依赖文件
+# ============================================
+
+# ============================================
+# 核心框架
+# ============================================
+fastapi
+uvicorn[standard]
+starlette
+python-multipart
+sse-starlette
+httpx-sse
+
+# ============================================
+# 数据验证与配置
+# ============================================
+pydantic
+pydantic-core
+pydantic-settings
+annotated-types
+email-validator
+
+# ============================================
+# 数据库
+# ============================================
+sqlalchemy
+alembic
+aiomysql
+pymysql
+asyncpg
+
+# ============================================
+# 缓存与任务队列
+# ============================================
+redis
+hiredis
+celery<5.5.0
+kombu
+billiard
+amqp
+vine
+apscheduler
+schedule
+
+# ============================================
+# 浏览器自动化
+# ============================================
+playwright
+browser-use
+cdp-use
+selenium
+webdriver-manager
+browsergym
+gymnasium
+
+# ============================================
+# HTTP 客户端
+# ============================================
+httpx
+requests
+aiohttp
+aiohttp-cors
+aiofiles
+urllib3
+certifi
+charset-normalizer
+
+# ============================================
+# AI 服务
+# ============================================
+openai
+anthropic
+tiktoken
+tenacity
+# langchain
+# langchain-openai
+# langchain-anthropic
+# langchain-community
+# langchain-core
+
+# ============================================
+# 社交媒体平台
+# ============================================
+bilibili-api-python
+biliup
+xhs
+yt-dlp
+
+# ============================================
+# 搜索与爬虫
+# ============================================
+googlesearch-python
+duckduckgo-search
+baidusearch
+beautifulsoup4
+lxml
+crawl4ai
+
+# ============================================
+# 文档处理
+# ============================================
+openpyxl
+python-docx
+pypdf
+pillow
+opencv-python
+reportlab
+html2text
+unidiff
+
+# ============================================
+# 日志
+# ============================================
+loguru
+structlog
+colorama
+coloredlogs
+
+# ============================================
+# API 相关
+# ============================================
+python-jose[cryptography]
+passlib[bcrypt]
+python-dateutil
+
+# ============================================
+# 媒体处理
+# ============================================
+ffmpeg-python
+moviepy
+
+# ============================================
+# 云服务
+# ============================================
+boto3
+botocore
+azure-identity
+azure-ai-documentintelligence
+
+# ============================================
+# 其他工具
+# ============================================
+pyyaml
+python-dotenv
+toml
+tomli
+tomli_w
+importlib_resources
+click
+tqdm
+qrcode[pil]
+pycryptodome
+pytz
+retrying
+numpy
+
+# ============================================
+# MCP & Agent SDK
+# ============================================
+mcp
+daytona-sdk
+
+# ============================================
+# Docker 支持
+# ============================================
+docker
+
+# ============================================
+# 系统依赖
+# ============================================
+greenlet
+cffi
+pycparser
+setuptools
+wheel
+
+# ============================================
+# 测试
+# ============================================
+pytest
+pytest-asyncio
+pytest-cov
+
+# ============================================
+# 开发工具
+# ============================================
+black
+flake8
+
+# ============================================
+# 后端特定依赖（从各模块 requirements.txt 合并）
+# ============================================
+aiosignal
+anyio
+asgiref
+async-lru
+async-timeout
+attrs
+backports-datetime-fromisoformat
+blinker
+Brotli
+cf_clearance
+dnspython
+eventlet
+exceptiongroup
+frozenlist
+h11
+h2
+hpack
+httpcore
+hyperframe
+idna
+isodate
+itsdangerous
+Jinja2
+jsengine
+m3u8
+Mako
+MarkupSafe
+multidict
+outcome
+propcache
+protobuf
+psutil
+pyasn1
+pycountry
+pyee
+PySocks
+rsa
+sniffio
+sortedcontainers
+stream-gears
+streamlink
+trio
+trio-websocket
+truststore
+typing_extensions
+websocket-client
+Werkzeug
+win32_setctime
+wsproto
+yarl
+ykdl
+daytona
+
+# ============================================
+# 安装说明
+# ============================================
+# 1. 创建虚拟环境: python -m venv synenv
+# 2. 激活虚拟环境:
+#    - Windows: synenv\Scripts\activate
+#    - Linux/Mac: source synenv/bin/activate
+# 3. 安装依赖: pip install -r requirements.txt
+#
+# 注意事项:
+# - 无版本号，保持适应不同 Python 版本
+# - 已移除不需要的库（torch, transformers, datasets, huggingface-hub）
+# - 建议使用 Python 3.11+
+# - 浏览器已存在于 .playwright-browsers 和 .chrome-for-testing，无需重新安装
+#
+# 重要提示:
+# - crawl4ai 可能与 biliup 版本冲突（aiohttp 版本要求不同）
+# - 如遇冲突，建议在独立环境安装 crawl4ai
+
+# Douyin_TikTok_API integration
+browser-cookie3
+gmssl
+lz4
+markdown-it-py
+mdurl
+pycryptodomex
+pyfiglet
+Pygments
+pypng
+pywebio
+pywebio-battery
+rich
+tornado
+ua-parser
+user-agents
+websockets

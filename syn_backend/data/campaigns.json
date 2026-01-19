@@ -1,0 +1,28 @@
+[
+  {
+    "id": "2572175f-4dee-493c-8bb2-46a4495e9e7f",
+    "name": "测试计划",
+    "platforms": [
+      "douyin"
+    ],
+    "account_ids": [
+      "test123"
+    ],
+    "material_ids": [
+      "12"
+    ],
+    "schedule_type": "immediate",
+    "start_time": null,
+    "end_time": null,
+    "goals": [],
+    "remark": "",
+    "task_count": 0,
+    "status": "draft",
+    "created_at": "2026-01-13T15:37:18.796007",
+    "updated_at": "2026-01-13T15:37:18.796007",
+    "interval_enabled": false,
+    "interval_mode": "account_video",
+    "interval_minutes": 30,
+    "task_ids": []
+  }
+]

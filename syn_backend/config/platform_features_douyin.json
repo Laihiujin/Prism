@@ -1,0 +1,27 @@
+{
+  "headers": {},
+  "features": {
+    "douyin": {
+      "inputs": [],
+      "buttons": [],
+      "cover_requirements": [],
+      "upload_paths": [
+        "常规上传按钮"
+      ]
+    }
+  },
+  "new_guides": [
+    {
+      "text": "高清发布",
+      "context": "douyin_publish",
+      "timestamp": "2025-11-27T10:52:07.106942"
+    },
+    {
+      "text": "上传视频",
+      "context": "douyin_publish",
+      "timestamp": "2025-11-27T10:52:07.112950"
+    }
+  ],
+  "urls": {},
+  "videos": {}
+}

@@ -1,0 +1,781 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SynapseAutomation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        :root {
+            --sidebar-width: 60px;
+            --navbar-height: 48px;
+            --bg-main: #000000;
+            --bg-sidebar: rgba(10, 10, 12, 0.8);
+            --bg-popup: rgba(18, 18, 22, 0.9);
+            --accent: #7C4DFF;
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #FFFFFF;
+            --text-dim: #888888;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100%;
+            background-color: var(--bg-sidebar);
+            backdrop-filter: blur(25px);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            z-index: 1000;
+        }
+
+        .sidebar-top {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            width: 100%;
+        }
+
+        .tab-item {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid transparent;
+        }
+
+        .tab-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
+        }
+
+        .tab-item.active {
+            background: rgba(124, 77, 255, 0.15);
+            border-color: rgba(124, 77, 255, 0.3);
+        }
+
+        .tab-item.active::before {
+            content: '';
+            position: absolute;
+            left: -14px;
+            width: 4px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 15px var(--accent);
+        }
+
+        .tab-item svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-dim);
+            transition: var(--transition);
+        }
+
+        .tab-item.active svg {
+            color: var(--accent);
+            filter: drop-shadow(0 0 5px var(--accent));
+        }
+
+        .tab-close {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            background: #ff4d4d;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            opacity: 0;
+            transition: var(--transition);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .tab-item:hover .tab-close {
+            opacity: 1;
+        }
+
+        .add-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dim);
+            transition: var(--transition);
+            margin-top: auto;
+        }
+
+        .add-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        .settings-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-dim);
+            transition: var(--transition);
+            margin-top: 12px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .settings-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .settings-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Main Content */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .navbar {
+            height: var(--navbar-height);
+            background: linear-gradient(to bottom, #0a0a0c, #000);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: var(--transition);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        .address-bar {
+            flex: 1;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            max-width: 800px;
+            margin: 0 auto;
+            transition: var(--transition);
+        }
+
+        .address-bar:focus-within {
+            border-color: var(--accent);
+            background: rgba(124, 77, 255, 0.05);
+            box-shadow: 0 0 15px rgba(124, 77, 255, 0.1);
+        }
+
+        .address-bar input {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .webview-container {
+            flex: 1;
+            background: #000;
+            position: relative;
+        }
+
+        webview {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        webview.active {
+            display: flex;
+        }
+
+        /* Tab Details Popup - PREMIUM GLASS */
+        .tab-popup {
+            position: fixed;
+            left: 70px;
+            width: 320px;
+            background: var(--bg-popup);
+            backdrop-filter: blur(25px);
+            border: 1.5px solid rgba(124, 77, 255, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            display: none;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            transform-origin: left center;
+            animation: popupReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes popupReveal {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateX(-15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateX(0);
+            }
+        }
+
+        .p-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 20px;
+        }
+
+        .p-url-container {
+            position: relative;
+            margin-bottom: 18px;
+            min-height: 40px;
+        }
+
+        .p-url-display {
+            color: var(--text-dim);
+            font-size: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border: 1px solid transparent;
+            cursor: text;
+            transition: all 0.2s;
+        }
+
+        .p-url-display:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.07);
+            color: #fff;
+        }
+
+        .p-url-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #151518;
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            color: #fff;
+            padding: 0 14px;
+            font-size: 12px;
+            outline: none;
+            display: none;
+            box-shadow: 0 0 20px rgba(124, 77, 255, 0.2);
+            animation: inputScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes inputScale {
+            from {
+                transform: scale(0.97);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .p-tools {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+
+        .p-tool-icon {
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            border-radius: 8px;
+        }
+
+        .p-tool-icon:hover {
+            color: var(--accent);
+            background: rgba(124, 77, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .p-tool-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        #p-close {
+            color: rgba(255, 50, 50, 0.6);
+        }
+
+        #p-close:hover {
+            color: #ff4d4d;
+            background: rgba(255, 50, 50, 0.1);
+        }
+
+        /* 设置面板样式 */
+        .settings-panel {
+            position: fixed;
+            left: 72px;
+            top: 0;
+            bottom: 0;
+            width: 420px;
+            background: rgba(10, 10, 14, 0.98);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .settings-panel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .settings-panel.open {
+            transform: translateX(0);
+        }
+
+        .settings-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: rgba(10, 10, 14, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .settings-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .settings-close {
+            min-width: 44px;
+            height: 32px;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .settings-close:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .settings-content {
+            padding: 20px;
+        }
+
+        .settings-section {
+            margin-bottom: 28px;
+        }
+
+        .settings-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .settings-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .settings-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-item-info {
+            flex: 1;
+        }
+
+        .settings-item-label {
+            font-size: 14px;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .settings-item-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .settings-item-action {
+            margin-left: 12px;
+        }
+
+        .settings-btn-small {
+            padding: 6px 14px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .settings-btn-primary {
+            background: rgba(124, 77, 255, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(124, 77, 255, 0.3);
+        }
+
+        .settings-btn-primary:hover {
+            background: rgba(124, 77, 255, 0.25);
+        }
+
+        .settings-btn-danger {
+            background: rgba(244, 67, 54, 0.15);
+            color: #EF5350;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .settings-btn-danger:hover {
+            background: rgba(244, 67, 54, 0.25);
+        }
+
+        .settings-btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 遮罩层 */
+        .settings-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .settings-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 设置遮罩层 -->
+    <div class="settings-overlay" id="settings-overlay"></div>
+
+    <!-- 设置面板 -->
+    <div class="settings-panel" id="settings-panel">
+        <div class="settings-header">
+            <h2>系统设置</h2>
+            <div class="settings-close" id="settings-close">关闭</div>
+        </div>
+        <div class="settings-content">
+            <!-- 进程控制 -->
+            <div class="settings-section">
+                <div class="settings-section-title">进程控制</div>
+                <div class="settings-item" onclick="restartAllServices()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">重启所有服务</div>
+                        <div class="settings-item-desc">Backend + Worker + Celery</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-primary">重启</button>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="restartBackendService()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">重启后端服务</div>
+                        <div class="settings-item-desc">FastAPI Backend</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-primary">重启</button>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="stopAllServices()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">停止所有服务</div>
+                        <div class="settings-item-desc">停止所有后端进程</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-danger">停止</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据清理 -->
+            <div class="settings-section">
+                <div class="settings-section-title">数据清理</div>
+                <div class="settings-item" onclick="clearMaterialsData()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">清除素材数据</div>
+                        <div class="settings-item-desc">删除所有本地视频素材</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-secondary">清除</button>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="clearAccountsData()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">清除账号 & Cookies</div>
+                        <div class="settings-item-desc">删除所有账号登录信息</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-secondary">清除</button>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="clearAllCache()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">清除所有缓存</div>
+                        <div class="settings-item-desc">清空临时文件和缓存</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-secondary">清除</button>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="clearVideoData()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">清除视频数据</div>
+                        <div class="settings-item-desc">删除所有本地视频与相关数据</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-secondary">清除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 紧急操作 -->
+            <div class="settings-section">
+                <div class="settings-section-title">紧急操作</div>
+                <div class="settings-item" onclick="runSystemCheck()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">运行系统自检</div>
+                        <div class="settings-item-desc">检查系统健康状态</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-primary">自检</button>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="exportSystemLogs()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">导出系统日志</div>
+                        <div class="settings-item-desc">打包下载所有日志文件</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-primary">导出</button>
+                    </div>
+                </div>
+                <div class="settings-item" onclick="forceKillAllProcesses()">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">强制终止进程</div>
+                        <div class="settings-item-desc">立即停止所有服务</div>
+                    </div>
+                    <div class="settings-item-action">
+                        <button class="settings-btn-small settings-btn-danger">终止</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-top" id="sidebar-tabs">
+            <!-- Tabs will be injected here -->
+        </div>
+        <div class="add-btn" id="add-tab" title="新建会话">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </div>
+        <div class="settings-btn" id="settings-btn" title="系统设置">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m18.2-5.2l-4.2 4.2m0 6l4.2 4.2"></path>
+            </svg>
+        </div>
+    </div>
+
+    <div class="main-area">
+        <div class="navbar">
+            <div class="address-bar">
+                <input type="text" id="url-bar" spellcheck="false" placeholder="输入网址或搜索内容..." />
+            </div>
+        </div>
+        <div class="webview-container" id="webview-container">
+            <!-- Webviews -->
+        </div>
+    </div>
+
+    <!-- 弹窗设计 -->
+    <div id="tab-popup" class="tab-popup">
+        <div id="p-title" class="p-title">会话加载中...</div>
+
+        <div class="p-url-container" id="p-url-container">
+            <div id="p-url-display" class="p-url-display">https://...</div>
+            <input type="text" id="p-url-input" class="p-url-input" placeholder="输入并回车访问...">
+        </div>
+
+        <div class="p-tools">
+            <div class="p-tool-icon" id="p-back" title="后退">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </div>
+            <div class="p-tool-icon" id="p-forward" title="前进">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </div>
+            <div class="p-tool-icon" id="p-reload" title="刷新">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15">
+                    </path>
+                </svg>
+            </div>
+            <div class="p-tool-icon" id="p-copy" title="复制网址">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </div>
+            <div style="flex-grow: 1"></div>
+            <div class="p-tool-icon" id="p-close" title="关闭标签">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+</body>
+
+</html>

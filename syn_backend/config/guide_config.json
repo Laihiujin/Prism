@@ -1,0 +1,31 @@
+{
+    "guide_keywords": [
+        "我知道了",
+        "好的",
+        "下一步",
+        "我了解了",
+        "我学会了",
+        "开始体验",
+        "跳过",
+        "关闭",
+        "Got it",
+        "Next",
+        "Skip",
+        "立即体验",
+        "不再提示",
+        "确定",
+        "知道了",
+        "去看看",
+        "马上体验",
+        "稍后再说"
+    ],
+    "close_selectors": [
+        ".close",
+        ".close-btn",
+        "button[aria-label='Close']",
+        ".ant-modal-close",
+        ".el-dialog__headerbtn",
+        ".modal-close",
+        ".dialog-close"
+    ]
+}

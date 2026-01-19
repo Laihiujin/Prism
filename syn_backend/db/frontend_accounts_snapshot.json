@@ -1,0 +1,20 @@
+{
+  "updated_at": "2026-01-19T03:30:02.684095",
+  "accounts": [
+    {
+      "account_id": "account_1768550520396",
+      "platform": "channels",
+      "user_id": null
+    },
+    {
+      "account_id": "account_1768550564905",
+      "platform": "kuaishou",
+      "user_id": null
+    },
+    {
+      "account_id": "account_1768550657442",
+      "platform": "xiaohongshu",
+      "user_id": null
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "headers": {},
+  "features": {
+    "kuaishou": {
+      "inputs": [],
+      "buttons": [
+        "关联",
+        "合集"
+      ],
+      "cover_requirements": [],
+      "upload_paths": [
+        "常规上传按钮"
+      ]
+    }
+  },
+  "new_guides": [
+    {
+      "text": "上传视频",
+      "context": "kuaishou_publish",
+      "timestamp": "2025-11-27T10:52:27.046288"
+    },
+    {
+      "text": "遇到\n\n问题",
+      "context": "kuaishou_publish",
+      "timestamp": "2025-11-27T10:52:28.249985"
+    }
+  ],
+  "urls": {},
+  "videos": {}
+}

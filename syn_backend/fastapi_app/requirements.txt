@@ -1,0 +1,49 @@
+# FastAPI核心依赖
+fastapi
+uvicorn[standard]
+python-multipart
+
+# 数据验证
+pydantic
+pydantic-settings
+
+# 日志
+loguru
+
+# SSE支持
+sse-starlette
+
+# HTTP客户端
+httpx
+
+# 测试
+pytest
+pytest-asyncio
+
+# 开发工具
+black
+flake8
+
+# Douyin_TikTok_API integration
+aiofiles
+browser-cookie3
+colorama
+gmssl
+lz4
+markdown-it-py
+mdurl
+pycryptodomex
+pyfiglet
+Pygments
+pypng
+pywebio
+pywebio-battery
+PyYAML
+qrcode
+rich
+tornado
+ua-parser
+user-agents
+websockets
+tenacity
+importlib_resources
