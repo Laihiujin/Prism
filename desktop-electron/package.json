@@ -4,7 +4,7 @@
   "description": "SynapseAutomation",
   "main": "src/main/index.js",
   "author": "Laihiujin",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "start": "electron .",
     "dev": "cross-env SYNAPSE_START_SERVICES=1 SYNAPSE_START_FRONTEND=1 electron .",
@@ -144,6 +144,7 @@
     },
     "nsis": {
       "oneClick": false,
+      "include": "build/installer.nsh",
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
       "createDesktopShortcut": true,

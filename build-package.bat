@@ -133,6 +133,8 @@ for /f "tokens=2 delims=:, " %%a in ('findstr "buildNumber" "%VERSION_FILE%"') d
 
 echo Current version: %CURRENT_VERSION%
 echo Build number: v%BUILD_NUM%
+set "FULL_VERSION=%CURRENT_VERSION%.%BUILD_NUM%"
+echo Full version: %FULL_VERSION%
 echo.
 
 :: ============================================
@@ -232,9 +234,9 @@ echo.
 setlocal DisableDelayedExpansion
 set "EB_CLI=%CD%\node_modules\electron-builder\cli.js"
 if exist "%EB_CLI%" (
-    powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; node '%EB_CLI%' --win --x64 --dir"
+    powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; node '%EB_CLI%' --win --x64 --dir --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
 ) else (
-    powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; npm run build:dir"
+    powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; npm run build:dir -- --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
 )
 set "BUILD_DIR_RC=%ERRORLEVEL%"
 endlocal & set "BUILD_DIR_RC=%BUILD_DIR_RC%"
@@ -367,7 +369,12 @@ if "!PACKAGE_TYPE!"=="1" (
     echo Stage 2: build installer ^(NSIS^)
     echo ============================================
     echo.
-    call npm run build
+    set "EB_CLI=%CD%\node_modules\electron-builder\cli.js"
+    if exist "!EB_CLI!" (
+        powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; node '!EB_CLI!' --win --x64 --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
+    ) else (
+        powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; npm run build -- --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
+    )
     if errorlevel 1 (
         echo ERROR: npm run build failed
         pause

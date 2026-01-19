@@ -8,6 +8,7 @@
 ; These will be replaced by the batch script
 #define MyAppVersion GetEnv("APP_VERSION")
 #define MyAppBuildNum GetEnv("APP_BUILD_NUM")
+#define MyAppVersionFull MyAppVersion + "." + MyAppBuildNum
 #define SourceDir GetEnv("SOURCE_DIR")
 #define OutputDir GetEnv("OUTPUT_DIR")
 #if OutputDir == ""
@@ -26,8 +27,9 @@
 [Setup]
 AppId={{8B5F4B5E-9A2C-4D3E-8F1A-6C7D8E9F0A1B}
 AppName={#MyAppName}
-AppVersion={#MyAppVersion}
+AppVersion={#MyAppVersionFull}
 AppVerName={#MyAppName} {#MyAppVersion}
+VersionInfoVersion={#MyAppVersionFull}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
@@ -37,16 +39,19 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=
 OutputDir={#OutputDir}
-OutputBaseFilename=SynapseAutomation-Setup-v{#MyAppBuildNum}
+OutputBaseFilename=SynapseAutomation-Setup-v{#MyAppVersionFull}
 SetupIconFile={#IconFile}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
+CloseApplications=yes
+RestartApplications=yes
+CloseApplicationsFilter=SynapseAutomation.exe
 
 [Languages]
 #ifexist "compiler:Languages\ChineseSimplified.isl"
@@ -105,6 +110,18 @@ Type: filesandordirs; Name: "{localappdata}\SynapseAutomation\data"; Check: Shou
 var
   DeleteUserDataCheckBox: TNewCheckBox;
   DeleteUserData: Boolean;
+  ResultCode: Integer;
+
+procedure ForceCloseRunningApp();
+begin
+  Exec('taskkill', '/F /IM SynapseAutomation.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  ForceCloseRunningApp();
+  Result := True;
+end;
 
 procedure InitializeUninstallProgressForm();
 begin
