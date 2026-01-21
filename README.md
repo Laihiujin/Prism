@@ -1,7 +1,6 @@
 # SynapseAutomation（AI 矩阵投放 / 自动化发布）
-Support: https://buymeacoffee.com/laihiujin3
-
-SynapseAutomation 是一个 AI 驱动的多平台矩阵投放与自动化发布系统，面向多账号、多素材、多平台的内容分发场景，提供从计划生成、任务调度到执行监控与数据回收的全链路能力；
+SynapseAutomation 是一个 AI 驱动的多平台矩阵投放与自动化发布系统;
+面向多账号、多素材、多平台的内容分发场景，提供从计划生成、任务调度到执行监控与数据回收的全链路能力；
 
 ---
 
@@ -228,8 +227,8 @@ Content-Type: application/json
 ## 许可
 本项目基于 Apache License 2.0 开源；
 
-## Star History
+## [支持一下](https://buymeacoffee.com/laihiujin3)
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SynapseAutomation/SynapseAutomation&type=date&legend=top-left)](https://www.star-history.com/#SynapseAutomation/SynapseAutomation&type=date&legend=top-left)
-
-## 支持
+| | |
+|-|-|
+| ![1d1114b7-9c71-4c18-91df-0a462bed5405](https://github.com/user-attachments/assets/f0c38071-f69a-4262-a339-182c090d4c41) | ![dac9dc35-e027-42e8-b6aa-81f3211906da](https://github.com/user-attachments/assets/761ae5f1-8350-49d6-bba6-de2f01f1b73e) |
