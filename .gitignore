@@ -1,0 +1,129 @@
+# Temporary files
+temp/
+temp_*.txt
+temp_*.py
+temp_*.bat
+temp_flowith_extracted/
+nul
+*/nul
+_nul
+*/_nul
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+syn-env/
+synenv/*
+magentic_env/
+env/
+venv/
+.venv/
+ENV/
+.venv_test/
+.venv_pw/
+.pytest_cache/
+.pytest_tmp/
+
+# Tests and scratch (repo root)
+/test_*.py
+/check_*.py
+/debug_*.py
+/scripts/test_*.py
+/QRCODE_*.md
+/TEST_*.md
+/docs/archived/
+test_*.json
+template_dirs
+# Node / frontend
+node_modules/
+syn_frontend_react/.next/
+syn_frontend_react/out/
+syn_frontend_react/.env.local
+
+# IDE
+.vscode/
+.idea/
+.claude/
+.agent/
+.codex/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / runtime data
+*.log
+logs/*
+.env
+*.sqlite
+*.sqlite3
+*.db
+dump.rdb
+*.rdb
+
+# Media
+*.mp4
+*.avi
+*.mov
+
+# Uploads
+upload/
+
+# Backend runtime artifacts
+syn_backend/logs/*
+syn_backend/videoFile/*
+syn_backend/cookiesFile/*.json
+syn_backend/fastapi_app/cache/
+syn_backend/.deps_installed
+syn_backend/.copilot-profiles/
+syn_backend/data/ip_pool.json
+syn_backend/data/account_stats.json
+syn_backend/uploader/**/qrcode.png
+syn_backend/Redis/
+
+# Root config runtime artifacts
+config/cookiesFile/*.json
+config/browser_profiles/
+# config/conf.py
+
+# Playwright / browser downloads
+/.playwright-browsers*/
+/.chrome-for-testing*/
+browsers/chromium/chromium_headless_shell-1161/*
+browsers/chromium/chromium-1161/*
+browsers/chromium/ffmpeg-1011/*
+browsers/chromium/winldd-1007/*
+browsers/firefox/firefox-1495/*
+browsers/firefox/winldd-1007/*
+
+# Build / packaging output
+dist/
+build_output/
+scripts/packaging/
+
+# Desktop Electron build artifacts
+desktop-electron/dist*/
+desktop-electron/out/
+desktop-electron/build/
+desktop-electron/.cache/
+desktop-electron/resources/
+
+# Installer artifacts
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+
+# Sensitive files（accountData）
+syn_backend/browser_profiles/*
+syn_backend/cookiesFile/*
+syn_backend/fingerprints/*
+
+LaunchScript/python-3.11.9-embed-amd64.zip

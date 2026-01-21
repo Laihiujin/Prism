@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse 系统设置</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0e 0%, #1a1a2e 100%);
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 24px 40px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(124, 77, 255, 0.3);
+            backdrop-filter: blur(10px);
+            -webkit-app-region: drag;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .header p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 6px;
+        }
+
+        .container {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 480px 1fr;
+            gap: 24px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(124, 77, 255, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #7C4DFF;
+        }
+
+        .section-subtitle {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 16px;
+        }
+
+        .action-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .action-row:hover {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(124, 77, 255, 0.3);
+            transform: translateX(4px);
+        }
+
+        .action-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .action-icon {
+            font-size: 20px;
+        }
+
+        .action-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .action-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .action-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7C4DFF 0%, #9575FF 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #6A3DE8 0%, #8464EE 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(124, 77, 255, 0.5);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: linear-gradient(135deg, #D32F2F 0%, #EF5350 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(244, 67, 54, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 日志区域 */
+        .logs-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .logs-container {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            border: 1px solid rgba(124, 77, 255, 0.2);
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .log-line {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 6px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .log-line:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .log-line.info {
+            color: #66BB6A;
+            border-left: 3px solid #66BB6A;
+            padding-left: 8px;
+        }
+        .log-line.error {
+            color: #EF5350;
+            border-left: 3px solid #EF5350;
+            padding-left: 8px;
+        }
+        .log-line.warning {
+            color: #FFCA28;
+            border-left: 3px solid #FFCA28;
+            padding-left: 8px;
+        }
+        .log-line.system {
+            color: #7C4DFF;
+            border-left: 3px solid #7C4DFF;
+            padding-left: 8px;
+        }
+
+        .log-filter {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #7C4DFF 0%, #9575FF 100%);
+            border-color: #7C4DFF;
+            color: white;
+            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.4);
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(124, 77, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Toast 通知 */
+        .toast {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            padding: 14px 24px;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(400px);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-color: #66BB6A;
+            box-shadow: 0 8px 32px rgba(102, 187, 106, 0.3);
+        }
+
+        .toast.error {
+            border-color: #EF5350;
+            box-shadow: 0 8px 32px rgba(239, 83, 80, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚙️ 系统设置 & 控制台</h1>
+        <p>进程管理、数据清理与系统日志监控</p>
+    </div>
+
+    <div class="container">
+        <!-- 左侧面板 -->
+        <div class="left-panel">
+            <!-- 进程控制 -->
+            <div class="section">
+                <div class="section-title">🔧 进程控制</div>
+                <div class="section-subtitle">管理后端服务的启动、停止和重启</div>
+                <div class="action-list">
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">🔄</span>
+                            <div class="action-text">
+                                <span class="action-label">重启所有服务</span>
+                                <span class="action-desc">Backend + Worker + Celery</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="restartAll()">
+                            <span id="restart-all-icon">重启</span>
+                        </button>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">🔁</span>
+                            <div class="action-text">
+                                <span class="action-label">重启后端服务</span>
+                                <span class="action-desc">FastAPI Backend</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="restartBackend()">
+                            <span id="restart-backend-icon">重启</span>
+                        </button>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">🛑</span>
+                            <div class="action-text">
+                                <span class="action-label">停止所有服务</span>
+                                <span class="action-desc">停止所有后端进程</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" onclick="stopAll()">停止</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据清理 -->
+            <div class="section">
+                <div class="section-title">🧹 数据清理</div>
+                <div class="section-subtitle">清除缓存、素材、账号等数据</div>
+                <div class="action-list">
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">📁</span>
+                            <div class="action-text">
+                                <span class="action-label">清除素材数据</span>
+                                <span class="action-desc">删除所有本地视频素材</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="clearMaterials()">清除</button>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">🍪</span>
+                            <div class="action-text">
+                                <span class="action-label">清除账号 & Cookies</span>
+                                <span class="action-desc">删除所有账号登录信息</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="clearAccounts()">清除</button>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">🗑️</span>
+                            <div class="action-text">
+                                <span class="action-label">清除所有缓存</span>
+                                <span class="action-desc">清空临时文件和缓存</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="clearCache()">清除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 紧急操作 -->
+            <div class="section">
+                <div class="section-title">⚠️ 紧急操作</div>
+                <div class="section-subtitle">系统自检、强制终止与日志导出</div>
+                <div class="action-list">
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">🔍</span>
+                            <div class="action-text">
+                                <span class="action-label">运行系统自检</span>
+                                <span class="action-desc">检查系统健康状态</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="runSelfCheck()">自检</button>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">📤</span>
+                            <div class="action-text">
+                                <span class="action-label">导出系统日志</span>
+                                <span class="action-desc">打包下载所有日志文件</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="exportLogs()">导出</button>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">❌</span>
+                            <div class="action-text">
+                                <span class="action-label">强制终止进程</span>
+                                <span class="action-desc">立即停止所有服务</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" onclick="forceKillProcesses()">终止</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板 - 日志监控 -->
+        <div class="right-panel">
+            <div class="section logs-section">
+                <div class="logs-header">
+                    <div class="section-title">📋 实时日志监控</div>
+                    <div class="log-filter">
+                        <button class="filter-btn active" data-filter="all" onclick="setLogFilter('all')">全部</button>
+                        <button class="filter-btn" data-filter="info" onclick="setLogFilter('info')">信息</button>
+                        <button class="filter-btn" data-filter="error" onclick="setLogFilter('error')">错误</button>
+                        <button class="filter-btn" data-filter="warning" onclick="setLogFilter('warning')">警告</button>
+                        <button class="btn btn-secondary" onclick="refreshLogs()" style="padding: 6px 12px; font-size: 12px;">
+                            <span id="refresh-icon">🔄</span> 刷新
+                        </button>
+                    </div>
+                </div>
+                <div class="logs-container" id="logs">
+                    <div class="log-line system">等待日志加载...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:7000/api/v1/system';
+        let currentLogFilter = 'all';
+        let autoRefreshInterval = null;
+
+        // Toast 通知
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ========== 进程控制 ==========
+
+        async function restartAll() {
+            const btn = document.querySelector('#restart-all-icon');
+            const originalText = btn.textContent;
+            btn.innerHTML = '<span class="spinner"></span>';
+
+            try {
+                const response = await fetch(`${API_BASE}/supervisor/restart`, { method: 'POST' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('✅ 所有服务已重启', 'success');
+                    addLog('系统', '所有服务重启成功');
+                } else {
+                    throw new Error(data.detail || '重启失败');
+                }
+            } catch (error) {
+                showToast('❌ 重启失败: ' + error.message, 'error');
+                addLog('错误', '重启失败: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+            }
+        }
+
+        async function restartBackend() {
+            const btn = document.querySelector('#restart-backend-icon');
+            const originalText = btn.textContent;
+            btn.innerHTML = '<span class="spinner"></span>';
+
+            try {
+                const response = await fetch(`${API_BASE}/supervisor/restart/backend`, { method: 'POST' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('✅ 后端服务已重启', 'success');
+                    addLog('系统', '后端服务重启成功');
+                } else {
+                    throw new Error(data.detail || '重启失败');
+                }
+            } catch (error) {
+                showToast('❌ 重启失败: ' + error.message, 'error');
+                addLog('错误', '重启失败: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+            }
+        }
+
+        async function stopAll() {
+            if (!confirm('确认停止所有服务？')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('🛑 所有服务已停止', 'success');
+                    addLog('系统', '所有服务已停止');
+                } else {
+                    throw new Error(data.detail || '停止失败');
+                }
+            } catch (error) {
+                showToast('❌ 停止失败: ' + error.message, 'error');
+                addLog('错误', '停止失败: ' + error.message);
+            }
+        }
+
+        // ========== 数据清理 ==========
+
+        async function clearMaterials() {
+            if (!confirm('确认清除所有素材数据？此操作不可恢复！')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/clear-materials`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ backup: false })
+                });
+
+                if (response.ok) {
+                    showToast('✅ 素材数据已清除', 'success');
+                    addLog('系统', '素材数据清除成功');
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.detail || '清除失败');
+                }
+            } catch (error) {
+                showToast('❌ 清除失败: ' + error.message, 'error');
+                addLog('错误', '清除失败: ' + error.message);
+            }
+        }
+
+        async function clearAccounts() {
+            if (!confirm('确认清除所有账号和 Cookies？此操作不可恢复！')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/clear-accounts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ backup: false })
+                });
+
+                if (response.ok) {
+                    showToast('✅ 账号数据已清除', 'success');
+                    addLog('系统', '账号与 Cookies 清除成功');
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.detail || '清除失败');
+                }
+            } catch (error) {
+                showToast('❌ 清除失败: ' + error.message, 'error');
+                addLog('错误', '清除失败: ' + error.message);
+            }
+        }
+
+        async function clearCache() {
+            if (!confirm('确认清除所有缓存？')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/clear-cache`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ backup: false })
+                });
+
+                if (response.ok) {
+                    showToast('✅ 缓存已清除', 'success');
+                    addLog('系统', '缓存清除成功');
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.detail || '清除失败');
+                }
+            } catch (error) {
+                showToast('❌ 清除失败: ' + error.message, 'error');
+                addLog('错误', '清除失败: ' + error.message);
+            }
+        }
+
+        // ========== 紧急操作 ==========
+
+        async function runSelfCheck() {
+            try {
+                const response = await fetch(`${API_BASE}/self-check`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showToast('✅ 系统自检通过', 'success');
+                    addLog('系统', '系统自检通过，一切正常');
+                } else if (data.status === 'warning') {
+                    showToast('⚠️ 发现问题: ' + data.issues.join(', '), 'error');
+                    data.issues.forEach(issue => addLog('警告', issue));
+                }
+            } catch (error) {
+                showToast('❌ 自检失败: ' + error.message, 'error');
+                addLog('错误', '自检失败: ' + error.message);
+            }
+        }
+
+        async function exportLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/export-logs`, { method: 'POST' });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `synapse-logs-${new Date().toISOString().split('T')[0]}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showToast('✅ 日志已导出', 'success');
+                    addLog('系统', '系统日志导出成功');
+                } else {
+                    throw new Error('导出失败');
+                }
+            } catch (error) {
+                showToast('❌ 导出失败: ' + error.message, 'error');
+                addLog('错误', '导出失败: ' + error.message);
+            }
+        }
+
+        async function forceKillProcesses() {
+            if (!confirm('确认强制终止所有进程？')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+
+                if (response.ok) {
+                    showToast('✅ 进程已强制终止', 'success');
+                    addLog('系统', '所有进程已强制终止');
+                } else {
+                    throw new Error('终止失败');
+                }
+            } catch (error) {
+                showToast('❌ 终止失败: ' + error.message, 'error');
+                addLog('错误', '终止失败: ' + error.message);
+            }
+        }
+
+        // ========== 日志管理 ==========
+
+        function addLog(type, message) {
+            const logs = document.getElementById('logs');
+            const line = document.createElement('div');
+            const typeClass = type === '系统' ? 'system' : type === '错误' ? 'error' : type === '警告' ? 'warning' : 'info';
+            line.className = `log-line ${typeClass}`;
+            const time = new Date().toLocaleTimeString();
+            line.textContent = `[${time}] [${type}] ${message}`;
+            logs.appendChild(line);
+            logs.scrollTop = logs.scrollHeight;
+
+            // 限制日志数量
+            while (logs.children.length > 500) {
+                logs.removeChild(logs.firstChild);
+            }
+        }
+
+        async function refreshLogs() {
+            const icon = document.getElementById('refresh-icon');
+            icon.textContent = '🔄';
+
+            try {
+                const response = await fetch(`${API_BASE}/logs?lines=100`);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.lines) {
+                    const logs = document.getElementById('logs');
+                    logs.innerHTML = '';
+
+                    data.lines.forEach(line => {
+                        const div = document.createElement('div');
+                        div.className = 'log-line';
+
+                        // 简单的日志类型检测
+                        if (line.includes('ERROR') || line.includes('error')) {
+                            div.classList.add('error');
+                        } else if (line.includes('WARNING') || line.includes('warning')) {
+                            div.classList.add('warning');
+                        } else if (line.includes('INFO')) {
+                            div.classList.add('info');
+                        }
+
+                        div.textContent = line;
+                        logs.appendChild(div);
+                    });
+
+                    logs.scrollTop = logs.scrollHeight;
+                    showToast('✅ 日志已刷新', 'success');
+                } else {
+                    addLog('警告', '暂无日志数据');
+                }
+            } catch (error) {
+                addLog('错误', '刷新日志失败: ' + error.message);
+            } finally {
+                icon.textContent = '🔄';
+            }
+        }
+
+        function setLogFilter(filter) {
+            currentLogFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+
+            const logs = document.querySelectorAll('.log-line');
+            logs.forEach(log => {
+                if (filter === 'all') {
+                    log.style.display = 'block';
+                } else {
+                    log.style.display = log.classList.contains(filter) ? 'block' : 'none';
+                }
+            });
+        }
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            addLog('系统', '设置页面已就绪');
+            refreshLogs();
+
+            // 每 30 秒自动刷新日志
+            autoRefreshInterval = setInterval(refreshLogs, 30000);
+        });
+
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

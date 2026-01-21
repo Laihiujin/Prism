@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "Cookie Sniffer",
+    "version": "1.0",
+    "description": "监听并获取指定网站的请求 Cookie",
+    "permissions": [
+      "webRequest",
+      "storage",
+      "activeTab",
+      "cookies"
+    ],
+    "host_permissions": [
+      "https://*.douyin.com/*",
+      "https://douyin.com/*"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "Cookie Sniffer"
+    }
+  }
+  

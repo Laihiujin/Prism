@@ -1,0 +1,242 @@
+{
+  "platform": "douyin",
+  "version": "2024.12",
+  "last_updated": "2025-12-10",
+  "description": "抖音创作者中心上传页面 DOM 选择器配置",
+
+  "selectors": {
+    "file_upload": {
+      "description": "视频文件上传输入框",
+      "priority": [
+        {
+          "type": "css",
+          "value": "div[class^='container'] input",
+          "timeout": 3000,
+          "note": "container 类名开头的 input（最常用）"
+        },
+        {
+          "type": "css",
+          "value": "input[type='file']",
+          "timeout": 2000,
+          "note": "通用文件上传输入"
+        },
+        {
+          "type": "css",
+          "value": ".upload-input",
+          "timeout": 2000,
+          "note": "上传输入类名"
+        }
+      ],
+      "fallback": "manual_intervention"
+    },
+
+    "title_input": {
+      "description": "作品标题输入框",
+      "priority": [
+        {
+          "type": "xpath",
+          "value": "//div[contains(text(),'作品标题')]/../following-sibling::div[1]//input",
+          "timeout": 3000,
+          "note": "通过 '作品标题' 文本定位（最稳定）"
+        },
+        {
+          "type": "css",
+          "value": "input[placeholder*='标题']",
+          "timeout": 2000,
+          "note": "占位符包含标题"
+        },
+        {
+          "type": "css",
+          "value": ".title-input input",
+          "timeout": 2000,
+          "note": "标题输入类名"
+        }
+      ],
+      "fallback": "manual_intervention"
+    },
+
+    "description_input": {
+      "description": "作品简介输入框",
+      "priority": [
+        {
+          "type": "css",
+          "value": "div[data-placeholder*='添加作品简介']",
+          "timeout": 2000
+        },
+        {
+          "type": "css",
+          "value": ".semi-input[placeholder*='简介']",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "cover_upload": {
+      "description": "封面上传输入",
+      "priority": [
+        {
+          "type": "css",
+          "value": "div[class^='semi-upload upload'] >> input.semi-upload-hidden-input",
+          "timeout": 2000,
+          "note": "封面上传隐藏输入"
+        },
+        {
+          "type": "css",
+          "value": "input[accept*='image']",
+          "timeout": 2000,
+          "note": "图片上传输入"
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "product_link_tab": {
+      "description": "商品链接标签页",
+      "priority": [
+        {
+          "type": "text",
+          "value": "购物车",
+          "timeout": 2000,
+          "note": "购物车选项卡"
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "product_link_input": {
+      "description": "商品链接输入框",
+      "priority": [
+        {
+          "type": "css",
+          "value": "input[placeholder*='粘贴链接']",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "product_link_add_button": {
+      "description": "添加商品链接按钮",
+      "priority": [
+        {
+          "type": "text",
+          "value": "添加链接",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "schedule_radio": {
+      "description": "定时发布单选按钮",
+      "priority": [
+        {
+          "type": "css",
+          "value": "[class^='radio']:has-text('定时发布')",
+          "timeout": 2000,
+          "note": "定时发布单选（新版）"
+        },
+        {
+          "type": "text",
+          "value": "定时发布",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "schedule_time_input": {
+      "description": "定时发布时间输入",
+      "priority": [
+        {
+          "type": "css",
+          "value": ".semi-input[placeholder='日期和时间']",
+          "timeout": 2000,
+          "note": "Semi Design 时间选择器"
+        },
+        {
+          "type": "css",
+          "value": "input[placeholder*='日期']",
+          "timeout": 2000
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "publish_button": {
+      "description": "发布按钮",
+      "priority": [
+        {
+          "type": "role",
+          "value": "button",
+          "name": "发布",
+          "timeout": 3000,
+          "note": "通过角色和名称定位（最稳定）"
+        },
+        {
+          "type": "css",
+          "value": "button:has-text('发布')",
+          "timeout": 2000,
+          "note": "按钮文本匹配"
+        }
+      ],
+      "success_indicators": [
+        {
+          "type": "url",
+          "pattern": "creator-micro/content/manage",
+          "note": "跳转到作品管理页面"
+        }
+      ],
+      "fallback": "error"
+    },
+
+    "upload_success_indicator": {
+      "description": "上传成功标识",
+      "priority": [
+        {
+          "type": "css",
+          "value": "[class^='long-card'] div:has-text('重新上传')",
+          "timeout": 5000,
+          "note": "上传成功后的重新上传按钮"
+        }
+      ],
+      "fallback": "skip"
+    },
+
+    "upload_failed_indicator": {
+      "description": "上传失败标识",
+      "priority": [
+        {
+          "type": "css",
+          "value": "div.progress-div > div:has-text('上传失败')",
+          "timeout": 3000,
+          "note": "上传失败提示"
+        }
+      ],
+      "fallback": "skip"
+    }
+  },
+
+  "tour_dismissal": {
+    "description": "新手引导弹窗关闭",
+    "containers": [
+      "[role='dialog']",
+      ".semi-modal",
+      ".semi-dialog",
+      ".guide-modal"
+    ],
+    "dismiss_buttons": [
+      "button:has-text('下一步')",
+      "button:has-text('知道了')",
+      "button:has-text('跳过')",
+      "button:has-text('关闭')"
+    ]
+  },
+
+  "dynamic_detection": {
+    "enabled": true,
+    "snapshot_on_failure": true,
+    "auto_report_changes": false
+  }
+}

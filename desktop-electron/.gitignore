@@ -1,0 +1,46 @@
+# Electron 打包输出
+dist/
+dist-electron/
+out/
+
+# 依赖
+node_modules/
+
+# 日志
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 构建临时文件
+build/
+*.spec
+
+# 测试文件
+test_*.log
+*.tmp
+
+# 资源文件 (太大,不提交)
+resources/redis/*.exe
+resources/supervisor/*.exe
+resources/supervisor/__pycache__/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python

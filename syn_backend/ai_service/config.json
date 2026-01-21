@@ -1,0 +1,82 @@
+{
+  "providers": {
+    "siliconflow": {
+      "enabled": false,
+      "api_key": "",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "models": [
+        {
+          "id": "Qwen/Qwen2.5-72B-Instruct",
+          "name": "通义千问 2.5 72B",
+          "max_tokens": 8192
+        },
+        {
+          "id": "Qwen/Qwen2.5-7B-Instruct",
+          "name": "通义千问 2.5 7B",
+          "max_tokens": 8192
+        },
+        {
+          "id": "meta-llama/Llama-3.1-405B-Instruct",
+          "name": "Llama 3.1 405B",
+          "max_tokens": 8192
+        },
+        {
+          "id": "meta-llama/Llama-3.1-70B-Instruct",
+          "name": "Llama 3.1 70B",
+          "max_tokens": 8192
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V3",
+          "name": "DeepSeek V3",
+          "max_tokens": 8192
+        }
+      ]
+    },
+    "volcanoengine": {
+      "enabled": false,
+      "api_key": "",
+      "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+      "models": [
+        {
+          "id": "doubao-lite-32k",
+          "name": "豆包 Lite 32K",
+          "max_tokens": 32768
+        },
+        {
+          "id": "doubao-pro-32k",
+          "name": "豆包 Pro 32K",
+          "max_tokens": 32768
+        }
+      ]
+    },
+    "tongyi": {
+      "enabled": false,
+      "api_key": "",
+      "base_url": "https://dashscope.aliyuncs.com/api/v1",
+      "models": [
+        {
+          "id": "qwen-turbo",
+          "name": "通义千问 Turbo",
+          "max_tokens": 8192
+        },
+        {
+          "id": "qwen-plus",
+          "name": "通义千问 Plus",
+          "max_tokens": 8192
+        },
+        {
+          "id": "qwen-max",
+          "name": "通义千问 Max",
+          "max_tokens": 8192
+        }
+      ]
+    },
+    "openai_compatible": {
+      "enabled": false,
+      "api_key": "",
+      "base_url": "https://api.siliconflow.cn/v1"
+    }
+  },
+  "current_provider": "tongyi",
+  "current_model": "deepseek-ai/DeepSeek-V3"
+}

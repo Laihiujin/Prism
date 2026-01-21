@@ -1,0 +1,22 @@
+{
+  "headers": {},
+  "features": {
+    "xiaohongshu": {
+      "inputs": [],
+      "buttons": [],
+      "cover_requirements": [],
+      "upload_paths": [
+        "常规上传按钮"
+      ]
+    }
+  },
+  "new_guides": [
+    {
+      "text": "发布笔记",
+      "context": "xhs_publish",
+      "timestamp": "2025-11-27T10:52:34.188534"
+    }
+  ],
+  "urls": {},
+  "videos": {}
+}

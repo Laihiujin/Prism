@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清除视频数据 - 临时工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: black;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: black;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+            border-left: 4px solid #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .status.warning {
+            background: #fff3e0;
+            color: #f57c00;
+            border-left: 4px solid #f57c00;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .option label {
+            cursor: pointer;
+            font-size: 15px;
+            color: #333;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: black;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #d0d0d0;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: black;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .details {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+            display: none;
+        }
+
+        .details.show {
+            display: block;
+        }
+
+        .details h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .details p {
+            margin-bottom: 5px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🗑 清除视频数据</h1>
+        <p class="subtitle">删除所有视频文件和分析数据</p>
+
+        <div id="status" class="status info">
+            准备就绪，请确认后执行清除操作
+        </div>
+
+        <div class="option">
+            <input type="checkbox" id="backupCheckbox" checked>
+            <label for="backupCheckbox">清理前自动备份数据（推荐）</label>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-secondary" onclick="window.location.href='http://localhost:3000/settings'">
+                取消
+            </button>
+            <button class="btn-danger" id="clearBtn" onclick="clearVideoData()">
+                确认清除
+            </button>
+        </div>
+
+        <div id="details" class="details"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:7000/api/v1/system/clear-video-data';
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function showDetails(data) {
+            const detailsDiv = document.getElementById('details');
+            detailsDiv.className = 'details show';
+
+            let html = '<h4>清除结果：</h4>';
+            html += `<p><strong>状态：</strong>${data.status}</p>`;
+            html += `<p><strong>消息：</strong>${data.message}</p>`;
+            html += `<p><strong>备份：</strong>${data.backup ? '已备份' : '未备份'}</p>`;
+
+            if (data.backup_location) {
+                html += `<p><strong>备份位置：</strong><br><code>${data.backup_location}</code></p>`;
+            }
+
+            detailsDiv.innerHTML = html;
+        }
+
+        async function clearVideoData() {
+            const backup = document.getElementById('backupCheckbox').checked;
+            const clearBtn = document.getElementById('clearBtn');
+
+            if (!confirm('确认清除所有视频数据？\n\n此操作将删除：\n- 所有视频文件\n- video_analytics 表数据\n- analytics_history 表数据\n\n' + (backup ? '✅ 将自动备份数据' : '⚠️ 不备份数据'))) {
+                return;
+            }
+
+            clearBtn.disabled = true;
+            clearBtn.innerHTML = '<span class="loading"></span>清理中...';
+            showStatus('正在清理视频数据，请稍候...', 'info');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ backup })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('✅ 视频数据清理成功！', 'success');
+                    showDetails(data);
+                    clearBtn.innerHTML = '清理完成';
+
+                    setTimeout(() => {
+                        if (confirm('清理完成！是否返回设置页面？')) {
+                            window.location.href = 'http://localhost:3000/settings';
+                        }
+                    }, 2000);
+                } else {
+                    throw new Error(data.detail || '清理失败');
+                }
+            } catch (error) {
+                showStatus(`❌ 清理失败: ${error.message}`, 'error');
+                clearBtn.disabled = false;
+                clearBtn.innerHTML = '重试';
+
+                if (error.message.includes('Failed to fetch')) {
+                    showStatus('❌ 无法连接到后端服务，请确保后端正在运行（端口 7000）', 'error');
+                }
+            }
+        }
+
+        // 页面加载时检查后端状态
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:7000/', {
+                    method: 'GET'
+                });
+
+                if (response.ok) {
+                    showStatus('✅ 后端服务连接正常，准备就绪', 'success');
+                }
+            } catch (error) {
+                showStatus('⚠️ 警告：无法连接到后端服务（端口 7000），请先启动后端', 'warning');
+                document.getElementById('clearBtn').disabled = true;
+            }
+        });
+    </script>
+</body>
+
+</html>

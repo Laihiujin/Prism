@@ -1,0 +1,12 @@
+.git
+__pycache__
+*.pyc
+logs
+browser_profiles
+fingerprints
+cookiesFile
+.venv
+node_modules
+.next
+dist
+build_output

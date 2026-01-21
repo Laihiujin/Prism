@@ -1,0 +1,17 @@
+{
+  "headers": {},
+  "features": {
+    "channels": {
+      "inputs": [],
+      "buttons": [
+        "商品",
+        "合集"
+      ],
+      "cover_requirements": [],
+      "upload_paths": []
+    }
+  },
+  "new_guides": [],
+  "urls": {},
+  "videos": {}
+}
