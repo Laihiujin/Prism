@@ -60,25 +60,28 @@ SynapseAutomation 是一个“矩阵投放 / 分发中台”，把「账号、�
 
 ### 1) 账号管理——登录账号
 支持平台「抖音、快手、小红书、视频号、B 站」；扫码后无需频繁点击，账号自动入库并持续维护；
-![login](https://github.com/user-attachments/assets/1f618803-93ee-49e6-a33f-6426db16b66a)
+
+![login](https://github.com/user-attachments/assets/98d0025d-e706-4edc-8233-3bf5bcb33257)
 
 ### 2) 素材管理——AI 标题/标签润色 + 批量上传
 支持 AI 自动补全标题、标签，支持批量拖拽上传；
-![upload](https://github.com/user-attachments/assets/d569100f-3231-4f05-9338-b76f92e34e23)
+
+![upload](https://github.com/user-attachments/assets/bb406b66-a8ff-4099-8f80-2f667f4627ee)
 
 ### 3) 多平台多账号同步发布
-支持「抖音、快手、小红书、视频号、B 站」同步发布；
-![publish](https://github.com/user-attachments/assets/0b55dc79-016b-4322-b0f3-857c67003d1c)
-
-支持 AI 一句话发布：
+支持「抖音、快手、小红书、视频号、B 站」同步发布；支持 AI 一句话发布：
 “帮我把素材库刚上传的视频，生成标题、标签并定时发布 23:55，发布到五个平台；”
+
+![publish](https://github.com/user-attachments/assets/658c874a-0518-4ab7-a815-ed3d63363a2a)
 
 ### 4) 访问不同平台/账号的创作者后台
 
+![creator](https://github.com/user-attachments/assets/0e8bf623-478f-4ef3-978d-74946962635d)
 
 ### 5) 视频数据回收与复盘
 当前支持：抖音、B 站（可扩展快手、小红书、视频号）；
-![data](https://github.com/user-attachments/assets/fcaf2e2f-1b82-42e3-bd27-17a9baaad91e)
+
+![Data](https://github.com/user-attachments/assets/a5635b75-a4ae-4698-b0ae-aaa2aebd6da6)
 
 ---
 
@@ -204,8 +207,6 @@ Content-Type: application/json
 - `syn_frontend_react/`：矩阵投放控制台（Next.js）；
 - `desktop-electron/`：桌面客户端与打包脚本；
 - `scripts/`：启动、调试、维护脚本；
-- `docs/`：部署与打包说明；
-
 ---
 
 ## 合规提示
