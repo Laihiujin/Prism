@@ -35,37 +35,78 @@ jobs:
         with:
           node-version: 20
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Sync Tauri app metadata
         shell: pwsh
         run: |
-          $desktopPackagePath = "desktop-electron/package.json"
-          $tauriPackagePath = "syn_backend/biliup/tauri-app/package.json"
-          $tauriConfigPath = "syn_backend/biliup/tauri-app/src-tauri/tauri.conf.json"
-          $cargoTomlPath = "syn_backend/biliup/tauri-app/src-tauri/Cargo.toml"
+          @'
+          import json
+          import re
+          from pathlib import Path
 
-          $desktopPackage = Get-Content $desktopPackagePath | ConvertFrom-Json
-          $version = $desktopPackage.version
+          repo = Path(".")
+          desktop_package_path = repo / "desktop-electron/package.json"
+          tauri_package_path = repo / "syn_backend/biliup/tauri-app/package.json"
+          tauri_config_path = repo / "syn_backend/biliup/tauri-app/src-tauri/tauri.conf.json"
+          cargo_toml_path = repo / "syn_backend/biliup/tauri-app/src-tauri/Cargo.toml"
 
-          $tauriPackage = Get-Content $tauriPackagePath | ConvertFrom-Json
-          $tauriPackage.name = "synapseautomation-tauri"
-          $tauriPackage.version = $version
-          $tauriPackage | ConvertTo-Json -Depth 10 | Set-Content $tauriPackagePath -Encoding utf8
+          desktop_package = json.loads(desktop_package_path.read_text(encoding="utf-8"))
+          version = desktop_package["version"]
 
-          $tauriConfig = Get-Content $tauriConfigPath | ConvertFrom-Json
-          $tauriConfig.productName = "SynapseAutomation"
-          $tauriConfig.version = $version
-          $tauriConfig.identifier = "com.synapse.automation"
-          $tauriConfig.app.windows[0].title = "SynapseAutomation"
-          $tauriConfig | ConvertTo-Json -Depth 10 | Set-Content $tauriConfigPath -Encoding utf8
+          tauri_package = json.loads(tauri_package_path.read_text(encoding="utf-8"))
+          tauri_package["name"] = "synapseautomation-tauri"
+          tauri_package["version"] = version
+          tauri_package_path.write_text(
+              json.dumps(tauri_package, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
 
-          $cargoToml = Get-Content $cargoTomlPath -Raw
-          $cargoToml = $cargoToml -replace 'version = "[^"]+"', ('version = "' + $version + '"')
-          $cargoToml = $cargoToml -replace 'description = "[^"]+"', 'description = "SynapseAutomation Tauri desktop app"'
-          $cargoToml = $cargoToml -replace 'authors = \[[^\]]+\]', 'authors = ["Laihiujin"]'
-          Set-Content $cargoTomlPath -Value $cargoToml -Encoding utf8
+          tauri_config = json.loads(tauri_config_path.read_text(encoding="utf-8"))
+          tauri_config["productName"] = "SynapseAutomation"
+          tauri_config["version"] = version
+          tauri_config["identifier"] = "com.synapse.automation"
+          tauri_config.setdefault("app", {}).setdefault("windows", [{}])[0]["title"] = "SynapseAutomation"
+          bundle = tauri_config.setdefault("bundle", {})
+          resources = bundle.setdefault("resources", [])
+          for resource in ("binaries/", "../../../browsers/"):
+              if resource not in resources:
+                  resources.append(resource)
+          tauri_config_path.write_text(
+              json.dumps(tauri_config, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          cargo_toml = cargo_toml_path.read_text(encoding="utf-8")
+          cargo_toml, version_count = re.subn(
+              r'(?ms)^(\[package\]\s+.*?^version\s*=\s*)"[^"]+"',
+              rf'\1"{version}"',
+              cargo_toml,
+              count=1,
+          )
+          cargo_toml, desc_count = re.subn(
+              r'(?ms)^(\[package\]\s+.*?^description\s*=\s*)"[^"]*"',
+              r'\1"SynapseAutomation Tauri desktop app"',
+              cargo_toml,
+              count=1,
+          )
+          cargo_toml, author_count = re.subn(
+              r'(?ms)^(\[package\]\s+.*?^authors\s*=\s*)\[[^\]]*\]',
+              r'\1["Laihiujin"]',
+              cargo_toml,
+              count=1,
+          )
+          if not all((version_count, desc_count, author_count)):
+              raise SystemExit("Failed to update package metadata in Cargo.toml")
+          cargo_toml_path.write_text(cargo_toml, encoding="utf-8")
+          print(f"Synchronized Tauri metadata to version {version}")
+          '@ | python -
 
       - name: Resolve build metadata
         id: meta
@@ -94,6 +135,16 @@ jobs:
       - name: Install frontend dependencies
         shell: pwsh
         run: npm --prefix .\syn_backend\biliup\tauri-app ci
+
+      - name: Install Playwright Chromium
+        shell: pwsh
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\browsers\chromium
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright
+          python -m playwright install chromium
+          Get-ChildItem $env:PLAYWRIGHT_BROWSERS_PATH | Select-Object Name, Mode
 
       - name: Build Tauri app
         env:
