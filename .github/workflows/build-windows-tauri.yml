@@ -23,14 +23,12 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: pwsh
-        working-directory: syn_backend/biliup/tauri-app
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,6 +38,52 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Sync Tauri app metadata
+        shell: pwsh
+        run: |
+          $desktopPackagePath = "desktop-electron/package.json"
+          $tauriPackagePath = "syn_backend/biliup/tauri-app/package.json"
+          $tauriConfigPath = "syn_backend/biliup/tauri-app/src-tauri/tauri.conf.json"
+          $cargoTomlPath = "syn_backend/biliup/tauri-app/src-tauri/Cargo.toml"
+
+          $desktopPackage = Get-Content $desktopPackagePath | ConvertFrom-Json
+          $version = $desktopPackage.version
+
+          $tauriPackage = Get-Content $tauriPackagePath | ConvertFrom-Json
+          $tauriPackage.name = "synapseautomation-tauri"
+          $tauriPackage.version = $version
+          $tauriPackage | ConvertTo-Json -Depth 10 | Set-Content $tauriPackagePath -Encoding utf8
+
+          $tauriConfig = Get-Content $tauriConfigPath | ConvertFrom-Json
+          $tauriConfig.productName = "SynapseAutomation"
+          $tauriConfig.version = $version
+          $tauriConfig.identifier = "com.synapse.automation"
+          $tauriConfig.app.windows[0].title = "SynapseAutomation"
+          $tauriConfig | ConvertTo-Json -Depth 10 | Set-Content $tauriConfigPath -Encoding utf8
+
+          $cargoToml = Get-Content $cargoTomlPath -Raw
+          $cargoToml = $cargoToml -replace 'version = "[^"]+"', ('version = "' + $version + '"')
+          $cargoToml = $cargoToml -replace 'description = "[^"]+"', 'description = "SynapseAutomation Tauri desktop app"'
+          $cargoToml = $cargoToml -replace 'authors = \[[^\]]+\]', 'authors = ["Laihiujin"]'
+          Set-Content $cargoTomlPath -Value $cargoToml -Encoding utf8
+
+      - name: Resolve build metadata
+        id: meta
+        shell: pwsh
+        run: |
+          $config = Get-Content "syn_backend/biliup/tauri-app/src-tauri/tauri.conf.json" | ConvertFrom-Json
+          "product_name=$($config.productName)" >> $env:GITHUB_OUTPUT
+          "app_version=$($config.version)" >> $env:GITHUB_OUTPUT
+
+      - name: Verify Tauri workspace
+        shell: pwsh
+        run: |
+          $tauriDir = Join-Path $env:GITHUB_WORKSPACE "syn_backend\biliup\tauri-app"
+          if (-not (Test-Path $tauriDir)) {
+            throw "Missing Tauri workspace: $tauriDir"
+          }
+          Get-ChildItem $tauriDir | Select-Object Name, Mode
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
@@ -48,17 +92,19 @@ jobs:
             syn_backend/biliup/tauri-app/src-tauri -> target
 
       - name: Install frontend dependencies
-        run: npm ci
+        shell: pwsh
+        run: npm --prefix .\syn_backend\biliup\tauri-app ci
 
       - name: Build Tauri app
         env:
           CI: true
-        run: npm run tauri -- build
+        shell: pwsh
+        run: npm --prefix .\syn_backend\biliup\tauri-app run tauri -- build
 
       - name: Upload bundle artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-windows-bundle
+          name: ${{ steps.meta.outputs.product_name }}-${{ steps.meta.outputs.app_version }}-windows-bundle
           path: |
             syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/**/*
           if-no-files-found: error
