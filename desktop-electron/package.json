@@ -3,7 +3,6 @@
   "version": "1.1.0",
   "description": "SynapseAutomation",
   "main": "src/main/index.js",
-  "author": "Laihiujin",
   "license": "Apache-2.0",
   "scripts": {
     "start": "electron .",
@@ -126,8 +125,6 @@
     ],
     "win": {
       "icon": "build/icon.ico",
-      "publisherName": "laihiujin",
-      "legalTrademarks": "laihiujin",
       "target": [
         {
           "target": "nsis",

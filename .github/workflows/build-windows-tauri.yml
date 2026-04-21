@@ -36,8 +36,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: syn_backend/biliup/tauri-app/package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
