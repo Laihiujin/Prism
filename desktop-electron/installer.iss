@@ -1,6 +1,6 @@
 ; SynapseAutomation Inno Setup Script
 #define MyAppName "SynapseAutomation"
-#define MyAppPublisher ""
+#define MyAppPublisher "Laihiujin"
 #define MyAppURL ""
 #define MyAppExeName "SynapseAutomation.exe"
 #define APP_VERSION "1.1.0"

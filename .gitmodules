@@ -1,0 +1,3 @@
+[submodule "syn_backend/biliup"]
+	path = syn_backend/biliup
+	url = https://github.com/biliup/biliup.git
