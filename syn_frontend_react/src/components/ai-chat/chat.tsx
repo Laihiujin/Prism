@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
@@ -17,7 +17,7 @@ export function Chat() {
         {
             id: "welcome",
             role: "assistant",
-            content: "你好！"
+            content: "你好",
         }
     ])
     const [input, setInput] = React.useState("")
@@ -44,7 +44,7 @@ export function Chat() {
         return () => clearInterval(interval)
     }, [])
 
-    // 切换模式时清空消息（可选，或者保留历史）
+    // 鍒囨崲妯″紡鏃舵竻绌烘秷鎭紙鍙€夛紝鎴栬€呬繚鐣欏巻鍙诧級
     const handleModeChange = (newMode: string) => {
         setMode(newMode as "chat" | "agent")
         if (newMode === "agent") {
@@ -52,7 +52,7 @@ export function Chat() {
                 {
                     id: "agent-welcome",
                     role: "assistant",
-                    content: "🤖 已切换到 Agent 模式。\n\n我可以帮你执行复杂的自动化任务！"
+                    content: "馃 宸插垏鎹㈠埌 Agent 妯″紡銆俓n\n鎴戝彲浠ュ府浣犳墽琛屽鏉傜殑鑷姩鍖栦换鍔★紒"
                 }
             ])
         } else {
@@ -60,7 +60,7 @@ export function Chat() {
                 {
                     id: "chat-welcome",
                     role: "assistant",
-                    content: "💬 已切换回对话模式。有什么可以帮你的吗？"
+                    content: "馃挰 宸插垏鎹㈠洖瀵硅瘽妯″紡銆傛湁浠€涔堝彲浠ュ府浣犵殑鍚楋紵"
                 }
             ])
         }
@@ -76,7 +76,7 @@ export function Chat() {
 
         try {
             if (mode === "chat") {
-                // Chat 模式：流式响应
+                // Chat 妯″紡锛氭祦寮忓搷搴?
                 const apiMessages = [...messages, userMsg].map(m => ({
                     role: m.role,
                     content: m.content
@@ -112,8 +112,8 @@ export function Chat() {
                     }
                 }
             } else {
-                // Agent 模式：OpenManus (非流式，无占位气泡)
-                const response = await fetch("/api/v1/agent/manus-run", {
+                // Agent 妯″紡锛歄penManus (闈炴祦寮忥紝鏃犲崰浣嶆皵娉?
+                const response = await fetch("/api/v1/agent/openclaw-run", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -122,24 +122,24 @@ export function Chat() {
                     })
                 })
 
-                // 检查 HTTP 状态
+                // 妫€鏌?HTTP 鐘舵€?
                 if (!response.ok) {
                     const errorText = await response.text()
                     throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`)
                 }
 
-                // 尝试解析 JSON
+                // 灏濊瘯瑙ｆ瀽 JSON
                 let result
                 try {
                     result = await response.json()
                 } catch (jsonError) {
                     const text = await response.text()
-                    throw new Error(`服务器返回了非 JSON 响应: ${text.substring(0, 200)}`)
+                    throw new Error(`鏈嶅姟鍣ㄨ繑鍥炰簡闈?JSON 鍝嶅簲: ${text.substring(0, 200)}`)
                 }
 
                 if (result.success && result.data) {
                     const data = result.data
-                    let resultText = `**结果**: ${data.result}\n\n`
+                    let resultText = `**缁撴灉**: ${data.result}\n\n`
 
                     if (data.steps && Array.isArray(data.steps)) {
                         data.steps.forEach((step: any, index: number) => {
@@ -153,21 +153,21 @@ export function Chat() {
                         content: resultText
                     }])
                 } else {
-                    const errorMsg = result.data?.error || result.error || "未知错误"
+                    const errorMsg = result.data?.error || result.error || "鏈煡閿欒"
                     setMessages(prev => [...prev, {
                         id: (Date.now() + 1).toString(),
                         role: "assistant",
-                        content: `❌ **任务执行失败**\n\n${errorMsg}`
+                        content: `鉂?**浠诲姟鎵ц澶辫触**\n\n${errorMsg}`
                     }])
                 }
             }
         } catch (error) {
-            console.error("❌ Failed to send message:", error)
+            console.error("鉂?Failed to send message:", error)
             const errorMessage = error instanceof Error ? error.message : String(error)
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
                 role: "assistant",
-                content: `❌ 发送失败: ${errorMessage}`
+                content: `鉂?鍙戦€佸け璐? ${errorMessage}`
             }])
         } finally {
             setIsLoading(false)
@@ -193,7 +193,7 @@ export function Chat() {
                         className="text-white/60 hover:text-white hover:bg-white/10"
                     >
                         <Settings className="h-4 w-4 mr-1" />
-                        配置
+                        閰嶇疆
                     </Button>
                     <Badge
                         variant="outline"
@@ -203,7 +203,7 @@ export function Chat() {
                             }`}
                     >
                         <Sparkles className="h-3 w-3" />
-                        {isConnected ? "在线" : "离线"}
+                        {isConnected ? "鍦ㄧ嚎" : "绂荤嚎"}
                     </Badge>
                 </div>
             </div>
@@ -214,7 +214,7 @@ export function Chat() {
                     <TabsList className="grid w-[200px] grid-cols-2 bg-white/5">
                         <TabsTrigger value="chat" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                             <MessageSquare className="mr-2 h-3 w-3" />
-                            对话
+                            瀵硅瘽
                         </TabsTrigger>
                         <TabsTrigger value="agent" className="text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-white">
                             <Bot className="mr-2 h-3 w-3" />
@@ -244,7 +244,7 @@ export function Chat() {
                     input={input}
                     setInput={setInput}
                     disabled={!isConnected}
-                    placeholder={mode === "agent" ? "描述你的任务，例如：帮我分析最近的发布数据..." : "输入消息..."}
+                    placeholder={mode === "agent" ? "鎻忚堪浣犵殑浠诲姟锛屼緥濡傦細甯垜鍒嗘瀽鏈€杩戠殑鍙戝竷鏁版嵁..." : "杈撳叆娑堟伅..."}
                 />
             </div>
 
@@ -252,3 +252,4 @@ export function Chat() {
         </div>
     )
 }
+

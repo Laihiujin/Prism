@@ -117,10 +117,6 @@
         ]
       },
       {
-        "from": "../.env",
-        "to": ".env"
-      },
-      {
         "from": "resources/redis",
         "to": "redis",
         "filter": [

@@ -23,11 +23,6 @@ if sys.platform == "win32":
 # 添加父目录到路径以导入现有模块
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# 添加 OpenManus-worker 到路径（必须在导入 manus_agent 之前）
-OPENMANUS_PATH = Path(__file__).parent.parent / "OpenManus-worker"
-if OPENMANUS_PATH.exists() and str(OPENMANUS_PATH) not in sys.path:
-    sys.path.insert(0, str(OPENMANUS_PATH))
-
 from .core import settings, logger, setup_logging, AppException
 from .schemas.common import ErrorResponse, HealthResponse
 from .api.v1.router import api_router
@@ -313,14 +308,14 @@ async def startup_event():
         logger.warning("AI服务模块未找到，跳过初始化")
 
 
-    # 初始化 OpenManus Agent（应用启动时预加载）
+    # Initialize OpenClaw/Hermes agent
     try:
-        from fastapi_app.agent.manus_agent import get_manus_agent
-        agent = await get_manus_agent()
-        app.state.manus_agent = agent
-        logger.info("✅ OpenManus Agent 初始化成功")
+        from fastapi_app.agent.openclaw_agent import get_openclaw_agent
+        agent = await get_openclaw_agent()
+        app.state.openclaw_agent = agent
+        logger.info("✅ OpenClaw/Hermes agent initialized")
     except Exception as e:
-        logger.warning(f"OpenManus Agent 初始化失败（可选功能）: {e}")
+        logger.warning(f"OpenClaw/Hermes agent init failed (optional): {e}")
 
     # 启动账号数据清理调度器（每6小时清理一次）
     try:
@@ -345,13 +340,14 @@ async def shutdown_event():
     except Exception as e:
         logger.warning(f"账号数据清理调度器停止失败: {e}")
 
-    # 清理 OpenManus Agent
+    # Cleanup OpenClaw/Hermes agent
     try:
-        if hasattr(app.state, 'manus_agent'):
-            await app.state.manus_agent.cleanup()
-            logger.info("OpenManus Agent 已清理")
+        agent = getattr(app.state, "openclaw_agent", None)
+        if agent:
+            await agent.cleanup()
+            logger.info("OpenClaw/Hermes agent cleaned up")
     except Exception as e:
-        logger.warning(f"OpenManus Agent 清理失败: {e}")
+        logger.warning(f"OpenClaw/Hermes agent cleanup failed: {e}")
 
 
     # 关闭数据库连接池

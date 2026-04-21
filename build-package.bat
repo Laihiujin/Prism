@@ -23,6 +23,20 @@ cd /d "%SCRIPT_DIR%desktop-electron"
 set "ELECTRON_DIST=dist-build"
 
 :: ============================================
+:: 0. Sanitize release workspace
+:: ============================================
+echo [0/7] Sanitize release workspace...
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\release\prepare-release.ps1" -ProjectRoot "%SCRIPT_DIR%"
+if errorlevel 1 (
+    echo ERROR: release workspace sanitization failed
+    pause
+    exit /b 1
+)
+echo OK: release workspace sanitized
+echo.
+
+:: ============================================
 :: 1. Check and stop running process
 :: ============================================
 echo [1/7] Check and stop running process...

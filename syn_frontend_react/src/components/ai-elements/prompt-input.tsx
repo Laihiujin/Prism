@@ -71,11 +71,13 @@ export function PromptInputFooter({ children }: { children: React.ReactNode }) {
 export function PromptInputTextarea({
     value,
     onChange,
+    onKeyDown,
     placeholder,
     className
 }: {
     value: string
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => void
+    onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>
     placeholder?: string
     className?: string
 }) {
@@ -83,6 +85,7 @@ export function PromptInputTextarea({
         <Textarea
             value={value}
             onChange={onChange}
+            onKeyDown={onKeyDown}
             placeholder={placeholder}
             rows={3}
             className={cn("flex-1 min-h-[96px] resize-none", className)}

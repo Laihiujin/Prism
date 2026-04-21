@@ -95,7 +95,7 @@ httpx-sse
 python-multipart
 email-validator
 
-# OpenManus Agent 相关
+# OpenClaw / Hermes Agent 相关
 openai>=1.58.1
 tenacity>=9.0.0
 tiktoken>=0.8.0

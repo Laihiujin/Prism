@@ -1,0 +1,66 @@
+name: Build Windows Tauri
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - ".github/workflows/build-windows-tauri.yml"
+      - "syn_backend/biliup/tauri-app/**"
+      - "syn_backend/biliup/crates/**"
+      - "syn_backend/biliup/Cargo.toml"
+      - "syn_backend/biliup/Cargo.lock"
+  pull_request:
+    paths:
+      - ".github/workflows/build-windows-tauri.yml"
+      - "syn_backend/biliup/tauri-app/**"
+      - "syn_backend/biliup/crates/**"
+      - "syn_backend/biliup/Cargo.toml"
+      - "syn_backend/biliup/Cargo.lock"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: syn_backend/biliup/tauri-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: syn_backend/biliup/tauri-app/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            syn_backend/biliup -> target
+            syn_backend/biliup/tauri-app/src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        env:
+          CI: true
+        run: npm run tauri -- build
+
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-windows-bundle
+          path: |
+            syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/**/*
+          if-no-files-found: error

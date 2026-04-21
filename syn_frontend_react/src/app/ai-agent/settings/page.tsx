@@ -86,7 +86,7 @@ const SERVICE_TYPES = [
     {
         key: "function_calling",
         name: "Function Call",
-        description: "用于AI函数调用和工具使用（替代OpenManus）",
+        description: "用于 Hermes/OpenClaw 函数调用和工具执行",
         icon: Code,
         defaultBaseUrl: "https://api.siliconflow.cn/v1",
         defaultModel: "Qwen/Qwen2.5-72B-Instruct",

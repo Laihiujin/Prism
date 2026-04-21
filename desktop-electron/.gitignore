@@ -44,3 +44,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+dist-build/
+dist-out/
+syn_backend/
+dump.rdb

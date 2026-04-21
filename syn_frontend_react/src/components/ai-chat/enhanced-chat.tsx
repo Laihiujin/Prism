@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Thread, ThreadSidebar } from "./thread-sidebar"
@@ -27,7 +27,7 @@ import {
   Conversation,
   ConversationContent
 } from "@/components/ai-elements/conversation"
-import { useManusStream } from "@/hooks/useManusStream"
+import { useAgentStream } from "@/hooks/useAgentStream"
 import { Link2, Sparkles, Settings, Bot, MessageSquare, Sidebar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -56,14 +56,14 @@ interface ModelConfig {
 export function EnhancedAIChat() {
   const router = useRouter()
   const { toast } = useToast()
-  const [mode, setMode] = React.useState<"chat" | "agent" | "openmanus">("chat")
+  const [mode, setMode] = React.useState<"chat" | "agent" | "openclaw">("chat")
 
-  // Thread管理
+  // Thread绠＄悊
   const [threads, setThreads] = React.useState<Thread[]>([])
   const [currentThreadId, setCurrentThreadId] = React.useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
 
-  // 消息管理
+  // 娑堟伅绠＄悊
   const [messages, setMessages] = React.useState<Message[]>([])
   const [input, setInput] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
@@ -80,8 +80,8 @@ export function EnhancedAIChat() {
     metadata?: Record<string, any>
   }>>([])
 
-  // OpenManus 流式状态
-  const manusStream = useManusStream()
+  // openclaw 娴佸紡鐘舵€?
+  const manusStream = useAgentStream()
   const resetManusStream = manusStream.resetState
   const startManusStreaming = manusStream.startStreaming
   const stopManusStreaming = manusStream.stopStreaming
@@ -109,12 +109,12 @@ export function EnhancedAIChat() {
   const [manusConfirming, setManusConfirming] = React.useState(false)
   const manusConfirmTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 模型配置
+  // 妯″瀷閰嶇疆
   const [chatModelConfig, setChatModelConfig] = React.useState<ModelConfig | null>(null)
   const [agentModelConfig, setAgentModelConfig] = React.useState<ModelConfig | null>(null)
-  const [openmanusModelConfig, setOpenmanusModelConfig] = React.useState<ModelConfig | null>(null)
+  const [openclawModelConfig, setopenclawModelConfig] = React.useState<ModelConfig | null>(null)
 
-  // 加载线程列表（按模式过滤）
+  // 鍔犺浇绾跨▼鍒楄〃锛堟寜妯″紡杩囨护锛?
   const loadThreads = React.useCallback(async () => {
     try {
       const response = await fetch(`${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/ai/threads/?limit=500&mode=${mode}`)
@@ -127,23 +127,23 @@ export function EnhancedAIChat() {
     }
   }, [mode])
 
-  // 加载模型配置
+  // 鍔犺浇妯″瀷閰嶇疆
   const loadModelConfigs = React.useCallback(async () => {
     try {
-      // 加载 Chat 模式的模型配置
+      // 鍔犺浇 Chat 妯″紡鐨勬ā鍨嬮厤缃?
       const chatResponse = await fetch(`${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/ai/model-configs/chat`)
       const chatData = await chatResponse.json()
       if (chatData.status === "success" && chatData.data) {
         setChatModelConfig(chatData.data)
       }
 
-      // 加载 Agent 模式的模型配置（Function Calling）
+      // 鍔犺浇 Agent 妯″紡鐨勬ā鍨嬮厤缃紙Function Calling锛?
       const agentResponse = await fetch(`${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/ai/model-configs/function_calling`)
       const agentData = await agentResponse.json()
       if (agentData.status === "success" && agentData.data) {
         setAgentModelConfig(agentData.data)
-        // OpenManus 也使用 Function Calling 配置
-        setOpenmanusModelConfig(agentData.data)
+        // openclaw 涔熶娇鐢?Function Calling 閰嶇疆
+        setopenclawModelConfig(agentData.data)
       }
     } catch (error) {
       console.error("Failed to load model configs:", error)
@@ -194,14 +194,14 @@ export function EnhancedAIChat() {
     } catch (error) {
       console.error("Failed to switch model:", error)
       toast({
-        title: "错误",
-        description: "切换模型失败",
+        title: "閿欒",
+        description: "鍒囨崲妯″瀷澶辫触",
         variant: "destructive"
       })
     }
   }, [loadModelConfigs, toast])
 
-  // 加载线程消息
+  // 鍔犺浇绾跨▼娑堟伅
   const loadMessages = React.useCallback(async (threadId: string) => {
     try {
       const response = await fetch(
@@ -222,22 +222,22 @@ export function EnhancedAIChat() {
     } catch (error) {
       console.error("Failed to load messages:", error)
       toast({
-        title: "错误",
-        description: "加载消息失败",
+        title: "閿欒",
+        description: "鍔犺浇娑堟伅澶辫触",
         variant: "destructive"
       })
     }
   }, [toast])
 
-  // 创建新线程（带 mode 参数）
+  // 鍒涘缓鏂扮嚎绋嬶紙甯?mode 鍙傛暟锛?
   const handleCreateThread = React.useCallback(async () => {
     try {
       const response = await fetch(`${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/ai/threads/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: `新对话 ${new Date().toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`,
-          mode: mode  // 传递当前模式
+          title: `鏂板璇?${new Date().toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`,
+          mode: mode  // 浼犻€掑綋鍓嶆ā寮?
         })
       })
       const data = await response.json()
@@ -270,21 +270,21 @@ export function EnhancedAIChat() {
         setAgentThinking("")
         setIsAgentThinking(false)
         toast({
-          title: "成功",
-          description: "新对话已创建"
+          title: "鎴愬姛",
+          description: "鏂板璇濆凡鍒涘缓"
         })
       }
     } catch (error) {
       console.error("Failed to create thread:", error)
       toast({
-        title: "错误",
-        description: "创建对话失败",
+        title: "閿欒",
+        description: "鍒涘缓瀵硅瘽澶辫触",
         variant: "destructive"
       })
     }
   }, [clearManusConfirmationTimer, toast, mode, resetManusStream])
 
-  // 删除线程
+  // 鍒犻櫎绾跨▼
   const handleDeleteThread = React.useCallback(async (threadId: string) => {
     try {
       const response = await fetch(
@@ -298,21 +298,21 @@ export function EnhancedAIChat() {
           setMessages([])
         }
         toast({
-          title: "成功",
-          description: "对话已删除"
+          title: "鎴愬姛",
+          description: "对话已删除",
         })
       }
     } catch (error) {
       console.error("Failed to delete thread:", error)
       toast({
-        title: "错误",
-        description: "删除对话失败",
+        title: "閿欒",
+        description: "鍒犻櫎瀵硅瘽澶辫触",
         variant: "destructive"
       })
     }
   }, [currentThreadId, toast])
 
-  // 重命名线程
+  // 閲嶅懡鍚嶇嚎绋?
   const handleRenameThread = React.useCallback(async (threadId: string, newTitle: string) => {
     try {
       const response = await fetch(
@@ -328,23 +328,23 @@ export function EnhancedAIChat() {
           t.id === threadId ? { ...t, title: newTitle } : t
         ))
         toast({
-          title: "成功",
-          description: "对话已重命名"
+          title: "鎴愬姛",
+          description: "瀵硅瘽宸查噸鍛藉悕"
         })
       }
     } catch (error) {
       console.error("Failed to rename thread:", error)
       toast({
-        title: "错误",
+        title: "閿欒",
         description: "重命名失败",
         variant: "destructive"
       })
     }
   }, [toast])
 
-  // 选择线程
+  // 閫夋嫨绾跨▼
   const handleSelectThread = React.useCallback((threadId: string) => {
-    // 切换线程时，清理运行态，避免新旧对话互相串台（尤其是 OpenManus 流式事件）
+    // 鍒囨崲绾跨▼鏃讹紝娓呯悊杩愯鎬侊紝閬垮厤鏂版棫瀵硅瘽浜掔浉涓插彴锛堝挨鍏舵槸 openclaw 娴佸紡浜嬩欢锛?
     resetManusStream()
     manusLogMessageIdRef.current = null
     manusLogThreadIdRef.current = null
@@ -360,7 +360,7 @@ export function EnhancedAIChat() {
     setManusConfirming(false)
     clearManusConfirmationTimer()
 
-    // Agent 面板也清一下（避免上一轮残留）
+    // Agent 闈㈡澘涔熸竻涓€涓嬶紙閬垮厤涓婁竴杞畫鐣欙級
     setAgentTaskQueue([])
     setAgentThinking("")
     setIsAgentThinking(false)
@@ -369,7 +369,7 @@ export function EnhancedAIChat() {
     loadMessages(threadId)
   }, [clearManusConfirmationTimer, loadMessages, resetManusStream])
 
-  // 保存消息到线程
+  // 淇濆瓨娑堟伅鍒扮嚎绋?
   const saveMessageToThread = React.useCallback(async (
     threadId: string,
     role: string,
@@ -393,7 +393,7 @@ export function EnhancedAIChat() {
       )
       const data = await response.json()
       if (data.status === "success") {
-        // 更新线程列表中的消息计数
+        // 鏇存柊绾跨▼鍒楄〃涓殑娑堟伅璁℃暟
         setThreads(prev => prev.map(t =>
           t.id === threadId
             ? { ...t, message_count: t.message_count + 1, updated_at: data.data.created_at }
@@ -411,7 +411,7 @@ export function EnhancedAIChat() {
     clearManusConfirmationTimer()
     try {
       const response = await fetch(
-        `${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/agent/manus-confirm`,
+        `${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/agent/openclaw-confirm`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -428,7 +428,7 @@ export function EnhancedAIChat() {
     } catch (error) {
       console.error("Manus confirm failed:", error)
       toast({
-        title: "确认失败",
+        title: "纭澶辫触",
         description: "提交确认请求失败，请稍后重试。",
         variant: "destructive"
       })
@@ -438,18 +438,18 @@ export function EnhancedAIChat() {
   }, [clearManusConfirmationTimer, manusConfirming, scheduleManusConfirmationClear, toast])
 
 
-  // 发送消息
+  // 鍙戦€佹秷鎭?
   const handleSubmit = React.useCallback(async (value: string) => {
     if (!value.trim() || isLoading) return
-    if (mode === "openmanus" && manusStream.isStreaming) {
+    if (mode === "openclaw" && manusStream.isStreaming) {
       toast({
         title: "请稍等",
-        description: "Manus 正在执行中，结束后再发送下一条消息",
+        description: "OpenClaw 正在执行中，结束后再发送下一条消息。",
       })
       return
     }
 
-    // 如果没有当前线程，创建一个
+    // 濡傛灉娌℃湁褰撳墠绾跨▼锛屽垱寤轰竴涓?
     let threadId = currentThreadId
     if (!threadId) {
       try {
@@ -458,7 +458,7 @@ export function EnhancedAIChat() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: value.substring(0, 30) + (value.length > 30 ? '...' : ''),
-            mode: mode  // 传递当前模式
+            mode: mode  // 浼犻€掑綋鍓嶆ā寮?
           })
         })
         const data = await response.json()
@@ -478,8 +478,8 @@ export function EnhancedAIChat() {
         }
       } catch (error) {
         toast({
-          title: "错误",
-          description: "创建对话失败",
+          title: "閿欒",
+          description: "鍒涘缓瀵硅瘽澶辫触",
           variant: "destructive"
         })
         return
@@ -492,7 +492,7 @@ export function EnhancedAIChat() {
       content: value,
       timestamp: new Date()
     }
-    if (mode === "openmanus") {
+    if (mode === "openclaw") {
       lastManusInputRef.current = value
       setManusRunState("running")
     } else if (mode === "agent") {
@@ -505,14 +505,14 @@ export function EnhancedAIChat() {
     setInput("")
     setIsLoading(true)
 
-    // 保存用户消息
+    // 淇濆瓨鐢ㄦ埛娑堟伅
     if (threadId) {
       await saveMessageToThread(threadId, "user", value)
     }
 
     try {
       if (mode === "chat") {
-        // Chat 模式：流式响应
+        // Chat 妯″紡锛氭祦寮忓搷搴?
         const apiMessages = [...messages, userMsg].map(m => ({
           role: m.role,
           content: m.content
@@ -550,12 +550,12 @@ export function EnhancedAIChat() {
           }
         }
 
-        // 保存助手消息
+        // 淇濆瓨鍔╂墜娑堟伅
         if (threadId) {
           await saveMessageToThread(threadId, "assistant", fullContent)
         }
       } else if (mode === "agent") {
-        // Agent 模式 - 使用 Function Calling（不插入占位气泡）
+        // Agent 妯″紡 - 浣跨敤 Function Calling锛堜笉鎻掑叆鍗犱綅姘旀场锛?
         setIsAgentThinking(true)
         setAgentThinking("准备中")
 
@@ -585,7 +585,7 @@ export function EnhancedAIChat() {
           const data = result.data
 
           const applyAgentResult = async () => {
-            // 工具调用
+            // 宸ュ叿璋冪敤
             if (data.tool_calls && data.tool_calls.length > 0) {
               setAgentThinking("执行中")
               const tasks = data.tool_calls.map((call: any, idx: number) => ({
@@ -597,28 +597,28 @@ export function EnhancedAIChat() {
               setAgentTaskQueue(tasks)
             }
 
-            // 整理结果
+            // 鏁寸悊缁撴灉
             let resultText = ""
 
             if (data.success) {
-              resultText = `**执行结果**\n\n${data.message}\n\n`
-              // 工具调用明细
+              resultText = `**鎵ц缁撴灉**\n\n${data.message}\n\n`
+              // 宸ュ叿璋冪敤鏄庣粏
               if (data.tool_calls && data.tool_calls.length > 0) {
-                resultText += `**调用了 ${data.tool_calls.length} 个工具**:\n`
+                resultText += `**璋冪敤浜?${data.tool_calls.length} 涓伐鍏?*:\n`
                 data.tool_calls.forEach((call: any, index: number) => {
                   resultText += `\n${index + 1}. **${call.name}**\n`
-                  resultText += `   参数: \`${JSON.stringify(call.arguments)}\`\n`
+                  resultText += `   鍙傛暟: \`${JSON.stringify(call.arguments)}\`\n`
                   if (call.result) {
                     const resultStr = typeof call.result === 'string'
                       ? call.result
                       : JSON.stringify(call.result, null, 2)
-                    resultText += `   结果: ${resultStr.substring(0, 200)}${resultStr.length > 200 ? '...' : ''}\n`
+                    resultText += `   缁撴灉: ${resultStr.substring(0, 200)}${resultStr.length > 200 ? '...' : ''}\n`
                   }
                 })
               }
-              resultText += `\n**迭代次数**: ${data.iterations || 1}`
+              resultText += `\n**杩唬娆℃暟**: ${data.iterations || 1}`
             } else {
-              resultText = `**执行失败**\n\n${data.message || '执行失败'}`
+              resultText = `**鎵ц澶辫触**\n\n${data.message || '鎵ц澶辫触'}`
             }
             setMessages(prev => [...prev, {
               id: `assistant-${Date.now()}`,
@@ -632,7 +632,7 @@ export function EnhancedAIChat() {
             setAgentThinking("")
             setAgentRunState("completed")
 
-            // 保存结果
+            // 淇濆瓨缁撴灉
             if (threadId) {
               await saveMessageToThread(threadId, "assistant", resultText, data.tool_calls)
             }
@@ -645,8 +645,8 @@ export function EnhancedAIChat() {
             await applyAgentResult()
           }
         } else {
-          const errorMsg = result.detail || "请求失败"
-          const errorContent = `**执行失败**\n\n${errorMsg}`
+          const errorMsg = result.detail || "璇锋眰澶辫触"
+          const errorContent = `**鎵ц澶辫触**\n\n${errorMsg}`
           const applyError = async () => {
             setMessages(prev => [...prev, {
               id: `assistant-${Date.now()}`,
@@ -658,7 +658,7 @@ export function EnhancedAIChat() {
             setAgentThinking("")
             setAgentRunState("failed")
 
-            // 保存错误到 UI
+            // 淇濆瓨閿欒鍒?UI
             if (threadId) {
               await saveMessageToThread(threadId, "assistant", errorContent)
             }
@@ -671,8 +671,8 @@ export function EnhancedAIChat() {
             await applyError()
           }
         }
-      } else if (mode === "openmanus") {
-        // OpenManus mode - streaming execution
+      } else if (mode === "openclaw") {
+        // openclaw mode - streaming execution
         try {
           manusLogMessageIdRef.current = null
           manusLogThreadIdRef.current = threadId || null
@@ -696,9 +696,9 @@ export function EnhancedAIChat() {
           )
 
         } catch (streamError) {
-          console.error("OpenManus streaming error:", streamError)
+          console.error("openclaw streaming error:", streamError)
           const errText = streamError instanceof Error ? streamError.message : String(streamError)
-          const errorContent = `执行失败：${errText}`
+          const errorContent = `鎵ц澶辫触锛?{errText}`
           manusLogContentRef.current = errorContent
           const logId = manusLogMessageIdRef.current
           if (!logId) {
@@ -719,9 +719,9 @@ export function EnhancedAIChat() {
         }
       }
     } catch (error) {
-      console.error("❌ Failed to send message:", error)
+      console.error("鉂?Failed to send message:", error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      const errorContent = `❌ 发送失败: ${errorMessage}`
+      const errorContent = `鉂?鍙戦€佸け璐? ${errorMessage}`
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: "assistant",
@@ -767,9 +767,9 @@ export function EnhancedAIChat() {
     void handleSubmit("继续下一步")
   }, [handleSubmit])
 
-  // OpenManus: append thoughts/tools/results into chat
+  // openclaw: append thoughts/tools/results into chat
   React.useEffect(() => {
-    if (mode !== "openmanus") return
+    if (mode !== "openclaw") return
 
     const events = manusStream.events
     const startIndex = manusEventCursorRef.current
@@ -844,11 +844,11 @@ export function EnhancedAIChat() {
           const result = ev.result || {}
           const finalText = decodeUnicodeEscapes(String(result.result || result.message || "已完成"))
 
-          // 如果 thinking 消息存在且内容与最终结果相同，则移除 thinking 消息
+          // 濡傛灉 thinking 娑堟伅瀛樺湪涓斿唴瀹逛笌鏈€缁堢粨鏋滅浉鍚岋紝鍒欑Щ闄?thinking 娑堟伅
           const thinkingId = manusThinkingMessageIdRef.current
           const thinkingContent = manusThinkingContentRef.current.trim()
           if (thinkingId && thinkingContent === finalText.trim()) {
-            // 移除 thinking 消息，只保留最终结果
+            // 绉婚櫎 thinking 娑堟伅锛屽彧淇濈暀鏈€缁堢粨鏋?
             setMessages(prev => prev.filter(m => m.id !== thinkingId))
             manusThinkingMessageIdRef.current = null
             manusThinkingContentRef.current = ""
@@ -859,8 +859,8 @@ export function EnhancedAIChat() {
           break
         }
         case "error": {
-          const errorText = decodeUnicodeEscapes(String(ev.error || ev.message || "未知错误"))
-          append(`执行失败：${errorText}\n`)
+          const errorText = decodeUnicodeEscapes(String(ev.error || ev.message || "鏈煡閿欒"))
+          append(`鎵ц澶辫触锛?{errorText}\n`)
           setManusRunState("failed")
           break
         }
@@ -876,9 +876,9 @@ export function EnhancedAIChat() {
     manusEventCursorRef.current = events.length
   }, [clearManusConfirmationTimer, mode, manusStream.events, scheduleManusConfirmationClear])
 
-  // OpenManus: 执行结束后将“运行日志”落盘到线程消息，确保刷新/切换线程后 UI 仍能看到记录
+  // openclaw: 鎵ц缁撴潫鍚庡皢鈥滆繍琛屾棩蹇椻€濊惤鐩樺埌绾跨▼娑堟伅锛岀‘淇濆埛鏂?鍒囨崲绾跨▼鍚?UI 浠嶈兘鐪嬪埌璁板綍
   React.useEffect(() => {
-    if (mode !== "openmanus") return
+    if (mode !== "openclaw") return
     const threadId = manusLogThreadIdRef.current
     if (!threadId) return
     if (manusStream.isStreaming) return
@@ -887,13 +887,13 @@ export function EnhancedAIChat() {
     const content = (manusLogContentRef.current || "").trim()
     if (!content) return
 
-    // 只要执行跑过（哪怕失败），也保存一次，避免“后台有记录 UI 无记录”
+    // 鍙鎵ц璺戣繃锛堝摢鎬曞け璐ワ級锛屼篃淇濆瓨涓€娆★紝閬垮厤鈥滃悗鍙版湁璁板綍 UI 鏃犺褰曗€?
     void saveMessageToThread(threadId, "assistant", content)
     manusLogSavedRef.current = true
   }, [mode, manusStream.isStreaming, saveMessageToThread])
 
   React.useEffect(() => {
-    if (mode !== "openmanus") return
+    if (mode !== "openclaw") return
     const threadId = manusLogThreadIdRef.current
     const thinkingId = manusThinkingMessageIdRef.current
     if (!threadId || !thinkingId) return
@@ -907,7 +907,7 @@ export function EnhancedAIChat() {
     manusThinkingSavedRef.current = true
   }, [mode, manusStream.isStreaming, saveMessageToThread])
 
-  // 移动端默认收起侧栏，避免把聊天区挤成一条缝
+  // 绉诲姩绔粯璁ゆ敹璧蜂晶鏍忥紝閬垮厤鎶婅亰澶╁尯鎸ゆ垚涓€鏉＄紳
   React.useEffect(() => {
     if (typeof window === "undefined") return
     const isMobile = window.matchMedia("(max-width: 767px)").matches
@@ -916,7 +916,7 @@ export function EnhancedAIChat() {
     }
   }, [])
 
-  // 初始化
+  // 鍒濆鍖?
   React.useEffect(() => {
     loadThreads()
     loadModelConfigs()
@@ -931,16 +931,16 @@ export function EnhancedAIChat() {
       } catch (error) {
         console.error("Failed to check AI status:", error)
         setIsConnected(false)
-        setConnectionError("无法连接到后端服务器")
+        setConnectionError("鏃犳硶杩炴帴鍒板悗绔湇鍔″櫒")
       }
     }
 
     checkStatus()
-    const interval = setInterval(checkStatus, 60000)  // 改为每 60 秒轮询一次
+    const interval = setInterval(checkStatus, 60000)  // 鏀逛负姣?60 绉掕疆璇竴娆?
     return () => clearInterval(interval)
   }, [loadThreads, loadModelConfigs])
 
-  // 当 mode 切换时，重新加载线程并清空当前对话
+  // 褰?mode 鍒囨崲鏃讹紝閲嶆柊鍔犺浇绾跨▼骞舵竻绌哄綋鍓嶅璇?
   React.useEffect(() => {
     resetManusStream()
     manusLogMessageIdRef.current = null
@@ -996,20 +996,20 @@ export function EnhancedAIChat() {
               <h2 className="text-base font-bold text-white">SynapseAutomation</h2>
               <div className="flex items-center gap-2">
                 {/* <p className="text-xs font-medium text-white/50">AiAgent</p> */}
-                {/* 显示当前模式使用的模型 */}
+                {/* 鏄剧ず褰撳墠妯″紡浣跨敤鐨勬ā鍨?*/}
                 {mode === "chat" && chatModelConfig && (
                   <span className="text-xs text-blue-400/70">
-                    • Chat模型: {chatModelConfig.model_name}{/*  || chatModelConfig.provider */}
+                    鈥?Chat妯″瀷: {chatModelConfig.model_name}{/*  || chatModelConfig.provider */}
                   </span>
                 )}
                 {mode === "agent" && agentModelConfig && (
                   <span className="text-xs text-purple-400/70">
-                    • Agent模型: {agentModelConfig.model_name}  {/* || agentModelConfig.provider */}
+                    鈥?Agent妯″瀷: {agentModelConfig.model_name}  {/* || agentModelConfig.provider */}
                   </span>
                 )}
-                {mode === "openmanus" && openmanusModelConfig && (
+                {mode === "openclaw" && openclawModelConfig && (
                   <span className="text-xs text-orange-400/70">
-                    • Manus模型: {openmanusModelConfig.model_name}
+                    鈥?Manus妯″瀷: {openclawModelConfig.model_name}
                   </span>
                 )}
               </div>
@@ -1025,11 +1025,11 @@ export function EnhancedAIChat() {
               className="text-white/60 hover:text-white hover:bg-white/10"
             >
               <Settings className="h-4 w-4 mr-1" />
-              配置
+              閰嶇疆
             </Button>
             <Badge
               variant="outline"
-              title={connectionError || (isConnected ? "一切系统正常" : "未配置 AI 服务")}
+              title={connectionError || (isConnected ? "系统运行正常" : "未配置 AI 服务")}
               className={`gap-1 text-xs font-normal transition-all ${isConnected
                 ? connectionError
                   ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
@@ -1038,7 +1038,7 @@ export function EnhancedAIChat() {
                 }`}
             >
               <Sparkles className="h-3 w-3" />
-              {isConnected ? connectionError ? "不稳定" : "在线" : "离线"}
+              {isConnected ? (connectionError ? "不稳定" : "在线") : "离线"}
             </Badge>
           </div>
         </div>
@@ -1046,12 +1046,12 @@ export function EnhancedAIChat() {
 
         <div className="border-b border-white/5 bg-neutral-900/40 px-6 py-3">
           <div className="relative flex items-center justify-center">
-            <Tabs value={mode} onValueChange={(v) => setMode(v as "chat" | "agent" | "openmanus")}>
+            <Tabs value={mode} onValueChange={(v) => setMode(v as "chat" | "agent" | "openclaw")}>
               <TabsList className="grid w-[700px] grid-cols-3 bg-white/5">
                 <TabsTrigger
                   value="chat"
                   className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                  title={chatModelConfig ? `使用模型: ${chatModelConfig.model_name}` : "对话模式"}
+                  title={chatModelConfig ? `浣跨敤妯″瀷: ${chatModelConfig.model_name}` : "瀵硅瘽妯″紡"}
                 >
                   <MessageSquare className="mr-2 h-3 w-3" />
                   Chat
@@ -1059,18 +1059,18 @@ export function EnhancedAIChat() {
                 <TabsTrigger
                   value="agent"
                   className="text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-white"
-                  title={agentModelConfig ? `使用模型: ${agentModelConfig.model_name}` : "Agent模式"}
+                  title={agentModelConfig ? `浣跨敤妯″瀷: ${agentModelConfig.model_name}` : "Agent妯″紡"}
                 >
                   <Bot className="mr-2 h-3 w-3" />
                   Agent
                 </TabsTrigger>
                 <TabsTrigger
-                  value="openmanus"
+                  value="openclaw"
                   className="text-xs data-[state=active]:bg-orange-600 data-[state=active]:text-white"
-                  title={openmanusModelConfig ? `使用模型: ${openmanusModelConfig.model_name}` : "OpenManus模式"}
+                  title={openclawModelConfig ? `浣跨敤妯″瀷: ${openclawModelConfig.model_name}` : "openclaw妯″紡"}
                 >
                   <Sparkles className="mr-2 h-3 w-3" />
-                  OpenManus
+                  OpenClaw
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -1086,7 +1086,7 @@ export function EnhancedAIChat() {
                   {mode === "agent" && agentTaskQueue.length > 0 && (
                     <div className="w-full rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3 shadow-xl backdrop-blur-sm transition-all hover:border-white/20">
                       <TaskList
-                        title="工具任务队列"
+                        title="宸ュ叿浠诲姟闃熷垪"
                         tasks={agentTaskQueue.map(task => ({
                           id: task.id,
                           title: task.name,
@@ -1096,10 +1096,10 @@ export function EnhancedAIChat() {
                       />
                     </div>
                   )}
-                  {mode === "openmanus" && manusStream.tasks.length > 0 && (
+                  {mode === "openclaw" && manusStream.tasks.length > 0 && (
                     <div className="w-full rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3 shadow-xl backdrop-blur-sm transition-all hover:border-white/20">
                       <TaskList
-                        title="工具任务队列"
+                        title="宸ュ叿浠诲姟闃熷垪"
                         tasks={manusStream.tasks.map(task => ({
                           id: task.id,
                           title: task.name,
@@ -1115,7 +1115,7 @@ export function EnhancedAIChat() {
                     showTypingIndicator={true}
                     showAvatars={false}
                   />
-                  {mode === "openmanus" && manusConfirmation && (
+                  {mode === "openclaw" && manusConfirmation && (
                     <ToolConfirmation
                       state={manusConfirmation.state}
                       taskSummary={manusConfirmation.taskSummary}
@@ -1147,26 +1147,26 @@ export function EnhancedAIChat() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                      // Enter 发送，Shift+Enter 换行
+                      // Enter 鍙戦€侊紝Shift+Enter 鎹㈣
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault()
                         const text = input.trim()
                         if (!text) return
-                        // 检查是否可以发送
+                        // 妫€鏌ユ槸鍚﹀彲浠ュ彂閫?
                         const canSend = !isLoading &&
-                          !(mode === "openmanus" && manusStream.isStreaming) &&
+                          !(mode === "openclaw" && manusStream.isStreaming) &&
                           !(mode === "agent" && isAgentThinking)
                         if (canSend) {
                           void handleSubmit(text)
                         }
                       }
                     }}
-                    placeholder={connectionError ? `AI 连接问题: ${connectionError}` : (!isConnected ? "请输入..." : (mode === "agent" ? "描述你的任务，例如：帮我分析最近的发布数据..." : "输入消息..."))}
+                    placeholder={connectionError ? `AI 杩炴帴闂: ${connectionError}` : (!isConnected ? "璇疯緭鍏?.." : (mode === "agent" ? "鎻忚堪浣犵殑浠诲姟锛屼緥濡傦細甯垜鍒嗘瀽鏈€杩戠殑鍙戝竷鏁版嵁..." : "杈撳叆娑堟伅..."))}
                     className="bg-black/40 text-white border-white/10 pr-20"
                   />
                   <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                    {/* OpenManus 模式：仅保留停止按钮 */}
-                    {mode === "openmanus" && (
+                    {/* openclaw 妯″紡锛氫粎淇濈暀鍋滄鎸夐挳 */}
+                    {mode === "openclaw" && (
                       <>
                         <Button
                           size="sm"
@@ -1179,19 +1179,19 @@ export function EnhancedAIChat() {
                           className="h-8"
                           type="button"
                         >
-                          停止
+                          鍋滄
                         </Button>
                       </>
                     )}
 
-                    {/* 发送按钮 */}
+                    {/* 鍙戦€佹寜閽?*/}
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={isLoading || (mode === "openmanus" && manusStream.isStreaming) || (mode === "agent" && isAgentThinking)}
+                      disabled={isLoading || (mode === "openclaw" && manusStream.isStreaming) || (mode === "agent" && isAgentThinking)}
                       className="h-8"
                     >
-                      发送
+                      鍙戦€?
                     </Button>
                   </div>
                 </div>
@@ -1203,3 +1203,4 @@ export function EnhancedAIChat() {
     </div>
   )
 }
+

@@ -175,17 +175,54 @@ class TikHubClient:
             params["pcursor"] = pcursor
         return await self._get("/kuaishou/web/fetch_user_post", params=params)
 
+    async def fetch_kuaishou_user_info(self, user_id: str) -> Dict[str, Any]:
+        return await self._get("/kuaishou/web/fetch_user_info", params={"user_id": user_id})
+
+    async def fetch_kuaishou_video_by_share_text(self, share_text: str) -> Dict[str, Any]:
+        return await self._get("/kuaishou/web/fetch_one_video", params={"share_text": share_text})
+
+    async def fetch_kuaishou_video_by_url(self, url: str) -> Dict[str, Any]:
+        return await self._get("/kuaishou/web/fetch_one_video_by_url", params={"url": url})
+
     async def fetch_xiaohongshu_home_notes(self, user_id: str, cursor: Optional[str] = None) -> Dict[str, Any]:
         params = {"user_id": user_id}
         if cursor:
             params["cursor"] = cursor
         return await self._get("/xiaohongshu/web_v2/fetch_home_notes", params=params)
 
+    async def fetch_xiaohongshu_user_info(self, user_id: str) -> Dict[str, Any]:
+        return await self._get("/xiaohongshu/web/get_user_info", params={"user_id": user_id})
+
+    async def fetch_xiaohongshu_user_notes_v2(
+        self,
+        user_id: str,
+        last_cursor: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params = {"user_id": user_id}
+        if last_cursor:
+            params["lastCursor"] = last_cursor
+        return await self._get("/xiaohongshu/web/get_user_notes_v2", params=params)
+
+    async def fetch_xiaohongshu_note_id_and_xsec_token(self, url: str) -> Dict[str, Any]:
+        return await self._get("/xiaohongshu/web/get_note_id_and_xsec_token", params={"url": url})
+
     async def fetch_channels_home(self, username: str, last_buffer: Optional[str] = None) -> Dict[str, Any]:
         params = {"username": username}
         if last_buffer:
             params["last_buffer"] = last_buffer
         return await self._get("/wechat_channels/fetch_home_page", params=params)
+
+    async def fetch_channels_video_detail(
+        self,
+        video_id: Optional[str] = None,
+        export_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if video_id:
+            params["id"] = video_id
+        if export_id:
+            params["exportId"] = export_id
+        return await self._get("/wechat_channels/fetch_video_detail", params=params)
 
     async def fetch_channels_hot_words(self) -> Dict[str, Any]:
         return await self._get("/wechat_channels/fetch_hot_words")

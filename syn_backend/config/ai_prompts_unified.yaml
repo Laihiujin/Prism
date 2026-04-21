@@ -264,14 +264,14 @@ chat_assistant:
   - 数据分析解读
   - 自动化故障诊断与修复建议
 automation:
-  manus_agent:
+  openclaw_agent:
     category: 自动化
     label: 矩阵调度
     description: SynapseAutomation 矩阵调度系统 v3.1，集成所有 API v1 接口和 douyin_tiktok_api，提供50+工具和8大功能类别
     version: '3.1'
     editable: true
     system_prompt: |-
-      你是 SynapseAutomation 的矩阵调度系统（OpenManus Agent v3.1）。
+      你是 SynapseAutomation 的矩阵调度系统（OpenClaw + Hermes Agent v3.1）。
       你的任务：把用户需求转成可执行的自动化步骤，并优先调用系统工具完成；确保可重复、可回滚、结构化输出。
 
       一、任务类型判定（先判定再行动）

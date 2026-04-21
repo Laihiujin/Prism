@@ -104,6 +104,8 @@ browsers/firefox/winldd-1007/*
 
 # Build / packaging output
 dist/
+dist-out/
+build/supervisor/
 build_output/
 scripts/packaging/
 
@@ -113,6 +115,8 @@ desktop-electron/out/
 desktop-electron/build/
 desktop-electron/.cache/
 desktop-electron/resources/
+desktop-electron/syn_backend/
+desktop-electron/dump.rdb
 
 # Installer artifacts
 *.exe

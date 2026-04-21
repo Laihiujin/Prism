@@ -232,7 +232,7 @@ export function AgentChat() {
                     <div className="p-4 border-b border-white/5 flex items-center justify-between">
                         <div className="flex items-center gap-2 text-purple-400 font-semibold">
                             <Bot className="h-5 w-5" />
-                            <span>OpenManus</span>
+                            <span>OpenClaw</span>
                         </div>
                         <Button onClick={createNewThread} size="icon" variant="ghost" className="h-8 w-8 hover:bg-white/10 text-white/70">
                             <Plus className="h-4 w-4" />
@@ -320,7 +320,7 @@ export function AgentChat() {
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <h3 className="text-2xl font-bold text-white tracking-tight">OpenManus Agent</h3>
+                                            <h3 className="text-2xl font-bold text-white tracking-tight">OpenClaw Agent</h3>
                                             <p className="text-white/40 max-w-md text-sm">
                                                 全能型 AI 助手，可以执行复杂的网页操作、数据分析和自动化任务。
                                             </p>
@@ -422,7 +422,7 @@ export function AgentChat() {
                                 </div>
                                 <div className="text-center mt-3">
                                     <p className="text-[10px] text-white/30 font-medium tracking-wide uppercase">
-                                        Powered by OpenManus & Synapse AI
+                                        Powered by OpenClaw & Synapse AI
                                     </p>
                                 </div>
                             </ComposerPrimitive.Root>

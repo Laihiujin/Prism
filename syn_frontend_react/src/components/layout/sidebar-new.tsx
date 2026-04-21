@@ -170,7 +170,7 @@ export function SidebarNew({
                                 className="flex items-center gap-3"
                             >
                                 <img
-                                    src="/default.png"
+                                    src="/logo.png"
                                     alt="Synapse Logo"
                                     className="h-10 w-10 rounded-full object-cover"
                                 />
@@ -186,7 +186,7 @@ export function SidebarNew({
                                 transition={{ duration: 0.3 }}
                             >
                                 <img
-                                    src="/default.png"
+                                    src="/logo.png"
                                     alt="Synapse Logo"
                                     className="h-10 w-10 rounded-full object-cover"
                                 />

@@ -1415,7 +1415,7 @@ async def test_model_connection(request: TestConnectionRequest):
 
     支持的 service_type:
     - chat: 对话模型测试
-    - function_calling: Function Calling 模型测试（OpenManus Agent）
+    - function_calling: Function Calling 模型测试（OpenClaw/Hermes Agent）
     - cover_generation: 图像生成模型测试
     - tikhub: TikHub API 鉴权测试
     """
@@ -1845,7 +1845,7 @@ class FunctionCallingRequest(BaseModel):
 @router.post("/function-calling", summary="执行 Function Calling（原生）")
 async def function_calling(request: FunctionCallingRequest):
     """
-    使用原生 Function Calling 执行任务（替代 OpenManus）
+    使用原生 Function Calling 执行任务（供 OpenClaw/Hermes 调度）
 
     特点：
     - 单次可控的执行流程
