@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - master
     paths:
       - ".github/workflows/build-windows-tauri.yml"
       - "syn_backend/biliup/tauri-app/**"
@@ -145,6 +144,23 @@ jobs:
           python -m pip install playwright
           python -m playwright install chromium
           Get-ChildItem $env:PLAYWRIGHT_BROWSERS_PATH | Select-Object Name, Mode
+
+      - name: Build biliup sidecar
+        shell: pwsh
+        run: |
+          cargo build --manifest-path .\syn_backend\biliup\Cargo.toml --package biliup-cli --bin biliup --release
+
+      - name: Prepare Tauri sidecar resources
+        shell: pwsh
+        run: |
+          $sidecarDir = Join-Path $env:GITHUB_WORKSPACE "syn_backend\biliup\tauri-app\src-tauri\binaries"
+          $sourceExe = Join-Path $env:GITHUB_WORKSPACE "syn_backend\biliup\target\release\biliup.exe"
+          if (-not (Test-Path $sourceExe)) {
+            throw "Missing sidecar binary: $sourceExe"
+          }
+          New-Item -ItemType Directory -Force -Path $sidecarDir | Out-Null
+          Copy-Item -LiteralPath $sourceExe -Destination (Join-Path $sidecarDir "biliup.exe") -Force
+          Get-ChildItem $sidecarDir | Select-Object Name, Length
 
       - name: Build Tauri app
         env:
