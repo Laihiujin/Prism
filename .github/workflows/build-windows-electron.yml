@@ -40,6 +40,7 @@ jobs:
     env:
       CI: true
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\browsers\chromium
+      NODE_OPTIONS: --max-old-space-size=12288
 
     steps:
       - name: Checkout
@@ -100,9 +101,9 @@ jobs:
 
           $serviceDist = Join-Path $env:GITHUB_WORKSPACE "dist\services"
           $requiredServiceExes = @(
-            (Join-Path $serviceDist "backend.exe"),
-            (Join-Path $serviceDist "playwright-worker.exe"),
-            (Join-Path $serviceDist "celery-worker.exe")
+            (Join-Path $serviceDist "backend\backend.exe"),
+            (Join-Path $serviceDist "playwright-worker\playwright-worker.exe"),
+            (Join-Path $serviceDist "celery-worker\celery-worker.exe")
           )
 
           foreach ($serviceExe in $requiredServiceExes) {
@@ -155,9 +156,9 @@ jobs:
             (Join-Path $resourcesDir "syn_backend\fastapi_app\run.py"),
             (Join-Path $resourcesDir "supervisor\supervisor.exe"),
             (Join-Path $resourcesDir "frontend\standalone\server.js"),
-            (Join-Path $resourcesDir "services\backend.exe"),
-            (Join-Path $resourcesDir "services\playwright-worker.exe"),
-            (Join-Path $resourcesDir "services\celery-worker.exe")
+            (Join-Path $resourcesDir "services\backend\backend.exe"),
+            (Join-Path $resourcesDir "services\playwright-worker\playwright-worker.exe"),
+            (Join-Path $resourcesDir "services\celery-worker\celery-worker.exe")
           )
 
           foreach ($required in $requiredFiles) {

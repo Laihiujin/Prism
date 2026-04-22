@@ -84,9 +84,11 @@ class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).parent.parent.parent
 
     # 数据库路径
-    DATABASE_PATH: str = str(BASE_DIR / "db" / "database.db")
-    COOKIE_DB_PATH: str = str(BASE_DIR / "db" / "cookie_store.db")
-    AI_LOGS_DB_PATH: str = str(BASE_DIR / "db" / "ai_logs.db")
+    DATA_DIR: str = str(_resolve_default_data_dir(BASE_DIR))
+
+    DATABASE_PATH: str = str(Path(DATA_DIR) / "db" / "database.db")
+    COOKIE_DB_PATH: str = str(Path(DATA_DIR) / "db" / "cookie_store.db")
+    AI_LOGS_DB_PATH: str = str(Path(DATA_DIR) / "db" / "ai_logs.db")
 
     # Database URL (optional): enable MySQL by setting e.g. mysql+pymysql://user:pass@localhost:3306/synapse?charset=utf8mb4
     # When empty, the app uses SQLite files above.
@@ -98,12 +100,11 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = ""  # defaults to REDIS_URL when empty
 
     # 文件存储路径
-    DATA_DIR: str = str(_resolve_default_data_dir(BASE_DIR))
     COOKIE_FILES_DIR: str = str(Path(DATA_DIR) / "cookiesFile")
     FINGERPRINTS_DIR: str = str(Path(DATA_DIR) / "fingerprints")
     BROWSER_PROFILES_DIR: str = str(Path(DATA_DIR) / "browser_profiles")
-    VIDEO_FILES_DIR: str = str(BASE_DIR / "videoFile")
-    UPLOAD_DIR: str = str(BASE_DIR / "uploads")
+    VIDEO_FILES_DIR: str = str(Path(DATA_DIR) / "videoFile")
+    UPLOAD_DIR: str = str(Path(DATA_DIR) / "uploads")
 
     # 任务队列配置
     TASK_QUEUE_MAX_WORKERS: int = 3  # 并发任务数（降低资源占用）
@@ -111,7 +112,7 @@ class Settings(BaseSettings):
 
     # 日志配置
     LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = str(BASE_DIR / "logs" / "fastapi_app.log")
+    LOG_FILE: str = str(Path(DATA_DIR) / "logs" / "fastapi_app.log")
 
     # 安全配置（可选）
     SECRET_KEY: str = "your-secret-key-change-in-production"

@@ -209,8 +209,11 @@ class SynapseApp {
     if (this.isDev) {
       return null;
     }
-    const exePath = path.join(process.resourcesPath, 'services', `${name}.exe`);
-    return fs.existsSync(exePath) ? exePath : null;
+    const candidates = [
+      path.join(process.resourcesPath, 'services', name, `${name}.exe`),
+      path.join(process.resourcesPath, 'services', `${name}.exe`)
+    ];
+    return this.resolveFirstPath(candidates) || null;
   }
 
   buildServiceEnv() {

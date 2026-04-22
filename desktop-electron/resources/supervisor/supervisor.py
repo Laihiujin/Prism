@@ -238,9 +238,18 @@ class Supervisor:
             self.python_exe = None
 
         self.service_executables = {
-            "backend": self.services_dir / "backend.exe",
-            "playwright-worker": self.services_dir / "playwright-worker.exe",
-            "celery-worker": self.services_dir / "celery-worker.exe",
+            "backend": (
+                self.services_dir / "backend" / "backend.exe",
+                self.services_dir / "backend.exe",
+            ),
+            "playwright-worker": (
+                self.services_dir / "playwright-worker" / "playwright-worker.exe",
+                self.services_dir / "playwright-worker.exe",
+            ),
+            "celery-worker": (
+                self.services_dir / "celery-worker" / "celery-worker.exe",
+                self.services_dir / "celery-worker.exe",
+            ),
         }
 
         logger.info("Environment: %s", "packaged" if self.is_packaged else "dev")
@@ -278,8 +287,11 @@ class Supervisor:
         return env
 
     def get_service_executable(self, name: str) -> Optional[Path]:
-        exe = self.service_executables.get(name)
-        return exe if exe and exe.exists() else None
+        candidates = self.service_executables.get(name) or ()
+        for exe in candidates:
+            if exe.exists():
+                return exe
+        return None
 
     def get_service_launch(self, name: str) -> Tuple[List[str], str]:
         service_exe = self.get_service_executable(name)
