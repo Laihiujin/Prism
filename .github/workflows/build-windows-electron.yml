@@ -1,0 +1,192 @@
+name: Build Windows Electron
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-windows-electron.yml"
+      - "desktop-electron/**"
+      - "syn_frontend_react/**"
+      - "syn_backend/**"
+      - "scripts/release/**"
+      - "build/**"
+      - "browsers/**"
+      - "synenv/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".gitmodules"
+  pull_request:
+    paths:
+      - ".github/workflows/build-windows-electron.yml"
+      - "desktop-electron/**"
+      - "syn_frontend_react/**"
+      - "syn_backend/**"
+      - "scripts/release/**"
+      - "build/**"
+      - "browsers/**"
+      - "synenv/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".gitmodules"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      CI: true
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\browsers\chromium
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve build metadata
+        id: meta
+        shell: pwsh
+        run: |
+          $desktopPackage = Get-Content "desktop-electron/package.json" -Raw | ConvertFrom-Json
+          $version = $desktopPackage.version
+          $buildVersion = "$version.${{ github.run_number }}"
+          $releaseFile = "SynapseAutomation-$buildVersion-setup.exe"
+          "app_version=$version" >> $env:GITHUB_OUTPUT
+          "build_version=$buildVersion" >> $env:GITHUB_OUTPUT
+          "release_file=$releaseFile" >> $env:GITHUB_OUTPUT
+
+      - name: Install frontend dependencies
+        shell: pwsh
+        run: npm --prefix .\syn_frontend_react ci
+
+      - name: Build frontend standalone bundle
+        shell: pwsh
+        run: |
+          npm --prefix .\syn_frontend_react run build
+          $serverJs = Join-Path $env:GITHUB_WORKSPACE "syn_frontend_react\.next\standalone\server.js"
+          if (-not (Test-Path $serverJs)) {
+            throw "Missing frontend standalone output: $serverJs"
+          }
+
+      - name: Install Electron dependencies
+        shell: pwsh
+        run: npm --prefix .\desktop-electron ci
+
+      - name: Install Python build tools
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller psutil playwright
+
+      - name: Install Chromium for packaged runtime
+        shell: pwsh
+        run: |
+          python -m playwright install chromium
+          $chromeExe = Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE "browsers\chromium") -Filter chrome.exe -Recurse | Select-Object -First 1
+          if (-not $chromeExe) {
+            throw "Chromium executable was not installed under browsers\\chromium"
+          }
+          "chromium_path=$($chromeExe.FullName)" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Build Supervisor executable
+        shell: pwsh
+        run: |
+          python -m PyInstaller .\build\supervisor.spec --clean
+          $supervisorExe = Join-Path $env:GITHUB_WORKSPACE "build\supervisor\supervisor.exe"
+          if (-not (Test-Path $supervisorExe)) {
+            throw "Missing supervisor executable: $supervisorExe"
+          }
+          Copy-Item -LiteralPath $supervisorExe -Destination (Join-Path $env:GITHUB_WORKSPACE "desktop-electron\resources\supervisor\supervisor.exe") -Force
+
+      - name: Sanitize release workspace
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\release\prepare-release.ps1 -ProjectRoot $env:GITHUB_WORKSPACE
+
+      - name: Build unpacked Electron app
+        shell: pwsh
+        run: |
+          $version = "${{ steps.meta.outputs.app_version }}"
+          $buildVersion = "${{ steps.meta.outputs.build_version }}"
+          npm --prefix .\desktop-electron run build:dir -- --config.extraMetadata.version=$version --config.buildVersion=$buildVersion
+
+      - name: Validate packaged runtime resources
+        shell: pwsh
+        run: |
+          $resourcesDir = Join-Path $env:GITHUB_WORKSPACE "desktop-electron\dist-build\win-unpacked\resources"
+          if (-not (Test-Path $resourcesDir)) {
+            throw "Missing Electron resources directory: $resourcesDir"
+          }
+
+          $requiredFiles = @(
+            (Join-Path $resourcesDir "synenv\Scripts\python.exe"),
+            (Join-Path $resourcesDir "syn_backend\fastapi_app\run.py"),
+            (Join-Path $resourcesDir "supervisor\supervisor.exe"),
+            (Join-Path $resourcesDir "frontend\standalone\server.js")
+          )
+
+          foreach ($required in $requiredFiles) {
+            if (-not (Test-Path $required)) {
+              throw "Missing packaged runtime file: $required"
+            }
+          }
+
+          $chromeExe = Get-ChildItem -Path (Join-Path $resourcesDir "browsers") -Filter chrome.exe -Recurse | Select-Object -First 1
+          if (-not $chromeExe) {
+            throw "Missing packaged Chromium executable under $resourcesDir\\browsers"
+          }
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = "${{ steps.meta.outputs.app_version }}"
+          $buildVersion = "${{ steps.meta.outputs.build_version }}"
+          npm --prefix .\desktop-electron run build -- --config.extraMetadata.version=$version --config.buildVersion=$buildVersion
+
+      - name: Prepare release executable
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE "desktop-electron\dist-build") -Filter *.exe | Select-Object -First 1
+          if (-not $installer) {
+            throw "No Electron installer .exe found in desktop-electron\\dist-build"
+          }
+
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE ".release-assets"
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+          $releaseExe = Join-Path $releaseDir "${{ steps.meta.outputs.release_file }}"
+          Copy-Item -LiteralPath $installer.FullName -Destination $releaseExe -Force
+          "release_exe=$releaseExe" >> $env:GITHUB_OUTPUT
+        id: release_asset
+
+      - name: Publish rolling release executable
+        if: github.event_name != 'pull_request'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest-main
+          name: Latest Main Build
+          prerelease: true
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
+          makeLatest: false
+          commit: ${{ github.sha }}
+          body: |
+            Automated Electron Windows build from `main`.
+            Version: `${{ steps.meta.outputs.build_version }}`
+            Commit: `${{ github.sha }}`
+          artifacts: |
+            .release-assets/*.exe
