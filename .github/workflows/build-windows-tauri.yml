@@ -182,10 +182,27 @@ jobs:
         shell: pwsh
         run: npm --prefix .\syn_backend\biliup\tauri-app run tauri -- build
 
-      - name: Upload bundle artifacts
+      - name: Verify installer outputs
+        shell: pwsh
+        run: |
+          $bundleDir = Join-Path $env:GITHUB_WORKSPACE "syn_backend\biliup\tauri-app\src-tauri\target\release\bundle"
+          if (-not (Test-Path $bundleDir)) {
+            throw "Missing bundle directory: $bundleDir"
+          }
+          Get-ChildItem $bundleDir -Recurse | Select-Object FullName, Length
+
+      - name: Upload NSIS setup
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.meta.outputs.product_name }}-${{ steps.meta.outputs.app_version }}-windows-bundle
+          name: ${{ steps.meta.outputs.product_name }}-${{ steps.meta.outputs.app_version }}-setup-exe
           path: |
-            syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/**/*
+            syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+      - name: Upload MSI installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.product_name }}-${{ steps.meta.outputs.app_version }}-setup-msi
+          path: |
+            syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
