@@ -41,7 +41,7 @@
     ],
     "extraResources": [
       {
-        "from": "../build/supervisor",
+        "from": "resources/supervisor",
         "to": "supervisor",
         "filter": [
           "supervisor.exe"
