@@ -74,7 +74,7 @@ jobs:
           tauri_config.setdefault("app", {}).setdefault("windows", [{}])[0]["title"] = "SynapseAutomation"
           bundle = tauri_config.setdefault("bundle", {})
           resources = bundle.setdefault("resources", [])
-          for resource in ("binaries/", "../../../browsers/"):
+          for resource in ("binaries/", "../../../../browsers/"):
               if resource not in resources:
                   resources.append(resource)
           tauri_config_path.write_text(
