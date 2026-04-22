@@ -107,7 +107,12 @@ dist/
 dist-out/
 build/supervisor/
 build_output/
-scripts/packaging/
+scripts/packaging/*
+!scripts/packaging/build-package.bat
+!scripts/packaging/build-supervisor.bat
+!scripts/packaging/build-version.json
+!scripts/packaging/build_exclude.txt
+!scripts/packaging/build_services.ps1
 
 # Desktop Electron build artifacts
 desktop-electron/dist*/
@@ -116,7 +121,11 @@ desktop-electron/build/*
 !desktop-electron/build/icon.ico
 !desktop-electron/build/installer.nsh
 desktop-electron/.cache/
-desktop-electron/resources/
+desktop-electron/resources/*
+!desktop-electron/resources/supervisor/
+desktop-electron/resources/supervisor/*
+!desktop-electron/resources/supervisor/api_server.py
+!desktop-electron/resources/supervisor/supervisor.py
 desktop-electron/syn_backend/
 desktop-electron/dump.rdb
 

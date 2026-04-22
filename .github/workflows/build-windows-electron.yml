@@ -14,9 +14,9 @@ on:
       - "syn_frontend_react/**"
       - "syn_backend/**"
       - "scripts/release/**"
+      - "scripts/packaging/**"
       - "build/**"
       - "browsers/**"
-      - "synenv/**"
       - "package.json"
       - "package-lock.json"
       - ".gitmodules"
@@ -27,9 +27,9 @@ on:
       - "syn_frontend_react/**"
       - "syn_backend/**"
       - "scripts/release/**"
+      - "scripts/packaging/**"
       - "build/**"
       - "browsers/**"
-      - "synenv/**"
       - "package.json"
       - "package-lock.json"
       - ".gitmodules"
@@ -92,6 +92,25 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pyinstaller psutil playwright
 
+      - name: Build packaged backend service executables
+        shell: pwsh
+        run: |
+          $env:PACKAGING_PYTHON = "python"
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\packaging\build_services.ps1
+
+          $serviceDist = Join-Path $env:GITHUB_WORKSPACE "dist\services"
+          $requiredServiceExes = @(
+            (Join-Path $serviceDist "backend.exe"),
+            (Join-Path $serviceDist "playwright-worker.exe"),
+            (Join-Path $serviceDist "celery-worker.exe")
+          )
+
+          foreach ($serviceExe in $requiredServiceExes) {
+            if (-not (Test-Path $serviceExe)) {
+              throw "Missing packaged service executable: $serviceExe"
+            }
+          }
+
       - name: Install Chromium for packaged runtime
         shell: pwsh
         run: |
@@ -133,10 +152,12 @@ jobs:
           }
 
           $requiredFiles = @(
-            (Join-Path $resourcesDir "synenv\Scripts\python.exe"),
             (Join-Path $resourcesDir "syn_backend\fastapi_app\run.py"),
             (Join-Path $resourcesDir "supervisor\supervisor.exe"),
-            (Join-Path $resourcesDir "frontend\standalone\server.js")
+            (Join-Path $resourcesDir "frontend\standalone\server.js"),
+            (Join-Path $resourcesDir "services\backend.exe"),
+            (Join-Path $resourcesDir "services\playwright-worker.exe"),
+            (Join-Path $resourcesDir "services\celery-worker.exe")
           )
 
           foreach ($required in $requiredFiles) {
