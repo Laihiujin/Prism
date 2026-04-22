@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.synapse.automation",
     "productName": "SynapseAutomation",
+    "artifactName": "SynapseAutomation-${version}-setup.${ext}",
     "asar": true,
     "asarUnpack": [
       "src/renderer/**",

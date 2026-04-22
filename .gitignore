@@ -112,7 +112,9 @@ scripts/packaging/
 # Desktop Electron build artifacts
 desktop-electron/dist*/
 desktop-electron/out/
-desktop-electron/build/
+desktop-electron/build/*
+!desktop-electron/build/icon.ico
+!desktop-electron/build/installer.nsh
 desktop-electron/.cache/
 desktop-electron/resources/
 desktop-electron/syn_backend/
