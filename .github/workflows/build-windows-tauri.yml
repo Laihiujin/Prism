@@ -1,5 +1,8 @@
 name: Build Windows Tauri
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -206,3 +209,23 @@ jobs:
           path: |
             syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
+
+      - name: Publish rolling release assets
+        if: github.event_name != 'pull_request'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest-main
+          name: Latest Main Build
+          prerelease: true
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
+          makeLatest: false
+          commit: ${{ github.sha }}
+          body: |
+            Automated rolling build from `main`.
+            Commit: `${{ github.sha }}`
+            Version: `${{ steps.meta.outputs.app_version }}`
+          artifacts: |
+            syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/nsis/*.exe
+            syn_backend/biliup/tauri-app/src-tauri/target/release/bundle/msi/*.msi
