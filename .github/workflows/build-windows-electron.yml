@@ -71,7 +71,7 @@ jobs:
 
       - name: Install frontend dependencies
         shell: pwsh
-        run: npm --prefix .\syn_frontend_react ci
+        run: npm --prefix .\syn_frontend_react ci --ignore-scripts
 
       - name: Build frontend standalone bundle
         shell: pwsh
