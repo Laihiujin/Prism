@@ -135,6 +135,20 @@ jobs:
         shell: pwsh
         run: npm --prefix .\syn_backend\biliup\tauri-app ci
 
+      - name: Install biliup web dependencies
+        shell: pwsh
+        run: npm --prefix .\syn_backend\biliup ci
+
+      - name: Build biliup web assets
+        shell: pwsh
+        run: |
+          npm --prefix .\syn_backend\biliup run build
+          $webOutDir = Join-Path $env:GITHUB_WORKSPACE "syn_backend\biliup\out"
+          if (-not (Test-Path $webOutDir)) {
+            throw "Missing biliup web export directory: $webOutDir"
+          }
+          Get-ChildItem $webOutDir | Select-Object Name, Mode
+
       - name: Install Playwright Chromium
         shell: pwsh
         env:
