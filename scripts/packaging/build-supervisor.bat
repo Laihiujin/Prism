@@ -7,7 +7,8 @@ echo ============================================
 echo.
 
 set "SCRIPT_DIR=%~dp0"
-cd /d "%SCRIPT_DIR%"
+for %%I in ("%SCRIPT_DIR%..\..") do set "PROJECT_ROOT=%%~fI"
+cd /d "%PROJECT_ROOT%"
 
 :: 检查是否有 supervisor.py
 if not exist "desktop-electron\resources\supervisor\supervisor.py" (
@@ -116,7 +117,7 @@ if defined SUPERVISOR_EXE (
     echo.
     echo Next:
     echo   1. Test: build\supervisor\supervisor.exe
-    echo   2. Package: build-package.bat
+    echo   2. Package: scripts\packaging\build-package.bat
     echo.
 
 ) else (

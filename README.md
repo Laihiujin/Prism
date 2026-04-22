@@ -151,7 +151,7 @@ scripts\launchers\setup_browser.bat
 
 使用 venv：
 ```powershell
-start_all_services_synenv.bat
+LaunchScript\start_all_services_synenv.bat
 ```
 
 使用 conda：

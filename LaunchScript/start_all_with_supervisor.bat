@@ -4,9 +4,12 @@ REM Set UTF-8 encoding environment
 set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "PROJECT_ROOT=%%~fI\"
+
 set "REDIS_CLI=redis-cli"
-if exist "%~dp0syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%~dp0syn_backend\Redis\redis-cli.exe"
-if exist "%~dp0syn_backend\Redis\redis-server.exe" set "SYNAPSE_REDIS_PATH=%~dp0syn_backend\Redis\redis-server.exe"
+if exist "%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe"
+if exist "%PROJECT_ROOT%syn_backend\Redis\redis-server.exe" set "SYNAPSE_REDIS_PATH=%PROJECT_ROOT%syn_backend\Redis\redis-server.exe"
 
 echo ============================================
 echo   SynapseAutomation - Supervisor 模式启动
@@ -24,8 +27,8 @@ echo [1] 检查 Redis 服务...
 if errorlevel 1 (
     echo ⚠️ Redis 未运行，正在启动...
     REM 使用本地 Redis（如果存在）
-    if exist "%~dp0syn_backend\Redis\redis-server.exe" (
-        start "Redis Server" "%~dp0syn_backend\Redis\redis-server.exe"
+    if exist "%PROJECT_ROOT%syn_backend\Redis\redis-server.exe" (
+        start "Redis Server" "%PROJECT_ROOT%syn_backend\Redis\redis-server.exe"
     ) else (
         start "Redis Server" redis-server
     )
@@ -50,12 +53,12 @@ echo       - Playwright Worker (端口7001)
 echo       - FastAPI Backend (端口7000)
 echo       - Celery Worker (任务队列)
 echo.
-start "Supervisor" "%~dp0start_supervisor_synenv.bat"
+start "Supervisor" "%SCRIPT_DIR%start_supervisor_synenv.bat"
 timeout /t 3 /nobreak >nul
 
 echo.
 echo [3] 启动 Frontend（前端界面，端口3000）...
-start "React Frontend" "%~dp0scripts\launchers\start_frontend.bat"
+start "React Frontend" "%PROJECT_ROOT%scripts\launchers\start_frontend.bat"
 
 echo.
 echo ============================================

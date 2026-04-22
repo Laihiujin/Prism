@@ -48,6 +48,6 @@ echo ============================================
 echo ✅ 清理完成！
 echo ============================================
 echo.
-echo 现在可以运行 build-package.bat 进行打包
+echo 现在可以运行 ..\scripts\packaging\build-package.bat 进行打包
 echo.
 pause

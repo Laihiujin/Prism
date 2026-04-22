@@ -111,6 +111,6 @@ cd /d "%ROOT_DIR%"
 set SYNAPSE_AUTO_YES=1
 set SYNAPSE_PACKAGE_TYPE=2
 
-call build-package.bat
+call scripts\packaging\build-package.bat
 
 exit /b %ERRORLEVEL%

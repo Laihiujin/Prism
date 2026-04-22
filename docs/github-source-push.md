@@ -25,4 +25,4 @@
 
 1. 确认 `git status` 中没有 `dist`、`dist-out`、`resources`、数据库、日志文件。
 2. 确认未提交 `.env`、cookies、账号快照、浏览器 profile。
-3. 如需发版，先执行 `build-package.bat`，它会自动清空日志和账号类数据目录再打包。
+3. 如需发版，先执行 `scripts/packaging/build-package.bat`，它会自动清空日志和账号类数据目录再打包。

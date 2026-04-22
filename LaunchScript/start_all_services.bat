@@ -4,8 +4,11 @@ REM Set UTF-8 encoding environment
 set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "PROJECT_ROOT=%%~fI\"
+
 set "REDIS_CLI=redis-cli"
-if exist "%~dp0syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%~dp0syn_backend\Redis\redis-cli.exe"
+if exist "%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe"
 
 echo ============================================
 echo   SynapseAutomation 全服务启动
@@ -34,22 +37,22 @@ if errorlevel 1 (
 
 echo.
 echo [2] 启动 Celery Worker（发布任务队列）...
-start "Celery Worker" "%~dp0start_celery_worker.bat"
+start "Celery Worker" "%SCRIPT_DIR%start_celery_worker.bat"
 timeout /t 2 /nobreak >nul
 
 echo.
 echo [3] 启动 Playwright Worker（浏览器自动化，端口7001）...
-start "Playwright Worker" "%~dp0scripts\launchers\start_worker.bat"
+start "Playwright Worker" "%PROJECT_ROOT%scripts\launchers\start_worker.bat"
 timeout /t 3 /nobreak >nul
 
 echo.
 echo [4] 启动 FastAPI Backend（后端API，端口7000）...
-start "FastAPI Backend" "%~dp0scripts\launchers\start_backend.bat"
+start "FastAPI Backend" "%PROJECT_ROOT%scripts\launchers\start_backend.bat"
 timeout /t 3 /nobreak >nul
 
 echo.
 echo [5] 启动 Frontend（前端界面，端口3000）...
-start "React Frontend" "%~dp0scripts\launchers\start_frontend.bat"
+start "React Frontend" "%PROJECT_ROOT%scripts\launchers\start_frontend.bat"
 
 echo.
 echo ============================================

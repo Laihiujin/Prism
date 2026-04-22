@@ -5,8 +5,9 @@ set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 set FORKED_BY_MULTIPROCESSING=1
 
-set ROOT=%~dp0
-set BACKEND_DIR=%ROOT%syn_backend
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "ROOT=%%~fI\"
+set "BACKEND_DIR=%ROOT%syn_backend"
 
 set "REDIS_CLI=redis-cli"
 if exist "%ROOT%syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%ROOT%syn_backend\Redis\redis-cli.exe"
