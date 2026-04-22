@@ -19,7 +19,8 @@ for %%I in ("%ProgramFiles(x86)%") do set "PF86=%%~sI"
 for %%I in ("%ProgramFiles%") do set "PF64=%%~sI"
 
 set "SCRIPT_DIR=%~dp0"
-cd /d "%SCRIPT_DIR%desktop-electron"
+for %%I in ("%SCRIPT_DIR%..\..") do set "PROJECT_ROOT=%%~fI\"
+cd /d "%PROJECT_ROOT%desktop-electron"
 set "ELECTRON_DIST=dist-build"
 
 :: ============================================
@@ -27,7 +28,7 @@ set "ELECTRON_DIST=dist-build"
 :: ============================================
 echo [0/7] Sanitize release workspace...
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\release\prepare-release.ps1" -ProjectRoot "%SCRIPT_DIR%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\release\prepare-release.ps1" -ProjectRoot "%PROJECT_ROOT%"
 if errorlevel 1 (
     echo ERROR: release workspace sanitization failed
     pause
@@ -76,21 +77,21 @@ set "SUPERVISOR_PATH="
 set "SUPERVISOR_FOUND=0"
 
 :: Location 1: build\supervisor\supervisor.exe (standard)
-if exist "%SCRIPT_DIR%build\supervisor\supervisor.exe" (
-    set "SUPERVISOR_PATH=%SCRIPT_DIR%build\supervisor\supervisor.exe"
+if exist "%PROJECT_ROOT%build\supervisor\supervisor.exe" (
+    set "SUPERVISOR_PATH=%PROJECT_ROOT%build\supervisor\supervisor.exe"
     set "SUPERVISOR_FOUND=1"
 )
 
 :: Location 2: dist\supervisor.exe (PyInstaller output)
 if "%SUPERVISOR_FOUND%"=="0" (
-    if exist "%SCRIPT_DIR%dist\supervisor.exe" (
-        set "SUPERVISOR_PATH=%SCRIPT_DIR%dist\supervisor.exe"
+    if exist "%PROJECT_ROOT%dist\supervisor.exe" (
+        set "SUPERVISOR_PATH=%PROJECT_ROOT%dist\supervisor.exe"
         set "SUPERVISOR_FOUND=1"
         echo INFO: supervisor.exe found in dist
         echo Copying to standard location...
-        if not exist "%SCRIPT_DIR%build\supervisor" mkdir "%SCRIPT_DIR%build\supervisor"
-        copy /Y "%SCRIPT_DIR%dist\supervisor.exe" "%SCRIPT_DIR%build\supervisor\supervisor.exe" >nul
-        set "SUPERVISOR_PATH=%SCRIPT_DIR%build\supervisor\supervisor.exe"
+        if not exist "%PROJECT_ROOT%build\supervisor" mkdir "%PROJECT_ROOT%build\supervisor"
+        copy /Y "%PROJECT_ROOT%dist\supervisor.exe" "%PROJECT_ROOT%build\supervisor\supervisor.exe" >nul
+        set "SUPERVISOR_PATH=%PROJECT_ROOT%build\supervisor\supervisor.exe"
     )
 )
 
@@ -98,8 +99,8 @@ if "%SUPERVISOR_FOUND%"=="0" (
     echo WARNING: Supervisor not found
     echo.
     echo Checked locations:
-    echo   - %SCRIPT_DIR%build\supervisor\supervisor.exe
-    echo   - %SCRIPT_DIR%dist\supervisor.exe
+    echo   - %PROJECT_ROOT%build\supervisor\supervisor.exe
+    echo   - %PROJECT_ROOT%dist\supervisor.exe
     echo.
     if /I "%AUTO_YES%"=="1" (
         echo Auto mode: continue without Supervisor
@@ -132,7 +133,7 @@ echo.
 echo [3/7] Read version info...
 echo.
 
-set "VERSION_FILE=build-version.json"
+set "VERSION_FILE=%PROJECT_ROOT%scripts\packaging\build-version.json"
 if not exist "%VERSION_FILE%" (
     echo Creating version file...
     echo {"version": "2.2.0", "buildNumber": 2, "lastBuildDate": ""} > "%VERSION_FILE%"
@@ -196,7 +197,7 @@ if not exist "icon.ico" (
 echo [6/7] Building frontend (Next.js standalone)...
 echo.
 
-set "FRONTEND_DIR=%SCRIPT_DIR%syn_frontend_react"
+set "FRONTEND_DIR=%PROJECT_ROOT%syn_frontend_react"
 if not exist "%FRONTEND_DIR%\package.json" (
     echo ERROR: frontend directory not found: %FRONTEND_DIR%
     pause
@@ -266,30 +267,30 @@ if not "%BUILD_DIR_RC%"=="0" (
 set "UNPACKED_RES=%ELECTRON_DIST%\win-unpacked\resources"
 if exist "%UNPACKED_RES%" (
     if not exist "%UNPACKED_RES%\synenv" (
-        if exist "%SCRIPT_DIR%synenv" (
+        if exist "%PROJECT_ROOT%synenv" (
             echo Copying synenv into win-unpacked resources...
-            xcopy /E /I /Y "%SCRIPT_DIR%synenv" "%UNPACKED_RES%\synenv\" >nul
+            xcopy /E /I /Y "%PROJECT_ROOT%synenv" "%UNPACKED_RES%\synenv\" >nul
         ) else (
-            echo WARNING: synenv source missing: %SCRIPT_DIR%synenv
+            echo WARNING: synenv source missing: %PROJECT_ROOT%synenv
         )
     )
     if not exist "%UNPACKED_RES%\browsers" (
-        if exist "%SCRIPT_DIR%browsers" (
+        if exist "%PROJECT_ROOT%browsers" (
             echo Copying browsers into win-unpacked resources...
-            xcopy /E /I /Y "%SCRIPT_DIR%browsers" "%UNPACKED_RES%\browsers\" >nul
+            xcopy /E /I /Y "%PROJECT_ROOT%browsers" "%UNPACKED_RES%\browsers\" >nul
         ) else (
-            echo WARNING: browsers source missing: %SCRIPT_DIR%browsers
+            echo WARNING: browsers source missing: %PROJECT_ROOT%browsers
         )
     )
 
-    if exist "%SCRIPT_DIR%syn_backend" (
+    if exist "%PROJECT_ROOT%syn_backend" (
         echo Updating syn_backend in win-unpacked resources...
         if exist "%UNPACKED_RES%\syn_backend" (
             echo   - Removing old syn_backend...
             rd /s /q "%UNPACKED_RES%\syn_backend" 2>nul
         )
         echo   - Copying latest syn_backend ^(excluding user data^)...
-        robocopy "%SCRIPT_DIR%syn_backend" "%UNPACKED_RES%\syn_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
+        robocopy "%PROJECT_ROOT%syn_backend" "%UNPACKED_RES%\syn_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
         if errorlevel 8 (
             echo ERROR: failed to copy syn_backend
             pause
@@ -297,7 +298,7 @@ if exist "%UNPACKED_RES%" (
         )
         echo   OK: syn_backend updated successfully
     ) else (
-        echo WARNING: syn_backend source missing: %SCRIPT_DIR%syn_backend
+        echo WARNING: syn_backend source missing: %PROJECT_ROOT%syn_backend
     )
 ) else (
     echo WARNING: %UNPACKED_RES% not found; skip resource sync.
@@ -431,16 +432,16 @@ if "!PACKAGE_TYPE!"=="2" (
     )
 
     if not exist "!SOURCE_DIR!\resources\syn_backend" (
-        if exist "!SCRIPT_DIR!syn_backend" (
+        if exist "!PROJECT_ROOT!syn_backend" (
             echo INFO: syn_backend missing in output; copying...
-            robocopy "!SCRIPT_DIR!syn_backend" "!SOURCE_DIR!\resources\syn_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
+            robocopy "!PROJECT_ROOT!syn_backend" "!SOURCE_DIR!\resources\syn_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
             if errorlevel 8 (
                 echo ERROR: failed to copy syn_backend
                 pause
                 exit /b 1
             )
         ) else (
-            echo WARNING: syn_backend source missing: !SCRIPT_DIR!syn_backend
+            echo WARNING: syn_backend source missing: !PROJECT_ROOT!syn_backend
         )
     )
 

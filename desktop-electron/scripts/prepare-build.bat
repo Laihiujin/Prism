@@ -43,10 +43,10 @@ echo ✅ 前端 standalone 输出验证通过
 echo.
 
 echo [步骤 3/3] 构建 Supervisor...
-cd ..\build
-if exist "build-supervisor.bat" (
+cd ..\..
+if exist "scripts\packaging\build-supervisor.bat" (
     echo 🔨 构建 Supervisor...
-    call build-supervisor.bat
+    call scripts\packaging\build-supervisor.bat
     if errorlevel 1 (
         echo ⚠️ Supervisor 构建失败，但继续打包流程
     )
@@ -55,7 +55,7 @@ if exist "build-supervisor.bat" (
 )
 echo.
 
-cd ..\desktop-electron
+cd desktop-electron
 echo ============================================
 echo ✅ 所有准备工作完成!
 echo ============================================

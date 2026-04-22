@@ -97,7 +97,7 @@ echo 所有检查通过，可以尝试编译。
 echo.
 echo 建议操作:
 echo   1. 确保安装 psutil: pip install psutil
-echo   2. 运行编译脚本: build-supervisor.bat
+echo   2. 运行编译脚本: scripts\packaging\build-supervisor.bat
 echo.
 
 pause

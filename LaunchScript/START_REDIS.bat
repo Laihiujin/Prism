@@ -3,7 +3,10 @@ echo ========================================
 echo Starting Redis Server
 echo ========================================
 
-cd /d "%~dp0syn_backend\Redis"
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "PROJECT_ROOT=%%~fI\"
+
+cd /d "%PROJECT_ROOT%syn_backend\Redis"
 
 if not exist redis-server.exe (
     echo ERROR: redis-server.exe not found!

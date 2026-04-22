@@ -6,7 +6,8 @@ set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 set FORKED_BY_MULTIPROCESSING=1
 
-set "ROOT=%~dp0"
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "ROOT=%%~fI\"
 set "VENV_PATH=%ROOT%synenv"
 set "PY=%VENV_PATH%\Scripts\python.exe"
 

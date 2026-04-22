@@ -1,8 +1,11 @@
 @echo off
 chcp 65001 >nul
 
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..") do set "PROJECT_ROOT=%%~fI\"
+
 set "REDIS_CLI=redis-cli"
-if exist "%~dp0syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%~dp0syn_backend\Redis\redis-cli.exe"
+if exist "%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe"
 
 echo ============================================
 echo   停止所有 SynapseAutomation 服务
