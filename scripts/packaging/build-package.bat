@@ -65,7 +65,7 @@ if "%ERRORLEVEL%"=="0" (
 echo.
 
 :: Stop packaged services that may lock dist-build/dist-out files
-powershell -Command "Get-Process | Where-Object { $_.Path -and ( $_.Path -like '*\dist-build\win-unpacked\resources\synenv\*' -or $_.Path -like '*\dist\win-unpacked\resources\synenv\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\synenv\*' -or $_.Path -like '*\dist-build\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\syn_backend\*' ) } | Stop-Process -Force" >nul 2>&1
+powershell -Command "Get-Process | Where-Object { $_.Path -and ( $_.Path -like '*\dist-build\win-unpacked\resources\services\*' -or $_.Path -like '*\dist\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-build\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\syn_backend\*' ) } | Stop-Process -Force" >nul 2>&1
 
 :: ============================================
 :: 2. Check Supervisor
