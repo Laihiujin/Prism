@@ -62,6 +62,5 @@ $common = @(
 & $python -m PyInstaller @common --name backend "$PSScriptRoot\backend_service.py"
 & $python -m PyInstaller @common --name celery-worker "$PSScriptRoot\celery_worker_service.py"
 & $python -m PyInstaller @common --name playwright-worker "$PSScriptRoot\playwright_worker_service.py"
-& $python -m PyInstaller @common --name start_all_services_synenv "$PSScriptRoot\start_all_services_synenv.py"
 
 Write-Host "Service executables built in dist/services"
