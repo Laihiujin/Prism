@@ -48,8 +48,8 @@
         ]
       },
       {
-        "from": "../synenv",
-        "to": "synenv",
+        "from": "../dist/services",
+        "to": "services",
         "filter": [
           "**/*",
           "!**/nul"

@@ -266,20 +266,20 @@ if not "%BUILD_DIR_RC%"=="0" (
 
 set "UNPACKED_RES=%ELECTRON_DIST%\win-unpacked\resources"
 if exist "%UNPACKED_RES%" (
-    if not exist "%UNPACKED_RES%\synenv" (
-        if exist "%PROJECT_ROOT%synenv" (
-            echo Copying synenv into win-unpacked resources...
-            xcopy /E /I /Y "%PROJECT_ROOT%synenv" "%UNPACKED_RES%\synenv\" >nul
-        ) else (
-            echo WARNING: synenv source missing: %PROJECT_ROOT%synenv
-        )
-    )
     if not exist "%UNPACKED_RES%\browsers" (
         if exist "%PROJECT_ROOT%browsers" (
             echo Copying browsers into win-unpacked resources...
             xcopy /E /I /Y "%PROJECT_ROOT%browsers" "%UNPACKED_RES%\browsers\" >nul
         ) else (
             echo WARNING: browsers source missing: %PROJECT_ROOT%browsers
+        )
+    )
+    if not exist "%UNPACKED_RES%\services" (
+        if exist "%PROJECT_ROOT%dist\services" (
+            echo Copying packaged services into win-unpacked resources...
+            xcopy /E /I /Y "%PROJECT_ROOT%dist\services" "%UNPACKED_RES%\services\" >nul
+        ) else (
+            echo WARNING: packaged services missing: %PROJECT_ROOT%dist\services
         )
     )
 
