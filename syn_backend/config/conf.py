@@ -1,4 +1,5 @@
 from pathlib import Path
+import glob
 import os
 import sys
 from dotenv import load_dotenv
@@ -73,6 +74,26 @@ _normalize_env_path("LOCAL_CHROME_PATH")
 _normalize_env_path("LOCAL_CHROME_HEADLESS_SHELL_PATH")
 _normalize_env_path("LOCAL_FIREFOX_PATH")
 
+def _find_preferred_local_chrome() -> str | None:
+    for pattern in (
+        APP_ROOT / "browsers" / "chromium" / "hibbiki-*" / "Chrome-bin" / "chrome.exe",
+        APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win64" / "chrome.exe",
+        APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win" / "chrome.exe",
+        APP_ROOT / "browsers" / "chrome-for-testing" / "chrome-*" / "chrome-win64" / "chrome.exe",
+    ):
+        matches = sorted(glob.glob(str(pattern)))
+        if matches:
+            return str(Path(matches[-1]).resolve())
+    return None
+
+
+def _is_legacy_bundled_chrome(path: str | Path) -> bool:
+    normalized = str(path).replace("/", "\\").lower()
+    return (
+        "\\browsers\\chromium\\chromium-" in normalized
+        or "\\browsers\\chrome-for-testing\\" in normalized
+    )
+
 # 从 .env 获取配置，如果不存在则使用默认值
 _local_chrome_raw = (
     os.getenv("LOCAL_CHROME_PATH")
@@ -90,8 +111,11 @@ if _local_chrome_raw:
         LOCAL_CHROME_PATH = str((APP_ROOT / _local_chrome_raw).resolve())
     else:
         LOCAL_CHROME_PATH = str(_chrome_path.resolve())
+    _preferred_chrome = _find_preferred_local_chrome()
+    if _preferred_chrome and _is_legacy_bundled_chrome(LOCAL_CHROME_PATH):
+        LOCAL_CHROME_PATH = _preferred_chrome
 else:
-    LOCAL_CHROME_PATH = None
+    LOCAL_CHROME_PATH = _find_preferred_local_chrome()
 
 # Chrome Headless Shell 路径 (用于 Playwright 模式)
 _local_chrome_headless_shell_raw = os.getenv("LOCAL_CHROME_HEADLESS_SHELL_PATH")
@@ -103,6 +127,13 @@ if _local_chrome_headless_shell_raw:
         LOCAL_CHROME_HEADLESS_SHELL_PATH = str(_chrome_headless_shell_path.resolve())
 else:
     LOCAL_CHROME_HEADLESS_SHELL_PATH = None
+    for pattern in (
+        APP_ROOT / "browsers" / "chromium_headless_shell-*" / "chrome-headless-shell-win64" / "chrome-headless-shell.exe",
+    ):
+        matches = sorted(glob.glob(str(pattern)))
+        if matches:
+            LOCAL_CHROME_HEADLESS_SHELL_PATH = str(Path(matches[-1]).resolve())
+            break
 
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)

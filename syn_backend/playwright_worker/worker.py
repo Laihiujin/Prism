@@ -13,6 +13,7 @@ import asyncio
 import os
 import platform
 import contextlib
+import glob
 import traceback
 import json
 from datetime import datetime, timezone
@@ -72,7 +73,7 @@ def _resolve_app_root() -> Path:
 _APP_ROOT = _resolve_app_root()
 
 
-def _resolve_executable_path() -> str | None:
+def _resolve_executable_path_legacy_unused() -> str | None:
     # 1. 优先从环境变量读取（Electron 打包模式）
     env_path = os.getenv("LOCAL_CHROME_PATH")
     if env_path and Path(env_path).exists():
@@ -108,6 +109,63 @@ def _resolve_executable_path() -> str | None:
 
 # 设置正确的事件循环策略（Windows）
 # Playwright 需要 asyncio subprocess 支持（Windows 上由 ProactorEventLoop 提供）。
+def _resolve_executable_path() -> str | None:
+    def _normalize(raw: str | Path | None) -> Path | None:
+        if not raw:
+            return None
+        candidate = Path(raw)
+        if not candidate.is_absolute():
+            candidate = _APP_ROOT / candidate
+        return candidate.resolve()
+
+    def _is_legacy_bundled_chrome(candidate: Path) -> bool:
+        normalized = str(candidate).replace("/", "\\").lower()
+        return (
+            "\\browsers\\chromium\\chromium-" in normalized
+            or "\\browsers\\chrome-for-testing\\" in normalized
+        )
+
+    def _find_matching(patterns: tuple[str, ...]) -> Path | None:
+        browser_root = _APP_ROOT / "browsers"
+        for pattern in patterns:
+            matches = sorted(glob.glob(str(browser_root / pattern)))
+            if matches:
+                return Path(matches[-1]).resolve()
+        return None
+
+    preferred_chrome = _find_matching(("chromium/hibbiki-*/Chrome-bin/chrome.exe",))
+
+    env_path = _normalize(os.getenv("LOCAL_CHROME_PATH"))
+    if env_path and env_path.exists():
+        if preferred_chrome and _is_legacy_bundled_chrome(env_path):
+            return str(preferred_chrome)
+        return str(env_path)
+
+    try:
+        from config.conf import LOCAL_CHROME_PATH, APP_ROOT  # type: ignore
+
+        if LOCAL_CHROME_PATH:
+            configured_path = Path(str(LOCAL_CHROME_PATH))
+            if not configured_path.is_absolute():
+                configured_path = Path(APP_ROOT) / configured_path
+            if configured_path.exists():
+                if preferred_chrome and _is_legacy_bundled_chrome(configured_path):
+                    return str(preferred_chrome)
+                return str(configured_path.resolve())
+    except Exception:
+        pass
+
+    fallback = _find_matching(
+        (
+            "chromium/hibbiki-*/Chrome-bin/chrome.exe",
+            "chromium/chromium-*/chrome-win64/chrome.exe",
+            "chromium/chromium-*/chrome-win/chrome.exe",
+            "chrome-for-testing/chrome-*/chrome-win64/chrome.exe",
+        )
+    )
+    return str(fallback) if fallback else None
+
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     logger.info("[Worker] Set WindowsProactorEventLoopPolicy for Playwright")
@@ -308,7 +366,7 @@ async def debug_playwright(headless: bool | None = None):
     try:
         if headless is None:
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
-        from playwright.async_api import async_playwright
+        from utils.playwright_provider import async_playwright
 
         pw = await async_playwright().start()
         launch_kwargs: Dict[str, Any] = {"headless": headless}
@@ -342,7 +400,7 @@ async def open_creator_center(req: OpenCreatorCenterRequest):
         if headless is None:
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
 
-        from playwright.async_api import async_playwright
+        from utils.playwright_provider import async_playwright
         from myUtils.browser_context import build_context_options, persistent_browser_manager
         from myUtils.fingerprint_policy import get_fingerprint_policy, resolve_proxy
         from utils.base_social_media import set_init_script
@@ -642,7 +700,7 @@ async def fetch_creator_sec_uid(req: CreatorSecUidRequest):
         if not profile_url:
             return JSONResponse(status_code=400, content={"success": False, "error": "Missing profile url"})
 
-        from playwright.async_api import async_playwright
+        from utils.playwright_provider import async_playwright
         from myUtils.playwright_context_factory import create_context_with_policy
 
         headless = req.headless if req.headless is not None else _env_bool("PLAYWRIGHT_HEADLESS", True)
@@ -885,7 +943,7 @@ async def _check_single_account_login_worker(account_id: str, platform: str, coo
     context = None
     page = None
     try:
-        from playwright.async_api import async_playwright
+        from utils.playwright_provider import async_playwright
         from myUtils.playwright_context_factory import create_context_with_policy
 
         pw = await async_playwright().start()
@@ -1075,7 +1133,7 @@ async def enrich_account(req: EnrichAccountRequest):
         if not profile_url:
             return JSONResponse(status_code=400, content={"success": False, "error": f"No profile url for platform: {req.platform}"})
 
-        from playwright.async_api import async_playwright
+        from utils.playwright_provider import async_playwright
         from myUtils.playwright_context_factory import create_context_with_policy
         import inspect
 

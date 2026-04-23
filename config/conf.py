@@ -1,4 +1,5 @@
 from pathlib import Path
+import glob
 import os
 from dotenv import load_dotenv
 
@@ -32,14 +33,37 @@ _local_chrome_raw = (
     or os.getenv("LOCAL_CHROME_PATH_LINUX")
 )
 
+def _find_preferred_local_chrome() -> str:
+    for pattern in (
+        BASE_DIR.parent / "browsers" / "chromium" / "hibbiki-*" / "Chrome-bin" / "chrome.exe",
+        BASE_DIR.parent / "browsers" / "chromium" / "chromium-*" / "chrome-win64" / "chrome.exe",
+        BASE_DIR.parent / "browsers" / "chromium" / "chromium-*" / "chrome-win" / "chrome.exe",
+        BASE_DIR.parent / "browsers" / "chrome-for-testing" / "chrome-*" / "chrome-win64" / "chrome.exe",
+    ):
+        matches = sorted(glob.glob(str(pattern)))
+        if matches:
+            return str(Path(matches[-1]).resolve())
+    return ""
+
+
+def _is_legacy_bundled_chrome(path: str | Path) -> bool:
+    normalized = str(path).replace("/", "\\").lower()
+    return (
+        "\\browsers\\chromium\\chromium-" in normalized
+        or "\\browsers\\chrome-for-testing\\" in normalized
+    )
+
 if _local_chrome_raw:
     _chrome_path = Path(_local_chrome_raw)
     if not _chrome_path.is_absolute():
         LOCAL_CHROME_PATH = str((BASE_DIR.parent / _local_chrome_raw).resolve())
     else:
         LOCAL_CHROME_PATH = str(_chrome_path.resolve())
+    _preferred_chrome = _find_preferred_local_chrome()
+    if _preferred_chrome and _is_legacy_bundled_chrome(LOCAL_CHROME_PATH):
+        LOCAL_CHROME_PATH = _preferred_chrome
 else:
-    LOCAL_CHROME_PATH = ""
+    LOCAL_CHROME_PATH = _find_preferred_local_chrome()
 
 # Chrome Headless Shell 路径 (用于 Playwright 模式的 social_media_copilot)
 _local_chrome_headless_shell_raw = os.getenv("LOCAL_CHROME_HEADLESS_SHELL_PATH")
