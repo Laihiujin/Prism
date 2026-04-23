@@ -113,6 +113,9 @@ scripts/packaging/*
 !scripts/packaging/build-version.json
 !scripts/packaging/build_exclude.txt
 !scripts/packaging/build_services.ps1
+!scripts/packaging/backend_service.py
+!scripts/packaging/celery_worker_service.py
+!scripts/packaging/playwright_worker_service.py
 
 # Desktop Electron build artifacts
 desktop-electron/dist*/
