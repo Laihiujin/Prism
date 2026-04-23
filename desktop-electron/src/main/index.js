@@ -197,6 +197,36 @@ class SynapseApp {
     return candidates.find((candidate) => candidate && fs.existsSync(candidate));
   }
 
+  getSubdirs(root, prefix) {
+    try {
+      return fs.readdirSync(root, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
+        .map((entry) => path.join(root, entry.name))
+        .sort()
+        .reverse();
+    } catch (error) {
+      return [];
+    }
+  }
+
+  resolveChromePath(browsersRoot) {
+    const chromiumRoot = path.join(browsersRoot, 'chromium');
+    const candidates = [];
+
+    for (const dir of this.getSubdirs(chromiumRoot, 'hibbiki-')) {
+      candidates.push(path.join(dir, 'Chrome-bin', 'chrome.exe'));
+    }
+    for (const dir of this.getSubdirs(chromiumRoot, 'chromium-')) {
+      candidates.push(path.join(dir, 'chrome-win64', 'chrome.exe'));
+      candidates.push(path.join(dir, 'chrome-win', 'chrome.exe'));
+    }
+    for (const dir of this.getSubdirs(path.join(browsersRoot, 'chrome-for-testing'), 'chrome-')) {
+      candidates.push(path.join(dir, 'chrome-win64', 'chrome.exe'));
+    }
+
+    return this.resolveFirstPath(candidates) || null;
+  }
+
   getAppIconPath() {
     return this.resolveFirstPath([
       path.join(app.getAppPath(), 'icon.ico'),
@@ -259,10 +289,7 @@ class SynapseApp {
       env.ENABLE_SELENIUM_DEBUG = '1';
     }
 
-    const chromePath = this.resolveFirstPath([
-      path.join(browsersRoot, 'chromium', 'chromium-1161', 'chrome-win', 'chrome.exe'),
-      path.join(browsersRoot, 'chrome-for-testing', 'chrome-143.0.7499.169', 'chrome-win64', 'chrome.exe')
-    ]);
+    const chromePath = this.resolveChromePath(browsersRoot);
     if (chromePath) {
       env.LOCAL_CHROME_PATH = chromePath;
       log.info('  - Chrome Path:', chromePath);

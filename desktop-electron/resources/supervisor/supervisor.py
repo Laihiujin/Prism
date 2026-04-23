@@ -10,6 +10,7 @@ Python script fallback is kept only for local/dev usage.
 from __future__ import annotations
 
 import io
+import glob
 import logging
 import os
 import signal
@@ -257,7 +258,14 @@ class Supervisor:
         logger.info("Backend dir: %s (exists: %s)", self.backend_dir, self.backend_dir.exists())
         logger.info("Services dir: %s (exists: %s)", self.services_dir, self.services_dir.exists())
         logger.info("Browsers dir: %s (exists: %s)", self.browsers_dir, self.browsers_dir.exists())
-        logger.info("Python runtime: %s", self.python_exe or "not packaged")
+        logger.info("Python runtime: %s", self.python_exe or "not packaged (services-only runtime)")
+
+    def _find_browser_executable(self, patterns: Iterable[str]) -> Optional[Path]:
+        for pattern in patterns:
+            matches = sorted(glob.glob(str(self.browsers_dir / pattern)))
+            if matches:
+                return Path(matches[-1])
+        return None
 
     def build_env(self) -> Dict[str, str]:
         env = os.environ.copy()
@@ -271,14 +279,22 @@ class Supervisor:
         env["ENABLE_SELENIUM_DEBUG"] = "1"
         env["FORKED_BY_MULTIPROCESSING"] = "1"
 
-        chrome_candidates = (
-            self.browsers_dir / "chromium" / "chromium-1161" / "chrome-win" / "chrome.exe",
-            self.browsers_dir / "chrome-for-testing" / "chrome-143.0.7499.169" / "chrome-win64" / "chrome.exe",
+        chrome_path = self._find_browser_executable(
+            (
+                "chromium/hibbiki-*/Chrome-bin/chrome.exe",
+                "chromium/chromium-*/chrome-win64/chrome.exe",
+                "chromium/chromium-*/chrome-win/chrome.exe",
+                "chrome-for-testing/chrome-*/chrome-win64/chrome.exe",
+            )
         )
-        for chrome_path in chrome_candidates:
-            if chrome_path.exists():
-                env["LOCAL_CHROME_PATH"] = str(chrome_path)
-                break
+        if chrome_path:
+            env["LOCAL_CHROME_PATH"] = str(chrome_path)
+
+        headless_shell_path = self._find_browser_executable(
+            ("chromium_headless_shell-*/chrome-headless-shell-win64/chrome-headless-shell.exe",)
+        )
+        if headless_shell_path:
+            env["LOCAL_CHROME_HEADLESS_SHELL_PATH"] = str(headless_shell_path)
 
         firefox_path = self.browsers_dir / "firefox" / "firefox-1495" / "firefox" / "firefox.exe"
         if firefox_path.exists():

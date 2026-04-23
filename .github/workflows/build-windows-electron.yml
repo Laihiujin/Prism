@@ -117,13 +117,15 @@ jobs:
             }
           }
 
-      - name: Install Chromium for packaged runtime
+      - name: Install Hibbiki Chromium for packaged runtime
         shell: pwsh
         run: |
-          python -m playwright install chromium
-          $chromeExe = Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE "browsers\chromium") -Filter chrome.exe -Recurse | Select-Object -First 1
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\packaging\install_hibbiki_chromium.ps1 -ProjectRoot $env:GITHUB_WORKSPACE -Clean
+          $chromeExe = Get-ChildItem -Path (Join-Path $env:GITHUB_WORKSPACE "browsers\chromium") -Filter chrome.exe -Recurse |
+            Where-Object { $_.FullName -match "\\hibbiki-[^\\]+\\Chrome-bin\\chrome\.exe$" } |
+            Select-Object -First 1
           if (-not $chromeExe) {
-            throw "Chromium executable was not installed under browsers\\chromium"
+            throw "Hibbiki Chromium executable was not installed under browsers\\chromium"
           }
           "chromium_path=$($chromeExe.FullName)" >> $env:GITHUB_STEP_SUMMARY
 
@@ -167,9 +169,19 @@ jobs:
             }
           }
 
-          $chromeExe = Get-ChildItem -Path (Join-Path $resourcesDir "browsers") -Filter chrome.exe -Recurse | Select-Object -First 1
+          $chromeExe = Get-ChildItem -Path (Join-Path $resourcesDir "browsers") -Filter chrome.exe -Recurse |
+            Where-Object { $_.FullName -match "\\hibbiki-[^\\]+\\Chrome-bin\\chrome\.exe$" } |
+            Select-Object -First 1
           if (-not $chromeExe) {
-            throw "Missing packaged Chromium executable under $resourcesDir\\browsers"
+            throw "Missing packaged Hibbiki Chromium executable under $resourcesDir\\browsers"
+          }
+
+          $playwrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\playwright\driver\node.exe"
+          $patchrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\patchright\driver\node.exe"
+          foreach ($requiredNode in @($playwrightNode, $patchrightNode)) {
+            if (-not (Test-Path $requiredNode)) {
+              throw "Missing packaged Playwright driver node runtime: $requiredNode"
+            }
           }
 
       - name: Build Windows installer

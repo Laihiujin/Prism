@@ -102,6 +102,7 @@ $common = @(
   "--collect-all", "celery",
   "--collect-all", "kombu",
   "--collect-all", "billiard",
+  "--collect-all", "patchright",
   "--collect-all", "playwright",
   "--collect-all", "pydantic",
   "--collect-all", "pydantic_core",
@@ -125,6 +126,29 @@ $entryScripts = @{
   "playwright-worker" = "$PSScriptRoot\playwright_worker_service.py"
 }
 
+function Sync-PlaywrightDriverNode {
+  param([string]$TargetName)
+
+  $targetDir = Join-Path $dist $TargetName
+  if (-not (Test-Path $targetDir)) {
+    return
+  }
+
+  $patchrightNode = Get-ChildItem -Path $targetDir -Filter node.exe -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match "\\patchright\\driver\\node\.exe$" } |
+    Select-Object -First 1
+
+  if (-not $patchrightNode) {
+    return
+  }
+
+  $playwrightDriverDir = Join-Path $targetDir "_internal\playwright\driver"
+  New-Item -ItemType Directory -Force -Path $playwrightDriverDir | Out-Null
+  $playwrightNode = Join-Path $playwrightDriverDir "node.exe"
+  Copy-Item -LiteralPath $patchrightNode.FullName -Destination $playwrightNode -Force
+  Write-Host "Mirrored patchright driver node.exe to $playwrightNode"
+}
+
 foreach ($target in $targets) {
   if (-not $entryScripts.ContainsKey($target)) {
     Write-Error "Unsupported packaging target: $target"
@@ -135,6 +159,7 @@ foreach ($target in $targets) {
     Write-Error "PyInstaller build failed for target: $target"
     exit $LASTEXITCODE
   }
+  Sync-PlaywrightDriverNode -TargetName $target
 }
 
 Write-Host "Service executables built in dist/services"

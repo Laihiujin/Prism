@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import glob
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -8,6 +10,82 @@ from loguru import logger
 from myUtils.browser_context import build_context_options, persistent_browser_manager
 from myUtils.fingerprint_policy import get_fingerprint_policy, resolve_proxy
 from utils.base_social_media import set_init_script
+
+
+def _resolve_local_chrome_path() -> str | None:
+    def _normalize(candidate: str | Path | None) -> Path | None:
+        if not candidate:
+            return None
+        path = Path(candidate)
+        if not path.is_absolute():
+            try:
+                from config.conf import APP_ROOT
+
+                path = Path(APP_ROOT) / path
+            except Exception:
+                path = Path(__file__).resolve().parents[2] / path
+        return path.resolve()
+
+    def _is_legacy_bundled_chrome(candidate: Path) -> bool:
+        normalized = str(candidate).replace("/", "\\").lower()
+        return (
+            "\\browsers\\chromium\\chromium-" in normalized
+            or "\\browsers\\chrome-for-testing\\" in normalized
+        )
+
+    roots: list[Path] = []
+    try:
+        from config.conf import APP_ROOT
+
+        roots.append(Path(APP_ROOT) / "browsers")
+    except Exception:
+        pass
+    roots.append(Path(__file__).resolve().parents[2] / "browsers")
+
+    def _find_matching(patterns: tuple[str, ...]) -> Path | None:
+        seen: set[str] = set()
+        for root in roots:
+            root = root.resolve()
+            key = str(root).lower()
+            if key in seen or not root.exists():
+                continue
+            seen.add(key)
+            for pattern in patterns:
+                matches = sorted(glob.glob(str(root / pattern)))
+                if matches:
+                    return Path(matches[-1])
+        return None
+
+    preferred_chrome_path = _find_matching(("chromium/hibbiki-*/Chrome-bin/chrome.exe",))
+
+    for env_name in ("LOCAL_CHROME_PATH", "LOCAL_CHROME_HEADLESS_SHELL_PATH"):
+        candidate = _normalize(os.getenv(env_name))
+        if candidate and candidate.is_file():
+            if env_name == "LOCAL_CHROME_PATH" and preferred_chrome_path and _is_legacy_bundled_chrome(candidate):
+                return str(preferred_chrome_path)
+            return str(candidate)
+
+    try:
+        from config.conf import LOCAL_CHROME_HEADLESS_SHELL_PATH, LOCAL_CHROME_PATH
+
+        for configured in (LOCAL_CHROME_PATH, LOCAL_CHROME_HEADLESS_SHELL_PATH):
+            candidate = _normalize(configured)
+            if candidate and candidate.is_file():
+                if preferred_chrome_path and _is_legacy_bundled_chrome(candidate):
+                    return str(preferred_chrome_path)
+                return str(candidate)
+    except Exception:
+        pass
+
+    patterns = (
+        "chromium/hibbiki-*/Chrome-bin/chrome.exe",
+        "chromium/chromium-*/chrome-win64/chrome.exe",
+        "chromium/chromium-*/chrome-win/chrome.exe",
+        "chrome-for-testing/chrome-*/chrome-win64/chrome.exe",
+        "chromium_headless_shell-*/chrome-headless-shell-win64/chrome-headless-shell.exe",
+    )
+    match = _find_matching(patterns)
+    return str(match) if match else None
 
 
 async def create_context_with_policy(
@@ -33,6 +111,7 @@ async def create_context_with_policy(
     if account_id:
         try:
             from myUtils.cookie_manager import cookie_manager
+
             acc = cookie_manager.get_account_by_id(account_id)
             user_id = acc.get("user_id") if acc else None
         except Exception as e:
@@ -40,37 +119,28 @@ async def create_context_with_policy(
     if use_persistent_profile and not user_id:
         logger.warning("[playwright] Missing user_id; disabling persistent profile")
         use_persistent_profile = False
+    if apply_fingerprint and not user_id:
+        logger.warning("[playwright] Missing user_id; disabling fingerprint injection")
+        apply_fingerprint = False
+    if apply_stealth and not user_id:
+        logger.warning("[playwright] Missing user_id; disabling stealth init")
+        apply_stealth = False
     if force_ephemeral:
         use_persistent_profile = False
     if storage_state is not None and use_persistent_profile:
-        # storage_state is not supported by launch_persistent_context; fall back to non-persistent
         use_persistent_profile = False
 
     launch_opts = {"headless": headless}
     if launch_kwargs:
         launch_opts.update(launch_kwargs)
 
-    # 🔧 自动配置 Chrome 可执行文件路径（支持相对路径）
-    # 优先使用配置文件中的 LOCAL_CHROME_PATH
     if "executable_path" not in launch_opts:
-        try:
-            from config.conf import LOCAL_CHROME_PATH, BASE_DIR
-            if LOCAL_CHROME_PATH:
-                chrome_path = Path(str(LOCAL_CHROME_PATH))
-
-                # 如果是相对路径，从项目根目录解析
-                if not chrome_path.is_absolute():
-                    chrome_path = Path(BASE_DIR) / chrome_path
-
-                if chrome_path.is_file():
-                    launch_opts["executable_path"] = str(chrome_path.resolve())
-                    logger.info(f"[playwright] Using LOCAL_CHROME_PATH: {chrome_path}")
-                else:
-                    logger.warning(f"[playwright] LOCAL_CHROME_PATH not found: {LOCAL_CHROME_PATH}")
-            else:
-                logger.debug("[playwright] LOCAL_CHROME_PATH not set, using default Chromium")
-        except Exception as e:
-            logger.warning(f"[playwright] Failed to load LOCAL_CHROME_PATH: {e}")
+        chrome_path = _resolve_local_chrome_path()
+        if chrome_path:
+            launch_opts["executable_path"] = chrome_path
+            logger.info(f"[playwright] Using local chrome executable: {chrome_path}")
+        else:
+            logger.debug("[playwright] No local chrome executable detected, using runtime default browser")
 
     proxy = resolve_proxy(policy)
     if proxy:
@@ -86,7 +156,8 @@ async def create_context_with_policy(
             from myUtils.device_fingerprint import device_fingerprint_manager
 
             fingerprint = device_fingerprint_manager.get_or_create_fingerprint(
-                account_id=account_id, user_id=user_id,
+                account_id=account_id,
+                user_id=user_id,
                 platform=platform,
                 policy=policy,
             )
@@ -113,7 +184,9 @@ async def create_context_with_policy(
                 custom_manager = persistent_browser_manager
 
         user_data_dir = custom_manager.get_user_data_dir(account_id, platform, user_id=user_id)
-        context = await playwright.chromium.launch_persistent_context(str(user_data_dir), **context_opts, **launch_opts)
+        context = await playwright.chromium.launch_persistent_context(
+            str(user_data_dir), **context_opts, **launch_opts
+        )
         try:
             browser = context.browser()
         except Exception:
