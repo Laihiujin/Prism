@@ -96,7 +96,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller psutil playwright
+          python -m pip install pyinstaller psutil playwright patchright
 
       - name: Build packaged backend service executables
         shell: pwsh
@@ -169,7 +169,9 @@ jobs:
             }
           }
 
-          $chromeExe = Get-ChildItem -Path (Join-Path $resourcesDir "browsers") -Filter chrome.exe -Recurse |
+          $allChrome = Get-ChildItem -Path (Join-Path $resourcesDir "browsers") -Filter chrome.exe -Recurse
+          $allChrome | ForEach-Object { "packaged_chrome=$($_.FullName)" >> $env:GITHUB_STEP_SUMMARY }
+          $chromeExe = $allChrome |
             Where-Object { $_.FullName -match "\\hibbiki-[^\\]+\\Chrome-bin\\chrome\.exe$" } |
             Select-Object -First 1
           if (-not $chromeExe) {
@@ -178,6 +180,8 @@ jobs:
 
           $playwrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\playwright\driver\node.exe"
           $patchrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\patchright\driver\node.exe"
+          Get-ChildItem -Path (Join-Path $resourcesDir "services\playwright-worker") -Filter node.exe -Recurse |
+            ForEach-Object { "packaged_driver_node=$($_.FullName)" >> $env:GITHUB_STEP_SUMMARY }
           foreach ($requiredNode in @($playwrightNode, $patchrightNode)) {
             if (-not (Test-Path $requiredNode)) {
               throw "Missing packaged Playwright driver node runtime: $requiredNode"
