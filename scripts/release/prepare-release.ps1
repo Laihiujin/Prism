@@ -1,8 +1,8 @@
-$ErrorActionPreference = "Stop"
-
 param(
     [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 )
+
+$ErrorActionPreference = "Stop"
 
 function Remove-IfExists {
     param(
