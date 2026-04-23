@@ -58,8 +58,53 @@ def ensure_analytics_schema(db_path: Path):
                 FOREIGN KEY (video_analytics_id) REFERENCES video_analytics(id)
             )
         """)
-        
-        # Create indexes
+
+        def ensure_columns(table_name: str, columns: Dict[str, str]) -> None:
+            existing = {
+                row[1]
+                for row in cursor.execute(f"PRAGMA table_info({table_name})").fetchall()
+            }
+            for column_name, column_sql in columns.items():
+                if column_name not in existing:
+                    cursor.execute(
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}"
+                    )
+
+        ensure_columns(
+            "video_analytics",
+            {
+                "task_id": "INTEGER",
+                "account_id": "INTEGER",
+                "platform": "VARCHAR(20) NOT NULL DEFAULT ''",
+                "video_id": "VARCHAR(100)",
+                "video_url": "TEXT",
+                "title": "VARCHAR(500)",
+                "thumbnail": "TEXT",
+                "publish_date": "DATE",
+                "play_count": "INTEGER DEFAULT 0",
+                "like_count": "INTEGER DEFAULT 0",
+                "comment_count": "INTEGER DEFAULT 0",
+                "collect_count": "INTEGER DEFAULT 0",
+                "share_count": "INTEGER DEFAULT 0",
+                "last_updated": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+                "match_confidence": "FLOAT",
+                "raw_data": "TEXT",
+            },
+        )
+        ensure_columns(
+            "analytics_history",
+            {
+                "video_analytics_id": "INTEGER",
+                "play_count": "INTEGER DEFAULT 0",
+                "like_count": "INTEGER DEFAULT 0",
+                "comment_count": "INTEGER DEFAULT 0",
+                "collect_count": "INTEGER DEFAULT 0",
+                "share_count": "INTEGER DEFAULT 0",
+                "recorded_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            },
+        )
+
+        # Create indexes after schema migration.
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_video_analytics_platform ON video_analytics(platform)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_video_analytics_publish_date ON video_analytics(publish_date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_history_video_id ON analytics_history(video_analytics_id)")
