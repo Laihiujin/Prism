@@ -139,6 +139,9 @@ function Sync-PlaywrightDriverNode {
     Select-Object -First 1
 
   if (-not $patchrightNode) {
+    if ($TargetName -eq "playwright-worker") {
+      throw "Missing patchright driver node.exe in packaged $TargetName. Ensure patchright is installed before PyInstaller runs."
+    }
     return
   }
 
@@ -147,6 +150,10 @@ function Sync-PlaywrightDriverNode {
   $playwrightNode = Join-Path $playwrightDriverDir "node.exe"
   Copy-Item -LiteralPath $patchrightNode.FullName -Destination $playwrightNode -Force
   Write-Host "Mirrored patchright driver node.exe to $playwrightNode"
+
+  if ($TargetName -eq "playwright-worker" -and -not (Test-Path $playwrightNode)) {
+    throw "Failed to mirror patchright driver node.exe to $playwrightNode"
+  }
 }
 
 foreach ($target in $targets) {
