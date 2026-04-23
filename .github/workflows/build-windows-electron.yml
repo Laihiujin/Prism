@@ -58,6 +58,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Sanitize release workspace
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\release\prepare-release.ps1 -ProjectRoot $env:GITHUB_WORKSPACE
+
       - name: Resolve build metadata
         id: meta
         shell: pwsh
@@ -131,11 +136,6 @@ jobs:
             throw "Missing supervisor executable: $supervisorExe"
           }
           Copy-Item -LiteralPath $supervisorExe -Destination (Join-Path $env:GITHUB_WORKSPACE "desktop-electron\resources\supervisor\supervisor.exe") -Force
-
-      - name: Sanitize release workspace
-        shell: pwsh
-        run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\release\prepare-release.ps1 -ProjectRoot $env:GITHUB_WORKSPACE
 
       - name: Build unpacked Electron app
         shell: pwsh
