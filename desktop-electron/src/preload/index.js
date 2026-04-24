@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     restartBackend: () => ipcRenderer.invoke('system:restart-backend'),
     restartAll: () => ipcRenderer.invoke('system:restart-all'),
     stopAll: () => ipcRenderer.invoke('system:stop-all'),
+    quitApp: () => ipcRenderer.invoke('system:quit-app'),
     getStatus: () => ipcRenderer.invoke('system:get-status'),
     clearVideoData: (options) => ipcRenderer.invoke('system:clear-video-data', options)
   },
