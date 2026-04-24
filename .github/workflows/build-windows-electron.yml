@@ -82,6 +82,9 @@ jobs:
       - name: Build frontend standalone bundle
         shell: pwsh
         run: |
+          $env:SYN_BACKEND_URL = "http://127.0.0.1:7000"
+          $env:NEXT_PUBLIC_SYN_BACKEND_URL = "http://127.0.0.1:7000"
+          $env:NEXT_PUBLIC_BACKEND_URL = "http://127.0.0.1:7000"
           npm --prefix .\syn_frontend_react run build
           $serverJs = Join-Path $env:GITHUB_WORKSPACE "syn_frontend_react\.next\standalone\server.js"
           if (-not (Test-Path $serverJs)) {

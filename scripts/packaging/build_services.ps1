@@ -79,41 +79,85 @@ $common = @(
   "--onedir",
   "--hidden-import", "zoneinfo",
   "--hidden-import", "_zoneinfo",
-  "--hidden-import", "fastapi.middleware",
-  "--hidden-import", "fastapi.middleware.cors",
-  "--hidden-import", "celery.fixups",
-  "--collect-submodules", "http",
-  "--collect-submodules", "email",
-  "--collect-submodules", "fastapi",
-  "--collect-submodules", "starlette",
-  "--collect-submodules", "celery",
-  "--collect-submodules", "kombu",
-  "--collect-submodules", "billiard",
-  "--collect-submodules", "vine",
-  "--collect-submodules", "amqp",
-  "--collect-submodules", "fastapi_app",
-  "--collect-submodules", "app_new",
-  "--collect-submodules", "playwright_worker",
-  "--collect-submodules", "utils",
-  "--collect-submodules", "crawlers",
-  "--collect-all", "fastapi",
-  "--collect-all", "starlette",
-  "--collect-all", "uvicorn",
-  "--collect-all", "celery",
-  "--collect-all", "kombu",
-  "--collect-all", "billiard",
-  "--collect-all", "patchright",
-  "--collect-all", "playwright",
-  "--collect-all", "pydantic",
-  "--collect-all", "pydantic_core",
-  "--collect-all", "pydantic_settings",
-  "--collect-all", "rich",
   "--paths", (Join-Path $root "syn_backend"),
   "--paths", (Join-Path $root "syn_backend\douyin_tiktok_api"),
   "--distpath", $dist,
   "--workpath", $build,
   "--specpath", $spec
 )
+
+$targetOptions = @{
+  "backend" = @(
+    "--hidden-import", "fastapi.middleware",
+    "--hidden-import", "fastapi.middleware.cors",
+    "--hidden-import", "celery.fixups",
+    "--collect-submodules", "http",
+    "--collect-submodules", "email",
+    "--collect-submodules", "fastapi",
+    "--collect-submodules", "starlette",
+    "--collect-submodules", "celery",
+    "--collect-submodules", "kombu",
+    "--collect-submodules", "billiard",
+    "--collect-submodules", "vine",
+    "--collect-submodules", "amqp",
+    "--collect-submodules", "fastapi_app",
+    "--collect-submodules", "app_new",
+    "--collect-submodules", "playwright_worker",
+    "--collect-submodules", "utils",
+    "--collect-submodules", "crawlers",
+    "--collect-all", "fastapi",
+    "--collect-all", "starlette",
+    "--collect-all", "uvicorn",
+    "--collect-all", "celery",
+    "--collect-all", "kombu",
+    "--collect-all", "billiard",
+    "--collect-all", "patchright",
+    "--collect-all", "playwright",
+    "--collect-all", "pydantic",
+    "--collect-all", "pydantic_core",
+    "--collect-all", "pydantic_settings",
+    "--collect-all", "rich"
+  )
+  "celery-worker" = @(
+    "--hidden-import", "celery.fixups",
+    "--collect-submodules", "celery",
+    "--collect-submodules", "kombu",
+    "--collect-submodules", "billiard",
+    "--collect-submodules", "vine",
+    "--collect-submodules", "amqp",
+    "--collect-submodules", "fastapi_app.tasks",
+    "--collect-submodules", "utils",
+    "--collect-all", "celery",
+    "--collect-all", "kombu",
+    "--collect-all", "billiard",
+    "--collect-all", "vine",
+    "--collect-all", "amqp",
+    "--collect-all", "pydantic",
+    "--collect-all", "pydantic_core"
+  )
+  "playwright-worker" = @(
+    "--hidden-import", "fastapi.middleware",
+    "--hidden-import", "fastapi.middleware.cors",
+    "--collect-submodules", "http",
+    "--collect-submodules", "email",
+    "--collect-submodules", "fastapi",
+    "--collect-submodules", "starlette",
+    "--collect-submodules", "fastapi_app",
+    "--collect-submodules", "app_new",
+    "--collect-submodules", "playwright_worker",
+    "--collect-submodules", "utils",
+    "--collect-submodules", "crawlers",
+    "--collect-all", "fastapi",
+    "--collect-all", "starlette",
+    "--collect-all", "uvicorn",
+    "--collect-all", "patchright",
+    "--collect-all", "playwright",
+    "--collect-all", "pydantic",
+    "--collect-all", "pydantic_core",
+    "--collect-all", "pydantic_settings",
+    "--collect-all", "rich"
+  )
+}
 
 $targets = @("backend", "celery-worker", "playwright-worker")
 if ($env:PACKAGING_TARGETS) {
@@ -161,7 +205,12 @@ foreach ($target in $targets) {
     Write-Error "Unsupported packaging target: $target"
     exit 1
   }
-  & $python -m PyInstaller @common @runtimeDllArgs --name $target $entryScripts[$target]
+  $targetArgs = $targetOptions[$target]
+  if (-not $targetArgs) {
+    Write-Error "Missing PyInstaller option set for target: $target"
+    exit 1
+  }
+  & $python -m PyInstaller @common @targetArgs @runtimeDllArgs --name $target $entryScripts[$target]
   if ($LASTEXITCODE -ne 0) {
     Write-Error "PyInstaller build failed for target: $target"
     exit $LASTEXITCODE
