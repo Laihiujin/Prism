@@ -1,10 +1,27 @@
 import type { NextConfig } from "next"
 
-const resolvedBackendUrl =
+function normalizeBackendUrl(raw: string): string {
+  const fallback = "http://127.0.0.1:7000"
+  const trimmed = (raw || "").trim().replace(/\/+$/, "")
+  const candidate = trimmed || fallback
+
+  try {
+    const url = new URL(candidate)
+    if (url.hostname === "localhost") {
+      url.hostname = "127.0.0.1"
+    }
+    return url.toString().replace(/\/+$/, "")
+  } catch {
+    return fallback
+  }
+}
+
+const resolvedBackendUrl = normalizeBackendUrl(
   process.env.SYN_BACKEND_URL ||
-  process.env.NEXT_PUBLIC_SYN_BACKEND_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "http://localhost:7000"  // FastAPI 端口
+    process.env.NEXT_PUBLIC_SYN_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "http://127.0.0.1:7000"
+)
 
 const backendUrl = new URL(resolvedBackendUrl)
 const backendPattern: { protocol: "http" | "https"; hostname: string; port?: string; pathname?: string } = {
@@ -23,7 +40,7 @@ const localhostPatterns: Array<{ protocol: "http" | "https"; hostname: string; p
 const nextConfig: NextConfig = {
   output: "standalone",
   typescript: {
-    // 跳过类型检查以加快构建速度 (在生产中应该移除)
+    // Skip type-checking during desktop packaging builds.
     ignoreBuildErrors: true,
   },
   turbopack: {
@@ -105,7 +122,6 @@ const nextConfig: NextConfig = {
         source: "/api/chat",
         destination: `${resolvedBackendUrl}/api/v1/ai/chat`,
       },
-      // Frontend code frequently calls `/api/v1/...` directly; avoid double-prefixing to `/api/v1/v1/...`.
       {
         source: "/api/v1/:path*",
         destination: `${resolvedBackendUrl}/api/v1/:path*`,
