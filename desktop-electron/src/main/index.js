@@ -1,31 +1,33 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+﻿const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
 const path = require('path');
 const { spawn, execSync } = require('child_process');
 const net = require('net');
 const log = require('electron-log');
 const fs = require('fs');
 
-// 配置日志
+// 閰嶇疆鏃ュ織
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
 
-// 单实例锁定 - 防止多次启动
+// 鍗曞疄渚嬮攣瀹?- 闃叉澶氭鍚姩
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  console.log('⚠️ 应用已在运行中，退出此实例');
-  log.info('⚠️ 应用已在运行中，退出此实例');
+  console.log('鈿狅笍 搴旂敤宸插湪杩愯涓紝閫€鍑烘瀹炰緥');
+  log.info('鈿狅笍 搴旂敤宸插湪杩愯涓紝閫€鍑烘瀹炰緥');
   app.quit();
   process.exit(0);
 }
 
-// 添加控制台输出以便调试
+// 娣诲姞鎺у埗鍙拌緭鍑轰互渚胯皟璇?
 console.log('=== Electron Main Process Starting ===');
 console.log('Log file path:', log.transports.file.getFile().path);
 
 class SynapseApp {
   constructor() {
     this.mainWindow = null;
+    this.launcherWindow = null;
+    this.settingsWindow = null;
     this.backendProcess = null;
     this.celeryProcess = null;
     this.redisProcess = null;
@@ -36,86 +38,89 @@ class SynapseApp {
     this.visualBrowserWindows = new Map();
     this.servicesStarted = false;
     this.appIconPath = null;
+    this.tray = null;
+    this.isQuitting = false;
   }
 
   async initialize() {
-    console.log('🚀 SynapseAutomation 启动中...');
-    log.info('🚀 SynapseAutomation 启动中...');
+    console.log('馃殌 SynapseAutomation 鍚姩涓?..');
+    log.info('馃殌 SynapseAutomation 鍚姩涓?..');
 
-    // 等待 Electron 准备就绪
+    // 绛夊緟 Electron 鍑嗗灏辩华
     await app.whenReady();
 
-    // 检查是否存在打包后的 supervisor.exe 来判断是否为生产环境
+    // 妫€鏌ユ槸鍚﹀瓨鍦ㄦ墦鍖呭悗鐨?supervisor.exe 鏉ュ垽鏂槸鍚︿负鐢熶骇鐜
     const supervisorExePath = path.join(process.resourcesPath, 'supervisor', 'supervisor.exe');
     const supervisorExists = fs.existsSync(supervisorExePath);
     this.isDev = !app.isPackaged;
     this.repoRoot = path.join(__dirname, '../../../');
     this.appIconPath = this.getAppIconPath();
+    this.setupTray();
 
-    console.log('📍 App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged);
-    console.log('📍 resourcesPath:', process.resourcesPath);
-    console.log('📍 supervisor.exe exists:', supervisorExists, 'at:', supervisorExePath);
-    log.info('📍 App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged);
-    log.info('📍 resourcesPath:', process.resourcesPath);
-    log.info('📍 supervisor.exe exists:', supervisorExists);
+    console.log('馃搷 App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged);
+    console.log('馃搷 resourcesPath:', process.resourcesPath);
+    console.log('馃搷 supervisor.exe exists:', supervisorExists, 'at:', supervisorExePath);
+    log.info('馃搷 App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged);
+    log.info('馃搷 resourcesPath:', process.resourcesPath);
+    log.info('馃搷 supervisor.exe exists:', supervisorExists);
 
-    // 1. 设置 Playwright 浏览器路径
+    // 1. 璁剧疆 Playwright 娴忚鍣ㄨ矾寰?
     this.setupPlaywrightPath();
 
-    // 2. 启动后端/前端服务（生产默认启动，开发可用 SYNAPSE_START_SERVICES=1 强制）
+    // 2. 鍚姩鍚庣/鍓嶇鏈嶅姟锛堢敓浜ч粯璁ゅ惎鍔紝寮€鍙戝彲鐢?SYNAPSE_START_SERVICES=1 寮哄埗锛?
     const shouldStartServices = process.env.SYNAPSE_START_SERVICES === '1' || !this.isDev;
-    const showLauncher = process.env.SYNAPSE_SHOW_LAUNCHER === '1'; // 是否显示启动管理器
-    console.log('📍 Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
-    console.log('📍 Show launcher:', showLauncher);
-    log.info('📍 Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
-    log.info('📍 Show launcher:', showLauncher);
+    const showLauncher = process.env.SYNAPSE_SHOW_LAUNCHER === '1'; // 鏄惁鏄剧ず鍚姩绠＄悊鍣?
+    console.log('馃搷 Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
+    console.log('馃搷 Show launcher:', showLauncher);
+    log.info('馃搷 Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
+    log.info('馃搷 Show launcher:', showLauncher);
 
     if (shouldStartServices) {
-      console.log('🔧 Starting services...');
-      log.info('🔧 Starting services...');
+      console.log('馃敡 Starting services...');
+      log.info('馃敡 Starting services...');
       await this.startServices();
-      console.log('✅ Services started');
-      log.info('✅ Services started');
+      console.log('鉁?Services started');
+      log.info('鉁?Services started');
     }
 
-    // 3. 创建窗口（如果启用启动管理器，则显示启动管理器；否则创建主窗口）
+    // 3. 鍒涘缓绐楀彛锛堝鏋滃惎鐢ㄥ惎鍔ㄧ鐞嗗櫒锛屽垯鏄剧ず鍚姩绠＄悊鍣紱鍚﹀垯鍒涘缓涓荤獥鍙ｏ級
     if (showLauncher) {
       this.createLauncherWindow();
     } else {
       this.createMainWindow();
     }
 
-    // 4. 设置 IPC 处理
+    // 4. 璁剧疆 IPC 澶勭悊
     this.setupIPC();
 
-    // 5. 设置应用事件
+    // 5. 璁剧疆搴旂敤浜嬩欢
     this.setupAppEvents();
 
-    log.info('✅ SynapseAutomation 启动完成');
+    log.info('鉁?SynapseAutomation 鍚姩瀹屾垚');
   }
 
   setupPlaywrightPath() {
-    // 获取打包后的资源路径
+    // 鑾峰彇鎵撳寘鍚庣殑璧勬簮璺緞
     const isDev = this.isDev;
 
     if (isDev) {
-      // 开发环境：使用项目根目录的浏览器
+      // 寮€鍙戠幆澧冿細浣跨敤椤圭洰鏍圭洰褰曠殑娴忚鍣?
       this.playwrightBrowserPath = path.join(__dirname, '../../../browsers');
-      log.info('🔧 开发模式 - 浏览器路径:', this.playwrightBrowserPath);
+      log.info('馃敡 寮€鍙戞ā寮?- 娴忚鍣ㄨ矾寰?', this.playwrightBrowserPath);
     } else {
-      // 生产环境：使用打包后的浏览器
+      // 鐢熶骇鐜锛氫娇鐢ㄦ墦鍖呭悗鐨勬祻瑙堝櫒
       this.playwrightBrowserPath = path.join(process.resourcesPath, 'browsers');
-      log.info('📦 生产模式 - 浏览器路径:', this.playwrightBrowserPath);
+      log.info('馃摝 鐢熶骇妯″紡 - 娴忚鍣ㄨ矾寰?', this.playwrightBrowserPath);
     }
 
-    // 设置环境变量，让 Playwright 使用指定的浏览器
+    // 璁剧疆鐜鍙橀噺锛岃 Playwright 浣跨敤鎸囧畾鐨勬祻瑙堝櫒
     process.env.PLAYWRIGHT_BROWSERS_PATH = this.playwrightBrowserPath;
 
-    // 验证浏览器是否存在
+    // 楠岃瘉娴忚鍣ㄦ槸鍚﹀瓨鍦?
     if (fs.existsSync(this.playwrightBrowserPath)) {
-      log.info('✅ Playwright 浏览器路径已设置');
+      log.info('鉁?Playwright 娴忚鍣ㄨ矾寰勫凡璁剧疆');
     } else {
-      log.warn('⚠️ Playwright 浏览器路径不存在，自动化功能可能无法使用');
+      log.warn('鈿狅笍 Playwright 娴忚鍣ㄨ矾寰勪笉瀛樺湪锛岃嚜鍔ㄥ寲鍔熻兘鍙兘鏃犳硶浣跨敤');
     }
   }
 
@@ -235,6 +240,131 @@ class SynapseApp {
     ]);
   }
 
+  setupTray() {
+    if (this.tray || !this.appIconPath) {
+      return;
+    }
+
+    this.tray = new Tray(this.appIconPath);
+    this.tray.setToolTip('SynapseAutomation');
+    this.refreshTrayMenu();
+
+    this.tray.on('click', () => {
+      this.showMainWindow();
+    });
+
+    this.tray.on('double-click', () => {
+      this.showMainWindow();
+    });
+  }
+
+  refreshTrayMenu() {
+    if (!this.tray) {
+      return;
+    }
+
+    this.tray.setContextMenu(Menu.buildFromTemplate([
+      {
+        label: 'Open main window',
+        click: () => this.showMainWindow()
+      },
+      {
+        label: 'Open settings',
+        click: () => this.createSettingsWindow()
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit and stop all processes',
+        click: () => {
+          void this.quitApplication();
+        }
+      }
+    ]));
+  }
+
+  showMainWindow() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      this.createMainWindow();
+      return;
+    }
+
+    if (this.mainWindow.isMinimized()) {
+      this.mainWindow.restore();
+    }
+
+    this.mainWindow.show();
+    this.mainWindow.focus();
+  }
+
+  async requestSupervisor(pathname, method = 'GET') {
+    const http = require('http');
+
+    return new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: 7002,
+        path: pathname,
+        method
+      }, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            resolve(data ? JSON.parse(data) : {});
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.setTimeout(5000, () => {
+        req.destroy();
+        reject(new Error(`Supervisor request timeout: ${pathname}`));
+      });
+      req.end();
+    });
+  }
+
+  async stopManagedServices() {
+    if (this.supervisorProcess && !this.supervisorProcess.killed) {
+      try {
+        await this.requestSupervisor('/api/stop', 'POST');
+      } catch (error) {
+        log.warn('Failed to stop managed services via supervisor API:', error);
+      }
+    }
+
+    this.cleanup();
+  }
+
+  async quitApplication() {
+    if (this.isQuitting) {
+      return { success: true };
+    }
+
+    this.isQuitting = true;
+    log.info('Quitting application and stopping all processes...');
+
+    try {
+      await this.stopManagedServices();
+      if (this.tray) {
+        this.tray.destroy();
+        this.tray = null;
+      }
+      app.quit();
+      return { success: true };
+    } catch (error) {
+      this.isQuitting = false;
+      log.error('Failed to quit application cleanly:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   getServiceExe(name) {
     if (this.isDev) {
       return null;
@@ -248,7 +378,7 @@ class SynapseApp {
 
   buildServiceEnv() {
     const browsersRoot = this.getBrowsersRoot();
-    log.info('🔍 构建服务环境变量...');
+    log.info('馃攳 鏋勫缓鏈嶅姟鐜鍙橀噺...');
     log.info('  - Browsers Root:', browsersRoot);
     log.info('  - Browsers Root exists:', fs.existsSync(browsersRoot));
 
@@ -307,7 +437,7 @@ class SynapseApp {
       log.warn('  - Firefox Path: NOT FOUND');
     }
 
-    log.info('✅ 服务环境变量已构建');
+    log.info('Service environment prepared');
     return env;
   }
 
@@ -338,18 +468,18 @@ class SynapseApp {
       return;
     }
 
-    // 在生产环境使用 supervisor 统一管理所有后端服务
+    // 鍦ㄧ敓浜х幆澧冧娇鐢?supervisor 缁熶竴绠＄悊鎵€鏈夊悗绔湇鍔?
     if (!this.isDev) {
-      console.log('🔧 Using supervisor to manage backend services...');
-      log.info('🔧 Using supervisor to manage backend services...');
-      // 生产环境下，supervisor 会自己启动 Redis，我们不需要单独启动
+      console.log('馃敡 Using supervisor to manage backend services...');
+      log.info('馃敡 Using supervisor to manage backend services...');
+      // 鐢熶骇鐜涓嬶紝supervisor 浼氳嚜宸卞惎鍔?Redis锛屾垜浠笉闇€瑕佸崟鐙惎鍔?
       this.startSupervisor();
-      await this.startFrontend(this.buildServiceEnv());  // 生产环境也需要启动前端
+      await this.startFrontend(this.buildServiceEnv());  // 鐢熶骇鐜涔熼渶瑕佸惎鍔ㄥ墠绔?
       this.servicesStarted = true;
       return;
     }
 
-    // 开发环境：分别启动各个服务
+    // 寮€鍙戠幆澧冿細鍒嗗埆鍚姩鍚勪釜鏈嶅姟
     const env = this.buildServiceEnv();
     await this.startRedis(env);
     await this.startPlaywrightWorker(env);
@@ -370,23 +500,23 @@ class SynapseApp {
     const supervisorScript = path.join(process.resourcesPath, 'supervisor', 'supervisor.py');
     const pythonPath = this.getPythonPath();
 
-    console.log('📍 Supervisor exe:', supervisorExe);
-    console.log('📍 Supervisor script:', supervisorScript);
-    log.info('🚀 Starting Supervisor...');
+    console.log('馃搷 Supervisor exe:', supervisorExe);
+    console.log('馃搷 Supervisor script:', supervisorScript);
+    log.info('馃殌 Starting Supervisor...');
     log.info('  - Supervisor exe:', supervisorExe);
     log.info('  - Supervisor script:', supervisorScript);
     log.info('  - Exe exists:', fs.existsSync(supervisorExe));
     log.info('  - Script exists:', fs.existsSync(supervisorScript));
 
-    // 优先使用 exe，如果不存在则用 Python 脚本
+    // 浼樺厛浣跨敤 exe锛屽鏋滀笉瀛樺湪鍒欑敤 Python 鑴氭湰
     const launchCmd = fs.existsSync(supervisorExe) ? supervisorExe : pythonPath;
     const launchArgs = fs.existsSync(supervisorExe) ? [] : [supervisorScript];
 
-    console.log('📍 Launch command:', launchCmd, launchArgs);
+    console.log('馃搷 Launch command:', launchCmd, launchArgs);
     log.info('  - Launch Command:', launchCmd);
     log.info('  - Launch Args:', launchArgs);
 
-    // 构建环境变量
+    // 鏋勫缓鐜鍙橀噺
     const env = this.buildServiceEnv();
 
     this.supervisorProcess = spawn(launchCmd, launchArgs, {
@@ -396,8 +526,8 @@ class SynapseApp {
     });
 
     this.supervisorProcess.on('error', (error) => {
-      console.error('❌ Supervisor failed to start:', error);
-      log.error('❌ Supervisor failed to start:', error);
+      console.error('鉂?Supervisor failed to start:', error);
+      log.error('鉂?Supervisor failed to start:', error);
     });
 
     this.supervisorProcess.stdout?.on('data', (data) => {
@@ -411,13 +541,13 @@ class SynapseApp {
     });
 
     this.supervisorProcess.on('exit', (code) => {
-      console.warn(`⚠️ Supervisor exited with code: ${code}`);
-      log.warn(`⚠️ Supervisor 退出，退出码: ${code}`);
+      console.warn(`鈿狅笍 Supervisor exited with code: ${code}`);
+      log.warn(`鈿狅笍 Supervisor 閫€鍑猴紝閫€鍑虹爜: ${code}`);
       this.supervisorProcess = null;
     });
 
-    console.log('✅ Supervisor started');
-    log.info('✅ Supervisor started');
+    console.log('鉁?Supervisor started');
+    log.info('鉁?Supervisor started');
   }
 
   async startRedis(env) {
@@ -428,7 +558,7 @@ class SynapseApp {
       ? (process.env.SYNAPSE_REDIS_PATH || 'redis-server')
       : path.join(process.resourcesPath, 'redis', 'redis-server.exe');
 
-    log.info('🧩 启动 Redis...');
+    log.info('馃З 鍚姩 Redis...');
     log.info('  - Redis Path:', redisPath);
     log.info('  - Redis exists:', fs.existsSync(redisPath));
     log.info('  - Is Dev:', this.isDev);
@@ -439,7 +569,7 @@ class SynapseApp {
     }
 
     if (!this.isDev && !fs.existsSync(redisPath)) {
-      log.error(`❌ Redis 未找到: ${redisPath}`);
+      log.error(`鉂?Redis 鏈壘鍒? ${redisPath}`);
       return;
     }
     this.redisProcess = spawn(redisPath, [], {
@@ -454,7 +584,7 @@ class SynapseApp {
     this.redisProcess.stdout?.on('data', (data) => log.info('[Redis]', data.toString()));
     this.redisProcess.stderr?.on('data', (data) => log.error('[Redis Error]', data.toString()));
     this.redisProcess.on('exit', (code) => {
-      log.warn(`⚠️ Redis 退出，退出码: ${code}`);
+      log.warn(`鈿狅笍 Redis 閫€鍑猴紝閫€鍑虹爜: ${code}`);
     });
   }
 
@@ -470,14 +600,14 @@ class SynapseApp {
     const workerExe = this.getServiceExe('playwright-worker');
     const workerScript = path.join(backendDir, 'playwright_worker', 'worker.py');
 
-    log.info('🧩 启动 Playwright Worker...');
+    log.info('馃З 鍚姩 Playwright Worker...');
     log.info('  - Backend Dir:', backendDir);
     log.info('  - Worker Exe:', workerExe || 'N/A');
     log.info('  - Worker Script:', workerScript);
     log.info('  - Script exists:', fs.existsSync(workerScript));
 
     if (!workerExe && !fs.existsSync(workerScript)) {
-      log.error(`❌ Playwright Worker 未找到: ${workerScript}`);
+      log.error(`鉂?Playwright Worker 鏈壘鍒? ${workerScript}`);
       return;
     }
     const pythonPath = this.getPythonPath();
@@ -495,7 +625,7 @@ class SynapseApp {
     this.playwrightWorkerProcess.stdout?.on('data', (data) => log.info('[Worker]', data.toString()));
     this.playwrightWorkerProcess.stderr?.on('data', (data) => log.error('[Worker Error]', data.toString()));
     this.playwrightWorkerProcess.on('exit', (code) => {
-      log.warn(`⚠️ Playwright Worker 退出，退出码: ${code}`);
+      log.warn(`鈿狅笍 Playwright Worker 閫€鍑猴紝閫€鍑虹爜: ${code}`);
     });
   }
 
@@ -507,7 +637,7 @@ class SynapseApp {
     const celeryExe = this.getServiceExe('celery-worker');
     const pythonPath = this.getPythonPath();
 
-    log.info('🧩 启动 Celery Worker...');
+    log.info('馃З 鍚姩 Celery Worker...');
     log.info('  - Backend Dir:', backendDir);
     log.info('  - Celery Exe:', celeryExe || 'N/A');
     log.info('  - Python Path:', pythonPath);
@@ -569,7 +699,7 @@ class SynapseApp {
     this.celeryProcess.stdout?.on('data', (data) => log.info('[Celery]', data.toString()));
     this.celeryProcess.stderr?.on('data', (data) => log.error('[Celery Error]', data.toString()));
     this.celeryProcess.on('exit', (code) => {
-      log.warn(`⚠️ Celery 退出，退出码: ${code}`);
+      log.warn(`鈿狅笍 Celery 閫€鍑猴紝閫€鍑虹爜: ${code}`);
     });
   }
 
@@ -677,7 +807,7 @@ class SynapseApp {
     const pythonPath = this.getPythonPath();
     const mainScript = path.join(backendDir, 'fastapi_app', 'run.py');
 
-    log.info('🔄 启动 FastAPI 后端...');
+    log.info('馃攧 鍚姩 FastAPI 鍚庣...');
     log.info('  - Backend Dir:', backendDir);
     log.info('  - Backend Dir exists:', fs.existsSync(backendDir));
     log.info('  - Backend Exe:', backendExe || 'N/A');
@@ -688,7 +818,7 @@ class SynapseApp {
 
     return new Promise((resolve, reject) => {
       if (!backendExe && !fs.existsSync(mainScript)) {
-        log.error(`❌ FastAPI 脚本未找到: ${mainScript}`);
+        log.error(`鉂?FastAPI 鑴氭湰鏈壘鍒? ${mainScript}`);
         resolve();
         return;
       }
@@ -712,7 +842,7 @@ class SynapseApp {
         const output = data.toString();
         log.info('[Backend]', output);
         if (output.includes('Uvicorn running') || output.includes('Application startup complete')) {
-          log.info('✅ FastAPI 后端启动成功');
+          log.info('鉁?FastAPI 鍚庣鍚姩鎴愬姛');
           resolve();
         }
       });
@@ -722,23 +852,23 @@ class SynapseApp {
       });
 
       this.backendProcess.on('error', (error) => {
-        log.error('❌ 后端进程启动失败:', error);
+        log.error('鉂?鍚庣杩涚▼鍚姩澶辫触:', error);
         reject(error);
       });
 
       this.backendProcess.on('exit', (code) => {
-        log.warn(`⚠️ 后端进程退出，退出码: ${code}`);
+        log.warn(`鈿狅笍 鍚庣杩涚▼閫€鍑猴紝閫€鍑虹爜: ${code}`);
       });
 
       setTimeout(() => {
-        log.warn('⚠️ 后端启动超时，继续启动应用');
+        log.warn('Backend startup timed out; continuing app launch');
         resolve();
       }, 10000);
     });
   }
 
   createLauncherWindow() {
-    log.info('🚀 创建启动管理器窗口...');
+    log.info('馃殌 鍒涘缓鍚姩绠＄悊鍣ㄧ獥鍙?..');
 
     this.launcherWindow = new BrowserWindow({
       width: 800,
@@ -757,24 +887,24 @@ class SynapseApp {
       }
     });
 
-    // 加载启动管理器页面
+    // 鍔犺浇鍚姩绠＄悊鍣ㄩ〉闈?
     const launcherPath = path.join(__dirname, '../launcher/launcher.html');
-    log.info('📦 加载启动管理器:', launcherPath);
+    log.info('馃摝 鍔犺浇鍚姩绠＄悊鍣?', launcherPath);
     this.launcherWindow.loadFile(launcherPath);
 
-    // 窗口关闭事件
+    // 绐楀彛鍏抽棴浜嬩欢
     this.launcherWindow.on('closed', () => {
       this.launcherWindow = null;
-      log.info('🚀 启动管理器已关闭');
+      log.info('馃殌 鍚姩绠＄悊鍣ㄥ凡鍏抽棴');
     });
 
     this.launcherWindow.show();
   }
 
   createSettingsWindow() {
-    log.info('⚙️ 创建设置窗口...');
+    log.info('鈿欙笍 鍒涘缓璁剧疆绐楀彛...');
 
-    // 如果设置窗口已存在，直接显示
+    // 濡傛灉璁剧疆绐楀彛宸插瓨鍦紝鐩存帴鏄剧ず
     if (this.settingsWindow) {
       this.settingsWindow.show();
       this.settingsWindow.focus();
@@ -794,26 +924,26 @@ class SynapseApp {
         preload: path.join(__dirname, '../preload/index.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        webSecurity: false // 允许访问 localhost API
+        webSecurity: false // 鍏佽璁块棶 localhost API
       }
     });
 
-    // 加载设置页面
+    // 鍔犺浇璁剧疆椤甸潰
     const settingsPath = path.join(__dirname, '../settings/settings.html');
-    log.info('📦 加载设置页面:', settingsPath);
+    log.info('馃摝 鍔犺浇璁剧疆椤甸潰:', settingsPath);
     this.settingsWindow.loadFile(settingsPath);
 
-    // 窗口关闭事件
+    // 绐楀彛鍏抽棴浜嬩欢
     this.settingsWindow.on('closed', () => {
       this.settingsWindow = null;
-      log.info('⚙️ 设置窗口已关闭');
+      log.info('Settings window closed');
     });
 
     this.settingsWindow.show();
   }
 
   createMainWindow() {
-    log.info('🪟 创建主窗口...');
+    log.info('Creating main window...');
 
     this.mainWindow = new BrowserWindow({
       width: 1400,
@@ -834,43 +964,49 @@ class SynapseApp {
       }
     });
 
-    // 加载前端页面
-    // 始终加载本地 Shell 页面，由 Shell 页面负责加载 Web App (localhost:3000)
     const indexPath = path.join(__dirname, '../renderer/index.html');
-    log.info('📦 加载应用 Shell:', indexPath);
+    log.info('Loading app shell:', indexPath);
     this.mainWindow.loadFile(indexPath);
 
-    // 窗口准备好后显示
     this.mainWindow.once('ready-to-show', () => {
       this.mainWindow.show();
-      log.info('✅ 主窗口显示完成');
+      log.info('Main window is ready');
     });
 
-    // 窗口关闭事件
+    this.mainWindow.on('close', (event) => {
+      if (this.isQuitting) {
+        return;
+      }
+
+      event.preventDefault();
+      this.mainWindow.hide();
+      log.info('Main window hidden to tray');
+    });
+
     this.mainWindow.on('closed', () => {
       this.mainWindow = null;
-      log.info('🪟 主窗口已关闭');
+      log.info('Main window closed');
     });
   }
 
   setupIPC() {
-    log.info('🔗 设置 IPC 通信...');
+    log.info('馃敆 璁剧疆 IPC 閫氫俊...');
 
-    // 获取 Playwright 浏览器路径
+    // 鑾峰彇 Playwright 娴忚鍣ㄨ矾寰?
     ipcMain.handle('playwright:getBrowserPath', () => {
       return this.playwrightBrowserPath;
     });
 
-    // 创建可视化浏览器窗口（用于调试和预览）
+    // 鍒涘缓鍙鍖栨祻瑙堝櫒绐楀彛锛堢敤浜庤皟璇曞拰棰勮锛?
     ipcMain.handle('browser:createVisual', async (event, url, options = {}) => {
-      log.info('🌐 创建可视化浏览器窗口:', url);
+      log.info('馃寪 鍒涘缓鍙鍖栨祻瑙堝櫒绐楀彛:', url);
 
       const browserWindow = new BrowserWindow({
         width: options.width || 1200,
         height: options.height || 800,
         show: true,
         icon: this.appIconPath || undefined,
-        title: options.title || '浏览器预览',
+        title: options.title || 'Browser Preview',
         webPreferences: {
           contextIsolation: true,
           nodeIntegration: false,
@@ -890,7 +1026,7 @@ class SynapseApp {
       return windowId;
     });
 
-    // 关闭可视化浏览器窗口
+    // 鍏抽棴鍙鍖栨祻瑙堝櫒绐楀彛
     ipcMain.handle('browser:closeVisual', (event, windowId) => {
       const win = this.visualBrowserWindows.get(windowId);
       if (win && !win.isDestroyed()) {
@@ -900,7 +1036,7 @@ class SynapseApp {
       return false;
     });
 
-    // 获取应用信息
+    // 鑾峰彇搴旂敤淇℃伅
     ipcMain.handle('app:getInfo', () => {
       return {
         version: app.getVersion(),
@@ -911,14 +1047,14 @@ class SynapseApp {
       };
     });
 
-    // 设置 Session Cookies
+    // 璁剧疆 Session Cookies
     ipcMain.handle('session:setCookies', async (event, partition, cookies) => {
-      log.info(`🍪 为分区 ${partition} 设置 ${cookies.length} 个 Cookies`);
+      log.info(`馃崻 涓哄垎鍖?${partition} 璁剧疆 ${cookies.length} 涓?Cookies`);
       const { session } = require('electron');
       const sess = session.fromPartition(partition);
 
       const promises = cookies.map(cookie => {
-        // Playwright cookie 格式转 Electron cookie 格式
+        // Playwright cookie 鏍煎紡杞?Electron cookie 鏍煎紡
         const url = `${cookie.secure ? 'https' : 'http'}://${cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain}${cookie.path}`;
         return sess.cookies.set({
           url: url,
@@ -934,91 +1070,98 @@ class SynapseApp {
 
       try {
         await Promise.all(promises);
-        log.info(`✅ 分区 ${partition} Cookies 设置成功`);
+        log.info(`鉁?鍒嗗尯 ${partition} Cookies 璁剧疆鎴愬姛`);
         return true;
       } catch (error) {
-        log.error(`❌ 分区 ${partition} Cookies 设置失败:`, error);
+        log.error(`鉂?鍒嗗尯 ${partition} Cookies 璁剧疆澶辫触:`, error);
         return false;
       }
     });
 
-    // ========== 系统管理 IPC 处理器 ==========
+    // ========== 绯荤粺绠＄悊 IPC 澶勭悊鍣?==========
 
-    // 重启前端服务
+    // 閲嶅惎鍓嶇鏈嶅姟
     ipcMain.handle('system:restart-frontend', async () => {
-      log.info('🔄 重启前端服务...');
+      log.info('馃攧 閲嶅惎鍓嶇鏈嶅姟...');
       try {
         if (this.frontendProcess) {
           this.frontendProcess.kill();
           this.frontendProcess = null;
         }
         await this.startFrontend();
-        log.info('✅ 前端服务重启成功');
+        log.info('鉁?鍓嶇鏈嶅姟閲嶅惎鎴愬姛');
         return { success: true };
       } catch (error) {
-        log.error('❌ 前端服务重启失败:', error);
+        log.error('鉂?鍓嶇鏈嶅姟閲嶅惎澶辫触:', error);
         return { success: false, error: error.message };
       }
     });
 
-    // 重启后端服务
+    // 閲嶅惎鍚庣鏈嶅姟
     ipcMain.handle('system:restart-backend', async () => {
-      log.info('🔄 重启后端服务...');
+      log.info('Restarting backend service...');
       try {
-        if (this.backendProcess) {
-          this.backendProcess.kill();
-          this.backendProcess = null;
+        if (!this.isDev && this.supervisorProcess && !this.supervisorProcess.killed) {
+          await this.requestSupervisor('/api/restart/backend', 'POST');
+        } else {
+          if (this.backendProcess) {
+            this.backendProcess.kill();
+            this.backendProcess = null;
+          }
+          await this.startBackend(this.buildServiceEnv());
         }
-        await this.startBackend({});
-        log.info('✅ 后端服务重启成功');
+        log.info('Backend service restarted successfully');
         return { success: true };
       } catch (error) {
-        log.error('❌ 后端服务重启失败:', error);
+        log.error('Failed to restart backend service:', error);
         return { success: false, error: error.message };
       }
     });
 
-    // 重启所有服务
+    // 閲嶅惎鎵€鏈夋湇鍔?
     ipcMain.handle('system:restart-all', async () => {
-      log.info('🔄 重启所有服务...');
+      log.info('Restarting all services...');
       try {
-        // 停止所有服务
-        if (this.frontendProcess) {
-          this.frontendProcess.kill();
-          this.frontendProcess = null;
+        if (!this.isDev && this.supervisorProcess && !this.supervisorProcess.killed) {
+          await this.requestSupervisor('/api/restart', 'POST');
+          if (this.frontendProcess) {
+            this.frontendProcess.kill();
+            this.frontendProcess = null;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await this.startFrontend(this.buildServiceEnv());
+          this.servicesStarted = true;
+        } else {
+          await this.stopManagedServices();
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await this.startServices();
         }
-        if (this.backendProcess) {
-          this.backendProcess.kill();
-          this.backendProcess = null;
-        }
-
-        // 等待一下确保进程完全停止
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // 重新启动
-        await this.startServices();
-        log.info('✅ 所有服务重启成功');
+        log.info('All services restarted successfully');
         return { success: true };
       } catch (error) {
-        log.error('❌ 服务重启失败:', error);
+        log.error('Failed to restart all services:', error);
         return { success: false, error: error.message };
       }
     });
 
-    // 停止所有服务
+    // 鍋滄鎵€鏈夋湇鍔?
     ipcMain.handle('system:stop-all', async () => {
-      log.info('⏹️ 停止所有服务...');
+      log.info('Stopping all services...');
       try {
-        this.cleanup();
-        log.info('✅ 所有服务已停止');
+        await this.stopManagedServices();
+        log.info('All services stopped');
         return { success: true };
       } catch (error) {
-        log.error('❌ 停止服务失败:', error);
+        log.error('Failed to stop services:', error);
         return { success: false, error: error.message };
       }
     });
 
-    // 获取系统状态
+    ipcMain.handle('system:quit-app', async () => {
+      return this.quitApplication();
+    });
+
+    // 鑾峰彇绯荤粺鐘舵€?
     ipcMain.handle('system:get-status', () => {
       return {
         frontend: {
@@ -1036,9 +1179,9 @@ class SynapseApp {
       };
     });
 
-    // ========== Supervisor 管理 IPC (通过 HTTP API 与 supervisor 通信) ==========
+    // ========== Supervisor 绠＄悊 IPC (閫氳繃 HTTP API 涓?supervisor 閫氫俊) ==========
 
-    // 获取 supervisor 管理的服务状态
+    // 鑾峰彇 supervisor 绠＄悊鐨勬湇鍔＄姸鎬?
     ipcMain.handle('supervisor:get-status', async () => {
       try {
         const http = require('http');
@@ -1054,7 +1197,7 @@ class SynapseApp {
             res.on('end', () => {
               try {
                 const result = JSON.parse(data);
-                // 添加前端状态
+                // 娣诲姞鍓嶇鐘舵€?
                 result.data.frontend = {
                   running: this.frontendProcess !== null && !this.frontendProcess.killed,
                   pid: this.frontendProcess?.pid
@@ -1076,12 +1219,12 @@ class SynapseApp {
           });
         });
       } catch (error) {
-        log.error('获取 supervisor 状态失败:', error);
+        log.error('鑾峰彇 supervisor 鐘舵€佸け璐?', error);
         throw error;
       }
     });
 
-    // 启动所有服务
+    // 鍚姩鎵€鏈夋湇鍔?
     ipcMain.handle('supervisor:start-all', async () => {
       try {
         const http = require('http');
@@ -1102,7 +1245,7 @@ class SynapseApp {
             res.on('end', () => {
               try {
                 const result = JSON.parse(data);
-                // 同时启动前端
+                // 鍚屾椂鍚姩鍓嶇
                 this.startFrontend();
                 resolve({ success: true, message: result.message });
               } catch (error) {
@@ -1118,12 +1261,12 @@ class SynapseApp {
           req.end();
         });
       } catch (error) {
-        log.error('启动服务失败:', error);
+        log.error('鍚姩鏈嶅姟澶辫触:', error);
         return { success: false, error: error.message };
       }
     });
 
-    // 停止所有服务
+    // 鍋滄鎵€鏈夋湇鍔?
     ipcMain.handle('supervisor:stop-all', async () => {
       try {
         const http = require('http');
@@ -1144,7 +1287,7 @@ class SynapseApp {
             res.on('end', () => {
               try {
                 const result = JSON.parse(data);
-                // 同时停止前端
+                // 鍚屾椂鍋滄鍓嶇
                 if (this.frontendProcess) {
                   this.frontendProcess.kill();
                   this.frontendProcess = null;
@@ -1163,12 +1306,12 @@ class SynapseApp {
           req.end();
         });
       } catch (error) {
-        log.error('停止服务失败:', error);
+        log.error('鍋滄鏈嶅姟澶辫触:', error);
         return { success: false, error: error.message };
       }
     });
 
-    // 重启所有服务
+    // 閲嶅惎鎵€鏈夋湇鍔?
     ipcMain.handle('supervisor:restart-all', async () => {
       try {
         const http = require('http');
@@ -1189,7 +1332,7 @@ class SynapseApp {
             res.on('end', () => {
               try {
                 const result = JSON.parse(data);
-                // 重启前端
+                // 閲嶅惎鍓嶇
                 if (this.frontendProcess) {
                   this.frontendProcess.kill();
                   this.frontendProcess = null;
@@ -1211,49 +1354,49 @@ class SynapseApp {
           req.end();
         });
       } catch (error) {
-        log.error('重启服务失败:', error);
+        log.error('閲嶅惎鏈嶅姟澶辫触:', error);
         return { success: false, error: error.message };
       }
     });
 
-    // 启动主应用
+    // 鍚姩涓诲簲鐢?
     ipcMain.handle('supervisor:launch-main-app', async () => {
       try {
-        // 关闭启动管理器窗口
+        // 鍏抽棴鍚姩绠＄悊鍣ㄧ獥鍙?
         if (this.launcherWindow) {
           this.launcherWindow.close();
           this.launcherWindow = null;
         }
 
-        // 创建主窗口
+        // 鍒涘缓涓荤獥鍙?
         if (!this.mainWindow) {
           this.createMainWindow();
         }
 
         return { success: true };
       } catch (error) {
-        log.error('启动主应用失败:', error);
+        log.error('鍚姩涓诲簲鐢ㄥけ璐?', error);
         return { success: false, error: error.message };
       }
     });
 
-    // ========== 打开设置窗口 ==========
+    // ========== 鎵撳紑璁剧疆绐楀彛 ==========
     ipcMain.handle('window:openSettings', () => {
-      log.info('⚙️ 打开设置窗口');
+      log.info('鈿欙笍 鎵撳紑璁剧疆绐楀彛');
       this.createSettingsWindow();
       return { success: true };
     });
 
-    // ========== 数据清理 IPC ==========
+    // ========== 鏁版嵁娓呯悊 IPC ==========
     ipcMain.handle('system:clear-video-data', async (event, options = {}) => {
-      log.info('🗑️ 清理视频数据...');
+      log.info('馃棏锔?娓呯悊瑙嗛鏁版嵁...');
       try {
         const http = require('http');
 
         return new Promise((resolve, reject) => {
           const req = http.request({
             hostname: '127.0.0.1',
-            port: 7000,  // 修复: FastAPI 默认端口是 7000 而非 8000
+            port: 7000,  // 淇: FastAPI 榛樿绔彛鏄?7000 鑰岄潪 8000
             path: '/api/v1/system/clear-video-data',
             method: 'POST'
           }, (res) => {
@@ -1267,21 +1410,21 @@ class SynapseApp {
               try {
                 const result = JSON.parse(data);
                 if (res.statusCode === 200) {
-                  log.info('✅ 视频数据清理成功');
+                  log.info('鉁?瑙嗛鏁版嵁娓呯悊鎴愬姛');
                   resolve(result);
                 } else {
-                  log.error('❌ 视频数据清理失败:', result);
-                  reject(new Error(result.detail || '清理失败'));
+                  log.error('鉂?瑙嗛鏁版嵁娓呯悊澶辫触:', result);
+                  reject(new Error(result.detail || '娓呯悊澶辫触'));
                 }
               } catch (error) {
-                log.error('❌ 解析响应失败:', error);
+                log.error('鉂?瑙ｆ瀽鍝嶅簲澶辫触:', error);
                 reject(error);
               }
             });
           });
 
           req.on('error', (error) => {
-            log.error('❌ 请求失败:', error);
+            log.error('鉂?璇锋眰澶辫触:', error);
             reject(error);
           });
 
@@ -1293,53 +1436,43 @@ class SynapseApp {
           req.end();
         });
       } catch (error) {
-        log.error('❌ 清理视频数据失败:', error);
+        log.error('鉂?娓呯悊瑙嗛鏁版嵁澶辫触:', error);
         return { success: false, error: error.message };
       }
     });
 
-    log.info('✅ IPC 通信设置完成');
+    log.info('鉁?IPC 閫氫俊璁剧疆瀹屾垚');
   }
 
   setupAppEvents() {
-    // 当第二个实例尝试启动时，激活已有的窗口
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
-      log.info('⚠️ 检测到第二个实例尝试启动，激活现有窗口');
-      if (this.mainWindow) {
-        if (this.mainWindow.isMinimized()) {
-          this.mainWindow.restore();
-        }
-        this.mainWindow.focus();
-      }
+    app.on('second-instance', () => {
+      log.info('Detected second instance, focusing current window');
+      this.showMainWindow();
     });
 
-    // 所有窗口关闭时退出应用（macOS 除外）
     app.on('window-all-closed', () => {
-      if (process.platform !== 'darwin') {
-        this.cleanup();
-        app.quit();
-      }
+      log.info('All windows closed; application remains available from tray');
     });
 
-    // macOS 激活应用时重新创建窗口
     app.on('activate', () => {
-      if (this.mainWindow === null) {
-        this.createMainWindow();
-      }
+      this.showMainWindow();
     });
 
-    // 应用退出前清理
     app.on('before-quit', () => {
-      log.info('🔄 应用即将退出，清理资源...');
+      this.isQuitting = true;
+      log.info('Application is about to quit, cleaning up resources...');
       this.cleanup();
+      if (this.tray) {
+        this.tray.destroy();
+        this.tray = null;
+      }
     });
   }
 
   cleanup() {
-    log.info('🧹 清理资源...');
+    log.info('Cleaning up resources...');
 
-    // 关闭所有可视化浏览器窗口
-    for (const [id, win] of this.visualBrowserWindows) {
+    for (const [, win] of this.visualBrowserWindows) {
       if (!win.isDestroyed()) {
         win.close();
       }
@@ -1347,49 +1480,65 @@ class SynapseApp {
     this.visualBrowserWindows.clear();
 
     const stopProcess = (proc, label) => {
-      if (proc && !proc.killed) {
-        log.info(`🛑 终止${label}进程...`);
-        proc.kill();
+      if (!proc) {
+        return;
+      }
+
+      try {
+        log.info(`Stopping ${label} process...`);
+        if (process.platform === 'win32' && proc.pid) {
+          execSync(`taskkill /F /T /PID ${proc.pid}`, { stdio: 'ignore' });
+        } else if (!proc.killed) {
+          proc.kill();
+        }
+      } catch (error) {
+        log.warn(`Failed to terminate ${label}:`, error);
       }
     };
 
-    stopProcess(this.frontendProcess, '前端');
+    stopProcess(this.frontendProcess, 'frontend');
     this.frontendProcess = null;
 
-    stopProcess(this.celeryProcess, 'Celery');
+    stopProcess(this.celeryProcess, 'celery');
     this.celeryProcess = null;
 
-    stopProcess(this.playwrightWorkerProcess, 'Playwright Worker');
+    stopProcess(this.playwrightWorkerProcess, 'playwright worker');
     this.playwrightWorkerProcess = null;
 
-    stopProcess(this.backendProcess, '后端');
+    stopProcess(this.backendProcess, 'backend');
     this.backendProcess = null;
 
-    stopProcess(this.redisProcess, 'Redis');
+    stopProcess(this.redisProcess, 'redis');
     this.redisProcess = null;
 
-    log.info('✅ 资源清理完成');
+    stopProcess(this.supervisorProcess, 'supervisor');
+    this.supervisorProcess = null;
+
+    this.servicesStarted = false;
+    log.info('Resource cleanup complete');
   }
 }
 
-// 启动应用
+// 鍚姩搴旂敤
 const synapseApp = new SynapseApp();
 
-// 捕获未处理的错误
+// 鎹曡幏鏈鐞嗙殑閿欒
 process.on('uncaughtException', (error) => {
-  log.error('❌ 未捕获的异常:', error);
+  log.error('鉂?鏈崟鑾风殑寮傚父:', error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  log.error('❌ 未处理的 Promise 拒绝:', reason);
+  log.error('鉂?鏈鐞嗙殑 Promise 鎷掔粷:', reason);
 });
 
-// 初始化应用
+// 鍒濆鍖栧簲鐢?
 synapseApp.initialize().catch((error) => {
-  log.error('❌ 应用初始化失败:', error);
+  log.error('鉂?搴旂敤鍒濆鍖栧け璐?', error);
   if (app && app.quit) {
     app.quit();
   } else {
     process.exit(1);
   }
 });
+
+
