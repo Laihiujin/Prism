@@ -182,6 +182,13 @@ jobs:
             throw "Missing packaged Hibbiki Chromium executable under $resourcesDir\\browsers"
           }
 
+          $legacyBrowserDirs = Get-ChildItem -Path (Join-Path $resourcesDir "browsers\chromium") -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch '^hibbiki-' }
+          if ($legacyBrowserDirs) {
+            $legacyNames = ($legacyBrowserDirs | Select-Object -ExpandProperty Name) -join ', '
+            throw "Unexpected legacy browser payload packaged: $legacyNames"
+          }
+
           $playwrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\playwright\driver\node.exe"
           $patchrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\patchright\driver\node.exe"
           Get-ChildItem -Path (Join-Path $resourcesDir "services\playwright-worker") -Filter node.exe -Recurse |

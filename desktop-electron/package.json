@@ -56,10 +56,10 @@
         ]
       },
       {
-        "from": "../browsers",
-        "to": "browsers",
+        "from": "../browsers/chromium",
+        "to": "browsers/chromium",
         "filter": [
-          "**/*",
+          "hibbiki-*/**/*",
           "!**/nul"
         ]
       },
@@ -121,7 +121,11 @@
         "from": "resources/redis",
         "to": "redis",
         "filter": [
-          "**/*"
+          "redis-server.exe",
+          "redis-cli.exe",
+          "redis.windows.conf",
+          "redis.windows-service.conf",
+          "EventLog.dll"
         ]
       }
     ],
@@ -152,7 +156,7 @@
       "installerHeaderIcon": "build/icon.ico",
       "deleteAppDataOnUninstall": true
     },
-    "compression": "normal",
+    "compression": "maximum",
     "electronVersion": "28.0.0"
   }
 }
