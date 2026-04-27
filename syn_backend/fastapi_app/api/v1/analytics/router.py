@@ -1,4 +1,5 @@
 import csv
+import importlib
 import io
 from pathlib import Path
 from typing import Optional
@@ -15,7 +16,6 @@ from myUtils.analytics_db import (
     update_video_analytics,
     upsert_video_analytics_by_key,
 )
-from fastapi_app.api.v1.analytics.douyin_sec_uid_resolver import resolve_douyin_sec_uid as resolve_douyin_sec_uid_raw
 from datetime import datetime
 from typing import Any, Dict, List
 import sys
@@ -238,6 +238,11 @@ def _extract_sec_uid_from_cookie(cookie_data: Any) -> Optional[str]:
     return None
 
 
+def _get_douyin_sec_uid_resolver():
+    module = importlib.import_module("fastapi_app.api.v1.analytics.douyin_sec_uid_resolver")
+    return getattr(module, "resolve_douyin_sec_uid")
+
+
 async def _resolve_douyin_sec_uid(account: Dict[str, Any], cookie_data: Dict[str, Any]) -> Optional[str]:
     """
     解析抖音账号的 sec_uid
@@ -250,7 +255,8 @@ async def _resolve_douyin_sec_uid(account: Dict[str, Any], cookie_data: Dict[str
     cookie_header = _build_cookie_header(cookie_data, domain_filter="douyin.com") or _build_cookie_header(cookie_data)
     
     # 使用新的解析器（默认不使用 Playwright，性能优先）
-    return await resolve_douyin_sec_uid_raw(
+    resolver = _get_douyin_sec_uid_resolver()
+    return await resolver(
         user_id=str(candidate),
         cookie_header=cookie_header,
         use_playwright=False  # 可以通过环境变量或配置控制
@@ -790,7 +796,8 @@ async def douyin_id_to_secuid(payload: DouyinIdToSecUidPayload):
     
     for user_id in payload.user_ids:
         try:
-            sec_uid = await resolve_douyin_sec_uid(
+            resolver = _get_douyin_sec_uid_resolver()
+            sec_uid = await resolver(
                 user_id=user_id,
                 cookie_header=payload.cookie_header,
                 use_playwright=payload.use_playwright
@@ -829,7 +836,8 @@ async def douyin_single_id_to_secuid(
     GET /api/v1/analytics/douyin/id-to-secuid/12188823
     """
     try:
-        sec_uid = await resolve_douyin_sec_uid(
+        resolver = _get_douyin_sec_uid_resolver()
+        sec_uid = await resolver(
             user_id=user_id,
             cookie_header=cookie,
             use_playwright=use_playwright

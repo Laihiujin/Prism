@@ -313,7 +313,7 @@ async def startup_event():
         from fastapi_app.agent.openclaw_agent import get_openclaw_agent
         agent = await get_openclaw_agent()
         app.state.openclaw_agent = agent
-        logger.info("✅ OpenClaw/Hermes agent initialized")
+        logger.info("OpenClaw/Hermes agent initialized")
     except Exception as e:
         logger.warning(f"OpenClaw/Hermes agent init failed (optional): {e}")
 
@@ -321,7 +321,7 @@ async def startup_event():
     try:
         from fastapi_app.core.account_cleanup_scheduler import start_cleanup_scheduler
         await start_cleanup_scheduler()
-        logger.info("✅ 账号数据清理调度器已启动（每6小时清理一次）")
+        logger.info("Account cleanup scheduler started (every 6 hours)")
     except Exception as e:
         logger.warning(f"账号数据清理调度器启动失败: {e}")
 

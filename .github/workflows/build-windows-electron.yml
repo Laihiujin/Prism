@@ -132,6 +132,9 @@ jobs:
             throw "Hibbiki Chromium executable was not installed under browsers\\chromium"
           }
           "chromium_path=$($chromeExe.FullName)" >> $env:GITHUB_STEP_SUMMARY
+          $chromiumRoot = Join-Path $env:GITHUB_WORKSPACE "browsers\chromium"
+          $chromiumBytes = (Get-ChildItem -Path $chromiumRoot -Recurse -File | Measure-Object Length -Sum).Sum
+          "chromium_payload_mb=$([math]::Round($chromiumBytes / 1MB, 2))" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Build Supervisor executable
         shell: pwsh
@@ -148,6 +151,10 @@ jobs:
         run: |
           $version = "${{ steps.meta.outputs.app_version }}"
           $buildVersion = "${{ steps.meta.outputs.build_version }}"
+          $distBuild = Join-Path $env:GITHUB_WORKSPACE "desktop-electron\dist-build"
+          if (Test-Path $distBuild) {
+            Remove-Item -LiteralPath $distBuild -Recurse -Force
+          }
           npm --prefix .\desktop-electron run build:dir -- --config.extraMetadata.version=$version --config.buildVersion=$buildVersion
 
       - name: Validate packaged runtime resources
@@ -189,22 +196,36 @@ jobs:
             throw "Unexpected legacy browser payload packaged: $legacyNames"
           }
 
-          $playwrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\playwright\driver\node.exe"
           $patchrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\patchright\driver\node.exe"
           Get-ChildItem -Path (Join-Path $resourcesDir "services\playwright-worker") -Filter node.exe -Recurse |
             ForEach-Object { "packaged_driver_node=$($_.FullName)" >> $env:GITHUB_STEP_SUMMARY }
-          foreach ($requiredNode in @($playwrightNode, $patchrightNode)) {
-            if (-not (Test-Path $requiredNode)) {
-              throw "Missing packaged Playwright driver node runtime: $requiredNode"
-            }
+          if (-not (Test-Path $patchrightNode)) {
+            throw "Missing packaged patchright driver node runtime: $patchrightNode"
           }
+
+          $duplicatePlaywrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\playwright\driver\node.exe"
+          if (Test-Path $duplicatePlaywrightNode) {
+            throw "Duplicate Playwright driver node.exe should be created at runtime, not packaged: $duplicatePlaywrightNode"
+          }
+
+          $resourceBytes = (Get-ChildItem -Path $resourcesDir -Recurse -File | Measure-Object Length -Sum).Sum
+          "resources_payload_mb=$([math]::Round($resourceBytes / 1MB, 2))" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Build Windows installer
         shell: pwsh
         run: |
           $version = "${{ steps.meta.outputs.app_version }}"
           $buildVersion = "${{ steps.meta.outputs.build_version }}"
+          $distBuild = Join-Path $env:GITHUB_WORKSPACE "desktop-electron\dist-build"
+          if (Test-Path $distBuild) {
+            Remove-Item -LiteralPath $distBuild -Recurse -Force
+          }
           npm --prefix .\desktop-electron run build -- --config.extraMetadata.version=$version --config.buildVersion=$buildVersion
+          $installer = Get-ChildItem -Path $distBuild -Filter *.exe | Select-Object -First 1
+          if (-not $installer) {
+            throw "No Electron installer .exe found in desktop-electron\\dist-build"
+          }
+          "installer_mb=$([math]::Round($installer.Length / 1MB, 2))" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Prepare release executable
         shell: pwsh

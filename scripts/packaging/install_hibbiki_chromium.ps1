@@ -64,8 +64,10 @@ New-Item -ItemType Directory -Force -Path $tmpDir, $targetRoot | Out-Null
 Write-Host "Downloading Hibbiki Chromium $($release.tag_name) from $($asset.browser_download_url)"
 Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archive -Headers $headers
 
-if ($Clean -and (Test-Path $targetDir)) {
-  Remove-Item -LiteralPath $targetDir -Recurse -Force
+if ($Clean -and (Test-Path $targetRoot)) {
+  Get-ChildItem -Path $targetRoot -Force -ErrorAction SilentlyContinue | ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Recurse -Force
+  }
 }
 
 New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
@@ -76,6 +78,24 @@ if ($LASTEXITCODE -ne 0) {
 
 if (-not (Test-Path $chromeExe)) {
   throw "Missing Hibbiki Chromium executable after extraction: $chromeExe"
+}
+
+$versionRoot = Join-Path $targetDir "Chrome-bin\$browserVersion"
+$localesDir = Join-Path $versionRoot "Locales"
+if (Test-Path $localesDir) {
+  Get-ChildItem -Path $localesDir -Filter *.pak -File | Where-Object {
+    $_.BaseName -notin @("en-US", "zh-CN", "zh-TW")
+  } | Remove-Item -Force
+}
+
+@(
+  (Join-Path $versionRoot "chrome_pwa_launcher.exe"),
+  (Join-Path $versionRoot "notification_helper.exe"),
+  (Join-Path $targetDir "Chrome-bin\chrome_proxy.exe")
+) | ForEach-Object {
+  if (Test-Path $_) {
+    Remove-Item -LiteralPath $_ -Force
+  }
 }
 
 Write-Host "Installed Hibbiki Chromium: $chromeExe"

@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from myUtils.tikhub_client import get_tikhub_client
-from myUtils.video_collector import collector
 
 router = APIRouter(prefix="/recovery", tags=["recovery"])
 
@@ -73,6 +72,8 @@ async def channels_video_detail(id: Optional[str] = None, export_id: Optional[st
 
 @router.post("/collect")
 async def collect_recovery_data(payload: RecoveryCollectRequest):
+    from myUtils.video_collector import collector
+
     results = await collector.collect_all_accounts(
         account_ids=payload.account_ids,
         platform_filter=payload.platform,

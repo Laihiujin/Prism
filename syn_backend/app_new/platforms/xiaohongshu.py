@@ -9,7 +9,7 @@ import uuid
 from typing import Dict, Any
 
 from loguru import logger
-from playwright.async_api import async_playwright, Page
+from utils.playwright_provider import async_playwright, Page
 from myUtils.playwright_context_factory import create_context_with_policy
 
 from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus

@@ -2,10 +2,11 @@
 数据抓取路由
 提供视频、用户、评论等数据的抓取接口
 """
+import importlib
+
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from myUtils.data_crawler_service import get_data_crawler_service
 from fastapi_app.core.config import settings
 from pathlib import Path
 
@@ -25,6 +26,11 @@ async def data_health():
 
 def _db_path() -> Path:
     return Path(settings.BASE_DIR) / "db" / "database.db"
+
+
+def _get_data_crawler_service():
+    module = importlib.import_module("myUtils.data_crawler_service")
+    return getattr(module, "get_data_crawler_service")
 
 
 @router.post("/collect", summary="全量采集数据并回传到数据库")
@@ -61,7 +67,7 @@ async def parse_video_url(
         视频信息
     """
     try:
-        crawler = get_data_crawler_service()
+        crawler = _get_data_crawler_service()()
         result = await crawler.fetch_video_by_url(url)
 
         if result.get("success"):

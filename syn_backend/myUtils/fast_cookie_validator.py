@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import importlib
 import json
 import os
 import tempfile
@@ -473,7 +474,7 @@ async def _sign_xhs(url: str, data: Any, cookie_data: Any, timeout: float = 8.0)
             pass
 
     try:
-        from uploader.xhs_uploader.main import sign_local
+        sign_local = getattr(importlib.import_module("uploader.xhs_uploader.main"), "sign_local")
 
         signed = await asyncio.to_thread(sign_local, path, data, a1, web_session)
         if signed and signed.get("x-s") and signed.get("x-t"):
@@ -514,8 +515,8 @@ class FastCookieValidator:
         domain_filter: Optional[str],
     ) -> Optional[Dict[str, Any]]:
         try:
-            from myUtils import auth
-            from myUtils.playwright_helper import run_playwright_task
+            auth = importlib.import_module("myUtils.auth")
+            run_playwright_task = getattr(importlib.import_module("myUtils.playwright_helper"), "run_playwright_task")
         except Exception:
             return None
 

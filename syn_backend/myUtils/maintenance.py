@@ -3,7 +3,7 @@ import random
 import re
 import json
 from pathlib import Path
-from playwright.async_api import Page, async_playwright
+from utils.playwright_provider import Page, async_playwright
 from myUtils.cookie_manager import cookie_manager
 
 # 动态加载配置

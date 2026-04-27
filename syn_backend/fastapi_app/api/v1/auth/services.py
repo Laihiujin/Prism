@@ -16,7 +16,7 @@ from typing import Optional, Dict, Any, Tuple
 
 import httpx
 from loguru import logger
-from playwright.async_api import async_playwright
+from utils.playwright_provider import async_playwright
 
 from .schemas import PlatformType
 from utils.chrome_detector import get_chrome_executable

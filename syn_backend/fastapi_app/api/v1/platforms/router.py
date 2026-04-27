@@ -13,7 +13,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from myUtils.cookie_manager import cookie_manager
-from playwright_worker.client import get_worker_client
 
 router = APIRouter(prefix="/platforms", tags=["平台接口"])
 
@@ -59,12 +58,18 @@ def _extract_base64(data_uri_or_b64: str) -> str:
     return data_uri_or_b64
 
 
+def _get_worker_client():
+    from playwright_worker.client import get_worker_client
+
+    return get_worker_client()
+
+
 async def _new_login_session(platform: str, account_id: str) -> dict:
     platform = platform.lower()
     if platform not in PLATFORM_LOGIN_URL:
         raise ValueError(f"Unsupported platform: {platform}")
 
-    worker = get_worker_client()
+    worker = _get_worker_client()
     from config.conf import PLAYWRIGHT_HEADLESS
     qr = await worker.generate_qrcode(platform=platform, account_id=account_id, headless=bool(PLAYWRIGHT_HEADLESS))
 
@@ -116,7 +121,7 @@ async def login_status(login_id: str):
         raise HTTPException(status_code=404, detail="login session not found or expired")
 
     try:
-        worker = get_worker_client()
+        worker = _get_worker_client()
         result = await worker.poll_status(session["worker_session_id"])
         status = (result.get("status") or "").lower()
 

@@ -5,7 +5,7 @@ Bilibili Cookie 刷新器
 import asyncio
 import json
 import os
-from playwright.async_api import async_playwright
+from utils.playwright_provider import async_playwright
 from utils.log import bilibili_logger
 from myUtils.browser_context import build_context_options, build_browser_args
 from utils.base_social_media import set_init_script, HEADLESS_FLAG

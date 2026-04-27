@@ -15,3 +15,11 @@
   !insertmacro KillSynapseProcess "redis-server.exe"
   Sleep 1500
 !macroend
+
+!macro customInstall
+  CreateShortCut "$DESKTOP\SynapseAutomation.lnk" "$INSTDIR\SynapseAutomation.exe"
+!macroend
+
+!macro customUnInstall
+  Delete "$DESKTOP\SynapseAutomation.lnk"
+!macroend

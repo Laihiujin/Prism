@@ -1,6 +1,6 @@
 import asyncio
 from pathlib import Path
-from playwright.async_api import async_playwright
+from utils.playwright_provider import async_playwright
 from typing import Dict, Optional
 import os
 from myUtils.cookie_manager import cookie_manager

@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from fastapi_app.core.config import settings
 from fastapi_app.core.logger import logger
 from fastapi_app.schemas.common import Response
-from playwright_worker.client import get_worker_client
 
 router = APIRouter(prefix="/mediacrawler", tags=["MediaCrawler"])
 
@@ -32,6 +31,12 @@ def _ensure_cookie_file(platform: str) -> str:
     return str(cookie_path)
 
 
+def _get_worker_client():
+    from playwright_worker.client import get_worker_client
+
+    return get_worker_client()
+
+
 class MediaCrawlerLoginOpen(BaseModel):
     platform: str = Field(..., description="kuaishou/xiaohongshu")
     account_id: Optional[str] = Field(None, description="可选，持久化 profile 标识")
@@ -47,7 +52,7 @@ async def open_mediacrawler_login(payload: MediaCrawlerLoginOpen):
     account_id = payload.account_id or _default_profile_id(platform)
     cookie_file = _ensure_cookie_file(platform)
 
-    client = get_worker_client()
+    client = _get_worker_client()
     try:
         data = await client.open_creator_center(
             platform=platform,
@@ -66,7 +71,7 @@ async def open_mediacrawler_login(payload: MediaCrawlerLoginOpen):
 
 @router.post("/login/close/{session_id}", response_model=Response[dict])
 async def close_mediacrawler_login(session_id: str):
-    client = get_worker_client()
+    client = _get_worker_client()
     try:
         ok = await client.close_creator_center(session_id)
         return Response(success=True, data={"closed": ok})

@@ -60,18 +60,9 @@ sys.path.insert(0, str(project_root))
 
 from fastapi_app.core.config import settings
 from fastapi_app.main import app
-from utils.playwright_bootstrap import ensure_playwright_chromium_installed
 
 
 def main() -> None:
-    auto_install = os.getenv("PLAYWRIGHT_AUTO_INSTALL", "1").strip().lower() not in {
-        "0",
-        "false",
-        "no",
-        "off",
-    }
-    ensure_playwright_chromium_installed(auto_install=auto_install)
-
     import uvicorn
 
     uvicorn.run(

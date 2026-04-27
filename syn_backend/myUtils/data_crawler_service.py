@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from loguru import logger
-from playwright.async_api import async_playwright
+from utils.playwright_provider import async_playwright
 from myUtils.cookie_manager import cookie_manager
 
 

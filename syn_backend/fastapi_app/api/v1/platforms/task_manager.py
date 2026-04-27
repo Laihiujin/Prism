@@ -5,6 +5,7 @@
 """
 import uuid
 import asyncio
+import importlib
 from datetime import datetime
 from typing import Dict, Optional, Callable, Any
 from enum import Enum
@@ -14,6 +15,11 @@ from queue import Queue as ThreadQueue, Empty as QueueEmpty
 import threading
 
 logger = logging.getLogger(__name__)
+
+
+def _load_platform_uploader(module_name: str, attr_name: str):
+    module = importlib.import_module(module_name)
+    return getattr(module, attr_name)
 
 
 class TaskStatus(str, Enum):
@@ -282,7 +288,7 @@ class PlatformTaskManager:
         self.update_task_progress(task.task_id, 10, "准备上传...")
         
         if platform == "kuaishou":
-            from platforms.kuaishou.upload import kuaishou_upload
+            kuaishou_upload = _load_platform_uploader("platforms.kuaishou.upload", "kuaishou_upload")
 
             self.update_task_progress(task.task_id, 30, "打开浏览器...")
 
@@ -305,7 +311,7 @@ class PlatformTaskManager:
             return result if isinstance(result, dict) else {"success": True, "message": "上传成功"}
         
         elif platform == "xiaohongshu":
-            from platforms.xiaohongshu.upload import xiaohongshu_upload
+            xiaohongshu_upload = _load_platform_uploader("platforms.xiaohongshu.upload", "xiaohongshu_upload")
 
             file_path = params["file_paths"][0] if params.get("file_paths") else params["file_path"]
             self.update_task_progress(task.task_id, 30, "打开浏览器...")
@@ -331,7 +337,7 @@ class PlatformTaskManager:
 
         elif platform == "douyin":
             # 统一平台层入口（platforms/*）
-            from platforms.douyin.upload import douyin_upload
+            douyin_upload = _load_platform_uploader("platforms.douyin.upload", "douyin_upload")
 
             self.update_task_progress(task.task_id, 30, "打开浏览器...")
 
@@ -357,7 +363,7 @@ class PlatformTaskManager:
 
         elif platform == "tencent":
             # 统一平台层入口（platforms/*）
-            from platforms.tencent.upload import tencent_upload
+            tencent_upload = _load_platform_uploader("platforms.tencent.upload", "tencent_upload")
 
             self.update_task_progress(task.task_id, 30, "打开浏览器...")
 
@@ -382,7 +388,7 @@ class PlatformTaskManager:
             return result if isinstance(result, dict) else {"success": True, "message": "上传成功"}
 
         elif platform == "bilibili":
-            from platforms.bilibili.upload import bilibili_upload
+            bilibili_upload = _load_platform_uploader("platforms.bilibili.upload", "bilibili_upload")
 
             self.update_task_progress(task.task_id, 30, "上传中...")
 
