@@ -99,16 +99,8 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade setuptools wheel
-          python -m pip install --prefer-binary `
-            -r .\syn_backend\requirements.txt `
-            -r .\syn_backend\fastapi_app\requirements.txt `
-            -r .\syn_backend\douyin_tiktok_api\requirements.txt `
-            openpyxl `
-            pyinstaller `
-            psutil `
-            playwright `
-            patchright
+          python -m pip install -r .\requirements.txt
+          python -m pip install pyinstaller psutil playwright patchright
 
       - name: Build packaged backend service executables
         shell: pwsh
