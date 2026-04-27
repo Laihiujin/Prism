@@ -46,6 +46,20 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  webpack(config, { dev }) {
+    if (
+      !dev &&
+      process.env.SYNAPSE_DISABLE_CSS_MINIFY === "1" &&
+      Array.isArray(config.optimization?.minimizer)
+    ) {
+      config.optimization.minimize = false
+      config.optimization.minimizer = config.optimization.minimizer.filter((minimizer: unknown) => {
+        const name = (minimizer as { constructor?: { name?: string } })?.constructor?.name
+        return name !== "CssMinimizerPlugin"
+      })
+    }
+    return config
+  },
   images: {
     remotePatterns: [
       {
@@ -63,6 +77,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "wx.qlogo.cn",
+      },
+      {
+        protocol: "https",
+        hostname: "res.wx.qq.com",
       },
       {
         protocol: "https",

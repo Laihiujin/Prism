@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import {
@@ -43,6 +44,7 @@ export default function SettingsPage() {
     restartBackend,
     restartFrontend,
     stopAll,
+    setBrowserHeadless,
     quitApp,
     clearMaterials,
     clearAccounts,
@@ -145,6 +147,24 @@ export default function SettingsPage() {
               <div className="text-sm text-white/50">Playwright Browser Path</div>
               <div className="mt-2 break-all font-mono text-xs text-white/80">
                 {appInfo?.playwrightBrowserPath || "-"}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/30 p-4">
+              <div className="min-w-0">
+                <div className="font-medium text-white">Headless browser</div>
+                <div className="mt-1 text-sm text-white/60">
+                  Turn this off to show automation browser windows. Creator centers still open in the built-in browser tabs.
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                {loading.setBrowserHeadless && <Loader2 className="h-4 w-4 animate-spin text-white/60" />}
+                <Switch
+                  checked={appInfo?.runtimeSettings?.browserHeadless ?? true}
+                  disabled={loading.setBrowserHeadless}
+                  onCheckedChange={(checked) => void setBrowserHeadless(checked)}
+                  aria-label="Toggle headless browser mode"
+                />
               </div>
             </div>
 

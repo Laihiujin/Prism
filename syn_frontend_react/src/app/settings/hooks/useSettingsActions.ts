@@ -19,6 +19,7 @@ interface LoadingState {
   runSelfCheck: boolean
   forceKill: boolean
   exportLogs: boolean
+  setBrowserHeadless: boolean
 }
 
 interface ServiceStatus {
@@ -41,6 +42,11 @@ interface AppInfo {
   isPackaged?: boolean
   resourcesPath?: string
   playwrightBrowserPath?: string
+  runtimeSettings?: RuntimeSettings
+}
+
+interface RuntimeSettings {
+  browserHeadless: boolean
 }
 
 const isElectron = typeof window !== "undefined" && Boolean((window as any).electronAPI)
@@ -63,6 +69,7 @@ export function useSettingsActions() {
     runSelfCheck: false,
     forceKill: false,
     exportLogs: false,
+    setBrowserHeadless: false,
   })
   const [status, setStatus] = useState<RuntimeStatus | null>(null)
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
@@ -216,6 +223,32 @@ export function useSettingsActions() {
     }, "All services stopped")
   }
 
+  const setBrowserHeadless = async (browserHeadless: boolean) => {
+    await handleAction("setBrowserHeadless", async () => {
+      if (!isElectron) {
+        throw new Error("Desktop app only")
+      }
+
+      const electron = (window as any).electronAPI
+      const result = await electron.settings.update({ browserHeadless })
+      if (!result.success) {
+        throw new Error(result.error || "Failed to update browser mode")
+      }
+
+      setAppInfo((prev) => ({
+        ...(prev ?? {}),
+        runtimeSettings: result.settings,
+      }))
+
+      const restartResult = await electron.system.restartAll()
+      if (!restartResult.success) {
+        throw new Error(restartResult.error || "Services restart failed")
+      }
+
+      await refreshStatus({ silent: true })
+    }, browserHeadless ? "Browser automation will run headless" : "Browser automation windows will be shown")
+  }
+
   const quitApp = async () => {
     await handleAction("quitApp", async () => {
       if (!isElectron) {
@@ -351,6 +384,7 @@ export function useSettingsActions() {
     restartBackend,
     restartFrontend,
     stopAll,
+    setBrowserHeadless,
     quitApp,
     clearMaterials,
     clearAccounts,

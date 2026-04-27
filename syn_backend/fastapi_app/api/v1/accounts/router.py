@@ -32,6 +32,7 @@ _PLATFORM_PROFILE_URLS = {
     "kuaishou": "https://cp.kuaishou.com/",
     "xiaohongshu": "https://creator.xiaohongshu.com/new/home",
     "tencent": "https://channels.weixin.qq.com/platform",
+    "channels": "https://channels.weixin.qq.com/platform",
 }
 
 
@@ -121,7 +122,9 @@ async def get_creator_center_data(account_id: str):
         return Response(success=True, data={
             "url": url,
             "platform": platform,
-            "storage_state": storage_state
+            "storage_state": storage_state,
+            "account_id": account_id,
+            "user_id": account.get("user_id")
         })
 
     except NotFoundException as e:

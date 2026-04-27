@@ -95,6 +95,8 @@ config/browser_profiles/
 # Playwright / browser downloads
 /.playwright-browsers*/
 /.chrome-for-testing*/
+/.tmp-*
+browsers/chromium/hibbiki-*/
 browsers/chromium/chromium_headless_shell-1161/*
 browsers/chromium/chromium-1161/*
 browsers/chromium/ffmpeg-1011/*

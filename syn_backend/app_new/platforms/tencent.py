@@ -56,21 +56,54 @@ class TencentAdapter(PlatformAdapter):
             })
 
             # 访问视频号平台
-            await page.goto("https://channels.weixin.qq.com", timeout=60000)
+            login_url = "https://channels.weixin.qq.com/login.html"
+            await page.goto(login_url, timeout=60000, wait_until="domcontentloaded")
             await asyncio.sleep(2)
 
             # 二维码在iframe中
-            frame = page.frame_locator("iframe").first
-            img = frame.get_by_role("img").first
+            img = None
+            for frame in page.frames:
+                try:
+                    if "login-for-iframe" in (frame.url or ""):
+                        qr = frame.locator("img.qrcode").first
+                        await qr.wait_for(state="visible", timeout=10000)
+                        img = qr
+                        break
+                except Exception:
+                    continue
 
-            await asyncio.sleep(2)
+            if img is None:
+                for frame in page.frames:
+                    candidates = frame.locator("img")
+                    count = await candidates.count()
+                    for index in range(count):
+                        candidate = candidates.nth(index)
+                        try:
+                            box = await candidate.bounding_box()
+                            src = await candidate.get_attribute("src")
+                            cls = await candidate.get_attribute("class")
+                            if not box or not src:
+                                continue
+                            is_large_square = box["width"] >= 180 and box["height"] >= 180
+                            is_logo = "logo" in (cls or "").lower() or "logo.png" in src
+                            if is_large_square and not is_logo:
+                                img = candidate
+                                break
+                        except Exception:
+                            continue
+                    if img is not None:
+                        break
+
+            if img is None:
+                raise RuntimeError("No WeChat Channels QR code image found")
+
             src = await img.get_attribute("src")
 
-            if src:
+            if src and "logo.png" not in src:
                 logger.info(f"[Tencent] QR code extracted: session={session_id[:8]}")
                 return QRCodeData(
                     session_id=session_id,
-                    qr_url="https://channels.weixin.qq.com",
+                    qr_url=login_url,
                     qr_image=src,
                     expires_in=300
                 )
@@ -83,7 +116,7 @@ class TencentAdapter(PlatformAdapter):
             logger.warning(f"[Tencent] QR not found, using screenshot: session={session_id[:8]}")
             return QRCodeData(
                 session_id=session_id,
-                qr_url="https://channels.weixin.qq.com",
+                qr_url=login_url,
                 qr_image=f"data:image/png;base64,{b64}",
                 expires_in=300
             )
