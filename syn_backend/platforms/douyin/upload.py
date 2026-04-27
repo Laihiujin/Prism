@@ -7,7 +7,7 @@ import time
 import logging
 from pathlib import Path
 from datetime import datetime
-from playwright.async_api import async_playwright, Page
+from utils.playwright_provider import async_playwright, Page
 from typing import Dict, Any, Optional
 # from config.conf import LOCAL_CHROME_PATH
 from utils.base_social_media import set_init_script, HEADLESS_FLAG

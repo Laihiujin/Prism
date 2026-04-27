@@ -1279,7 +1279,9 @@ class CookieManager:
         运行账号维护任务
         :param account_id: 指定账号ID，如果为None则维护所有账号
         """
-        from myUtils.maintenance import maintain_account
+        import importlib
+
+        maintain_account = getattr(importlib.import_module("myUtils.maintenance"), "maintain_account")
         
         accounts = []
         if account_id:

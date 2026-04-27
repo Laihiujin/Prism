@@ -4,7 +4,7 @@ import pathlib
 from time import sleep
 
 import requests
-from playwright.sync_api import sync_playwright
+from utils.playwright_provider import sync_playwright
 
 from config.conf import BASE_DIR, XHS_SERVER, PLAYWRIGHT_HEADLESS
 

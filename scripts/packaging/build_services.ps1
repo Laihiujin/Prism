@@ -86,11 +86,28 @@ $common = @(
   "--specpath", $spec
 )
 
+$backendExcludes = @(
+  "--exclude-module", "patchright",
+  "--exclude-module", "patchright.async_api",
+  "--exclude-module", "patchright.sync_api",
+  "--exclude-module", "playwright",
+  "--exclude-module", "playwright.async_api",
+  "--exclude-module", "playwright.sync_api",
+  "--exclude-module", "playwright._impl",
+  "--exclude-module", "stream_gears",
+  "--exclude-module", "selenium",
+  "--exclude-module", "fastapi_app.api.v1.auth.services",
+  "--exclude-module", "myUtils.auth",
+  "--exclude-module", "myUtils.platform_explorer",
+  "--exclude-module", "myUtils.maintenance"
+)
+
 $targetOptions = @{
   "backend" = @(
     "--hidden-import", "fastapi.middleware",
     "--hidden-import", "fastapi.middleware.cors",
     "--hidden-import", "celery.fixups",
+    "--hidden-import", "playwright_worker.client",
     "--collect-submodules", "http",
     "--collect-submodules", "email",
     "--collect-submodules", "fastapi",
@@ -100,19 +117,12 @@ $targetOptions = @{
     "--collect-submodules", "billiard",
     "--collect-submodules", "vine",
     "--collect-submodules", "amqp",
-    "--collect-submodules", "fastapi_app",
-    "--collect-submodules", "app_new",
-    "--collect-submodules", "playwright_worker",
-    "--collect-submodules", "utils",
-    "--collect-submodules", "crawlers",
     "--collect-all", "fastapi",
     "--collect-all", "starlette",
     "--collect-all", "uvicorn",
     "--collect-all", "celery",
     "--collect-all", "kombu",
     "--collect-all", "billiard",
-    "--collect-all", "patchright",
-    "--collect-all", "playwright",
     "--collect-all", "pydantic",
     "--collect-all", "pydantic_core",
     "--collect-all", "pydantic_settings",
@@ -126,7 +136,6 @@ $targetOptions = @{
     "--collect-submodules", "vine",
     "--collect-submodules", "amqp",
     "--collect-submodules", "fastapi_app.tasks",
-    "--collect-submodules", "utils",
     "--collect-all", "celery",
     "--collect-all", "kombu",
     "--collect-all", "billiard",
@@ -170,7 +179,7 @@ $entryScripts = @{
   "playwright-worker" = "$PSScriptRoot\playwright_worker_service.py"
 }
 
-function Sync-PlaywrightDriverNode {
+function Prune-PlaywrightDriverNode {
   param([string]$TargetName)
 
   $targetDir = Join-Path $dist $TargetName
@@ -190,13 +199,10 @@ function Sync-PlaywrightDriverNode {
   }
 
   $playwrightDriverDir = Join-Path $targetDir "_internal\playwright\driver"
-  New-Item -ItemType Directory -Force -Path $playwrightDriverDir | Out-Null
   $playwrightNode = Join-Path $playwrightDriverDir "node.exe"
-  Copy-Item -LiteralPath $patchrightNode.FullName -Destination $playwrightNode -Force
-  Write-Host "Mirrored patchright driver node.exe to $playwrightNode"
-
-  if ($TargetName -eq "playwright-worker" -and -not (Test-Path $playwrightNode)) {
-    throw "Failed to mirror patchright driver node.exe to $playwrightNode"
+  if (Test-Path $playwrightNode) {
+    Remove-Item -LiteralPath $playwrightNode -Force
+    Write-Host "Pruned duplicate Playwright driver node.exe from $playwrightNode"
   }
 }
 
@@ -210,12 +216,16 @@ foreach ($target in $targets) {
     Write-Error "Missing PyInstaller option set for target: $target"
     exit 1
   }
-  & $python -m PyInstaller @common @targetArgs @runtimeDllArgs --name $target $entryScripts[$target]
+  $extraArgs = @()
+  if ($target -eq "backend") {
+    $extraArgs += $backendExcludes
+  }
+  & $python -m PyInstaller @common @targetArgs @extraArgs @runtimeDllArgs --name $target $entryScripts[$target]
   if ($LASTEXITCODE -ne 0) {
     Write-Error "PyInstaller build failed for target: $target"
     exit $LASTEXITCODE
   }
-  Sync-PlaywrightDriverNode -TargetName $target
+  Prune-PlaywrightDriverNode -TargetName $target
 }
 
 Write-Host "Service executables built in dist/services"

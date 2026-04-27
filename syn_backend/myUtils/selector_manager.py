@@ -27,9 +27,12 @@ DOM 选择器配置管理器
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from playwright.async_api import Page, TimeoutError as PlaywrightTimeout, Locator
 from loguru import logger
 from datetime import datetime
+
+Page = Any
+Locator = Any
+PlaywrightTimeout = TimeoutError
 
 
 class SelectorManager:

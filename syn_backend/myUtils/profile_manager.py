@@ -263,7 +263,7 @@ async def _export_state_for_account(profile_dir: Path, platform: str, account_id
         return False
 
     try:
-        from playwright.async_api import async_playwright
+            from utils.playwright_provider import async_playwright
     except Exception as exc:
         logger.warning(f"[ProfileManager] Playwright missing: {exc}")
         return False

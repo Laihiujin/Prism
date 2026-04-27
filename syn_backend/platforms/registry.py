@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import Any, Dict, Optional, Protocol
 
 
@@ -26,23 +27,21 @@ class PlatformUploader(Protocol):
 
 
 _uploaders_by_code: Dict[int, PlatformUploader] | None = None
+_UPLOADER_SPECS: Dict[int, tuple[str, str]] = {
+    1: ("platforms.xiaohongshu.upload", "xiaohongshu_upload"),
+    2: ("platforms.tencent.upload", "tencent_upload"),
+    3: ("platforms.douyin.upload", "douyin_upload"),
+    4: ("platforms.kuaishou.upload", "kuaishou_upload"),
+    5: ("platforms.bilibili.upload", "bilibili_upload"),
+}
 
 
 def _build_registry() -> Dict[int, PlatformUploader]:
-    # Import lazily to avoid heavy imports at module import time
-    from platforms.douyin.upload import douyin_upload
-    from platforms.tencent.upload import tencent_upload
-    from platforms.kuaishou.upload import kuaishou_upload
-    from platforms.xiaohongshu.upload import xiaohongshu_upload
-    from platforms.bilibili.upload import bilibili_upload
-
-    return {
-        1: xiaohongshu_upload,
-        2: tencent_upload,
-        3: douyin_upload,
-        4: kuaishou_upload,
-        5: bilibili_upload,
-    }
+    registry: Dict[int, PlatformUploader] = {}
+    for platform_code, (module_name, attr_name) in _UPLOADER_SPECS.items():
+        module = importlib.import_module(module_name)
+        registry[platform_code] = getattr(module, attr_name)
+    return registry
 
 
 def get_uploader_by_platform_code(platform_code: int) -> PlatformUploader:
@@ -79,4 +78,3 @@ def normalize_platform_code(value: Any) -> Optional[int]:
         }
         return mapping.get(s)
     return None
-

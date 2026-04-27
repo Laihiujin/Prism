@@ -66,7 +66,7 @@ def _expected_chromium_executable_via_playwright() -> str | None:
     "any chromium exists" is not enough, and Playwright will still error and ask for `playwright install`.
     """
     try:
-        from playwright.sync_api import sync_playwright
+        from utils.playwright_provider import sync_playwright
 
         with sync_playwright() as p:
             return str(p.chromium.executable_path)

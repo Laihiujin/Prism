@@ -27,6 +27,13 @@ from .tools import router as tools_router
 from myUtils.cookie_manager import cookie_manager
 from platforms.path_utils import resolve_cookie_file
 
+_PLATFORM_PROFILE_URLS = {
+    "douyin": "https://creator.douyin.com/",
+    "kuaishou": "https://cp.kuaishou.com/",
+    "xiaohongshu": "https://creator.xiaohongshu.com/new/home",
+    "tencent": "https://channels.weixin.qq.com/platform",
+}
+
 
 router = APIRouter(tags=["账号管理"])
 
@@ -104,8 +111,7 @@ async def get_creator_center_data(account_id: str):
         if platform == "bilibili" and isinstance(raw_state, dict) and "cookie_info" in raw_state:
             storage_state = _build_storage_state_from_biliup_cookie(raw_state)
 
-        from playwright_worker.worker import _PLATFORM_PROFILE_URL
-        url = _PLATFORM_PROFILE_URL.get(platform)
+        url = _PLATFORM_PROFILE_URLS.get(platform)
         if not url:
             if platform == "bilibili":
                 url = "https://member.bilibili.com/platform/home"

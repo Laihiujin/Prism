@@ -4,6 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Optional, List, Any
 from pathlib import Path
+import importlib
 import sys
 
 from pydantic import BaseModel, Field
@@ -608,7 +609,10 @@ async def selenium_debug_capture(req: SeleniumDebugCaptureRequest):
         raise HTTPException(status_code=404, detail="selenium debug is disabled")
 
     try:
-        from automation.selenium_dom import new_chrome_driver, dismiss_common_popups, capture_debug_bundle
+        selenium_dom = importlib.import_module("automation.selenium_dom")
+        new_chrome_driver = getattr(selenium_dom, "new_chrome_driver")
+        dismiss_common_popups = getattr(selenium_dom, "dismiss_common_popups")
+        capture_debug_bundle = getattr(selenium_dom, "capture_debug_bundle")
 
         driver = new_chrome_driver(headless=req.headless, user_data_dir=req.user_data_dir)
         try:
@@ -638,5 +642,4 @@ async def selenium_debug_capture(req: SeleniumDebugCaptureRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"capture failed: {str(e)}")
-
 

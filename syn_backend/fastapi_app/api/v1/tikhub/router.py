@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from myUtils.tikhub_client import get_tikhub_client
-from myUtils.video_collector import collector
 
 router = APIRouter(prefix="/tikhub", tags=["tikhub"])
 
@@ -94,6 +93,8 @@ async def collect_videos_via_tikhub(payload: TikHubCollectRequest):
     client = get_tikhub_client()
     if not client:
         raise HTTPException(status_code=400, detail="TikHub API key not configured")
+
+    from myUtils.video_collector import collector
 
     results = await collector.collect_all_accounts(
         account_ids=payload.account_ids,

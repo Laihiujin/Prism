@@ -1,26 +1,14 @@
-"""
-新版登录服务 - 桥接层
-将 app_new.platforms 适配器桥接到现有 API 接口
+from __future__ import annotations
 
-此文件将逐步替换 services.py 中的实现
-"""
+import importlib
 import sys
 from pathlib import Path
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Tuple
 
-# 添加项目根目录到路径
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from app_new.platforms import (
-    BilibiliAdapter,
-    DouyinAdapter,
-    KuaishouAdapter,
-    XiaohongshuAdapter,
-    TencentAdapter,
-    LoginStatus
-)
 from .schemas import PlatformType
 
 try:
@@ -30,50 +18,55 @@ except Exception:
 
 
 def get_adapter_config() -> Dict[str, Any]:
-    """获取适配器配置"""
-    return {
-        "headless": PLAYWRIGHT_HEADLESS
-    }
+    return {"headless": PLAYWRIGHT_HEADLESS}
+
+
+def _load_adapter(platform: PlatformType):
+    module_name = {
+        PlatformType.BILIBILI: "app_new.platforms.bilibili",
+        PlatformType.DOUYIN: "app_new.platforms.douyin",
+        PlatformType.KUAISHOU: "app_new.platforms.kuaishou",
+        PlatformType.XIAOHONGSHU: "app_new.platforms.xiaohongshu",
+        PlatformType.TENCENT: "app_new.platforms.tencent",
+    }[platform]
+    class_name = {
+        PlatformType.BILIBILI: "BilibiliAdapter",
+        PlatformType.DOUYIN: "DouyinAdapter",
+        PlatformType.KUAISHOU: "KuaishouAdapter",
+        PlatformType.XIAOHONGSHU: "XiaohongshuAdapter",
+        PlatformType.TENCENT: "TencentAdapter",
+    }[platform]
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)
+
+
+def _confirmed_status():
+    base_module = importlib.import_module("app_new.platforms.base")
+    return getattr(base_module, "LoginStatus").CONFIRMED
 
 
 class BilibiliLoginServiceV2:
-    """B站登录服务 V2 (使用新适配器)"""
-
     @staticmethod
     async def get_qrcode() -> Tuple[str, str, str]:
-        """
-        生成二维码
-        Returns: (session_id, qr_url, qr_image)
-        """
-        adapter = BilibiliAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.BILIBILI)(get_adapter_config())
         qr_data = await adapter.get_qrcode()
         return qr_data.session_id, qr_data.qr_url, qr_data.qr_image
 
     @staticmethod
     async def poll_status(session_id: str) -> Dict[str, Any]:
-        """
-        轮询登录状态
-        Returns: {"status": "waiting|scanned|confirmed|expired|failed", "data": {...}}
-        """
-        adapter = BilibiliAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.BILIBILI)(get_adapter_config())
         result = await adapter.poll_status(session_id)
-
-        response = {
-            "status": result.status.value,
-            "message": result.message
-        }
-
-        if result.status == LoginStatus.CONFIRMED:
+        response = {"status": result.status.value, "message": result.message}
+        if result.status == _confirmed_status():
             response["data"] = {
                 "cookies": result.cookies,
                 "user_info": {
                     "user_id": result.user_info.user_id or "",
                     "username": result.user_info.username or result.user_info.name or "",
                     "name": result.user_info.name or "",
-                    "avatar": result.user_info.avatar or ""
-                }
+                    "avatar": result.user_info.avatar or "",
+                },
             }
-
         return response
 
     @staticmethod
@@ -86,36 +79,28 @@ class BilibiliLoginServiceV2:
 
 
 class DouyinLoginServiceV2:
-    """抖音登录服务 V2 (使用新适配器)"""
-
     @staticmethod
     async def get_qrcode() -> Tuple[str, str, str]:
-        adapter = DouyinAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.DOUYIN)(get_adapter_config())
         qr_data = await adapter.get_qrcode()
         return qr_data.session_id, qr_data.qr_url, qr_data.qr_image
 
     @staticmethod
     async def poll_status(session_id: str) -> Dict[str, Any]:
-        adapter = DouyinAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.DOUYIN)(get_adapter_config())
         result = await adapter.poll_status(session_id)
-
-        response = {
-            "status": result.status.value,
-            "message": result.message
-        }
-
-        if result.status == LoginStatus.CONFIRMED:
+        response = {"status": result.status.value, "message": result.message}
+        if result.status == _confirmed_status():
             response["data"] = {
                 "cookies": result.cookies,
                 "user_info": {
                     "user_id": result.user_info.user_id or "",
                     "username": result.user_info.username or result.user_info.name or "",
                     "name": result.user_info.name or "",
-                    "avatar": result.user_info.avatar or ""
+                    "avatar": result.user_info.avatar or "",
                 },
-                "full_state": result.full_state
+                "full_state": result.full_state,
             }
-
         return response
 
     @staticmethod
@@ -128,36 +113,28 @@ class DouyinLoginServiceV2:
 
 
 class KuaishouLoginServiceV2:
-    """快手登录服务 V2 (使用新适配器)"""
-
     @staticmethod
     async def get_qrcode() -> Tuple[str, str, str]:
-        adapter = KuaishouAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.KUAISHOU)(get_adapter_config())
         qr_data = await adapter.get_qrcode()
         return qr_data.session_id, qr_data.qr_url, qr_data.qr_image
 
     @staticmethod
     async def poll_status(session_id: str) -> Dict[str, Any]:
-        adapter = KuaishouAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.KUAISHOU)(get_adapter_config())
         result = await adapter.poll_status(session_id)
-
-        response = {
-            "status": result.status.value,
-            "message": result.message
-        }
-
-        if result.status == LoginStatus.CONFIRMED:
+        response = {"status": result.status.value, "message": result.message}
+        if result.status == _confirmed_status():
             response["data"] = {
                 "cookies": result.cookies,
                 "user_info": {
                     "user_id": result.user_info.user_id or "",
                     "username": result.user_info.username or result.user_info.name or "",
                     "name": result.user_info.name or "",
-                    "avatar": result.user_info.avatar or ""
+                    "avatar": result.user_info.avatar or "",
                 },
-                "full_state": result.full_state
+                "full_state": result.full_state,
             }
-
         return response
 
     @staticmethod
@@ -170,36 +147,27 @@ class KuaishouLoginServiceV2:
 
 
 class XiaohongshuLoginServiceV2:
-    """小红书登录服务 V2 (使用新适配器)"""
-
     @staticmethod
     async def get_qrcode() -> Tuple[str, str, str]:
-        adapter = XiaohongshuAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.XIAOHONGSHU)(get_adapter_config())
         qr_data = await adapter.get_qrcode()
         return qr_data.session_id, qr_data.qr_url, qr_data.qr_image
 
     @staticmethod
     async def poll_status(session_id: str) -> Dict[str, Any]:
-        adapter = XiaohongshuAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.XIAOHONGSHU)(get_adapter_config())
         result = await adapter.poll_status(session_id)
-
-        response = {
-            "status": result.status.value,
-            "message": result.message
-        }
-
-        if result.status == LoginStatus.CONFIRMED:
-            # 小红书返回cookie字符串
+        response = {"status": result.status.value, "message": result.message}
+        if result.status == _confirmed_status():
             response["data"] = {
                 "cookie": result.cookies.get("cookie", "") if result.cookies else "",
                 "login_info": {
                     "user_id": result.user_info.user_id or "",
                     "name": result.user_info.name or "",
-                    "avatar": result.user_info.avatar or ""
+                    "avatar": result.user_info.avatar or "",
                 },
-                "full_state": result.full_state
+                "full_state": result.full_state,
             }
-
         return response
 
     @staticmethod
@@ -212,40 +180,30 @@ class XiaohongshuLoginServiceV2:
 
 
 class TencentLoginServiceV2:
-    """视频号登录服务 V2 (使用新适配器)"""
-
     @staticmethod
     async def get_qrcode() -> Tuple[str, str, str]:
-        adapter = TencentAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.TENCENT)(get_adapter_config())
         qr_data = await adapter.get_qrcode()
         return qr_data.session_id, qr_data.qr_url, qr_data.qr_image
 
     @staticmethod
     async def poll_status(session_id: str) -> Dict[str, Any]:
-        adapter = TencentAdapter(get_adapter_config())
+        adapter = _load_adapter(PlatformType.TENCENT)(get_adapter_config())
         result = await adapter.poll_status(session_id)
-
-        response = {
-            "status": result.status.value,
-            "message": result.message
-        }
-
-        if result.status == LoginStatus.CONFIRMED:
+        response = {"status": result.status.value, "message": result.message}
+        if result.status == _confirmed_status():
             user_info_data = {
                 "user_id": result.user_info.user_id or "",
                 "name": result.user_info.name or "",
-                "avatar": result.user_info.avatar or ""
+                "avatar": result.user_info.avatar or "",
             }
-            # 添加 finder_username
             if result.user_info.extra and "finder_username" in result.user_info.extra:
                 user_info_data["finder_username"] = result.user_info.extra["finder_username"]
-
             response["data"] = {
                 "cookies": result.cookies,
                 "user_info": user_info_data,
-                "full_state": result.full_state
+                "full_state": result.full_state,
             }
-
         return response
 
     @staticmethod
@@ -257,11 +215,7 @@ class TencentLoginServiceV2:
         return None
 
 
-# 统一获取服务函数 (V2版本)
 def get_login_service_v2(platform: PlatformType):
-    """
-    获取登录服务 V2 (使用新适配器)
-    """
     service_map = {
         PlatformType.BILIBILI: BilibiliLoginServiceV2,
         PlatformType.XIAOHONGSHU: XiaohongshuLoginServiceV2,
