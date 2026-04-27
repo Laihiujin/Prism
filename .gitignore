@@ -84,6 +84,7 @@ syn_backend/.deps_installed
 syn_backend/.copilot-profiles/
 syn_backend/data/ip_pool.json
 syn_backend/data/account_stats.json
+syn_backend/db/frontend_accounts_snapshot.json
 syn_backend/uploader/**/qrcode.png
 syn_backend/Redis/
 
