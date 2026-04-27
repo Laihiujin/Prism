@@ -40,6 +40,9 @@ class SynapseApp {
     this.appIconPath = null;
     this.tray = null;
     this.isQuitting = false;
+    this.runtimeSettings = {
+      browserHeadless: true
+    };
   }
 
   async initialize() {
@@ -55,6 +58,8 @@ class SynapseApp {
     this.isDev = !app.isPackaged;
     this.repoRoot = path.join(__dirname, '../../../');
     this.appIconPath = this.getAppIconPath();
+    this.runtimeSettings = this.loadRuntimeSettings();
+    process.env.PLAYWRIGHT_HEADLESS = this.runtimeSettings.browserHeadless ? 'true' : 'false';
     this.setupTray();
 
     console.log('馃搷 App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged);
@@ -128,6 +133,42 @@ class SynapseApp {
     return this.isDev ? this.repoRoot : process.resourcesPath;
   }
 
+  getRuntimeSettingsPath() {
+    return path.join(app.getPath('userData'), 'runtime-settings.json');
+  }
+
+  normalizeRuntimeSettings(raw = {}) {
+    return {
+      browserHeadless: raw.browserHeadless !== false
+    };
+  }
+
+  loadRuntimeSettings() {
+    const settingsPath = this.getRuntimeSettingsPath();
+    try {
+      if (!fs.existsSync(settingsPath)) {
+        return this.normalizeRuntimeSettings();
+      }
+      return this.normalizeRuntimeSettings(JSON.parse(fs.readFileSync(settingsPath, 'utf8')));
+    } catch (error) {
+      log.warn('Failed to load runtime settings; using defaults:', error);
+      return this.normalizeRuntimeSettings();
+    }
+  }
+
+  saveRuntimeSettings(nextSettings = {}) {
+    const settings = this.normalizeRuntimeSettings({
+      ...this.runtimeSettings,
+      ...nextSettings
+    });
+    const settingsPath = this.getRuntimeSettingsPath();
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+    this.runtimeSettings = settings;
+    process.env.PLAYWRIGHT_HEADLESS = settings.browserHeadless ? 'true' : 'false';
+    return settings;
+  }
+
   getBackendDir() {
     return this.isDev
       ? path.join(this.repoRoot, 'syn_backend')
@@ -140,6 +181,28 @@ class SynapseApp {
       return pythonPath;
     }
     return 'python';
+  }
+
+  getNpmCommand() {
+    if (process.platform !== 'win32') {
+      return 'npm';
+    }
+    const candidates = [
+      process.env.npm_execpath,
+      path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'npm.cmd'),
+      path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'nodejs', 'npm.cmd')
+    ].filter((candidate) => candidate && /\.(cmd|exe)$/i.test(candidate));
+    return this.resolveFirstPath(candidates) || 'npm.cmd';
+  }
+
+  getNodeCommand() {
+    if (process.platform !== 'win32') {
+      return 'node';
+    }
+    return this.resolveFirstPath([
+      path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'node.exe'),
+      path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'nodejs', 'node.exe')
+    ]) || 'node.exe';
   }
 
   ensureSynenvConfig() {
@@ -389,7 +452,8 @@ class SynapseApp {
       PYTHONIOENCODING: 'utf-8',
       SYNAPSE_APP_ROOT: appRoot,
       SYNAPSE_RESOURCES_PATH: appRoot,
-      PLAYWRIGHT_BROWSERS_PATH: browsersRoot
+      PLAYWRIGHT_BROWSERS_PATH: browsersRoot,
+      PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false'
     };
     if (!env.SYNAPSE_DATA_DIR) {
       if (this.isDev) {
@@ -644,17 +708,11 @@ class SynapseApp {
 
     if (process.platform === 'win32') {
       try {
-        const killCmd = [
-          "Get-CimInstance Win32_Process",
-          "Where-Object {",
-          "  $_.Name -match 'celery' -or",
-          "  $_.CommandLine -match 'celery' -or",
-          "  $_.CommandLine -match 'fastapi_app.tasks.celery_app' -or",
-          "  $_.CommandLine -match 'synapse-worker'",
-          "}",
-          "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
-        ].join(' | ');
-        execSync(`powershell -NoProfile -Command "${killCmd}"`, { stdio: 'ignore' });
+        const powershellPath = this.resolveFirstPath([
+          path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+        ]) || 'powershell.exe';
+        const killCmd = "Get-CimInstance Win32_Process | Where-Object { ($_.Name -match 'python|celery-worker') -and ($_.CommandLine -match 'fastapi_app.tasks.celery_app' -or $_.CommandLine -match 'synapse-worker') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
+        execSync(`"${powershellPath}" -NoProfile -Command "${killCmd}"`, { stdio: 'ignore' });
         log.info('? Existing Celery workers stopped (if any).');
       } catch (error) {
         log.warn('?? Failed to stop existing Celery workers.', error);
@@ -707,6 +765,7 @@ class SynapseApp {
     log.info(' startFrontend ?);');
     log.info(`  - this.frontendProcess: ${this.frontendProcess ? 'exists' : 'null'}`);
     log.info(`  - this.isDev: ${this.isDev}`);
+    const serviceEnv = env || this.buildServiceEnv();
 
     if (this.frontendProcess) {
       log.info('? ');
@@ -730,10 +789,11 @@ class SynapseApp {
       const frontendDir = path.join(this.repoRoot, 'syn_frontend_react');
       log.info(`  - frontendDir: ${frontendDir}`);
 
-      const launchCmd = process.platform === 'win32' ? 'cmd' : 'npm';
-      const launchArgs = process.platform === 'win32' ? ['/c', 'npm', 'run', 'dev'] : ['run', 'dev'];
+      const nextCli = path.join(frontendDir, 'node_modules', 'next', 'dist', 'bin', 'next');
+      const launchCmd = this.getNodeCommand();
+      const launchArgs = [nextCli, 'dev', '--webpack'];
       const frontendEnv = {
-        ...env,
+        ...serviceEnv,
         NODE_ENV: 'development',
         PORT: '3000',
         HOSTNAME: '127.0.0.1',
@@ -772,7 +832,7 @@ class SynapseApp {
     }
     log.info(' ?...');
     const frontendEnv = {
-      ...env,
+      ...serviceEnv,
       ELECTRON_RUN_AS_NODE: '1',
       NODE_ENV: 'production',
       PORT: '3000',
@@ -1043,8 +1103,23 @@ class SynapseApp {
         name: app.getName(),
         isPackaged: app.isPackaged,
         resourcesPath: process.resourcesPath,
-        playwrightBrowserPath: this.playwrightBrowserPath
+        playwrightBrowserPath: this.playwrightBrowserPath,
+        runtimeSettings: this.runtimeSettings
       };
+    });
+
+    ipcMain.handle('settings:get', () => {
+      return this.runtimeSettings;
+    });
+
+    ipcMain.handle('settings:update', (event, settings = {}) => {
+      try {
+        const nextSettings = this.saveRuntimeSettings(settings);
+        return { success: true, settings: nextSettings };
+      } catch (error) {
+        log.error('Failed to update runtime settings:', error);
+        return { success: false, error: error.message };
+      }
     });
 
     // 璁剧疆 Session Cookies
@@ -1053,29 +1128,56 @@ class SynapseApp {
       const { session } = require('electron');
       const sess = session.fromPartition(partition);
 
-      const promises = cookies.map(cookie => {
-        // Playwright cookie 鏍煎紡杞?Electron cookie 鏍煎紡
-        const url = `${cookie.secure ? 'https' : 'http'}://${cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain}${cookie.path}`;
-        return sess.cookies.set({
-          url: url,
-          name: cookie.name,
-          value: cookie.value,
-          domain: cookie.domain,
-          path: cookie.path,
-          secure: cookie.secure,
-          httpOnly: cookie.httpOnly,
-          expirationDate: cookie.expires
-        });
-      });
+      const sameSiteMap = {
+        None: 'no_restriction',
+        Lax: 'lax',
+        Strict: 'strict',
+        no_restriction: 'no_restriction',
+        lax: 'lax',
+        strict: 'strict'
+      };
+      const results = [];
 
-      try {
-        await Promise.all(promises);
-        log.info(`鉁?鍒嗗尯 ${partition} Cookies 璁剧疆鎴愬姛`);
-        return true;
-      } catch (error) {
-        log.error(`鉂?鍒嗗尯 ${partition} Cookies 璁剧疆澶辫触:`, error);
-        return false;
+      for (const cookie of cookies) {
+        try {
+          if (!cookie?.name || !cookie?.domain) {
+            throw new Error('Missing cookie name or domain');
+          }
+          const pathName = cookie.path || '/';
+          const hostname = cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain;
+          const details = {
+            url: `${cookie.secure ? 'https' : 'http'}://${hostname}${pathName}`,
+            name: cookie.name,
+            value: String(cookie.value ?? ''),
+            path: pathName,
+            secure: Boolean(cookie.secure),
+            httpOnly: Boolean(cookie.httpOnly)
+          };
+          if (!cookie.name.startsWith('__Host-')) {
+            details.domain = cookie.domain;
+          }
+          if (typeof cookie.expires === 'number' && cookie.expires > 0) {
+            details.expirationDate = cookie.expires;
+          }
+          if (cookie.sameSite && sameSiteMap[cookie.sameSite]) {
+            details.sameSite = sameSiteMap[cookie.sameSite];
+          }
+          await sess.cookies.set(details);
+          results.push({ name: cookie.name, domain: cookie.domain, success: true });
+        } catch (error) {
+          log.error(`鉂?Cookie 璁剧疆澶辫触 ${cookie?.name || '<unknown>'}:`, error);
+          results.push({ name: cookie?.name, domain: cookie?.domain, success: false, error: error.message });
+        }
       }
+
+      const failed = results.filter((item) => !item.success);
+      try {
+        await sess.cookies.flushStore();
+      } catch (error) {
+        log.warn(`Cookie flush failed for partition ${partition}:`, error);
+      }
+      log.info(`鉁?鍒嗗尯 ${partition} Cookies 璁剧疆瀹屾垚: ${results.length - failed.length}/${results.length}`);
+      return { success: failed.length === 0, results };
     });
 
     // ========== 绯荤粺绠＄悊 IPC 澶勭悊鍣?==========

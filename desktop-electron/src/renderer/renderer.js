@@ -81,24 +81,35 @@ class TabManager {
         this.pUrlInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 const url = this.pUrlInput.value.trim();
                 if (url) {
-                    this.navigate(url);
+                    this.navigate(url, this.popup.dataset.tabId);
                 }
                 this.pUrlInput.blur();
             }
         });
 
         // 弹窗工具栏控制
-        const goBack = () => this.activeTab()?.webview.canGoBack() && this.activeTab().webview.goBack();
-        const goForward = () => this.activeTab()?.webview.canGoForward() && this.activeTab().webview.goForward();
-        const reload = () => this.activeTab()?.webview.reload();
+        const popupTab = () => this.tabs.find(t => t.id === this.popup.dataset.tabId) || this.activeTab();
+        const goBack = () => {
+            const tab = popupTab();
+            if (tab?.webview.canGoBack()) tab.webview.goBack();
+        };
+        const goForward = () => {
+            const tab = popupTab();
+            if (tab?.webview.canGoForward()) tab.webview.goForward();
+        };
+        const reload = () => {
+            const tab = popupTab();
+            if (tab?.webview) tab.webview.reload();
+        };
 
         document.getElementById('p-back').onclick = goBack;
         document.getElementById('p-forward').onclick = goForward;
         document.getElementById('p-reload').onclick = reload;
         document.getElementById('p-copy').onclick = () => {
-            const url = this.activeTab()?.webview.getURL();
+            const url = popupTab()?.webview.getURL();
             if (url) {
                 navigator.clipboard.writeText(url);
                 const originalTitle = document.getElementById('p-title').textContent;
@@ -118,66 +129,169 @@ class TabManager {
 
         // 监听来自内部页面的消息 (用于创作者中心集成)
         window.addEventListener('message', (event) => {
-            if (event.data.type === 'OPEN_CREATOR_TAB') {
-                const { url, cookies, platform } = event.data;
-                this.addTabWithCookies(url, cookies, platform);
+            if (event.data && event.data.type === 'OPEN_CREATOR_TAB') {
+                this.addTabWithCookies(event.data.url, event.data.cookies || [], event.data.platform || 'browser', event.data.storageState, event.data.accountId);
             }
         });
     }
 
-    async addTabWithCookies(url, cookies, platform = 'browser') {
-        const id = this.addTab(url, platform);
-        const partition = `persist:${id}`;
+    waitForWebviewEvent(webview, eventNames = ['did-stop-loading'], timeoutMs = 15000) {
+        const names = Array.isArray(eventNames) ? eventNames : [eventNames];
+        return new Promise((resolve) => {
+            let done = false;
+            let timer = null;
+            const handlers = new Map();
+            const cleanup = (result) => {
+                if (done) return;
+                done = true;
+                if (timer) clearTimeout(timer);
+                names.forEach((name) => webview.removeEventListener(name, handlers.get(name)));
+                resolve(result);
+            };
+            names.forEach((name) => {
+                const handler = (event) => cleanup({ event: name, detail: event });
+                handlers.set(name, handler);
+                webview.addEventListener(name, handler, { once: true });
+            });
+            timer = setTimeout(() => cleanup({ event: 'timeout' }), timeoutMs);
+        });
+    }
 
-        if (window.electronAPI && window.electronAPI.session) {
-            console.log(`[Shell] Injecting ${cookies.length} cookies into ${partition} for ${platform}`);
-            await window.electronAPI.session.setCookies(partition, cookies);
-            // 重新加载以使 Cookie 生效
-            const tab = this.tabs.find(t => t.id === id);
-            if (tab) tab.webview.reload();
+    async injectLocalStorage(webview, storageState, targetUrl) {
+        const origins = storageState?.origins || [];
+        if (!origins.length) return;
+
+        let targetOrigin = null;
+        try {
+            targetOrigin = new URL(targetUrl).origin;
+        } catch {
+            targetOrigin = null;
+        }
+
+        for (const originState of origins) {
+            const items = originState.localStorage || [];
+            if (!originState.origin || !items.length) continue;
+            if (targetOrigin && originState.origin !== targetOrigin) continue;
+
+            const bootstrapUrl = originState.origin.endsWith('/') ? originState.origin : `${originState.origin}/`;
+            console.log(`[Shell] Preparing localStorage for ${originState.origin}: ${items.length} items`);
+            webview.loadURL(bootstrapUrl);
+            await this.waitForWebviewEvent(webview, ['did-stop-loading', 'did-fail-load'], 15000);
+            await webview.executeJavaScript(`
+                (() => {
+                    const entries = ${JSON.stringify(items)};
+                    for (const entry of entries) {
+                        if (entry && typeof entry.name === 'string') {
+                            localStorage.setItem(entry.name, String(entry.value ?? ''));
+                        }
+                    }
+                    return true;
+                })();
+            `, true);
         }
     }
 
-    navigate(url) {
+    getStorageStateUserAgent(storageState) {
+        const origins = storageState?.origins || [];
+        for (const originState of origins) {
+            for (const entry of originState.localStorage || []) {
+                if (entry?.name !== 'finder_ua_report_data') continue;
+                try {
+                    const data = JSON.parse(entry.value || '{}');
+                    if (data.browser === 'Chrome' && data.browserVersion) {
+                        return `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${data.browserVersion} Safari/537.36`;
+                    }
+                } catch {
+                    // Ignore malformed platform telemetry.
+                }
+            }
+        }
+        return null;
+    }
+
+    getAccountPartition(platform, accountId) {
+        const safePlatform = String(platform || 'browser').replace(/[^a-z0-9_-]/gi, '_');
+        const safeAccountId = String(accountId || '').replace(/[^a-z0-9_-]/gi, '_');
+        return safeAccountId ? `persist:account-${safePlatform}-${safeAccountId}` : null;
+    }
+
+    async addTabWithCookies(url, cookies, platform = 'browser', storageState = null, accountId = null) {
+        const partition = this.getAccountPartition(platform, accountId);
+        const id = this.addTab(url, platform, false, {
+            initialUrl: 'about:blank',
+            partition,
+            userAgent: this.getStorageStateUserAgent(storageState)
+        });
+        const tabPartition = partition || `persist:${id}`;
+        const tab = this.tabs.find(t => t.id === id);
+
+        if (window.electronAPI && window.electronAPI.session) {
+            const stateCookies = storageState?.cookies || cookies || [];
+            console.log(`[Shell] Injecting ${stateCookies.length} cookies into ${tabPartition} for ${platform}`);
+            const result = await window.electronAPI.session.setCookies(tabPartition, stateCookies);
+            if (!result?.success && result !== true) {
+                console.warn('[Shell] Cookie injection had failures:', result);
+            }
+        }
+
+        if (tab) {
+            try {
+                await this.injectLocalStorage(tab.webview, storageState, url);
+            } catch (error) {
+                console.warn('[Shell] localStorage injection failed:', error);
+            }
+            tab.webview.loadURL(url);
+            this.urlBar.value = url;
+        }
+    }
+
+    normalizeUrl(url) {
+        if (!url) return '';
+        let finalUrl = url.trim();
+        if (!finalUrl) return '';
+
+        if (finalUrl.includes('localhost') || finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
+            if (finalUrl.includes('localhost') && !finalUrl.startsWith('http')) {
+                finalUrl = 'http://' + finalUrl;
+            }
+        } else if (finalUrl.includes('.') && !finalUrl.includes(' ')) {
+            finalUrl = 'https://' + finalUrl;
+        } else {
+            finalUrl = 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
+        }
+
+        return finalUrl;
+    }
+
+    navigate(url, tabId = null) {
         console.log('[导航] 开始导航到:', url);
         if (!url) {
             console.log('[导航] URL 为空，取消导航');
             return;
         }
 
-        let finalUrl = url.trim();
-
-        // 如果是 localhost 或已经有协议，直接使用
-        if (finalUrl.includes('localhost') || finalUrl.startsWith('http://') || finalUrl.startsWith('https://')) {
-            // 确保 localhost 有协议
-            if (finalUrl.includes('localhost') && !finalUrl.startsWith('http')) {
-                finalUrl = 'http://' + finalUrl;
-            }
-        } else {
-            // 判断是域名还是搜索关键词
-            if (finalUrl.includes('.') && !finalUrl.includes(' ')) {
-                finalUrl = 'https://' + finalUrl;
-            } else {
-                finalUrl = 'https://www.google.com/search?q=' + encodeURIComponent(finalUrl);
-            }
-        }
+        const finalUrl = this.normalizeUrl(url);
 
         console.log('[导航] 最终 URL:', finalUrl);
 
-        const active = this.activeTab();
+        const active = (tabId && this.tabs.find(t => t.id === tabId)) || this.activeTab();
         if (active) {
             console.log('[导航] 活动标签页:', active.id);
             console.log('[导航] 加载 URL 到 webview...');
             active.webview.loadURL(finalUrl);
             // 更新地址栏显示
-            this.urlBar.value = finalUrl;
+            if (active.id === this.activeId) this.urlBar.value = finalUrl;
+            if (this.popup.style.display === 'block' && this.popup.dataset.tabId === active.id) {
+                this.pUrlDisplay.textContent = finalUrl;
+                this.pUrlInput.value = finalUrl;
+            }
             console.log('[导航] 导航完成');
         } else {
             console.log('[导航] 没有活动标签页！');
         }
     }
 
-    addTab(url, type = 'browser', pinned = false) {
+    addTab(url, type = 'browser', pinned = false, options = {}) {
         if (!url) return;
         const id = `tab-${this.nextId++}`;
 
@@ -213,10 +327,16 @@ class TabManager {
 
         const webview = document.createElement('webview');
         webview.id = `wv-${id}`;
-        webview.src = url;
         webview.setAttribute('allowpopups', '');
-        webview.setAttribute('partition', pinned ? 'persist:main' : `persist:${id}`);
-        webview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        webview.setAttribute('partition', options.partition || (pinned ? 'persist:main' : `persist:${id}`));
+        webview.setAttribute('preload', new URL('webview-preload.js', window.location.href).toString());
+        if (!pinned) {
+            const userAgent = options.userAgent || navigator.userAgent
+                .replace(/\sSynapseAutomation\/[^\s]+/g, '')
+                .replace(/\sElectron\/[^\s]+/g, '');
+            webview.setAttribute('useragent', userAgent);
+        }
+        webview.src = options.initialUrl || url;
         this.container.appendChild(webview);
 
         const tabData = { id, webview, tabItem, url, title: '会话加载中...', type, pinned };
@@ -226,6 +346,13 @@ class TabManager {
         webview.addEventListener('new-window', (e) => {
             e.preventDefault();
             this.addTab(e.url, 'browser');
+        });
+
+        webview.addEventListener('ipc-message', (e) => {
+            if (e.channel === 'OPEN_CREATOR_TAB') {
+                const payload = e.args?.[0] || {};
+                this.addTabWithCookies(payload.url, payload.cookies || [], payload.platform || 'browser', payload.storageState, payload.accountId);
+            }
         });
 
         // 核心：实时同步 URL 和标题 (修复百度/Google Mismatch)

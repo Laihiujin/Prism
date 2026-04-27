@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getInfo: () => ipcRenderer.invoke('app:getInfo')
   },
 
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    update: (settings) => ipcRenderer.invoke('settings:update', settings)
+  },
+
   // 系统管理
   system: {
     restartFrontend: () => ipcRenderer.invoke('system:restart-frontend'),

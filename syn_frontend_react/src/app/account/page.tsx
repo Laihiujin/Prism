@@ -453,18 +453,31 @@ function AccountPageContent() {
       const { url, storage_state, platform } = res.data
       const cookies = storage_state?.cookies || []
 
-      // 2. 检测是否正在 Electron Shell 中运行
-      const isElectron = typeof window !== 'undefined' &&
-        (window.navigator.userAgent.indexOf('Electron') > -1 || (window as any).electronAPI);
+      // 2. Electron Shell 中优先使用左侧内置浏览器标签页
+      const electronApi = typeof window !== "undefined" ? (window as any).electronAPI : null
+      const isEmbeddedShell =
+        typeof window !== "undefined" &&
+        window.parent &&
+        window.parent !== window
+      const isElectron =
+        typeof window !== "undefined" &&
+        (window.navigator.userAgent.indexOf("Electron") > -1 || electronApi || isEmbeddedShell)
 
       if (isElectron) {
-        // 通知外部 Shell 打开新标签并注入 Cookie
-        window.parent.postMessage({
+        const payload = {
           type: 'OPEN_CREATOR_TAB',
           url: url,
           cookies: cookies,
-          platform: platform
-        }, '*')
+          storageState: storage_state,
+          platform: platform,
+          accountId: accountId
+        }
+
+        if (electronApi?.browser?.openCreatorTab) {
+          electronApi.browser.openCreatorTab(payload)
+        } else {
+          window.parent.postMessage(payload, '*')
+        }
 
         toast({
           title: "正在侧边栏打开",
