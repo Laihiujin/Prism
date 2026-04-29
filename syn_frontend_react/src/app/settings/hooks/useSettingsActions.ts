@@ -87,13 +87,13 @@ export function useSettingsActions() {
     try {
       await action()
       toast({
-        title: "Success",
+        title: "操作成功",
         description: successMessage,
       })
     } catch (error: any) {
       toast({
-        title: "Action failed",
-        description: error.message || "Request failed",
+        title: "操作失败",
+        description: error.message || "请求失败",
         variant: "destructive",
       })
       throw error
@@ -121,15 +121,15 @@ export function useSettingsActions() {
 
       if (!silent) {
         toast({
-          title: "Status refreshed",
-          description: "Runtime status has been updated",
+          title: "状态已刷新",
+          description: "运行时状态已更新",
         })
       }
     } catch (error: any) {
       if (!silent) {
         toast({
-          title: "Refresh failed",
-          description: error.message || "Unable to load runtime status",
+          title: "刷新失败",
+          description: error.message || "无法加载运行时状态",
           variant: "destructive",
         })
       }
@@ -148,7 +148,7 @@ export function useSettingsActions() {
       if (isElectron) {
         const result = await (window as any).electronAPI.system.restartAll()
         if (!result.success) {
-          throw new Error(result.error || "Restart failed")
+          throw new Error(result.error || "重启失败")
         }
       } else {
         const response = await fetch(`${apiBase}/api/v1/system/supervisor/restart`, {
@@ -156,11 +156,11 @@ export function useSettingsActions() {
         })
         if (!response.ok) {
           const data = await response.json()
-          throw new Error(data.detail || "Restart failed")
+          throw new Error(data.detail || "重启失败")
         }
       }
       await refreshStatus({ silent: true })
-    }, "All services restarted")
+    }, "所有服务已重启")
   }
 
   const restartBackend = async () => {
@@ -168,7 +168,7 @@ export function useSettingsActions() {
       if (isElectron) {
         const result = await (window as any).electronAPI.system.restartBackend()
         if (!result.success) {
-          throw new Error(result.error || "Backend restart failed")
+          throw new Error(result.error || "后端重启失败")
         }
       } else {
         const response = await fetch(`${apiBase}/api/v1/system/supervisor/restart/backend`, {
@@ -176,11 +176,11 @@ export function useSettingsActions() {
         })
         if (!response.ok) {
           const data = await response.json()
-          throw new Error(data.detail || "Backend restart failed")
+          throw new Error(data.detail || "后端重启失败")
         }
       }
       await refreshStatus({ silent: true })
-    }, "Backend restarted")
+    }, "后端已重启")
   }
 
   const restartFrontend = async () => {
@@ -188,7 +188,7 @@ export function useSettingsActions() {
       if (isElectron) {
         const result = await (window as any).electronAPI.system.restartFrontend()
         if (!result.success) {
-          throw new Error(result.error || "Frontend restart failed")
+          throw new Error(result.error || "前端重启失败")
         }
       } else {
         const response = await fetch(`${apiBase}/api/v1/system/restart-frontend`, {
@@ -196,11 +196,11 @@ export function useSettingsActions() {
         })
         if (!response.ok) {
           const data = await response.json()
-          throw new Error(data.detail || "Frontend restart failed")
+          throw new Error(data.detail || "前端重启失败")
         }
       }
       await refreshStatus({ silent: true })
-    }, "Frontend restarted")
+    }, "前端已重启")
   }
 
   const stopAll = async () => {
@@ -208,7 +208,7 @@ export function useSettingsActions() {
       if (isElectron) {
         const result = await (window as any).electronAPI.system.stopAll()
         if (!result.success) {
-          throw new Error(result.error || "Stop failed")
+          throw new Error(result.error || "停止失败")
         }
       } else {
         const response = await fetch(`${apiBase}/api/v1/system/supervisor/stop`, {
@@ -216,23 +216,23 @@ export function useSettingsActions() {
         })
         if (!response.ok) {
           const data = await response.json()
-          throw new Error(data.detail || "Stop failed")
+          throw new Error(data.detail || "停止失败")
         }
       }
       await refreshStatus({ silent: true })
-    }, "All services stopped")
+    }, "所有服务已停止")
   }
 
   const setBrowserHeadless = async (browserHeadless: boolean) => {
     await handleAction("setBrowserHeadless", async () => {
       if (!isElectron) {
-        throw new Error("Desktop app only")
+        throw new Error("仅桌面版可用")
       }
 
       const electron = (window as any).electronAPI
       const result = await electron.settings.update({ browserHeadless })
       if (!result.success) {
-        throw new Error(result.error || "Failed to update browser mode")
+        throw new Error(result.error || "浏览器模式更新失败")
       }
 
       setAppInfo((prev) => ({
@@ -242,23 +242,23 @@ export function useSettingsActions() {
 
       const restartResult = await electron.system.restartAll()
       if (!restartResult.success) {
-        throw new Error(restartResult.error || "Services restart failed")
+        throw new Error(restartResult.error || "服务重启失败")
       }
 
       await refreshStatus({ silent: true })
-    }, browserHeadless ? "Browser automation will run headless" : "Browser automation windows will be shown")
+    }, browserHeadless ? "自动化浏览器将以无头模式运行" : "自动化浏览器窗口将显示出来")
   }
 
   const quitApp = async () => {
     await handleAction("quitApp", async () => {
       if (!isElectron) {
-        throw new Error("Desktop app only")
+        throw new Error("仅桌面版可用")
       }
       const result = await (window as any).electronAPI.system.quitApp()
       if (!result.success) {
-        throw new Error(result.error || "Quit failed")
+        throw new Error(result.error || "退出失败")
       }
-    }, "Application is quitting")
+    }, "应用正在退出")
   }
 
   const clearMaterials = async () => {
@@ -268,9 +268,9 @@ export function useSettingsActions() {
       })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Clear materials failed")
+        throw new Error(data.detail || "清理素材失败")
       }
-    }, "Materials cleared")
+    }, "素材已清理")
   }
 
   const clearAccounts = async () => {
@@ -280,9 +280,9 @@ export function useSettingsActions() {
       })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Clear accounts failed")
+        throw new Error(data.detail || "清理账号失败")
       }
-    }, "Accounts and cookies cleared")
+    }, "账号和 Cookie 已清理")
   }
 
   const clearBrowser = async () => {
@@ -292,9 +292,9 @@ export function useSettingsActions() {
       })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Clear browser failed")
+        throw new Error(data.detail || "清理浏览器失败")
       }
-    }, "Browser data cleared")
+    }, "浏览器数据已清理")
   }
 
   const clearCache = async () => {
@@ -304,9 +304,9 @@ export function useSettingsActions() {
       })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Clear cache failed")
+        throw new Error(data.detail || "清理缓存失败")
       }
-    }, "Cache cleared")
+    }, "缓存已清理")
   }
 
   const clearVideoData = async () => {
@@ -316,9 +316,9 @@ export function useSettingsActions() {
       })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Clear video data failed")
+        throw new Error(data.detail || "清理视频数据失败")
       }
-    }, "Video data cleared")
+    }, "视频数据已清理")
   }
 
   const runSelfCheck = async () => {
@@ -326,13 +326,13 @@ export function useSettingsActions() {
       const response = await fetch(`${apiBase}/api/v1/system/self-check`, { method: "POST" })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Self-check failed")
+        throw new Error(data.detail || "自检失败")
       }
       const data = await response.json()
       if (data.status === "warning" && data.issues?.length) {
-        throw new Error(`Issues found:\n${data.issues.join("\n")}`)
+        throw new Error(`发现问题：\n${data.issues.join("\n")}`)
       }
-    }, "Self-check completed")
+    }, "自检已完成")
   }
 
   const forceKillProcesses = async () => {
@@ -340,7 +340,7 @@ export function useSettingsActions() {
       if (isElectron) {
         const result = await (window as any).electronAPI.system.stopAll()
         if (!result.success) {
-          throw new Error(result.error || "Force stop failed")
+          throw new Error(result.error || "强制停止失败")
         }
       } else {
         const response = await fetch(`${apiBase}/api/v1/system/supervisor/stop`, {
@@ -348,11 +348,11 @@ export function useSettingsActions() {
         })
         if (!response.ok) {
           const data = await response.json()
-          throw new Error(data.detail || "Force stop failed")
+          throw new Error(data.detail || "强制停止失败")
         }
       }
       await refreshStatus({ silent: true })
-    }, "Processes stopped")
+    }, "进程已停止")
   }
 
   const exportLogs = async () => {
@@ -360,7 +360,7 @@ export function useSettingsActions() {
       const response = await fetch(`${apiBase}/api/v1/system/export-logs`, { method: "POST" })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Export logs failed")
+        throw new Error(data.detail || "导出日志失败")
       }
 
       const blob = await response.blob()
@@ -372,7 +372,7 @@ export function useSettingsActions() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-    }, "Logs exported")
+    }, "日志已导出")
   }
 
   return {
