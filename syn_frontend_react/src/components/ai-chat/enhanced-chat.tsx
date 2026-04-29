@@ -28,7 +28,7 @@ import {
   ConversationContent
 } from "@/components/ai-elements/conversation"
 import { useAgentStream } from "@/hooks/useAgentStream"
-import { Link2, Sparkles, Settings, Bot, MessageSquare, Sidebar } from "lucide-react"
+import { Link2, Sparkles, Settings, MessageSquare, Sidebar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -194,8 +194,8 @@ export function EnhancedAIChat() {
     } catch (error) {
       console.error("Failed to switch model:", error)
       toast({
-        title: "閿欒",
-        description: "鍒囨崲妯″瀷澶辫触",
+        title: "错误",
+        description: "切换模型失败",
         variant: "destructive"
       })
     }
@@ -222,8 +222,8 @@ export function EnhancedAIChat() {
     } catch (error) {
       console.error("Failed to load messages:", error)
       toast({
-        title: "閿欒",
-        description: "鍔犺浇娑堟伅澶辫触",
+        title: "错误",
+        description: "加载消息失败",
         variant: "destructive"
       })
     }
@@ -236,7 +236,7 @@ export function EnhancedAIChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: `鏂板璇?${new Date().toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`,
+          title: `新对话 ${new Date().toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`,
           mode: mode  // 浼犻€掑綋鍓嶆ā寮?
         })
       })
@@ -270,15 +270,15 @@ export function EnhancedAIChat() {
         setAgentThinking("")
         setIsAgentThinking(false)
         toast({
-          title: "鎴愬姛",
-          description: "鏂板璇濆凡鍒涘缓"
+          title: "成功",
+          description: "新对话已创建"
         })
       }
     } catch (error) {
       console.error("Failed to create thread:", error)
       toast({
-        title: "閿欒",
-        description: "鍒涘缓瀵硅瘽澶辫触",
+        title: "错误",
+        description: "创建对话失败",
         variant: "destructive"
       })
     }
@@ -298,15 +298,15 @@ export function EnhancedAIChat() {
           setMessages([])
         }
         toast({
-          title: "鎴愬姛",
+          title: "成功",
           description: "对话已删除",
         })
       }
     } catch (error) {
       console.error("Failed to delete thread:", error)
       toast({
-        title: "閿欒",
-        description: "鍒犻櫎瀵硅瘽澶辫触",
+        title: "错误",
+        description: "删除对话失败",
         variant: "destructive"
       })
     }
@@ -328,14 +328,14 @@ export function EnhancedAIChat() {
           t.id === threadId ? { ...t, title: newTitle } : t
         ))
         toast({
-          title: "鎴愬姛",
-          description: "瀵硅瘽宸查噸鍛藉悕"
+          title: "成功",
+          description: "对话已重命名"
         })
       }
     } catch (error) {
       console.error("Failed to rename thread:", error)
       toast({
-        title: "閿欒",
+        title: "错误",
         description: "重命名失败",
         variant: "destructive"
       })
@@ -428,7 +428,7 @@ export function EnhancedAIChat() {
     } catch (error) {
       console.error("Manus confirm failed:", error)
       toast({
-        title: "纭澶辫触",
+        title: "确认失败",
         description: "提交确认请求失败，请稍后重试。",
         variant: "destructive"
       })
@@ -478,8 +478,8 @@ export function EnhancedAIChat() {
         }
       } catch (error) {
         toast({
-          title: "閿欒",
-          description: "鍒涘缓瀵硅瘽澶辫触",
+          title: "错误",
+          description: "创建对话失败",
           variant: "destructive"
         })
         return
@@ -931,7 +931,7 @@ export function EnhancedAIChat() {
       } catch (error) {
         console.error("Failed to check AI status:", error)
         setIsConnected(false)
-        setConnectionError("鏃犳硶杩炴帴鍒板悗绔湇鍔″櫒")
+        setConnectionError("无法连接到后端服务")
       }
     }
 
@@ -998,19 +998,10 @@ export function EnhancedAIChat() {
                 {/* <p className="text-xs font-medium text-white/50">AiAgent</p> */}
                 {/* 鏄剧ず褰撳墠妯″紡浣跨敤鐨勬ā鍨?*/}
                 {mode === "chat" && chatModelConfig && (
-                  <span className="text-xs text-blue-400/70">
-                    鈥?Chat妯″瀷: {chatModelConfig.model_name}{/*  || chatModelConfig.provider */}
-                  </span>
-                )}
-                {mode === "agent" && agentModelConfig && (
-                  <span className="text-xs text-purple-400/70">
-                    鈥?Agent妯″瀷: {agentModelConfig.model_name}  {/* || agentModelConfig.provider */}
-                  </span>
+                  <span className="text-xs text-blue-400/70">对话模型：{chatModelConfig.model_name}</span>
                 )}
                 {mode === "openclaw" && openclawModelConfig && (
-                  <span className="text-xs text-orange-400/70">
-                    鈥?Manus妯″瀷: {openclawModelConfig.model_name}
-                  </span>
+                  <span className="text-xs text-orange-400/70">OpenClaw 模型：{openclawModelConfig.model_name}</span>
                 )}
               </div>
             </div>
@@ -1046,31 +1037,23 @@ export function EnhancedAIChat() {
 
         <div className="border-b border-white/5 bg-neutral-900/40 px-6 py-3">
           <div className="relative flex items-center justify-center">
-            <Tabs value={mode} onValueChange={(v) => setMode(v as "chat" | "agent" | "openclaw")}>
-              <TabsList className="grid w-[700px] grid-cols-3 bg-white/5">
-                <TabsTrigger
-                  value="chat"
-                  className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                  title={chatModelConfig ? `浣跨敤妯″瀷: ${chatModelConfig.model_name}` : "瀵硅瘽妯″紡"}
-                >
-                  <MessageSquare className="mr-2 h-3 w-3" />
-                  Chat
-                </TabsTrigger>
-                <TabsTrigger
-                  value="agent"
-                  className="text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-white"
-                  title={agentModelConfig ? `浣跨敤妯″瀷: ${agentModelConfig.model_name}` : "Agent妯″紡"}
-                >
-                  <Bot className="mr-2 h-3 w-3" />
-                  Agent
-                </TabsTrigger>
-                <TabsTrigger
-                  value="openclaw"
-                  className="text-xs data-[state=active]:bg-orange-600 data-[state=active]:text-white"
-                  title={openclawModelConfig ? `浣跨敤妯″瀷: ${openclawModelConfig.model_name}` : "openclaw妯″紡"}
-                >
-                  <Sparkles className="mr-2 h-3 w-3" />
-                  OpenClaw
+              <Tabs value={mode === "agent" ? "chat" : mode} onValueChange={(v) => setMode(v as "chat" | "agent" | "openclaw")}>
+                <TabsList className="grid w-[520px] grid-cols-2 bg-white/5">
+                  <TabsTrigger
+                    value="chat"
+                    className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    title={chatModelConfig ? `使用模型：${chatModelConfig.model_name}` : "对话模式"}
+                  >
+                    <MessageSquare className="mr-2 h-3 w-3" />
+                    对话
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="openclaw"
+                    className="text-xs data-[state=active]:bg-orange-600 data-[state=active]:text-white"
+                    title={openclawModelConfig ? `使用模型：${openclawModelConfig.model_name}` : "OpenClaw 模式"}
+                  >
+                    <Sparkles className="mr-2 h-3 w-3" />
+                    OpenClaw
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -1083,23 +1066,10 @@ export function EnhancedAIChat() {
             <Conversation className="h-full">
               <ConversationContent>
                 <div className="mx-auto w-full max-w-4xl space-y-6">
-                  {mode === "agent" && agentTaskQueue.length > 0 && (
-                    <div className="w-full rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3 shadow-xl backdrop-blur-sm transition-all hover:border-white/20">
-                      <TaskList
-                        title="宸ュ叿浠诲姟闃熷垪"
-                        tasks={agentTaskQueue.map(task => ({
-                          id: task.id,
-                          title: task.name,
-                          status: task.status,
-                          metadata: task.metadata
-                        }))}
-                      />
-                    </div>
-                  )}
                   {mode === "openclaw" && manusStream.tasks.length > 0 && (
                     <div className="w-full rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3 shadow-xl backdrop-blur-sm transition-all hover:border-white/20">
                       <TaskList
-                        title="宸ュ叿浠诲姟闃熷垪"
+                        title="工具任务队列"
                         tasks={manusStream.tasks.map(task => ({
                           id: task.id,
                           title: task.name,
@@ -1161,7 +1131,7 @@ export function EnhancedAIChat() {
                         }
                       }
                     }}
-                    placeholder={connectionError ? `AI 杩炴帴闂: ${connectionError}` : (!isConnected ? "璇疯緭鍏?.." : (mode === "agent" ? "鎻忚堪浣犵殑浠诲姟锛屼緥濡傦細甯垜鍒嗘瀽鏈€杩戠殑鍙戝竷鏁版嵁..." : "杈撳叆娑堟伅..."))}
+                    placeholder={connectionError ? `AI 连接异常：${connectionError}` : (!isConnected ? "请输入消息..." : (mode === "agent" ? "描述你的任务..." : "输入消息..."))}
                     className="bg-black/40 text-white border-white/10 pr-20"
                   />
                   <div className="absolute bottom-2 right-2 flex items-center gap-2">
@@ -1179,7 +1149,7 @@ export function EnhancedAIChat() {
                           className="h-8"
                           type="button"
                         >
-                          鍋滄
+                          停止
                         </Button>
                       </>
                     )}
@@ -1191,7 +1161,7 @@ export function EnhancedAIChat() {
                       disabled={isLoading || (mode === "openclaw" && manusStream.isStreaming) || (mode === "agent" && isAgentThinking)}
                       className="h-8"
                     >
-                      鍙戦€?
+                        发送
                     </Button>
                   </div>
                 </div>

@@ -504,8 +504,48 @@
 
     <script>
         const API_BASE = 'http://127.0.0.1:7000/api/v1/system';
+        const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI);
         let currentLogFilter = 'all';
         let autoRefreshInterval = null;
+        let serviceRestartCooldownUntil = 0;
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function beginServiceRestartCooldown(ms = 12000) {
+            serviceRestartCooldownUntil = Date.now() + ms;
+        }
+
+        function isServiceRestartCoolingDown() {
+            return Date.now() < serviceRestartCooldownUntil;
+        }
+
+        async function retry(task, attempts = 3, delayMs = 800) {
+            let lastError = null;
+
+            for (let index = 0; index < attempts; index += 1) {
+                try {
+                    return await task();
+                } catch (error) {
+                    lastError = error;
+                    if (index < attempts - 1) {
+                        await sleep(delayMs);
+                    }
+                }
+            }
+
+            throw lastError;
+        }
+
+        async function parseResponseError(response, fallbackMessage) {
+            try {
+                const data = await response.json();
+                return data?.detail || fallbackMessage;
+            } catch (_) {
+                return fallbackMessage;
+            }
+        }
 
         // Toast 通知
         function showToast(message, type = 'success') {
