@@ -31,6 +31,7 @@ def ensure_analytics_schema(db_path: Path):
                 title VARCHAR(500),
                 thumbnail TEXT,
                 publish_date DATE,
+                collected_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 play_count INTEGER DEFAULT 0,
                 like_count INTEGER DEFAULT 0,
                 comment_count INTEGER DEFAULT 0,
@@ -81,6 +82,7 @@ def ensure_analytics_schema(db_path: Path):
                 "title": "VARCHAR(500)",
                 "thumbnail": "TEXT",
                 "publish_date": "DATE",
+                "collected_at": "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
                 "play_count": "INTEGER DEFAULT 0",
                 "like_count": "INTEGER DEFAULT 0",
                 "comment_count": "INTEGER DEFAULT 0",
@@ -290,9 +292,9 @@ def insert_video_analytics(db_path: Path, data: Dict) -> int:
         cursor.execute("""
             INSERT INTO video_analytics (
                 task_id, account_id, platform, video_id, video_url,
-                title, thumbnail, publish_date, play_count, like_count,
+                title, thumbnail, publish_date, collected_at, play_count, like_count,
                 comment_count, collect_count, share_count, match_confidence, raw_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data.get('task_id'),
             data.get('account_id'),
@@ -302,6 +304,7 @@ def insert_video_analytics(db_path: Path, data: Dict) -> int:
             data.get('title'),
             data.get('thumbnail'),
             data.get('publish_date'),
+            data.get('collected_at') or now_beijing_naive().isoformat(sep=' ', timespec='seconds'),
             data.get('play_count', 0),
             data.get('like_count', 0),
             data.get('comment_count', 0),
@@ -379,6 +382,7 @@ def upsert_video_analytics_by_key(db_path: Path, *, platform: str, video_id: str
                     title = COALESCE(?, title),
                     thumbnail = COALESCE(?, thumbnail),
                     publish_date = COALESCE(?, publish_date),
+                    collected_at = ?,
                     play_count = ?,
                     like_count = ?,
                     comment_count = ?,
@@ -396,6 +400,7 @@ def upsert_video_analytics_by_key(db_path: Path, *, platform: str, video_id: str
                     data.get("title"),
                     data.get("thumbnail"),
                     data.get("publish_date"),
+                    data.get("collected_at") or now_beijing_naive().isoformat(sep=" ", timespec="seconds"),
                     data.get("play_count", 0),
                     data.get("like_count", 0),
                     data.get("comment_count", 0),
@@ -413,9 +418,9 @@ def upsert_video_analytics_by_key(db_path: Path, *, platform: str, video_id: str
             """
             INSERT INTO video_analytics (
                 task_id, account_id, platform, video_id, video_url,
-                title, thumbnail, publish_date, play_count, like_count,
+                title, thumbnail, publish_date, collected_at, play_count, like_count,
                 comment_count, collect_count, share_count, match_confidence, raw_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data.get("task_id"),
@@ -426,6 +431,7 @@ def upsert_video_analytics_by_key(db_path: Path, *, platform: str, video_id: str
                 data.get("title"),
                 data.get("thumbnail"),
                 data.get("publish_date"),
+                data.get("collected_at") or now_beijing_naive().isoformat(sep=" ", timespec="seconds"),
                 data.get("play_count", 0),
                 data.get("like_count", 0),
                 data.get("comment_count", 0),
