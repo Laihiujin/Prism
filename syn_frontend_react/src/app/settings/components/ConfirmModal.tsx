@@ -52,12 +52,10 @@ export function ConfirmModal({
 
   return (
     <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
-      <AlertDialogContent className="bg-black/95 border border-white/10">
+      <AlertDialogContent className="border border-white/10 bg-black/95">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-white">{title}</AlertDialogTitle>
-          <AlertDialogDescription className="text-white/70">
-            {description}
-          </AlertDialogDescription>
+          <AlertDialogDescription className="text-white/70">{description}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {requireInput && (
@@ -70,7 +68,7 @@ export function ConfirmModal({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={`输入 ${confirmText}`}
-              className="bg-white/5 border-white/20 text-white"
+              className="border-white/20 bg-white/5 text-white"
               autoComplete="off"
             />
           </div>
