@@ -453,31 +453,34 @@ function AccountPageContent() {
       const { url, storage_state, platform } = res.data
       const cookies = storage_state?.cookies || []
 
-      // 2. Electron Shell 中优先使用左侧内置浏览器标签页
-      const electronApi = typeof window !== "undefined" ? (window as any).electronAPI : null
-      const isEmbeddedShell =
-        typeof window !== "undefined" &&
-        window.parent &&
-        window.parent !== window
-      const isElectron =
-        typeof window !== "undefined" &&
-        (window.navigator.userAgent.indexOf("Electron") > -1 || electronApi || isEmbeddedShell)
+      // 2. Electron webview shell exposes openCreatorTab via preload.
+      const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : undefined
+      const openCreatorTab = electronAPI?.browser?.openCreatorTab
 
-      if (isElectron) {
-        const payload = {
+      if (typeof openCreatorTab === 'function') {
+        openCreatorTab({
           type: 'OPEN_CREATOR_TAB',
-          url: url,
-          cookies: cookies,
+          url,
+          cookies,
+          platform,
           storageState: storage_state,
-          platform: platform,
-          accountId: accountId
-        }
+          accountId,
+        })
 
-        if (electronApi?.browser?.openCreatorTab) {
-          electronApi.browser.openCreatorTab(payload)
-        } else {
-          window.parent.postMessage(payload, '*')
-        }
+        toast({
+          title: "正在侧边栏打开",
+          description: `正在为您加载 ${account.platform} 创作中心...`,
+        })
+      } else if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        // Backward-compatible fallback for older shells.
+        window.parent.postMessage({
+          type: 'OPEN_CREATOR_TAB',
+          url,
+          cookies,
+          platform,
+          storageState: storage_state,
+          accountId,
+        }, '*')
 
         toast({
           title: "正在侧边栏打开",

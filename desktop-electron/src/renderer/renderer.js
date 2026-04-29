@@ -218,7 +218,7 @@ class TabManager {
     async addTabWithCookies(url, cookies, platform = 'browser', storageState = null, accountId = null) {
         const partition = this.getAccountPartition(platform, accountId);
         const id = this.addTab(url, platform, false, {
-            initialUrl: 'about:blank',
+            initialUrl: url,
             partition,
             userAgent: this.getStorageStateUserAgent(storageState)
         });
@@ -235,11 +235,6 @@ class TabManager {
         }
 
         if (tab) {
-            try {
-                await this.injectLocalStorage(tab.webview, storageState, url);
-            } catch (error) {
-                console.warn('[Shell] localStorage injection failed:', error);
-            }
             tab.webview.loadURL(url);
             this.urlBar.value = url;
         }

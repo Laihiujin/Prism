@@ -12,6 +12,18 @@ from myUtils.fingerprint_policy import get_fingerprint_policy, resolve_proxy
 from utils.base_social_media import set_init_script
 
 
+def _clear_proxy_env() -> None:
+    for name in (
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "ALL_PROXY",
+        "all_proxy",
+    ):
+        os.environ.pop(name, None)
+
+
 def _resolve_local_chrome_path() -> str | None:
     def _normalize(candidate: str | Path | None) -> Path | None:
         if not candidate:
@@ -96,6 +108,7 @@ async def create_context_with_policy(
     headless: bool,
     storage_state: Any = None,
     force_ephemeral: bool = False,
+    disable_proxy: bool = False,
     base_context_opts: Optional[Dict[str, Any]] = None,
     launch_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[Any], Any, Optional[Dict[str, Any]], Dict[str, Any]]:
@@ -142,9 +155,17 @@ async def create_context_with_policy(
         else:
             logger.debug("[playwright] No local chrome executable detected, using runtime default browser")
 
-    proxy = resolve_proxy(policy)
-    if proxy:
-        launch_opts["proxy"] = proxy
+    if not disable_proxy:
+        proxy = resolve_proxy(policy)
+        if proxy:
+            launch_opts["proxy"] = proxy
+    else:
+        _clear_proxy_env()
+        launch_opts.setdefault("args", [])
+        launch_opts["args"].extend([
+            "--no-proxy-server",
+            "--proxy-bypass-list=*",
+        ])
 
     context_opts = build_context_options(**(base_context_opts or {}))
     if storage_state is not None:

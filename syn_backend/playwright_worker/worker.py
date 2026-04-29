@@ -401,209 +401,63 @@ async def open_creator_center(req: OpenCreatorCenterRequest):
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
 
         from utils.playwright_provider import async_playwright
-        from myUtils.browser_context import build_context_options, persistent_browser_manager
-        from myUtils.fingerprint_policy import get_fingerprint_policy, resolve_proxy
-        from utils.base_social_media import set_init_script
+        from myUtils.playwright_context_factory import create_context_with_policy
 
-        policy = get_fingerprint_policy(req.account_id, platform_code)
-        apply_fingerprint = bool(req.apply_fingerprint) and bool(policy.get("apply_fingerprint", True))
-        apply_stealth = bool(policy.get("apply_stealth", True))
-        use_persistent_profile = bool(policy.get("use_persistent_profile", True)) and bool(req.account_id)
-        user_id = None
-        if req.account_id:
-            try:
-                from myUtils.cookie_manager import cookie_manager
-                acc = cookie_manager.get_account_by_id(req.account_id)
-                user_id = acc.get("user_id") if acc else None
-            except Exception as e:
-                logger.warning(f"[Worker] Failed to load user_id: {e}")
-        if use_persistent_profile and not user_id:
-            logger.warning("[Worker] Missing user_id; disabling persistent profile")
-            use_persistent_profile = False
-        if (policy.get("tls_ja3") or {}).get("enabled"):
-            logger.warning("[Worker] tls_ja3 is enabled in policy, but Playwright does not support JA3 spoofing.")
-
+        # Creator center is more stable in a clean ephemeral context.
+        # Reuse storage_state for login, but avoid the per-account persistent profile.
         pw = await async_playwright().start()
-        launch_kwargs: Dict[str, Any] = {"headless": headless}
-        executable_path = _resolve_executable_path()
-        if executable_path:
-            launch_kwargs["executable_path"] = executable_path
-        proxy = resolve_proxy(policy)
-        if proxy:
-            launch_kwargs["proxy"] = proxy
-
-        # 🔧 重要：禁用 Playwright 默认的 --disable-extensions 参数
-        # Playwright 默认会添加很多自动化相关的参数，我们需要覆盖它们
-        if "args" not in launch_kwargs:
-            launch_kwargs["args"] = []
-
-        # 添加反检测参数，移除自动化特征
-        launch_kwargs["args"].extend([
-            "--disable-blink-features=AutomationControlled",
-            "--no-sandbox",
-        ])
-
         browser = None
+        context = None
 
-        context_opts = build_context_options(storage_state=req.storage_state)
-        fingerprint = None
-        if apply_fingerprint and req.account_id:
-            try:
-                from myUtils.device_fingerprint import device_fingerprint_manager
-
-                fingerprint = device_fingerprint_manager.get_or_create_fingerprint(
-                    account_id=req.account_id, user_id=user_id,
-                    platform=platform_code,
-                    policy=policy,
-                )
-                context_opts = device_fingerprint_manager.apply_to_context(fingerprint, context_opts)
-            except Exception as e:
-                logger.warning(f"[Worker] Apply fingerprint failed (ignored): {e}")
-
-        if use_persistent_profile:
-            profile_root = policy.get("persistent_profile_dir") or "browser_profiles"
-            try:
-                from config.conf import APP_ROOT
-
-                profile_root_path = Path(profile_root)
-                if not profile_root_path.is_absolute():
-                    profile_root_path = Path(APP_ROOT) / profile_root_path
-            except Exception:
-                profile_root_path = Path(profile_root)
-            custom_manager = persistent_browser_manager
-            if profile_root_path:
-                try:
-                    custom_manager = persistent_browser_manager.__class__(profile_root_path)
-                except Exception:
-                    custom_manager = persistent_browser_manager
-
-            # 🔧 检查该账号是否已有打开的会话（避免同一个 profile 被多次打开）
-            existing_session_id = None
+        # Close stale creator-center sessions for the same account/platform first.
+        existing_session_id = None
+        if req.account_id:
             async with sessions_lock:
                 for sid, sess in sessions.items():
-                    if (sess.get("type") == "creator_center" and
-                        sess.get("account_id") == req.account_id and
-                        sess.get("platform") == platform_code):
+                    if (
+                        sess.get("type") == "creator_center"
+                        and sess.get("account_id") == req.account_id
+                        and sess.get("platform") == platform_code
+                    ):
                         existing_session_id = sid
                         break
 
-            if existing_session_id:
-                logger.warning(f"[Worker] Account {req.account_id} already has session {existing_session_id}, closing old session first")
-                try:
-                    # 先关闭旧会话
-                    async with sessions_lock:
-                        old_sess = sessions.pop(existing_session_id, None)
-                    if old_sess:
-                        with contextlib.suppress(Exception):
-                            if old_sess.get("page"):
-                                await old_sess["page"].close()
-                        with contextlib.suppress(Exception):
-                            if old_sess.get("context"):
-                                await old_sess["context"].close()
-                        with contextlib.suppress(Exception):
-                            browser_obj = old_sess.get("browser")
-                            if browser_obj:
-                                await browser_obj.close()
-                        with contextlib.suppress(Exception):
-                            if old_sess.get("pw"):
-                                await old_sess["pw"].stop()
-                        # 等待浏览器进程完全退出
-                        await asyncio.sleep(1)
-                        logger.info(f"[Worker] Old session {existing_session_id} closed successfully")
-                except Exception as e:
-                    logger.error(f"[Worker] Failed to close old session: {e}")
-
-            user_data_dir = custom_manager.get_user_data_dir(req.account_id, platform_code, user_id=user_id)
-
-            # 🔧 修复：Playwright 的 launch_persistent_context 不支持 storage_state 参数
-            # 正确的做法：
-            # 1. 首次创建持久化目录时，先用临时上下文导入 Cookie，保存到目录
-            # 2. 后续使用 launch_persistent_context，会自动加载已保存的 Cookie
-            # 3. Cookie 更新时，需要先清理持久化目录或手动添加新 Cookie
-
-            user_data_dir_path = Path(user_data_dir)
-            is_first_time = not user_data_dir_path.exists() or not any(user_data_dir_path.iterdir())
-
-            logger.info(f"[Worker] Persistent profile: path={user_data_dir}, first_time={is_first_time}")
-
-            # 🔧 首次创建或 Cookie 更新时：先用临时上下文导入 storage_state
-            if is_first_time and req.storage_state:
-                logger.info(f"[Worker] First-time setup: importing storage_state into persistent profile")
-                try:
-                    # 创建目录
-                    user_data_dir_path.mkdir(parents=True, exist_ok=True)
-
-                    # 使用临时浏览器上下文导入 Cookie
-                    temp_browser = await pw.chromium.launch(**launch_kwargs)
-                    temp_context = await temp_browser.new_context(**context_opts)
-
-                    # 等待 Cookie 加载完成
-                    await asyncio.sleep(0.5)
-
-                    # 保存 storage_state 到持久化目录的默认位置
-                    # Chromium 的持久化上下文会自动读取这个文件
-                    state_file = user_data_dir_path / "storage_state.json"
-                    await temp_context.storage_state(path=str(state_file))
-
-                    await temp_context.close()
-                    await temp_browser.close()
-
-                    logger.success(f"[Worker] Storage state saved to {state_file}")
-                except Exception as e:
-                    logger.error(f"[Worker] Failed to import storage_state (will fallback to empty profile): {e}")
-
-            # 🔧 启动持久化浏览器上下文（不传 storage_state）
-            persistent_context_opts = {k: v for k, v in context_opts.items() if k != "storage_state"}
-
-            # 如果首次创建且有 storage_state.json，Chromium 会自动加载
-            # 否则会使用空的持久化目录（需要登录）
-            context = await pw.chromium.launch_persistent_context(
-                str(user_data_dir),
-                **persistent_context_opts,
-                **launch_kwargs,
+        if existing_session_id:
+            logger.warning(
+                f"[Worker] Account {req.account_id} already has session {existing_session_id}, closing old session first"
             )
-
-            # 🔧 关键修复：即使是持久化上下文，也要检查并补充 Cookie
-            # 原因：持久化目录可能存在但 Cookie 已过期/被清除
-            if req.storage_state and req.storage_state.get("cookies"):
-                try:
-                    current_cookies = await context.cookies()
-                    cookie_count = len(current_cookies)
-                    required_cookies = len(req.storage_state.get("cookies", []))
-
-                    logger.info(f"[Worker] Persistent context cookies: {cookie_count}/{required_cookies}")
-
-                    # 如果 Cookie 数量明显不足，说明可能过期了，重新应用
-                    if cookie_count < required_cookies * 0.5:  # 少于50%就补充
-                        logger.warning(f"[Worker] Cookie count insufficient, re-applying storage_state")
-                        await _apply_storage_state(context, req.storage_state)
-                        await asyncio.sleep(1)
-
-                        # 重新检查
-                        updated_cookies = await context.cookies()
-                        logger.info(f"[Worker] After re-apply: {len(updated_cookies)} cookies")
-                except Exception as e:
-                    logger.warning(f"[Worker] Cookie check/补充 failed (ignored): {e}")
-
             try:
-                browser = context.browser()
-            except Exception:
-                browser = None
-        else:
-            browser = await pw.chromium.launch(**launch_kwargs)
-            context = await browser.new_context(**context_opts)
-        if fingerprint:
-            try:
-                from myUtils.device_fingerprint import device_fingerprint_manager
-
-                await context.add_init_script(device_fingerprint_manager.get_init_script(fingerprint))
+                async with sessions_lock:
+                    old_sess = sessions.pop(existing_session_id, None)
+                if old_sess:
+                    with contextlib.suppress(Exception):
+                        if old_sess.get("page"):
+                            await old_sess["page"].close()
+                    with contextlib.suppress(Exception):
+                        if old_sess.get("context"):
+                            await old_sess["context"].close()
+                    with contextlib.suppress(Exception):
+                        browser_obj = old_sess.get("browser")
+                        if browser_obj:
+                            await browser_obj.close()
+                    with contextlib.suppress(Exception):
+                        if old_sess.get("pw"):
+                            await old_sess["pw"].stop()
+                    await asyncio.sleep(1)
+                    logger.info(f"[Worker] Old session {existing_session_id} closed successfully")
             except Exception as e:
-                logger.warning(f"[Worker] Add fingerprint script failed (ignored): {e}")
-        if apply_stealth:
-            try:
-                await set_init_script(context)
-            except Exception as e:
-                logger.warning(f"[Worker] Add stealth script failed (ignored): {e}")
+                logger.error(f"[Worker] Failed to close old session: {e}")
+
+        browser, context, _, _ = await create_context_with_policy(
+            pw,
+            platform=platform_code,
+            account_id=None,
+            headless=headless,
+            storage_state=req.storage_state,
+            force_ephemeral=True,
+            disable_proxy=True,
+            launch_kwargs={"args": ["--no-sandbox"]},
+        )
 
         # 对于持久化上下文，复用已有的页面而不是创建新页面（避免 about:blank）
         pages = context.pages
@@ -674,7 +528,7 @@ async def open_creator_center(req: OpenCreatorCenterRequest):
                 "context": context,
                 "page": page,
                 "profile_url": profile_url,
-                "persistent": bool(use_persistent_profile),
+                "persistent": False,
                 "account_id": req.account_id,
                 "platform": platform_code,
             }
