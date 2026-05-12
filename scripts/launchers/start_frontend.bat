@@ -12,6 +12,8 @@ echo.
 
 set "ROOT=%~dp0..\.."
 set "FRONTEND_DIR=%ROOT%\\syn_frontend_react"
+if not defined BACKEND_PORT set "BACKEND_PORT=7000"
+if not defined SYN_BACKEND_URL set "SYN_BACKEND_URL=http://127.0.0.1:%BACKEND_PORT%"
 pushd "%FRONTEND_DIR%"
 
 REM 检查并停止占用的进程
@@ -40,8 +42,9 @@ if exist ".next" (
 
 REM 设置环境变量
 echo [配置] 设置环境变量...
-set NEXT_PUBLIC_BACKEND_URL=http://localhost:7000
-set NEXT_PUBLIC_API_URL=http://localhost:7000
+set NEXT_PUBLIC_BACKEND_URL=%SYN_BACKEND_URL%
+set NEXT_PUBLIC_API_URL=%SYN_BACKEND_URL%
+set NEXT_PUBLIC_SYN_BACKEND_URL=%SYN_BACKEND_URL%
 set PORT=3000
 
 REM 启动开发服务器

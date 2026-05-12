@@ -58,8 +58,8 @@ def get_chrome_executable() -> str:
     # 找不到任何浏览器
     raise FileNotFoundError(
         "找不到可用的 Chrome/Chromium 可执行文件！\n"
-        "请执行以下命令安装 Playwright 浏览器:\n"
-        "  playwright install chromium\n"
+        "请执行以下脚本安装项目内置浏览器:\n"
+        "  browsers\\install_playwright.bat\n"
         "或者安装系统 Chrome 浏览器"
     )
 

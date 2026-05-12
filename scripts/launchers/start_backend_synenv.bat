@@ -9,6 +9,10 @@ set "ROOT=%~dp0..\.."
 set "BACKEND_DIR=%ROOT%\syn_backend"
 set "VENV_PATH=%ROOT%\synenv"
 set "PY=%VENV_PATH%\Scripts\python.exe"
+if not defined BACKEND_PORT set "BACKEND_PORT=7000"
+if not defined SYN_BACKEND_PORT set "SYN_BACKEND_PORT=%BACKEND_PORT%"
+if not defined SYN_BACKEND_URL set "SYN_BACKEND_URL=http://127.0.0.1:%BACKEND_PORT%"
+if not defined PORT set "PORT=%BACKEND_PORT%"
 
 echo ========================================
 echo   Synapse Backend Startup (synenv)
@@ -33,19 +37,19 @@ echo OK Activated virtual environment 'synenv'
 set "PY=%VENV_PATH%\Scripts\python.exe"
 echo.
 
-
-
-REM Kill all processes listening on port 7000 (more reliable than parsing netstat)
-powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 7000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { try { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } catch {} }"
-
-echo.
-echo Waiting for port release...
-timeout /t 3 /nobreak >nul
+for /f "usebackq tokens=*" %%A in (`powershell -NoProfile -Command "$conn = Get-NetTCPConnection -LocalPort %BACKEND_PORT% -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; if ($conn) { $conn.OwningProcess }"`) do set "PORT_OWNER=%%A"
+if defined PORT_OWNER (
+    echo [ERROR] Port %BACKEND_PORT% is already in use by PID %PORT_OWNER%.
+    echo         Set BACKEND_PORT to a free port or stop that process first.
+    pause
+    exit /b 1
+)
 
 REM Bundle Playwright browsers inside this repo (important for packaging to exe)
 REM Playwright 会自动在 browsers 目录下查找对应版本的浏览器
 set "PLAYWRIGHT_BROWSERS_PATH=%ROOT%\browsers"
-set "MANUS_API_BASE_URL=http://localhost:7000/api/v1"
+if not defined MANUS_API_BASE_URL set "MANUS_API_BASE_URL=%SYN_BACKEND_URL%/api/v1"
+if not defined AGENT_API_BASE_URL set "AGENT_API_BASE_URL=%MANUS_API_BASE_URL%"
 REM Enable OCR/Selenium helpers (can be overridden by existing env vars)
 if not defined ENABLE_OCR_RESCUE set "ENABLE_OCR_RESCUE=1"
 if not defined ENABLE_SELENIUM_RESCUE set "ENABLE_SELENIUM_RESCUE=1"
@@ -128,14 +132,14 @@ if "%START_CELERY%"=="1" (
 echo.
 
 echo ========================================
-echo   [7/7] Starting FastAPI Service (Port: 7000)
+echo   [7/7] Starting FastAPI Service (Port: %BACKEND_PORT%)
 echo ========================================
 echo.
 echo Access URLs:
-echo   - API: http://localhost:7000/api/v1
-echo   - API Docs: http://localhost:7000/api/docs
-echo   - ReDoc: http://localhost:7000/api/redoc
-echo   - Health Check: http://localhost:7000/health
+echo   - API: %SYN_BACKEND_URL%/api/v1
+echo   - API Docs: %SYN_BACKEND_URL%/api/docs
+echo   - ReDoc: %SYN_BACKEND_URL%/api/redoc
+echo   - Health Check: %SYN_BACKEND_URL%/health
 echo.
 echo Press Ctrl+C to stop service
 echo ========================================

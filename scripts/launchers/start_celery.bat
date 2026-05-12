@@ -1,45 +1,48 @@
 @echo off
 chcp 65001 >nul
+setlocal enabledelayedexpansion
 
-REM Set UTF-8 encoding environment
 set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
+set FORKED_BY_MULTIPROCESSING=1
 
 set "ROOT=%~dp0..\.."
 set "BACKEND_DIR=%ROOT%\syn_backend"
 
-echo ========================================
-echo   Synapse Celery Worker (Windows)
-echo ========================================
+set "REDIS_CLI=redis-cli"
+if exist "%ROOT%\syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%ROOT%\syn_backend\Redis\redis-cli.exe"
+
+echo ============================================
+echo   Celery Worker Startup
+echo ============================================
 echo.
 
-REM Activate conda environment (syn)
 call conda activate syn
 if errorlevel 1 (
-    echo [ERROR] Failed to activate conda environment 'syn'
-    echo Please run: conda create -n syn python=3.11
+    echo ERROR: Cannot activate conda environment syn
     pause
     exit /b 1
 )
-echo OK Activated conda environment 'syn'
-set "PY=python"
+echo OK: Activated environment syn
 echo.
 
-pushd "%BACKEND_DIR%"
-echo Starting Celery worker...
-echo Press Ctrl+C to stop the worker.
+%REDIS_CLI% ping >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Redis not running
+    echo Please start Redis first: redis-server
+    pause
+    exit /b 1
+)
+echo OK: Redis is running
 echo.
 
-REM Add syn_backend to PYTHONPATH so myUtils can be imported
+cd /d "%BACKEND_DIR%"
+
+echo Starting Celery Worker with 1000 concurrency (threads pool)...
+echo.
+
 set "PYTHONPATH=%BACKEND_DIR%;%PYTHONPATH%"
 
-%PY% -m celery -A fastapi_app.tasks.celery_app.celery_app worker -l info --hostname=synapse-worker@%%h-%RANDOM%
-set "RC=%ERRORLEVEL%"
-popd
+python -m celery -A fastapi_app.tasks.celery_app worker --loglevel=info --pool=threads --concurrency=1000 --hostname=synapse-worker@%%h-%RANDOM%
 
-if not "%RC%"=="0" (
-    echo.
-    echo [ERROR] Celery worker exited with code %RC%
-    pause
-    exit /b %RC%
-)
+pause

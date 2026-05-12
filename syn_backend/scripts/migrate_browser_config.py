@@ -101,7 +101,7 @@ def main():
     print("下一步:")
     print("1. 检查迁移结果")
     print("2. 运行测试确保功能正常")
-    print("3. 安装 Playwright 浏览器: playwright install chromium")
+    print("3. 安装项目浏览器: browsers\\install_playwright.bat")
     print()
 
 
