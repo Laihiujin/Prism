@@ -232,5 +232,4 @@ Content-Type: application/json
 
 | | | |
 |-|-|-|
-| ![1d1114b7-9c71-4c18-91df-0a462bed5405](https://github.com/user-attachments/assets/f0c38071-f69a-4262-a339-182c090d4c41) | ![dac9dc35-e027-42e8-b6aa-81f3211906da](https://github.com/user-attachments/assets/761ae5f1-8350-49d6-bba6-de2f01f1b73e) | <img width="1284" height="2283" alt="1" src="https://github.com/user-attachments/assets/1c8eca2c-a688-43b5-8cfc-b1744a145451" />
- |
+| ![1d1114b7-9c71-4c18-91df-0a462bed5405](https://github.com/user-attachments/assets/f0c38071-f69a-4262-a339-182c090d4c41) | ![dac9dc35-e027-42e8-b6aa-81f3211906da](https://github.com/user-attachments/assets/761ae5f1-8350-49d6-bba6-de2f01f1b73e) | <img width="1284" height="2283" alt="1" src="https://github.com/user-attachments/assets/1c8eca2c-a688-43b5-8cfc-b1744a145451" />|
