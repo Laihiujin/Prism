@@ -84,6 +84,8 @@ syn_backend/.deps_installed
 syn_backend/.copilot-profiles/
 syn_backend/data/ip_pool.json
 syn_backend/data/account_stats.json
+syn_backend/data/campaigns.json
+syn_backend/data/published_works.json
 syn_backend/db/frontend_accounts_snapshot.json
 syn_backend/uploader/**/qrcode.png
 syn_backend/Redis/
@@ -97,7 +99,13 @@ config/browser_profiles/
 /.playwright-browsers*/
 /.chrome-for-testing*/
 /.tmp-*
+tmp/
+browsers/.links/
 browsers/chromium/hibbiki-*/
+browsers/chromium_headless_shell-*/
+browsers/ffmpeg-*/
+browsers/firefox-*/
+browsers/winldd-*/
 browsers/chromium/chromium_headless_shell-1161/*
 browsers/chromium/chromium-1161/*
 browsers/chromium/ffmpeg-1011/*
@@ -147,5 +155,11 @@ desktop-electron/dump.rdb
 syn_backend/browser_profiles/*
 syn_backend/cookiesFile/*
 syn_backend/fingerprints/*
+
+# Local analytics / crawler runtime outputs
+data/analytics/
+data/crawler_output/
+data/videos/
+tmp-runtime-data/
 
 LaunchScript/python-3.11.9-embed-amd64.zip
