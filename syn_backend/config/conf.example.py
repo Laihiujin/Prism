@@ -53,7 +53,9 @@ APP_ROOT = _resolve_app_root()
 # - 在项目根目录启动：读取 `./.env`
 _root_env = APP_ROOT / ".env"
 if _root_env.exists():
-    load_dotenv(_root_env, override=True)
+    # Keep OS/process env as the highest priority so Electron runtime settings
+    # can override repository defaults from `.env`.
+    load_dotenv(_root_env, override=False)
 
 XHS_SERVER = "http://127.0.0.1:11901"
 

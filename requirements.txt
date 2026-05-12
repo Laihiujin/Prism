@@ -47,6 +47,7 @@ schedule
 # 浏览器自动化
 # ============================================
 playwright
+patchright
 browser-use
 cdp-use
 selenium

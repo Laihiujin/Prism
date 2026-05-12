@@ -125,6 +125,8 @@ cd syn_frontend_react
 npm install
 ```
 
+也可以直接运行 `start.bat`。它会优先检测 `synenv`，不存在时自动创建并安装根 `requirements.txt`。
+
 方式 B：conda
 ```powershell
 conda create -n syn python=3.11.4
@@ -139,24 +141,24 @@ npm install
 
 编辑根目录 `.env`（端口、Redis、浏览器路径等）；
 
-浏览器依赖（Playwright）：
+浏览器依赖：
 ```powershell
-# venv
-browsers\install_playwright.bat
-# conda
+# 手动安装浏览器资产
 scripts\launchers\setup_browser.bat
 ```
+
+桌面版也支持在“系统设置”页动态下载 `Chromium` / `Firefox`，并切换 `Patchright` / `Playwright` 运行时。
 
 ### 3) 启动服务
 
 使用 venv：
 ```powershell
-LaunchScript\start_all_services_synenv.bat
+start.bat synenv
 ```
 
 使用 conda：
 ```powershell
-start_all_services.bat
+start.bat conda
 ```
 
 ### 4) 访问

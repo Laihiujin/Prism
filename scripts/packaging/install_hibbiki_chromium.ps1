@@ -22,7 +22,8 @@ if (-not $asset) {
 
 $browserVersion = $release.tag_name -replace '^v', ''
 $browserVersion = ($browserVersion -split '-')[0]
-$targetRoot = Join-Path $ProjectRoot "browsers\chromium"
+$browsersRoot = Join-Path $ProjectRoot "browsers"
+$targetRoot = Join-Path $browsersRoot "chromium"
 $targetDir = Join-Path $targetRoot "hibbiki-$browserVersion"
 $chromeExe = Join-Path $targetDir "Chrome-bin\chrome.exe"
 
@@ -32,6 +33,7 @@ if ((Test-Path $chromeExe) -and -not $Clean) {
 }
 
 $sevenZipCandidates = @(
+  (Join-Path $ProjectRoot "tools\7zip\7za.exe"),
   (Join-Path $ProjectRoot "desktop-electron\node_modules\7zip-bin\win\x64\7za.exe"),
   (Join-Path $ProjectRoot "node_modules\7zip-bin\win\x64\7za.exe"),
   "7z.exe",
@@ -59,14 +61,47 @@ if (-not $sevenZip) {
 
 $tmpDir = Join-Path $ProjectRoot ".tmp-hibbiki"
 $archive = Join-Path $tmpDir "chrome.7z"
-New-Item -ItemType Directory -Force -Path $tmpDir, $targetRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $tmpDir, $browsersRoot, $targetRoot | Out-Null
 
 Write-Host "Downloading Hibbiki Chromium $($release.tag_name) from $($asset.browser_download_url)"
 Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archive -Headers $headers
 
-if ($Clean -and (Test-Path $targetRoot)) {
-  Get-ChildItem -Path $targetRoot -Force -ErrorAction SilentlyContinue | ForEach-Object {
-    Remove-Item -LiteralPath $_.FullName -Recurse -Force
+if ($Clean) {
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.ExecutablePath -and
+    $_.ExecutablePath.StartsWith($browsersRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
+    $_.Name -in @("chrome.exe", "chromium.exe", "chrome-headless-shell.exe")
+  } | ForEach-Object {
+    try {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop
+    } catch {
+      Write-Warning "Failed to stop locked browser process $($_.ProcessId): $($_.Exception.Message)"
+    }
+  }
+
+  Start-Sleep -Milliseconds 500
+
+  if (Test-Path $targetRoot) {
+    Get-ChildItem -Path $targetRoot -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object {
+      Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    }
+  }
+
+  if (Test-Path $browsersRoot) {
+    Get-ChildItem -Path $browsersRoot -Directory -Force -ErrorAction SilentlyContinue | Where-Object {
+      $_.Name -like "chromium-*" -or $_.Name -like "chromium_headless_shell-*"
+    } | ForEach-Object {
+      Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    }
+  }
+
+  $chromeForTestingRoot = Join-Path $browsersRoot "chrome-for-testing"
+  if (Test-Path $chromeForTestingRoot) {
+    Get-ChildItem -Path $chromeForTestingRoot -Directory -Force -ErrorAction SilentlyContinue | Where-Object {
+      $_.Name -like "chrome-*"
+    } | ForEach-Object {
+      Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    }
   }
 }
 

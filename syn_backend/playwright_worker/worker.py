@@ -157,6 +157,8 @@ def _resolve_executable_path() -> str | None:
 
     fallback = _find_matching(
         (
+            "chromium-*/chrome-win64/chrome.exe",
+            "chromium-*/chrome-win/chrome.exe",
             "chromium/hibbiki-*/Chrome-bin/chrome.exe",
             "chromium/chromium-*/chrome-win64/chrome.exe",
             "chromium/chromium-*/chrome-win/chrome.exe",
@@ -177,7 +179,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 _BASE_DIR = Path(__file__).resolve().parent.parent  # syn_backend
 _ROOT_ENV = _APP_ROOT / ".env"
 if _ROOT_ENV.exists():
-    load_dotenv(_ROOT_ENV, override=True)
+    # Keep supervisor/Electron-provided env values authoritative.
+    load_dotenv(_ROOT_ENV, override=False)
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -276,6 +279,65 @@ _PLATFORM_PROFILE_URL = {
     "xiaohongshu": "https://creator.xiaohongshu.com/new/home",
     "bilibili": "https://member.bilibili.com/platform/home",
 }
+
+_CHANNELS_LOGIN_TEXT_MARKERS = (
+    "扫码登录",
+    "微信扫码登录",
+    "请使用微信扫码",
+    "登录后继续",
+    "登录后可使用更多功能",
+)
+
+_CHANNELS_LOGGED_IN_TEXT_MARKERS = (
+    "发表视频",
+    "直播管理",
+    "数据中心",
+    "创作者中心",
+    "视频号助手",
+)
+
+
+async def _safe_page_text(page, max_chars: int = 1200) -> str:
+    try:
+        text = await page.locator("body").inner_text(timeout=3000)
+    except Exception:
+        return ""
+    text = " ".join(text.split())
+    return text[:max_chars]
+
+
+async def _page_has_any_selector(page, selectors: tuple[str, ...]) -> bool:
+    for selector in selectors:
+        try:
+            if await page.locator(selector).count():
+                return True
+        except Exception:
+            continue
+    return False
+
+
+async def _classify_channels_login_state(page) -> tuple[str, str]:
+    final_url = page.url or ""
+    parsed = urlparse(final_url)
+    path = (parsed.path or "/").rstrip("/") or "/"
+    page_text = await _safe_page_text(page)
+
+    if "login" in final_url.lower() or (parsed.netloc == "channels.weixin.qq.com" and path in {"/", "/login.html"}):
+        return "session_expired", f"Redirected to login entry: {final_url}"
+
+    if any(marker in page_text for marker in _CHANNELS_LOGIN_TEXT_MARKERS):
+        return "session_expired", f"Detected login prompt on page: {final_url}"
+
+    if path.startswith("/platform"):
+        return "logged_in", f"Reached creator platform page: {final_url}"
+
+    if await _page_has_any_selector(page, ("#finder-uid-copy", ".finder-uniq-id-wrap span", "text=发表视频", "text=直播管理", "text=数据中心")):
+        return "logged_in", f"Detected creator console markers on page: {final_url}"
+
+    if any(marker in page_text for marker in _CHANNELS_LOGGED_IN_TEXT_MARKERS):
+        return "logged_in", f"Detected creator console text on page: {final_url}"
+
+    return "error", f"Unable to classify channels login state: {final_url}"
 
 
 def _append_sec_uid_log(message: str) -> None:
@@ -474,6 +536,31 @@ async def open_creator_center(req: OpenCreatorCenterRequest):
         final_url = page.url
         final_cookies = await context.cookies()
         logger.info(f"[Worker] Page loaded: url={final_url}, cookies={len(final_cookies)}")
+
+        if platform_code in ["channels", "tencent"]:
+            channels_state, channels_reason = await _classify_channels_login_state(page)
+            if channels_state != "logged_in":
+                logger.error(f"[Worker] WeChat Channels login check failed: {channels_reason}")
+                try:
+                    screenshot_path = Path("logs") / f"channels_login_redirect_{req.account_id}.png"
+                    screenshot_path.parent.mkdir(exist_ok=True)
+                    await page.screenshot(path=str(screenshot_path), full_page=False)
+                    logger.info(f"[Worker] Screenshot saved: {screenshot_path}")
+                except Exception:
+                    pass
+                with contextlib.suppress(Exception):
+                    await page.close()
+                with contextlib.suppress(Exception):
+                    await context.close()
+                with contextlib.suppress(Exception):
+                    await browser.close()
+                with contextlib.suppress(Exception):
+                    await pw.stop()
+                return JSONResponse(status_code=401 if channels_state == "session_expired" else 500, content={
+                    "success": False,
+                    "error": "Login required: cookies may be expired or invalid" if channels_state == "session_expired" else "Unable to confirm creator login state",
+                    "detail": channels_reason
+                })
 
         # 🔧 视频号特殊检查：如果跳转到登录页，立即返回错误
         if platform_code in ["channels", "tencent"]:
@@ -744,10 +831,9 @@ async def _check_batch_accounts_rotation(batch_size: int = 5) -> dict:
 
 
 async def _check_single_account_login_worker(account_id: str, platform: str, cookie_file: str) -> dict:
-    """在 Worker 内部直接检查单个账号登录状态"""
+    """Check a single account login status inside the worker."""
     import json
     import random
-    from pathlib import Path
     from myUtils.cookie_manager import cookie_manager
 
     result = {
@@ -757,92 +843,88 @@ async def _check_single_account_login_worker(account_id: str, platform: str, coo
         "error": None,
     }
 
-    # 跳过B站账号
     if platform == "bilibili":
         result["login_status"] = "skipped"
-        result["error"] = "B站账号跳过检查"
+        result["error"] = "Bilibili login status is skipped"
         return result
 
-    # 平台创作者中心URL
-    PLATFORM_CREATOR_URLS = {
+    creator_urls = {
         "douyin": "https://creator.douyin.com/creator-micro/home",
         "xiaohongshu": "https://creator.xiaohongshu.com/new/home",
         "kuaishou": "https://cp.kuaishou.com/profile",
         "channels": "https://channels.weixin.qq.com/platform/home",
+        "tencent": "https://channels.weixin.qq.com/platform/home",
     }
 
-    creator_url = PLATFORM_CREATOR_URLS.get(platform)
+    creator_url = creator_urls.get(platform)
     if not creator_url:
         result["login_status"] = "error"
-        result["error"] = f"不支持的平台: {platform}"
+        result["error"] = f"Unsupported platform: {platform}"
         return result
 
-    # 读取 cookie 文件
     cookie_file_path = cookie_manager._resolve_cookie_path(cookie_file)
     if not cookie_file_path.exists():
         result["login_status"] = "error"
-        result["error"] = "Cookie文件不存在"
+        result["error"] = "Cookie file not found"
         return result
 
     try:
-        with open(cookie_file_path, 'r', encoding='utf-8') as f:
+        with open(cookie_file_path, "r", encoding="utf-8") as f:
             storage_state = json.load(f)
     except Exception as e:
         result["login_status"] = "error"
-        result["error"] = f"读取Cookie文件失败: {str(e)}"
+        result["error"] = f"Failed to read cookie file: {e}"
         return result
 
-    # 直接在 Worker 内部启动浏览器检查
     browser = None
     context = None
     page = None
+    pw = None
     try:
         from utils.playwright_provider import async_playwright
         from myUtils.playwright_context_factory import create_context_with_policy
 
         pw = await async_playwright().start()
-
-        # 使用 create_context_with_policy 创建浏览器上下文
-        browser, context, fingerprint, policy = await create_context_with_policy(
+        browser, context, _, _ = await create_context_with_policy(
             pw,
             platform=platform,
-            account_id=account_id,
+            account_id=None,
             headless=True,
             storage_state=storage_state,
+            force_ephemeral=True,
+            disable_proxy=True,
+            launch_kwargs={"args": ["--no-sandbox"]},
         )
 
         page = await context.new_page()
+        logger.info(f"[Worker] Checking {platform} account: {account_id}")
+        await page.goto(creator_url, wait_until="domcontentloaded", timeout=30000)
 
-        # 访问创作者中心
-        logger.info(f"[Worker] 直接检查 {platform} 账号: {account_id}")
-        response = await page.goto(creator_url, wait_until="domcontentloaded", timeout=30000)
-
-        # 等待1-2秒让页面加载/重定向
-        wait_time = random.uniform(1, 2)
-        await asyncio.sleep(wait_time)
-
+        await asyncio.sleep(random.uniform(1, 2))
         final_url = page.url
+        result["final_url"] = final_url
 
-        # 判断登录状态: 如果URL包含login则表示掉线
-        if "login" in final_url.lower():
+        if platform in {"channels", "tencent"}:
+            login_state, reason = await _classify_channels_login_state(page)
+            result["login_status"] = "logged_in" if login_state == "logged_in" else "session_expired" if login_state == "session_expired" else "error"
+            result["error"] = None if result["login_status"] == "logged_in" else reason
+        elif "login" in final_url.lower():
             result["login_status"] = "session_expired"
-            result["final_url"] = final_url
-            logger.warning(f"[Worker] 账号 {account_id} ({platform}) 已掉线 - URL: {final_url}")
         else:
             result["login_status"] = "logged_in"
-            result["final_url"] = final_url
-            logger.info(f"[Worker] 账号 {account_id} ({platform}) 在线")
 
-        # 更新数据库（使用 login_status_checker 而不是 cookie_manager）
-        from myUtils.login_status_checker import login_status_checker
-        login_status_checker.update_login_status(account_id, platform, result["login_status"])
+        if result["login_status"] == "logged_in":
+            logger.info(f"[Worker] Account {account_id} ({platform}) is logged in")
+        elif result["login_status"] == "session_expired":
+            logger.warning(f"[Worker] Account {account_id} ({platform}) session expired")
+        else:
+            logger.error(f"[Worker] Account {account_id} ({platform}) status check failed: {result['error']}")
 
     except Exception as e:
         result["login_status"] = "error"
         result["error"] = str(e)
-        logger.error(f"[Worker] {account_id} 检查失败: {e}")
+        logger.error(f"[Worker] {account_id} check failed: {e}")
     finally:
-        # 清理资源
         try:
             if page:
                 await page.close()
@@ -850,8 +932,18 @@ async def _check_single_account_login_worker(account_id: str, platform: str, coo
                 await context.close()
             if browser:
                 await browser.close()
+            if pw:
+                await pw.stop()
         except Exception as e:
-            logger.warning(f"[Worker] 清理资源失败: {e}")
+            logger.warning(f"[Worker] Cleanup failed: {e}")
+
+    if result["login_status"] in {"logged_in", "session_expired"}:
+        try:
+            from myUtils.login_status_checker import login_status_checker
+
+            login_status_checker.update_login_status(account_id, platform, result["login_status"])
+        except Exception as e:
+            logger.warning(f"[Worker] Failed to persist login status for {account_id}: {e}")
 
     return result
 

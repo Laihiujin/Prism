@@ -37,11 +37,16 @@ class DouyinAdapter(PlatformAdapter):
         try:
             # 创建浏览器会话
             playwright = await async_playwright().start()
+            # QR login must start from a clean ephemeral browser state.
+            # Reusing an existing account's fingerprint/profile can break page load
+            # before the QR even renders (reproduced as ERR_NAME_NOT_RESOLVED).
             browser, context, _, _ = await create_context_with_policy(
                 playwright,
                 platform=self.platform_name,
-                account_id=self.account_id,
+                account_id=None,
                 headless=self.headless,
+                force_ephemeral=True,
+                disable_proxy=True,
                 base_context_opts={"viewport": {"width": 1280, "height": 800}},
                 launch_kwargs={"args": ["--no-sandbox", "--disable-blink-features=AutomationControlled"]},
             )
