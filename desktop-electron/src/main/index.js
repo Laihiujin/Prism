@@ -1,6 +1,6 @@
 ﻿const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, spawnSync, execSync } = require('child_process');
 const net = require('net');
 const log = require('electron-log');
 const fs = require('fs');
@@ -527,6 +527,191 @@ class SynapseApp {
     });
   }
 
+  listListeningPidsByPort(port) {
+    if (process.platform !== 'win32') {
+      return [];
+    }
+
+    try {
+      const psCommand = [
+        '$ErrorActionPreference = "SilentlyContinue"',
+        `$pids = Get-NetTCPConnection -State Listen -LocalPort ${Number(port)} | Select-Object -ExpandProperty OwningProcess -Unique`,
+        'if ($pids) { $pids | ConvertTo-Json -Compress }'
+      ].join('; ');
+      const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', psCommand], {
+        encoding: 'utf8',
+        windowsHide: true
+      });
+
+      if (result.error || result.status !== 0) {
+        return [];
+      }
+
+      const raw = String(result.stdout || '').trim();
+      if (!raw) {
+        return [];
+      }
+
+      const parsed = JSON.parse(raw);
+      const values = Array.isArray(parsed) ? parsed : [parsed];
+      return values
+        .map((value) => Number.parseInt(value, 10))
+        .filter((value) => Number.isInteger(value) && value > 0);
+    } catch (error) {
+      log.warn(`Failed to inspect listening PIDs on port ${port}:`, error);
+      return [];
+    }
+  }
+
+  getSupervisorResourceMarkers() {
+    const candidates = [
+      path.join(process.resourcesPath, 'supervisor'),
+      path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor')
+    ];
+
+    return [...new Set(
+      candidates
+        .filter(Boolean)
+        .map((candidate) => path.normalize(candidate).toLowerCase())
+    )];
+  }
+
+  listRepoSupervisorPids() {
+    if (process.platform !== 'win32') {
+      return [];
+    }
+
+    try {
+      const markers = this.getSupervisorResourceMarkers()
+        .map((marker) => `'${marker.replace(/'/g, "''")}'`)
+        .join(', ');
+      const psCommand = [
+        '$ErrorActionPreference = "SilentlyContinue"',
+        `$markers = @(${markers})`,
+        '$pids = Get-CimInstance Win32_Process | Where-Object {',
+        '  $name = [string]$_.Name',
+        '  $cmd = [string]$_.CommandLine',
+        '  $exe = [string]$_.ExecutablePath',
+        '  $belongsToRepo = $false',
+        '  foreach ($marker in $markers) {',
+        '    if (($cmd -and $cmd.ToLower().Contains($marker)) -or ($exe -and $exe.ToLower().Contains($marker))) {',
+        '      $belongsToRepo = $true',
+        '      break',
+        '    }',
+        '  }',
+        "  $looksLikeSupervisor = ($name.ToLower() -eq 'supervisor.exe') -or (($name.ToLower().StartsWith('python')) -and $cmd -and $cmd.ToLower().Contains('supervisor.py'))",
+        '  $belongsToRepo -and $looksLikeSupervisor',
+        '} | Select-Object -ExpandProperty ProcessId -Unique',
+        'if ($pids) { $pids | ConvertTo-Json -Compress }'
+      ].join('; ');
+      const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', psCommand], {
+        encoding: 'utf8',
+        windowsHide: true
+      });
+
+      if (result.error || result.status !== 0) {
+        return [];
+      }
+
+      const raw = String(result.stdout || '').trim();
+      if (!raw) {
+        return [];
+      }
+
+      const parsed = JSON.parse(raw);
+      const values = Array.isArray(parsed) ? parsed : [parsed];
+      return values
+        .map((value) => Number.parseInt(value, 10))
+        .filter((value) => Number.isInteger(value) && value > 0);
+    } catch (error) {
+      log.warn('Failed to inspect repo supervisor processes:', error);
+      return [];
+    }
+  }
+
+  getProcessDetails(pid) {
+    if (process.platform !== 'win32' || !Number.isInteger(pid) || pid <= 0) {
+      return null;
+    }
+
+    try {
+      const psCommand = [
+        '$ErrorActionPreference = "SilentlyContinue"',
+        `$proc = Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}"`,
+        'if ($proc) {',
+        '  [PSCustomObject]@{',
+        '    processId = $proc.ProcessId',
+        '    name = $proc.Name',
+        '    executablePath = $proc.ExecutablePath',
+        '    commandLine = $proc.CommandLine',
+        '  } | ConvertTo-Json -Compress',
+        '}'
+      ].join('; ');
+      const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', psCommand], {
+        encoding: 'utf8',
+        windowsHide: true
+      });
+
+      if (result.error || result.status !== 0) {
+        return null;
+      }
+
+      const raw = String(result.stdout || '').trim();
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      log.warn(`Failed to inspect process details for PID ${pid}:`, error);
+      return null;
+    }
+  }
+
+  terminateProcessByPid(pid) {
+    if (!Number.isInteger(pid) || pid <= 0) {
+      return false;
+    }
+
+    try {
+      execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+      return true;
+    } catch (error) {
+      log.warn(`Failed to terminate PID ${pid}:`, error);
+      return false;
+    }
+  }
+
+  cleanupStaleSupervisorOnPort(port = 7002) {
+    const candidatePids = new Set(this.listRepoSupervisorPids());
+    for (const pid of this.listListeningPidsByPort(port)) {
+      candidatePids.add(pid);
+    }
+
+    if (candidatePids.size === 0) {
+      return;
+    }
+
+    const repoMarkers = this.getSupervisorResourceMarkers();
+    const terminated = [];
+
+    for (const pid of candidatePids) {
+      const details = this.getProcessDetails(pid);
+      const commandLine = String(details?.commandLine || '').toLowerCase();
+      const executablePath = path.normalize(String(details?.executablePath || '')).toLowerCase();
+      const isSupervisorProcess = commandLine.includes('supervisor') || executablePath.includes('supervisor');
+      const belongsToRepo = repoMarkers.some((marker) => commandLine.includes(marker) || executablePath.includes(marker));
+
+      if (!isSupervisorProcess || !belongsToRepo) {
+        continue;
+      }
+
+      if (this.terminateProcessByPid(pid)) {
+        terminated.push(pid);
+      }
+    }
+
+    if (terminated.length > 0) {
+      log.warn(`Terminated stale repo supervisor process(es) before startup: ${terminated.join(', ')}`);
+    }
+  }
+
   async startServices() {
     if (this.servicesStarted) {
       return;
@@ -559,6 +744,7 @@ class SynapseApp {
     }
 
     this.ensureSynenvConfig();
+    this.cleanupStaleSupervisorOnPort(7002);
 
     const supervisorExe = path.join(process.resourcesPath, 'supervisor', 'supervisor.exe');
     const supervisorScript = path.join(process.resourcesPath, 'supervisor', 'supervisor.py');
