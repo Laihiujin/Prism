@@ -179,6 +179,106 @@ $entryScripts = @{
   "playwright-worker" = "$PSScriptRoot\playwright_worker_service.py"
 }
 
+function Find-PackagedDriverNode {
+  param(
+    [string]$TargetDir,
+    [string]$RuntimeName
+  )
+
+  $match = Get-PackagedDriverNodes -TargetDir $TargetDir -RuntimeName $RuntimeName |
+    Select-Object -First 1
+
+  if ($match) {
+    return $match
+  }
+
+  return $null
+}
+
+function Get-PackagedDriverNodes {
+  param(
+    [string]$TargetDir,
+    [string]$RuntimeName
+  )
+
+  $directPath = Join-Path $TargetDir "_internal\$RuntimeName\driver\node.exe"
+  $matches = @()
+
+  if (Test-Path $directPath) {
+    $matches += (Resolve-Path $directPath).Path
+  }
+
+  $escapedRuntimeName = [regex]::Escape($RuntimeName)
+  $matches += Get-ChildItem -Path $TargetDir -Filter node.exe -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match "\\$escapedRuntimeName\\driver\\node\.exe$" } |
+    Select-Object -ExpandProperty FullName
+
+  return @($matches | Where-Object { $_ } | Select-Object -Unique)
+}
+
+function Get-PatchrightDriverNodeSource {
+  if ($script:PatchrightDriverNodeSource) {
+    return $script:PatchrightDriverNodeSource
+  }
+
+  $patchrightNodeOutput = & $python -c @"
+import pathlib
+import sys
+
+candidates = []
+try:
+    import patchright
+
+    pkg_dir = pathlib.Path(patchright.__file__).resolve().parent
+    candidates.append(pkg_dir / "driver" / ("node.exe" if sys.platform == "win32" else "node"))
+
+    try:
+        from patchright._impl._driver import compute_driver_executable
+
+        driver_path, _ = compute_driver_executable()
+        candidates.insert(0, pathlib.Path(driver_path))
+    except Exception:
+        pass
+except Exception:
+    pass
+
+for candidate in candidates:
+    if candidate.exists():
+        print(candidate)
+        break
+"@
+
+  if ($LASTEXITCODE -eq 0 -and $null -ne $patchrightNodeOutput) {
+    $patchrightNode = (@($patchrightNodeOutput) -join [Environment]::NewLine).Trim()
+    if (-not [string]::IsNullOrWhiteSpace($patchrightNode) -and (Test-Path $patchrightNode)) {
+      $script:PatchrightDriverNodeSource = $patchrightNode
+      return $script:PatchrightDriverNodeSource
+    }
+  }
+
+  $fallbackCandidates = @()
+  if ($env:PACKAGED_DRIVER_NODE_SOURCE) {
+    $fallbackCandidates += $env:PACKAGED_DRIVER_NODE_SOURCE
+  }
+
+  try {
+    $resolvedNode = Get-Command node -ErrorAction Stop
+    if ($resolvedNode.Source) {
+      $fallbackCandidates += $resolvedNode.Source
+    }
+  } catch {
+  }
+
+  foreach ($candidate in ($fallbackCandidates | Where-Object { $_ } | Select-Object -Unique)) {
+    if (Test-Path $candidate) {
+      $script:PatchrightDriverNodeSource = (Resolve-Path $candidate).Path
+      return $script:PatchrightDriverNodeSource
+    }
+  }
+
+  return $null
+}
+
 function Prune-PlaywrightDriverNode {
   param([string]$TargetName)
 
@@ -187,22 +287,60 @@ function Prune-PlaywrightDriverNode {
     return
   }
 
-  $patchrightNode = Get-ChildItem -Path $targetDir -Filter node.exe -Recurse -File -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -match "\\patchright\\driver\\node\.exe$" } |
-    Select-Object -First 1
+  $patchrightNode = Find-PackagedDriverNode -TargetDir $targetDir -RuntimeName "patchright"
+  $playwrightNodes = @(Get-PackagedDriverNodes -TargetDir $targetDir -RuntimeName "playwright")
+  $playwrightNode = $playwrightNodes | Select-Object -First 1
+  $expectedPatchrightNode = Join-Path $targetDir "_internal\patchright\driver\node.exe"
 
   if (-not $patchrightNode) {
     if ($TargetName -eq "playwright-worker") {
-      throw "Missing patchright driver node.exe in packaged $TargetName. Ensure patchright is installed before PyInstaller runs."
+      $sourcePatchrightNode = Get-PatchrightDriverNodeSource
+      if ($sourcePatchrightNode) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $expectedPatchrightNode) | Out-Null
+        Copy-Item -LiteralPath $sourcePatchrightNode -Destination $expectedPatchrightNode -Force
+        Write-Host "Injected patchright driver node.exe into packaged $TargetName from $sourcePatchrightNode"
+      } elseif ($playwrightNode) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $expectedPatchrightNode) | Out-Null
+        Copy-Item -LiteralPath $playwrightNode -Destination $expectedPatchrightNode -Force
+        Write-Host "Rebased packaged Playwright driver node.exe into patchright runtime for $TargetName from $playwrightNode"
+      }
+
+      $patchrightNode = Find-PackagedDriverNode -TargetDir $targetDir -RuntimeName "patchright"
+      if (-not $patchrightNode) {
+        throw "Missing patchright driver node.exe in packaged $TargetName after injection attempt."
+      }
     }
     return
   }
 
-  $playwrightDriverDir = Join-Path $targetDir "_internal\playwright\driver"
-  $playwrightNode = Join-Path $playwrightDriverDir "node.exe"
-  if (Test-Path $playwrightNode) {
-    Remove-Item -LiteralPath $playwrightNode -Force
-    Write-Host "Pruned duplicate Playwright driver node.exe from $playwrightNode"
+  if ($patchrightNode -ne $expectedPatchrightNode) {
+    $expectedPatchrightDir = Split-Path $expectedPatchrightNode -Parent
+    if (-not (Test-Path $expectedPatchrightDir)) {
+      New-Item -ItemType Directory -Force -Path $expectedPatchrightDir | Out-Null
+    }
+    Move-Item -LiteralPath $patchrightNode -Destination $expectedPatchrightNode -Force
+    Write-Host "Rebased patchright driver node.exe to $expectedPatchrightNode"
+    $patchrightNode = $expectedPatchrightNode
+  }
+
+  foreach ($candidate in $playwrightNodes) {
+    if ($candidate -and (Test-Path $candidate)) {
+      Remove-Item -LiteralPath $candidate -Force
+      Write-Host "Pruned duplicate Playwright driver node.exe from $candidate"
+    }
+  }
+
+  $remainingPlaywrightNodes = @(Get-PackagedDriverNodes -TargetDir $targetDir -RuntimeName "playwright")
+  if ($remainingPlaywrightNodes.Count -gt 0) {
+    $remainingList = $remainingPlaywrightNodes -join ", "
+    throw "Duplicate Playwright driver node.exe still packaged in $TargetName after pruning: $remainingList"
+  }
+
+  if ($TargetName -eq "playwright-worker") {
+    $verifiedPatchrightNode = Find-PackagedDriverNode -TargetDir $targetDir -RuntimeName "patchright"
+    if (-not $verifiedPatchrightNode) {
+      throw "Missing patchright driver node.exe in packaged $TargetName after pruning."
+    }
   }
 }
 

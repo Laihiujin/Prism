@@ -121,6 +121,26 @@ jobs:
             }
           }
 
+          $playwrightWorkerDir = Join-Path $serviceDist "playwright-worker"
+          $patchrightNode = Join-Path $playwrightWorkerDir "_internal\patchright\driver\node.exe"
+          $duplicatePlaywrightNodes = @(Get-ChildItem -Path $playwrightWorkerDir -Filter node.exe -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match "\\playwright\\driver\\node\.exe$" })
+          foreach ($duplicateNode in $duplicatePlaywrightNodes) {
+            Remove-Item -LiteralPath $duplicateNode.FullName -Force
+            Write-Host "Removed duplicate Playwright driver node.exe before Electron packaging: $($duplicateNode.FullName)"
+          }
+
+          if (-not (Test-Path $patchrightNode)) {
+            throw "Missing packaged patchright driver node runtime before Electron packaging: $patchrightNode"
+          }
+
+          $remainingDuplicatePlaywrightNodes = @(Get-ChildItem -Path $playwrightWorkerDir -Filter node.exe -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match "\\playwright\\driver\\node\.exe$" })
+          if ($remainingDuplicatePlaywrightNodes.Count -gt 0) {
+            $remainingList = ($remainingDuplicatePlaywrightNodes | Select-Object -ExpandProperty FullName) -join ', '
+            throw "Duplicate Playwright driver node.exe still present before Electron packaging: $remainingList"
+          }
+
       - name: Install Hibbiki Chromium for packaged runtime
         shell: pwsh
         run: |
