@@ -33,6 +33,7 @@ class ConnectionPool:
     def _create_connection(self) -> sqlite3.Connection:
         """创建新的数据库连接"""
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn.execute("PRAGMA foreign_keys = ON")
         conn.row_factory = sqlite3.Row  # 支持字典访问
         return conn
 

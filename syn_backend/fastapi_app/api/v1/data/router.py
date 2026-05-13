@@ -3,6 +3,7 @@
 提供视频、用户、评论等数据的抓取接口
 """
 import importlib
+import sqlite3
 
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
@@ -28,9 +29,78 @@ def _db_path() -> Path:
     return Path(settings.BASE_DIR) / "db" / "database.db"
 
 
+def _count_rows(cursor: sqlite3.Cursor, table: str, where: str = "", params: tuple = ()) -> int:
+    cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", (table,))
+    if not cursor.fetchone():
+        return 0
+    sql = f"SELECT COUNT(*) FROM {table}"
+    if where:
+        sql += f" WHERE {where}"
+    cursor.execute(sql, params)
+    return int(cursor.fetchone()[0] or 0)
+
+
 def _get_data_crawler_service():
     module = importlib.import_module("myUtils.data_crawler_service")
     return getattr(module, "get_data_crawler_service")
+
+
+@router.get("/center")
+async def data_center_summary():
+    db_path = _db_path()
+    totals = {
+        "videos": 0,
+        "materials": 0,
+        "accounts": 0,
+        "publish_tasks": 0,
+    }
+    if db_path.exists():
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            totals["videos"] = _count_rows(cursor, "video_analytics")
+            totals["materials"] = _count_rows(cursor, "file_records")
+            totals["accounts"] = _count_rows(cursor, "accounts")
+            totals["publish_tasks"] = _count_rows(cursor, "publish_tasks")
+
+    return {"status": "success", "data": {"totals": totals}}
+
+
+@router.get("/videos")
+async def data_videos(limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0)):
+    db_path = _db_path()
+    items = []
+    total = 0
+    if db_path.exists():
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'video_analytics'")
+            if cursor.fetchone():
+                total = _count_rows(cursor, "video_analytics")
+                cursor.execute("SELECT * FROM video_analytics LIMIT ? OFFSET ?", (limit, offset))
+                items = [dict(row) for row in cursor.fetchall()]
+
+    return {"status": "success", "items": items, "total": total}
+
+
+@router.get("/trends")
+async def data_trends():
+    return {"status": "success", "series": []}
+
+
+@router.get("/publish-status")
+async def data_publish_status():
+    db_path = _db_path()
+    stats = {"total": 0, "published": 0, "pending": 0, "failed": 0}
+    if db_path.exists():
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            stats["total"] = _count_rows(cursor, "publish_tasks")
+            stats["published"] = _count_rows(cursor, "publish_tasks", "status IN (?, ?)", ("published", "success"))
+            stats["pending"] = _count_rows(cursor, "publish_tasks", "status = ?", ("pending",))
+            stats["failed"] = _count_rows(cursor, "publish_tasks", "status = ?", ("failed",))
+
+    return {"status": "success", "data": stats}
 
 
 @router.post("/collect", summary="全量采集数据并回传到数据库")

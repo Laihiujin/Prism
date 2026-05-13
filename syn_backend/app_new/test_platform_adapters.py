@@ -10,6 +10,9 @@
 """
 import asyncio
 import sys
+if "pytest" in sys.modules:
+    import pytest
+    pytestmark = pytest.mark.skip("Manual QR-login script; run with python test_platform_adapters.py <platform>.")
 from pathlib import Path
 
 # 添加项目根目录到路径

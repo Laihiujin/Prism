@@ -27,6 +27,7 @@ class AccountService:
         self,
         platform: Optional[str] = None,
         status: Optional[str] = None,
+        note_keyword: Optional[str] = None,
         skip: int = 0,
         limit: int = 100
     ) -> Dict[str, Any]:
@@ -50,6 +51,9 @@ class AccountService:
                 accounts = [a for a in accounts if a['platform'] == platform]
             if status:
                 accounts = [a for a in accounts if a['status'] == status]
+            if note_keyword:
+                keyword = note_keyword.lower()
+                accounts = [a for a in accounts if keyword in str(a.get('note') or '').lower()]
 
             total = len(accounts)
             items = accounts[skip:skip + limit]

@@ -86,4 +86,8 @@ def client():
 @pytest.fixture
 def test_db_pool(test_db):
     """Create test database connection pool"""
-    return ConnectionPool(test_db, pool_size=2)
+    pool = ConnectionPool(test_db, pool_size=2)
+    try:
+        yield pool
+    finally:
+        pool.close_all()

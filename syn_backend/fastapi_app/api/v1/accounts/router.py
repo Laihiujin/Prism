@@ -389,6 +389,22 @@ async def update_account(account_id: str, update_data: AccountUpdate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.delete("/invalid", response_model=StatusResponse)
+async def delete_invalid_accounts():
+    """
+    鍒犻櫎鎵€鏈夊け鏁堣处鍙?
+
+    - 鍒犻櫎鐘舵€佷笉涓?valid'鐨勮处鍙?
+    - 鍚屾椂鍒犻櫎瀵瑰簲鐨凜ookie鏂囦欢
+    """
+    try:
+        result = await account_service.delete_invalid_accounts()
+        return StatusResponse(**result)
+    except Exception as e:
+        logger.error(f"鍒犻櫎澶辨晥璐﹀彿澶辫触: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/{account_id}", response_model=StatusResponse)
 async def delete_account(account_id: str):
     """
@@ -429,22 +445,6 @@ async def delete_account(account_id: str):
 #         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/invalid", response_model=StatusResponse)
-async def delete_invalid_accounts():
-    """
-    删除所有失效账号
-
-    - 删除状态不为'valid'的账号
-    - 同时删除对应的Cookie文件
-    """
-    try:
-        result = await account_service.delete_invalid_accounts()
-        return StatusResponse(**result)
-    except Exception as e:
-        logger.error(f"删除失效账号失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/stats/summary", response_model=Response[AccountStatsResponse])
 async def get_account_stats():
     """
@@ -473,6 +473,7 @@ async def filter_accounts(filter_req: AccountFilterRequest):
         result = await account_service.list_accounts(
             platform=filter_req.platform,
             status=filter_req.status,
+            note_keyword=filter_req.note_keyword,
             skip=filter_req.skip,
             limit=filter_req.limit
         )

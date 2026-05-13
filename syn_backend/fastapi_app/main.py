@@ -44,7 +44,7 @@ setup_logging()
 
 # 创建FastAPI应用
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=f"{settings.PROJECT_NAME} API",
     description=settings.DESCRIPTION,
     version=settings.VERSION,
     docs_url="/api/docs",

@@ -15,16 +15,31 @@ import os
 douyin_api_path = os.path.join(os.path.dirname(__file__), '../../../../douyin_tiktok_api')
 sys.path.insert(0, douyin_api_path)
 
-from crawlers.hybrid.hybrid_crawler import HybridCrawler
-from crawlers.douyin.web.web_crawler import DouyinWebCrawler
-from crawlers.bilibili.web.web_crawler import BilibiliWebCrawler
+try:
+    from crawlers.hybrid.hybrid_crawler import HybridCrawler
+    from crawlers.douyin.web.web_crawler import DouyinWebCrawler
+    from crawlers.bilibili.web.web_crawler import BilibiliWebCrawler
+    _crawler_import_error: Optional[ImportError] = None
+except ImportError as exc:
+    HybridCrawler = None
+    DouyinWebCrawler = None
+    BilibiliWebCrawler = None
+    _crawler_import_error = exc
 
 router = APIRouter()
 
 # 初始化爬虫实例
-hybrid_crawler = HybridCrawler()
-douyin_crawler = DouyinWebCrawler()
-bilibili_crawler = BilibiliWebCrawler()
+hybrid_crawler = HybridCrawler() if HybridCrawler else None
+douyin_crawler = DouyinWebCrawler() if DouyinWebCrawler else None
+bilibili_crawler = BilibiliWebCrawler() if BilibiliWebCrawler else None
+
+
+def _ensure_crawlers_available():
+    if _crawler_import_error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Crawler optional dependency is not installed: {_crawler_import_error}",
+        )
 
 
 class VideoURLRequest(BaseModel):
@@ -99,6 +114,7 @@ async def fetch_video(request: VideoURLRequest):
     """
     try:
         # 调用混合爬虫
+        _ensure_crawlers_available()
         data = await hybrid_crawler.hybrid_parsing_single_video(
             url=request.url,
             minimal=request.minimal
@@ -176,6 +192,7 @@ async def fetch_account_videos(request: AccountVideosRequest):
     ```
     """
     try:
+        _ensure_crawlers_available()
         if request.platform == "douyin":
             # 抖音账号视频列表
             data = await douyin_crawler.fetch_user_post_videos(

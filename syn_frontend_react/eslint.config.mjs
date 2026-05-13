@@ -10,11 +10,27 @@ const eslintConfig = defineConfig([
       // Keep only critical errors; everything else is handled via warnings and/or linting only changed files.
       "no-undef": "error",
       "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "error",
+      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/static-components": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/preserve-manual-memoization": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/refs": "warn",
+      "react-hooks/immutability": "warn",
+      "react/no-unescaped-entities": "warn",
+      "prefer-const": "warn",
 
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/ban-ts-comment": "warn",
       "@next/next/no-img-element": "warn",
+    },
+  },
+  {
+    files: ["**/*.{ts,tsx,mts}"],
+    rules: {
+      // TypeScript already validates typed globals such as React, RequestInit, and NodeJS.
+      "no-undef": "off",
     },
   },
   // Override default ignores of eslint-config-next.

@@ -18,7 +18,7 @@ export function ChatInput({ isLoading, onSubmit, input, setInput, disabled, plac
     const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.isComposing) {
+        if (e.nativeEvent.isComposing) {
             return
         }
         if (e.key === "Enter" && !e.shiftKey) {

@@ -10,6 +10,10 @@ from fastapi_app.services.campaign_service import get_campaign_service, Campaign
 
 router = APIRouter(prefix="/campaigns", tags=["投放计划"])
 
+@router.get("/ping")
+async def ping_campaigns():
+    return {"message": "campaigns pong"}
+
 @router.post("/create")
 async def create_campaign(
     request: CreateCampaignRequest,

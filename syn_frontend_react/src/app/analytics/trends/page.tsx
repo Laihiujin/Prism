@@ -42,7 +42,7 @@ export default function TrendsPage() {
         return []
     }, [accountsData])
 
-    const accountIds = useMemo(() => {
+    const accountIds = useMemo<string[]>(() => {
         return accounts.map(accountIdOf).filter(Boolean)
     }, [accounts, accountIdOf])
 
@@ -50,7 +50,7 @@ export default function TrendsPage() {
         queryKey: ["analytics-trends", accountIds],
         queryFn: async () => {
             const params = new URLSearchParams()
-            accountIds.forEach((id) => params.append("accounts", id))
+            accountIds.forEach((id: string) => params.append("accounts", id))
             const res = await fetch(`/api/analytics?${params}`)
             if (!res.ok) throw new Error("Failed to fetch analytics")
             return res.json()

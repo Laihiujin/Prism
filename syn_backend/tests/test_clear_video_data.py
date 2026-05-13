@@ -1,5 +1,8 @@
 """测试清除视频数据功能"""
 import sys
+if "pytest" in sys.modules:
+    import pytest
+    pytest.skip("Manual destructive cleanup script; run with python when needed.", allow_module_level=True)
 from pathlib import Path
 
 # 添加项目路径

@@ -17,9 +17,15 @@ router = APIRouter(prefix="/threads", tags=["ai_threads"])
 DB_PATH = settings.DATABASE_PATH
 
 
+def _connect_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
 def init_threads_tables():
     """初始化线程相关的数据库表"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = _connect_db()
     cursor = conn.cursor()
 
     # 线程表
@@ -104,7 +110,7 @@ async def create_thread(request: CreateThreadRequest):
         thread_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -143,7 +149,7 @@ async def create_thread(request: CreateThreadRequest):
 async def get_threads(limit: int = 50, offset: int = 0, mode: Optional[str] = None):
     """获取所有线程列表，按更新时间倒序排列，可按 mode 过滤"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -200,7 +206,7 @@ async def get_threads(limit: int = 50, offset: int = 0, mode: Optional[str] = No
 async def get_thread(thread_id: str):
     """获取特定线程的详细信息"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -234,7 +240,7 @@ async def get_thread(thread_id: str):
 async def update_thread(thread_id: str, request: UpdateThreadRequest):
     """更新线程的标题或元数据"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         cursor = conn.cursor()
 
         # 检查线程是否存在
@@ -280,10 +286,13 @@ async def update_thread(thread_id: str, request: UpdateThreadRequest):
 async def delete_thread(thread_id: str):
     """删除线程及其所有消息"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         cursor = conn.cursor()
 
         # 删除线程（消息会因为外键级联删除）
+        # Delete messages explicitly for older SQLite connections that were
+        # created before foreign key enforcement was enabled.
+        cursor.execute("DELETE FROM ai_messages WHERE thread_id = ?", (thread_id,))
         cursor.execute("DELETE FROM ai_threads WHERE id = ?", (thread_id,))
 
         if cursor.rowcount == 0:
@@ -307,7 +316,7 @@ async def delete_thread(thread_id: str):
 async def add_message(thread_id: str, request: AddMessageRequest):
     """向线程添加一条消息"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         cursor = conn.cursor()
 
         # 检查线程是否存在
@@ -366,7 +375,7 @@ async def add_message(thread_id: str, request: AddMessageRequest):
 async def batch_add_messages(thread_id: str, request: BatchAddMessagesRequest):
     """向线程批量添加消息"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         cursor = conn.cursor()
 
         # 检查线程是否存在
@@ -430,7 +439,7 @@ async def batch_add_messages(thread_id: str, request: BatchAddMessagesRequest):
 async def get_messages(thread_id: str, limit: int = 100, offset: int = 0):
     """获取线程的所有消息"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -495,7 +504,7 @@ async def get_messages(thread_id: str, limit: int = 100, offset: int = 0):
 async def delete_message(thread_id: str, message_id: str):
     """删除特定消息"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         cursor = conn.cursor()
 
         # 删除消息
@@ -533,7 +542,7 @@ async def delete_message(thread_id: str, message_id: str):
 async def clear_messages(thread_id: str):
     """清空线程的所有消息"""
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = _connect_db()
         cursor = conn.cursor()
 
         # 检查线程是否存在
