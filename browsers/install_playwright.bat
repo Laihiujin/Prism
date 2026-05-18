@@ -46,13 +46,21 @@ if errorlevel 1 (
 python -c "import patchright" >nul 2>&1
 if errorlevel 1 (
     echo   Installing patchright...
-    python -m pip install patchright
+    python -m pip uninstall -y patchright >nul 2>&1
+    python -m pip install --upgrade --force-reinstall patchright==1.59.1
     if errorlevel 1 (
         echo [ERROR] Failed to install patchright
         popd
         if not defined SYNAPSE_NO_PAUSE pause
         exit /b 1
     )
+)
+python -c "import importlib.metadata; version = importlib.metadata.version('patchright'); assert version == '1.59.1', version" >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Patchright runtime version check failed
+    popd
+    if not defined SYNAPSE_NO_PAUSE pause
+    exit /b 1
 )
 echo   OK
 echo.

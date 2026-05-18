@@ -998,7 +998,7 @@ class SynapseApp {
     if (!patchrightInfo.installed) {
       const runtimeInstall = await this.runManagedCommand(
         pythonPath,
-        ['-m', 'pip', 'install', 'patchright'],
+        ['-m', 'pip', 'install', '--upgrade', '--force-reinstall', 'patchright==1.59.1'],
         { env, logPrefix: 'pip:patchright' }
       );
 
