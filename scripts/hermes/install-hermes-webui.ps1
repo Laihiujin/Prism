@@ -95,6 +95,7 @@ function Apply-SynapseHermesBranding {
     $blackLogoSource = Join-Path $AssetsRoot "hermes-agent-logo.svg"
     $whiteLogoSource = Join-Path $AssetsRoot "hermes.svg"
     $legacyWhiteLogoSource = Join-Path $AssetsRoot "hermes-agent-logo-white.svg"
+    $faviconSource = Join-Path $AssetsRoot "favicon.ico"
     $brandAssetNames = @(
         "apple-touch-icon.png",
         "favicon-32.png",
@@ -111,8 +112,10 @@ function Apply-SynapseHermesBranding {
     if (-not (Test-Path $blackLogoSource) -or -not (Test-Path $whiteLogoSource)) {
         throw "Missing Hermes branding assets under $AssetsRoot"
     }
-    $whiteLogoDataUri = Convert-FileToDataUri -Path $whiteLogoSource -MimeType "image/svg+xml"
-
+    if (-not (Test-Path $faviconSource)) {
+        throw "Missing Hermes favicon asset under $AssetsRoot"
+    }
+    $faviconDataUri = Convert-FileToDataUri -Path $faviconSource -MimeType "image/x-icon"
     $staticRoot = Join-Path $WebUiRoot "static"
     Copy-Item -LiteralPath $blackLogoSource -Destination (Join-Path $staticRoot "hermes-agent-logo.svg") -Force
     Copy-Item -LiteralPath $whiteLogoSource -Destination (Join-Path $staticRoot "hermes.svg") -Force
@@ -134,16 +137,12 @@ function Apply-SynapseHermesBranding {
     if ($indexHtml -notmatch 'Hermes WebUI static index does not support file:// mode') {
         $indexHtml = $indexHtml.Replace($baseHrefScript, "$baseHrefScript`n$fileModeGuard")
     }
-    $logoBootScript = "<script>(function(){var src='$whiteLogoDataUri';window.__HERMES_LOGO_WHITE_DATA_URI=src;document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('[data-hermes-logo-white]').forEach(function(el){el.setAttribute('src',src);});},{once:true});})()</script>"
     $indexHtml = Replace-First $indexHtml '<script>\(function\(\)\{var themes=.*?</script>' "<script>(function(){var theme='dark',skin='mono';localStorage.setItem('hermes-theme',theme);localStorage.setItem('hermes-skin',skin);if(!localStorage.getItem('hermes-lang'))localStorage.setItem('hermes-lang','zh');document.documentElement.lang='zh-CN';document.documentElement.classList.add('dark');document.documentElement.dataset.skin=skin;})()</script>" "theme bootstrap"
     $indexHtml = $indexHtml.Replace('<meta name="theme-color" content="#0D0D1A" media="(prefers-color-scheme: dark)">', '<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">')
     $indexHtml = $indexHtml.Replace('<meta name="theme-color" id="hermes-theme-color" content="#0D0D1A">', '<meta name="theme-color" id="hermes-theme-color" content="#000000">')
     $indexHtml = Replace-First $indexHtml '<script>\(function\(\)\{try\{var t=localStorage\.getItem\(''hermes-theme''\)\|\|''dark'';.*?</script>' "<script>(function(){try{var c='#000000';document.querySelectorAll('meta[name=""theme-color""]').forEach(function(m){m.setAttribute('content',c);m.removeAttribute('media');});}catch(e){}})()</script>" "theme color bootstrap"
-    if ($indexHtml -notmatch '__HERMES_LOGO_WHITE_DATA_URI') {
-        $indexHtml = $indexHtml.Replace('<script>(function(){try{var c=''#000000'';document.querySelectorAll(''meta[name=""theme-color""]'').forEach(function(m){m.setAttribute(''content'',c);m.removeAttribute(''media'');});}catch(e){}})()</script>', "<script>(function(){try{var c='#000000';document.querySelectorAll('meta[name=""theme-color""]').forEach(function(m){m.setAttribute('content',c);m.removeAttribute('media');});}catch(e){}})()</script>`n$logoBootScript")
-    }
-    $indexHtml = Replace-First $indexHtml '<span class="app-titlebar-icon" aria-hidden="true">.*?</span>' '<span class="app-titlebar-icon" aria-hidden="true"><img src="" data-hermes-logo-white="1" alt="" class="app-titlebar-logo"></span>' "titlebar logo"
-    $indexHtml = Replace-First $indexHtml '<div class="empty-logo">.*?</div>' '<div class="empty-logo"><img src="" data-hermes-logo-white="1" alt="Hermes logo" class="empty-logo-image"></div>' "empty state logo"
+    $indexHtml = Replace-First $indexHtml '<span class="app-titlebar-icon" aria-hidden="true">.*?</span>' "<span class=""app-titlebar-icon"" aria-hidden=""true""><img src=""$faviconDataUri"" alt="""" class=""app-titlebar-logo""></span>" "titlebar logo"
+    $indexHtml = Replace-First $indexHtml '<div class="empty-logo">.*?</div>' "<div class=""empty-logo""><img src=""$faviconDataUri"" alt=""Hermes logo"" class=""empty-logo-image""></div>" "empty state logo"
     $indexHtml = $indexHtml.Replace('<span aria-hidden="true">鈫?/span><span data-i18n="session_jump_start">Start</span>', '<span aria-hidden="true">&#8593;</span><span data-i18n="session_jump_start">Start</span>')
     $indexHtml = $indexHtml.Replace('<span aria-hidden="true">鈫?/span><span class="session-jump-btn__text" data-i18n="session_jump_end">End</span>', '<span aria-hidden="true">&#8595;</span><span class="session-jump-btn__text" data-i18n="session_jump_end">End</span>')
     $indexHtml = $indexHtml.Replace('<kbd class="approval-kbd">鈫?/kbd>', '<kbd class="approval-kbd">Enter</kbd>')

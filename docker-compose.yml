@@ -1,0 +1,81 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./runtime-data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SYNAPSE_ENV: docker
+      SYNAPSE_APP_ROOT: /app
+      SYNAPSE_DATA_DIR: /app/runtime-data
+      SYNAPSE_SUPERVISOR_MANAGES_HERMES_UI: "1"
+      HOST: 0.0.0.0
+      PORT: "7000"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_AUTO_INSTALL: "0"
+      PLAYWRIGHT_HEADLESS: "true"
+      LOCAL_CHROME_PATH: ""
+      LOCAL_CHROME_HEADLESS_SHELL_PATH: ""
+      LOCAL_FIREFOX_PATH: ""
+      CELERY_CONCURRENCY: "8"
+    ports:
+      - "7000:7000"
+    volumes:
+      - ./runtime-data/app:/app/runtime-data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'python -c "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen(\"http://127.0.0.1:7000/health\").getcode() == 200 else 1)"'
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: http://localhost:7000
+        SYNAPSE_INTERNAL_BACKEND_URL: http://app:7000
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:7000
+      SYNAPSE_INTERNAL_BACKEND_URL: http://app:7000
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(\"http://127.0.0.1:3000\").then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"'
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 20s
