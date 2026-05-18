@@ -47,6 +47,7 @@ syn_frontend_react/.env.local
 .vscode/
 .idea/
 .claude/
+.codex-tmp/
 .agent/
 .codex/
 *.swp
@@ -168,6 +169,8 @@ data/crawler_output/
 data/videos/
 tmp-runtime-data/
 /tmp-runtime-data/
+/runtime-data/
+/docker-data/
 /gcm-diagnose.log
 tools/hermes-agent/
 tools/hermes-home/

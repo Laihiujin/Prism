@@ -49,6 +49,10 @@ class SynapseApp {
     };
   }
 
+  useExternalStack() {
+    return process.env.SYNAPSE_USE_EXTERNAL_STACK === '1';
+  }
+
   async initialize() {
     console.log('SynapseAutomation is starting...');
     log.info('SynapseAutomation is starting...');
@@ -79,10 +83,13 @@ class SynapseApp {
     this.setupPlaywrightPath();
 
     // 2. 鍚姩鍚庣/鍓嶇鏈嶅姟锛堢敓浜ч粯璁ゅ惎鍔紝寮€鍙戝彲鐢?SYNAPSE_START_SERVICES=1 寮哄埗锛?
-    const shouldStartServices = process.env.SYNAPSE_START_SERVICES === '1' || !this.isDev;
+    const useExternalStack = this.useExternalStack();
+    const shouldStartServices = !useExternalStack && (process.env.SYNAPSE_START_SERVICES === '1' || !this.isDev);
     const showLauncher = process.env.SYNAPSE_SHOW_LAUNCHER === '1'; // 鏄惁鏄剧ず鍚姩绠＄悊鍣?
+    console.log('Use external stack:', useExternalStack);
     console.log('Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
     console.log('Show launcher:', showLauncher);
+    log.info('Use external stack:', useExternalStack);
     log.info('Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
     log.info('Show launcher:', showLauncher);
 
@@ -1911,6 +1918,11 @@ class SynapseApp {
     log.info('Starting frontend...');
     log.info(`  - this.frontendProcess: ${this.frontendProcess ? 'exists' : 'null'}`);
     log.info(`  - this.isDev: ${this.isDev}`);
+    if (this.useExternalStack()) {
+      this.frontendPort = this.getPreferredFrontendPort();
+      log.info('External stack mode enabled; skipping frontend startup.');
+      return;
+    }
     const serviceEnv = env || this.buildServiceEnv();
     const preferredFrontendPort = this.getPreferredFrontendPort();
 
