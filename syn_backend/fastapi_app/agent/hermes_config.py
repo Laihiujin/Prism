@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import toml
 import yaml
@@ -77,6 +79,55 @@ def get_config_path() -> Path:
 
 def get_hermes_source_path() -> Path:
     return get_repo_root() / "tools" / "hermes-agent"
+
+
+def _normalize_path_key(raw: object) -> Optional[str]:
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    try:
+        resolved = str(Path(text).expanduser().resolve())
+    except Exception:
+        resolved = os.path.abspath(os.path.expanduser(text))
+    return os.path.normcase(os.path.normpath(resolved))
+
+
+def _is_same_or_child_path(candidate: str, root: str) -> bool:
+    return candidate == root or candidate.startswith(root + os.sep)
+
+
+def build_hermes_pythonpath(
+    *preferred: object,
+    base: Optional[str] = None,
+    exclude: Optional[Iterable[object]] = None,
+) -> str:
+    entries: list[str] = []
+    seen: set[str] = set()
+    excluded: list[str] = []
+
+    for raw in exclude or ():
+        normalized = _normalize_path_key(raw)
+        if normalized:
+            excluded.append(normalized)
+
+    def add(raw: object) -> None:
+        normalized = _normalize_path_key(raw)
+        if not normalized:
+            return
+        if any(_is_same_or_child_path(normalized, root) for root in excluded):
+            return
+        if normalized in seen:
+            return
+        seen.add(normalized)
+        entries.append(normalized)
+
+    for item in preferred:
+        add(item)
+
+    for raw_entry in str(base or "").split(os.pathsep):
+        add(raw_entry)
+
+    return os.pathsep.join(entries)
 
 
 def get_hermes_webui_path() -> Path:
@@ -158,13 +209,80 @@ def get_gateway_platform_status() -> Dict[str, Any]:
             "reason": "Hermes runtime is not installed.",
         }
 
-    added_sys_path = False
     hermes_source_str = str(hermes_source_path)
-    if hermes_source_str not in sys.path:
-        sys.path.insert(0, hermes_source_str)
-        added_sys_path = True
+    python_path = get_hermes_python_path()
 
+    if python_path.exists():
+        env = os.environ.copy()
+        env["PYTHONPATH"] = build_hermes_pythonpath(
+            hermes_source_path,
+            base=env.get("PYTHONPATH"),
+            exclude=(get_backend_root(),),
+        )
+        try:
+            result = subprocess.run(
+                [
+                    str(python_path),
+                    "-c",
+                    (
+                        "import json, sys; "
+                        "sys.path.insert(0, sys.argv[1]); "
+                        "from gateway.config import Platform, load_gateway_config; "
+                        "config = load_gateway_config(); "
+                        "platforms = sorted("
+                        "platform.value "
+                        "for platform, platform_config in (config.platforms or {}).items() "
+                        "if getattr(platform_config, 'enabled', False) and platform != Platform.LOCAL"
+                        "); "
+                        "print(json.dumps({'platforms': platforms}, ensure_ascii=False))"
+                    ),
+                    hermes_source_str,
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=env,
+                cwd=hermes_source_str,
+                check=True,
+            )
+            payload = json.loads((result.stdout or "").strip() or "{}")
+            platforms = payload.get("platforms", [])
+            if not isinstance(platforms, list):
+                raise ValueError("Invalid Hermes gateway platform payload")
+        except Exception as exc:
+            return {
+                "configured": False,
+                "platforms": [],
+                "reason": f"Failed to inspect Hermes gateway configuration: {exc}",
+            }
+
+        if platforms:
+            return {
+                "configured": True,
+                "platforms": platforms,
+                "reason": "",
+            }
+
+        return {
+            "configured": False,
+            "platforms": [],
+            "reason": "No messaging platforms are configured for Hermes gateway.",
+        }
+
+    original_sys_path = list(sys.path)
     try:
+        backend_root = _normalize_path_key(get_backend_root())
+        filtered_sys_path = [
+            entry
+            for entry in original_sys_path
+            if not (
+                (normalized := _normalize_path_key(entry))
+                and backend_root
+                and _is_same_or_child_path(normalized, backend_root)
+            )
+        ]
+        sys.path[:] = [hermes_source_str, *filtered_sys_path]
         from gateway.config import Platform, load_gateway_config
 
         config = load_gateway_config()
@@ -180,11 +298,7 @@ def get_gateway_platform_status() -> Dict[str, Any]:
             "reason": f"Failed to inspect Hermes gateway configuration: {exc}",
         }
     finally:
-        if added_sys_path:
-            try:
-                sys.path.remove(hermes_source_str)
-            except ValueError:
-                pass
+        sys.path[:] = original_sys_path
 
     if platforms:
         return {

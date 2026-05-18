@@ -359,6 +359,7 @@ class Supervisor:
                     text=True,
                     encoding="utf-8",
                     errors="replace",
+                    cwd=str(self.hermes_dir),
                     env=env,
                     check=True,
                 )
@@ -512,7 +513,9 @@ class Supervisor:
             if not text:
                 return
             normalized = os.path.normcase(os.path.normpath(text))
-            if normalized in excluded or normalized in seen:
+            if any(normalized == root or normalized.startswith(root + os.sep) for root in excluded):
+                return
+            if normalized in seen:
                 return
             seen.add(normalized)
             entries.append(text)
