@@ -52,6 +52,7 @@ export const API_ENDPOINTS = {
   agentScripts: `${backendBaseUrl}/api/v1/agent/scripts`,
   agentExecutions: `${backendBaseUrl}/api/v1/agent/executions`,
   agentOpenClawRun: `${backendBaseUrl}/api/v1/agent/openclaw-run`,
+  agentHermesRun: `${backendBaseUrl}/api/v1/agent/hermes-run`,
 
   AI_PROMPTS: `${backendBaseUrl}/api/v1/ai-prompts`,
 
@@ -70,7 +71,7 @@ export const PLATFORM_CODES = {
 export const PLATFORM_NAMES = {
   [PLATFORM_CODES.XIAOHONGSHU]: "小红书",
   [PLATFORM_CODES.TENCENT]: "视频号",
-  [PLATFORM_CODES.DOUYIN]: "鎶栭煶",
-  [PLATFORM_CODES.KUAISHOU]: "蹇墜",
-  [PLATFORM_CODES.BILIBILI]: "B站",
+  [PLATFORM_CODES.DOUYIN]: "抖音",
+  [PLATFORM_CODES.KUAISHOU]: "快手",
+  [PLATFORM_CODES.BILIBILI]: "B 站",
 } as const

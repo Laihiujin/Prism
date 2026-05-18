@@ -56,11 +56,77 @@
         ]
       },
       {
+        "from": "../synenv",
+        "to": "synenv",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/*.pyo",
+          "!**/nul"
+        ]
+      },
+      {
         "from": "../browsers/chromium",
         "to": "browsers/chromium",
         "filter": [
           "hibbiki-*/**/*",
           "!**/nul"
+        ]
+      },
+      {
+        "from": "../tools/hermes-agent",
+        "to": "tools/hermes-agent",
+        "filter": [
+          "**/*",
+          "!**/.git/**",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/*.pyo",
+          "!**/.pytest_cache/**",
+          "!**/tests/**",
+          "!**/node_modules/**",
+          "!**/web/**",
+          "!**/.venv/**",
+          "!**/*.egg-info/**",
+          "!**/nul"
+        ]
+      },
+      {
+        "from": "../tools/hermes-webui",
+        "to": "tools/hermes-webui",
+        "filter": [
+          "**/*",
+          "!**/.git/**",
+          "!**/.github/**",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/*.pyo",
+          "!**/tests/**",
+          "!**/docs/**",
+          "!**/nul"
+        ]
+      },
+      {
+        "from": "../scripts/hermes",
+        "to": "scripts/hermes",
+        "filter": [
+          "*.ps1",
+          "*.cmd"
+        ]
+      },
+      {
+        "from": "../scripts/packaging",
+        "to": "scripts/packaging",
+        "filter": [
+          "install_hibbiki_chromium.ps1"
+        ]
+      },
+      {
+        "from": "node_modules/7zip-bin/win/x64",
+        "to": "tools/7zip",
+        "filter": [
+          "7za.exe"
         ]
       },
       {

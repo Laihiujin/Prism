@@ -17,9 +17,11 @@
 #define IconFile GetEnv("ICON_FILE")
 #define SkipOpt "dontcopy recursesubdirs skipifsourcedoesntexist"
 #define SynenvDir SourceDir + "\resources\synenv"
+#define SynenvPythonHome SynenvDir + "\_python"
 #define SynenvSite SynenvDir + "\Lib\site-packages"
 #define SynBackendDir SourceDir + "\resources\syn_backend"
 #define AppSynenv "{app}\resources\synenv"
+#define AppSynenvPythonHome "{app}\resources\synenv\_python"
 #define AppSynenvSite "{app}\resources\synenv\Lib\site-packages"
 #define AppSynBackend "{app}\resources\syn_backend"
 #define ExcludeTests "*\tests\*;*\test\*"
@@ -76,6 +78,7 @@ Name: "{app}\resources\syn_backend\social-media-copilot-api\chrome-profile"
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly; Excludes: "resources\syn_backend\*;resources\synenv\*"
 Source: "{#SynenvDir}\*"; DestDir: "{#AppSynenv}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist; Excludes: "Lib\site-packages\*"
+Source: "{#SynenvPythonHome}\*"; DestDir: "{#AppSynenvPythonHome}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist
 Source: "{#SynenvSite}\*"; DestDir: "{#AppSynenvSite}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist; Excludes: "{#ExcludeTests}"
 Source: "{#SynBackendDir}\*"; DestDir: "{#AppSynBackend}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly; Excludes: "browser_profiles\*;cookiesFile\*;fingerprints\*"
 Source: "{#SourceDir}\resources\syn_backend\social-media-copilot-api\chrome-profile\*"; DestDir: "{app}\resources\syn_backend\social-media-copilot-api\chrome-profile"; Flags: {#SkipOpt}

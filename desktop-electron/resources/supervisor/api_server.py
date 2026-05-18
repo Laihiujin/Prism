@@ -6,7 +6,7 @@ Supervisor HTTP API - control endpoints for Electron.
 
 from __future__ import annotations
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import logging
 import threading
@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 class SupervisorAPIHandler(BaseHTTPRequestHandler):
     supervisor = None
+    restart_lock = threading.Lock()
+    restart_in_progress = False
 
     def log_message(self, format, *args):  # noqa: A003, ANN001
         return
@@ -31,14 +33,27 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/status":
             status = {}
-            for name in ["backend", "playwright-worker", "celery-worker"]:
-                proc = self.supervisor.manager.processes.get(name)
-                status[name.replace("-", "_")] = {
-                    "running": self.supervisor.manager.is_running(name) or self.supervisor.is_external_running(name),
-                    "pid": proc.pid if proc else None,
-                    "external": self.supervisor.is_external_running(name),
-                }
+            for name in [
+                "backend",
+                "playwright-worker",
+                "celery-worker",
+                "hermes-gateway",
+                "hermes-dashboard",
+                "hermes-webui",
+            ]:
+                status[name.replace("-", "_")] = self.supervisor.get_service_status(name)
             self._send_json({"status": "success", "data": status})
+            return
+
+        if self.path == "/api/restart-status":
+            self._send_json(
+                {
+                    "status": "success",
+                    "data": {
+                        "restart_in_progress": bool(self.__class__.restart_in_progress),
+                    },
+                }
+            )
             return
 
         if self.path == "/api/health":
@@ -55,15 +70,37 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
             return self._run_action(self.supervisor.manager.stop_all, "All services stopped")
 
         if self.path == "/api/restart":
-            def _restart_all():
-                self.supervisor.manager.stop_all()
-                self.supervisor.start_all()
+            with self.__class__.restart_lock:
+                if self.__class__.restart_in_progress:
+                    self._send_json({"status": "accepted", "message": "Restart already in progress"})
+                    return
+                self.__class__.restart_in_progress = True
 
-            return self._run_action(_restart_all, "All services restarted")
+            def _restart_all_async():
+                try:
+                    self.supervisor.manager.stop_all()
+                    self.supervisor.start_all()
+                    logger.info("All services restarted successfully")
+                except Exception as exc:
+                    logger.error("Restart all services failed: %s", exc, exc_info=True)
+                finally:
+                    with self.__class__.restart_lock:
+                        self.__class__.restart_in_progress = False
+
+            threading.Thread(target=_restart_all_async, name="supervisor-restart-all", daemon=True).start()
+            self._send_json({"status": "accepted", "message": "Restart scheduled"})
+            return
 
         if self.path.startswith("/api/restart/"):
             service = self.path.split("/")[-1]
-            valid_services = ["backend", "playwright-worker", "celery-worker"]
+            valid_services = [
+                "backend",
+                "playwright-worker",
+                "celery-worker",
+                "hermes-gateway",
+                "hermes-dashboard",
+                "hermes-webui",
+            ]
             if service not in valid_services:
                 self._send_json(
                     {
@@ -75,6 +112,18 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
                 return
 
             try:
+                if service == "hermes-gateway":
+                    gateway_platform_status = self.supervisor._get_gateway_platform_status()
+                    if not gateway_platform_status.get("configured"):
+                        self._send_json(
+                            {
+                                "status": "error",
+                                "message": str(gateway_platform_status.get("reason") or "Hermes gateway is not configured."),
+                            },
+                            409,
+                        )
+                        return
+
                 if self.supervisor.manager.is_running(service):
                     self.supervisor.manager.stop_process(service)
                     time.sleep(1)
@@ -115,7 +164,7 @@ class SupervisorHTTPServer:
     def start(self):
         try:
             SupervisorAPIHandler.supervisor = self.supervisor
-            self.server = HTTPServer((self.host, self.port), SupervisorAPIHandler)
+            self.server = ThreadingHTTPServer((self.host, self.port), SupervisorAPIHandler)
             self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
             self.thread.start()
             logger.info("Supervisor API started: http://%s:%s", self.host, self.port)

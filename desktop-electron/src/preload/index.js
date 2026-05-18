@@ -28,11 +28,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     update: (settings) => ipcRenderer.invoke('settings:update', settings)
   },
 
+  browserRuntime: {
+    getStatus: () => ipcRenderer.invoke('browserRuntime:getStatus'),
+    install: (target) => ipcRenderer.invoke('browserRuntime:install', target),
+    uninstall: (target) => ipcRenderer.invoke('browserRuntime:uninstall', target)
+  },
+
   // 系统管理
   system: {
     restartFrontend: () => ipcRenderer.invoke('system:restart-frontend'),
     restartBackend: () => ipcRenderer.invoke('system:restart-backend'),
     restartAll: () => ipcRenderer.invoke('system:restart-all'),
+    restartApp: () => ipcRenderer.invoke('system:restart-app'),
     stopAll: () => ipcRenderer.invoke('system:stop-all'),
     quitApp: () => ipcRenderer.invoke('system:quit-app'),
     getStatus: () => ipcRenderer.invoke('system:get-status'),
