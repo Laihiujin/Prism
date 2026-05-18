@@ -67,9 +67,23 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install pyinstaller psutil playwright patchright
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip uninstall -y patchright
+if errorlevel 1 (
+    echo ERROR: failed to remove stale patchright package from synenv
+    pause
+    exit /b 1
+)
+
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install pyinstaller psutil playwright patchright==1.59.1
 if errorlevel 1 (
     echo ERROR: failed to install packaged runtime dependencies into synenv
+    pause
+    exit /b 1
+)
+
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -c "import importlib.metadata; version = importlib.metadata.version('patchright'); assert version == '1.59.1', version"
+if errorlevel 1 (
+    echo ERROR: packaged synenv resolved an unexpected patchright version
     pause
     exit /b 1
 )

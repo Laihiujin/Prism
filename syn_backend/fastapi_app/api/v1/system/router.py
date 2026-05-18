@@ -362,7 +362,9 @@ async def browser_runtime_install(target: str):
         install_result = _run_hibbiki_chromium_install()
     else:
         if not runtime_info["runtimes"]["patchright"]["installed"]:
-            install_runtime = _run_runtime_command(["-m", "pip", "install", "patchright"])
+            install_runtime = _run_runtime_command(
+                ["-m", "pip", "install", "--upgrade", "--force-reinstall", "patchright==1.59.1"]
+            )
             if install_runtime.returncode != 0:
                 return {
                     "success": False,
