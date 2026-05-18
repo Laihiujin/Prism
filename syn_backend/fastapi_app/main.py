@@ -317,6 +317,19 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"OpenClaw/Hermes agent init failed (optional): {e}")
 
+    # Hermes UI can be managed centrally by Supervisor in desktop mode.
+    if os.getenv("SYNAPSE_SUPERVISOR_MANAGES_HERMES_UI", "0") != "1":
+        try:
+            from fastapi_app.agent.hermes_agent import start_hermes_dashboard
+
+            runtime = await start_hermes_dashboard()
+            logger.info(
+                f"Hermes dashboard ready: {runtime.get('dashboard_url')} "
+                f"backend={runtime.get('dashboard_backend')}"
+            )
+        except Exception as e:
+            logger.warning(f"Hermes dashboard autostart failed (continuing): {e}")
+
     # 启动账号数据清理调度器（每6小时清理一次）
     try:
         from fastapi_app.core.account_cleanup_scheduler import start_cleanup_scheduler
@@ -348,6 +361,14 @@ async def shutdown_event():
             logger.info("OpenClaw/Hermes agent cleaned up")
     except Exception as e:
         logger.warning(f"OpenClaw/Hermes agent cleanup failed: {e}")
+
+    try:
+        from fastapi_app.agent.hermes_agent import stop_hermes_dashboard
+
+        await stop_hermes_dashboard()
+        logger.info("Hermes dashboard stopped")
+    except Exception as e:
+        logger.warning(f"Hermes dashboard shutdown failed: {e}")
 
 
     # 关闭数据库连接池

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { ChatList } from "./chat-list"
 import { ChatInput } from "./chat-input"
 import { ModelSettingsDialog } from "./model-settings-dialog"
-import { Link2, Sparkles, Settings, Bot, MessageSquare } from "lucide-react"
+import { Link2, Settings, MessageSquare } from "lucide-react"
+import { HermesLogoIcon } from "@/components/hermes-logo-icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -202,7 +203,7 @@ export function Chat() {
                             : "border-white/10 bg-white/5 text-white/40"
                             }`}
                     >
-                        <Sparkles className="h-3 w-3" />
+                        <HermesLogoIcon className="h-3 w-3" />
                         {isConnected ? "鍦ㄧ嚎" : "绂荤嚎"}
                     </Badge>
                 </div>
@@ -217,7 +218,7 @@ export function Chat() {
                             瀵硅瘽
                         </TabsTrigger>
                         <TabsTrigger value="agent" className="text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                            <Bot className="mr-2 h-3 w-3" />
+                            <HermesLogoIcon className="mr-2 h-3 w-3" />
                             Agent
                         </TabsTrigger>
                     </TabsList>

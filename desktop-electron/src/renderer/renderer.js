@@ -4,12 +4,23 @@
  */
 
 const ICONS = {
-    home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>`,
-    browser: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
-    douyin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M15 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path><path d="M15 2v16a4 4 0 0 1-4 4H9"></path><path d="M15 8a7 7 0 0 0 7 7"></path></svg>`,
-    kuaishou: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
-    xiaohongshu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z"></path><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>`,
-    bilibili: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"></rect><path d="M7 2l3 4M17 2l-3 4"></path><circle cx="8" cy="12" r="1"></circle><circle cx="16" cy="12" r="11"></circle></svg>`
+    home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"></rect><path d="M8 9.5h8"></path><path d="M8 14h5"></path></svg>`,
+    browser: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5c2.8 2.2 4.2 5 4.2 8.5S14.8 18.3 12 20.5c-2.8-2.2-4.2-5-4.2-8.5S9.2 5.7 12 3.5Z"></path><path d="M3.8 12h16.4"></path></svg>`,
+    hermes: `<span class="hermes-logo-icon" aria-hidden="true"></span>`,
+    douyin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v8.75a3.75 3.75 0 1 1-3.75-3.75"></path><path d="M14 4c1.1 2 2.8 3.5 5 4.25"></path></svg>`,
+    kuaishou: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5" width="5.5" height="5.5" rx="1.8"></rect><rect x="13" y="5" width="5.5" height="5.5" rx="1.8"></rect><rect x="5.5" y="13.5" width="5.5" height="5.5" rx="1.8"></rect><rect x="13" y="13.5" width="5.5" height="5.5" rx="1.8"></rect></svg>`,
+    xiaohongshu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="4.2"></rect><path d="M8.5 8.5 15.5 15.5"></path><path d="M15.5 8.5 8.5 15.5"></path></svg>`,
+    bilibili: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6.5" width="16" height="11" rx="3"></rect><path d="M8 4 10 6.5"></path><path d="M16 4 14 6.5"></path><path d="M9.25 11h.01"></path><path d="M14.75 11h.01"></path></svg>`
+};
+
+const TAB_LABELS = {
+    home: '工作台',
+    browser: '浏览器',
+    hermes: 'Hermes 控制台',
+    douyin: '抖音',
+    kuaishou: '快手',
+    xiaohongshu: '小红书',
+    bilibili: '哔哩哔哩'
 };
 
 class TabManager {
@@ -18,6 +29,8 @@ class TabManager {
         this.activeId = null;
         this.nextId = 1;
         this.hideTimeout = null;
+        this.homeUrl = 'http://127.0.0.1:3000';
+        this.internalRetryState = new Map();
 
         this.sidebar = document.getElementById('sidebar-tabs');
         this.container = document.getElementById('webview-container');
@@ -25,16 +38,39 @@ class TabManager {
         this.popup = document.getElementById('tab-popup');
         this.pUrlDisplay = document.getElementById('p-url-display');
         this.pUrlInput = document.getElementById('p-url-input');
+        this.hermesButton = document.getElementById('hermes-dashboard-btn');
+
+        if (this.sidebar) {
+            this.sidebar.innerHTML = '';
+        }
+        if (this.container) {
+            this.container.innerHTML = '';
+        }
+        if (this.popup) {
+            this.popup.style.display = 'none';
+            delete this.popup.dataset.tabId;
+        }
 
         this.setupListeners();
         // 默认首页
-        this.addTab('http://localhost:3000', 'home', true);
+        this.homeTabId = this.addTab(this.homeUrl, 'home', true, { initialUrl: this.homeUrl });
+        setTimeout(() => {
+            this.hydrateHomeTab().catch((error) => {
+                console.warn('[Shell] Initial home hydration failed:', error);
+            });
+        }, 0);
     }
 
     setupListeners() {
         document.getElementById('add-tab').onclick = () => {
             this.addTab('https://www.google.com', 'browser');
         };
+
+        if (this.hermesButton) {
+            this.hermesButton.onclick = () => {
+                this.openHermesDashboard();
+            };
+        }
 
         // 设置按钮点击 - 打开/关闭设置面板
         document.getElementById('settings-btn').onclick = () => {
@@ -59,7 +95,7 @@ class TabManager {
                 const url = this.urlBar.value.trim();
                 console.log('[地址栏] 按下回车，URL:', url);
                 if (url) {
-                    this.navigate(url);
+                    this.performNavigation(url);
                 }
                 this.urlBar.blur();
             }
@@ -84,7 +120,7 @@ class TabManager {
                 e.stopPropagation();
                 const url = this.pUrlInput.value.trim();
                 if (url) {
-                    this.navigate(url, this.popup.dataset.tabId);
+                    this.performNavigation(url, this.popup.dataset.tabId);
                 }
                 this.pUrlInput.blur();
             }
@@ -94,22 +130,22 @@ class TabManager {
         const popupTab = () => this.tabs.find(t => t.id === this.popup.dataset.tabId) || this.activeTab();
         const goBack = () => {
             const tab = popupTab();
-            if (tab?.webview.canGoBack()) tab.webview.goBack();
+            if (typeof tab?.webview?.canGoBack === 'function' && tab.webview.canGoBack()) tab.webview.goBack();
         };
         const goForward = () => {
             const tab = popupTab();
-            if (tab?.webview.canGoForward()) tab.webview.goForward();
+            if (typeof tab?.webview?.canGoForward === 'function' && tab.webview.canGoForward()) tab.webview.goForward();
         };
         const reload = () => {
             const tab = popupTab();
-            if (tab?.webview) tab.webview.reload();
+            if (typeof tab?.webview?.reload === 'function') tab.webview.reload();
         };
 
         document.getElementById('p-back').onclick = goBack;
         document.getElementById('p-forward').onclick = goForward;
         document.getElementById('p-reload').onclick = reload;
         document.getElementById('p-copy').onclick = () => {
-            const url = popupTab()?.webview.getURL();
+            const url = this.getWebviewUrl(popupTab()?.webview);
             if (url) {
                 navigator.clipboard.writeText(url);
                 const originalTitle = document.getElementById('p-title').textContent;
@@ -133,6 +169,158 @@ class TabManager {
                 this.addTabWithCookies(event.data.url, event.data.cookies || [], event.data.platform || 'browser', event.data.storageState, event.data.accountId);
             }
         });
+    }
+
+    getTabTooltip(type, pinned = false) {
+        if (pinned) return '工作台';
+        return TAB_LABELS[type] || '浏览器会话';
+    }
+
+    getWebviewUrl(webview, fallback = '') {
+        if (!webview) return fallback;
+        if (typeof webview.getURL === 'function') {
+            return webview.getURL() || fallback || webview.getAttribute('src') || '';
+        }
+        return webview.getAttribute('src') || fallback;
+    }
+
+    getWebviewTitle(webview, fallback = '') {
+        if (!webview) return fallback;
+        if (typeof webview.getTitle === 'function') {
+            return webview.getTitle() || fallback;
+        }
+        return fallback;
+    }
+
+    async resolveHomeUrl() {
+        const fallbackUrl = this.homeUrl || 'http://127.0.0.1:3000';
+        if (!window.electronAPI?.app?.getInfo) {
+            return fallbackUrl;
+        }
+
+        try {
+            const info = await window.electronAPI.app.getInfo();
+            const candidate = String(info?.frontendUrl || '').trim();
+            if (candidate) {
+                this.homeUrl = candidate.replace(/\/+$/, '');
+            }
+        } catch (error) {
+            console.warn('[Shell] Failed to resolve home URL, using fallback:', error);
+        }
+
+        return this.homeUrl || fallbackUrl;
+    }
+
+    async hydrateHomeTab() {
+        const homeUrl = await this.resolveHomeUrl();
+        const homeTab = this.tabs.find((tab) => tab.id === this.homeTabId) || this.tabs.find((tab) => tab.pinned);
+        if (!homeTab) return;
+
+        homeTab.url = homeUrl;
+        this.loadWebviewUrl(homeTab.webview, homeUrl);
+        if (homeTab.id === this.activeId) {
+            this.urlBar.value = homeUrl;
+        }
+        if (this.popup.style.display === 'block' && this.popup.dataset.tabId === homeTab.id) {
+            this.syncPopupInfo(homeTab);
+        }
+    }
+
+    loadWebviewUrl(webview, url) {
+        if (!webview || !url) return;
+        const retryTab = this.tabs.find((tab) => tab.webview === webview);
+        if (retryTab) {
+            this.clearInternalRetry(retryTab.id);
+            retryTab.url = url;
+        }
+        webview.setAttribute('src', url);
+        webview.src = url;
+        setTimeout(() => {
+            if (webview.isConnected && this.getWebviewUrl(webview) !== url) {
+                webview.setAttribute('src', url);
+                webview.src = url;
+            }
+        }, 200);
+    }
+
+    clearInternalRetry(tabId) {
+        const state = this.internalRetryState.get(tabId);
+        if (state?.timer) {
+            clearTimeout(state.timer);
+        }
+        this.internalRetryState.delete(tabId);
+    }
+
+    isManagedLocalUrl(url) {
+        const candidate = String(url || '').trim();
+        if (!candidate) return false;
+
+        try {
+            const parsed = new URL(candidate);
+            return ['127.0.0.1', 'localhost'].includes(parsed.hostname);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    shouldRetryManagedTab(tab, url) {
+        if (!tab || !this.isManagedLocalUrl(url)) {
+            return false;
+        }
+
+        if (tab.pinned) {
+            return true;
+        }
+
+        return ['hermes', 'lumenx'].includes(tab.type);
+    }
+
+    scheduleManagedTabRetry(tab, failedUrl) {
+        if (!this.shouldRetryManagedTab(tab, failedUrl)) {
+            return;
+        }
+
+        const existing = this.internalRetryState.get(tab.id);
+        const attempts = (existing?.attempts || 0) + 1;
+        if (attempts > 20) {
+            this.clearInternalRetry(tab.id);
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            const latestTab = this.tabs.find((item) => item.id === tab.id);
+            if (!latestTab || !latestTab.webview?.isConnected) {
+                this.clearInternalRetry(tab.id);
+                return;
+            }
+
+            const retryUrl = latestTab.url || failedUrl;
+            console.warn(`[Navigation] Retrying managed local tab load (${attempts}/20):`, retryUrl);
+            this.loadWebviewUrl(latestTab.webview, retryUrl);
+        }, 1500);
+
+        this.internalRetryState.set(tab.id, { attempts, timer });
+    }
+
+    isShellHomeUrl(url) {
+        const candidate = String(url || '').trim();
+        const normalizedHomeUrl = String(this.homeUrl || '').trim();
+        if (!candidate || !normalizedHomeUrl) {
+            return false;
+        }
+
+        try {
+            const targetUrl = new URL(candidate);
+            const homeUrl = new URL(normalizedHomeUrl);
+            return targetUrl.origin === homeUrl.origin;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    shouldOpenInBrowserTab(tab, url) {
+        if (!tab?.pinned) return false;
+        return !this.isShellHomeUrl(url);
     }
 
     waitForWebviewEvent(webview, eventNames = ['did-stop-loading'], timeoutMs = 15000) {
@@ -235,7 +423,7 @@ class TabManager {
         }
 
         if (tab) {
-            tab.webview.loadURL(url);
+            this.loadWebviewUrl(tab.webview, url);
             this.urlBar.value = url;
         }
     }
@@ -273,7 +461,7 @@ class TabManager {
         if (active) {
             console.log('[导航] 活动标签页:', active.id);
             console.log('[导航] 加载 URL 到 webview...');
-            active.webview.loadURL(finalUrl);
+            this.loadWebviewUrl(active.webview, finalUrl);
             // 更新地址栏显示
             if (active.id === this.activeId) this.urlBar.value = finalUrl;
             if (this.popup.style.display === 'block' && this.popup.dataset.tabId === active.id) {
@@ -286,6 +474,38 @@ class TabManager {
         }
     }
 
+    performNavigation(url, tabId = null) {
+        const finalUrl = this.normalizeUrl(url);
+        if (!finalUrl) return;
+
+        const active = (tabId && this.tabs.find(t => t.id === tabId)) || this.activeTab();
+        if (active) {
+            if (this.shouldOpenInBrowserTab(active, finalUrl)) {
+                const browserTabId = this.addTab(finalUrl, 'browser', false, { initialUrl: finalUrl });
+                if (browserTabId) {
+                    this.switchTab(browserTabId);
+                }
+                return;
+            }
+
+            active.url = finalUrl;
+            this.loadWebviewUrl(active.webview, finalUrl);
+            if (active.id === this.activeId) {
+                this.urlBar.value = finalUrl;
+            }
+            if (this.popup.style.display === 'block' && this.popup.dataset.tabId === active.id) {
+                this.pUrlDisplay.textContent = finalUrl;
+                this.pUrlInput.value = finalUrl;
+            }
+            return;
+        }
+
+        const browserTabId = this.addTab(finalUrl, 'browser', false, { initialUrl: finalUrl });
+        if (browserTabId) {
+            this.switchTab(browserTabId);
+        }
+    }
+
     addTab(url, type = 'browser', pinned = false, options = {}) {
         if (!url) return;
         const id = `tab-${this.nextId++}`;
@@ -294,10 +514,15 @@ class TabManager {
         tabItem.className = 'tab-item';
         tabItem.id = `btn-${id}`;
         tabItem.dataset.id = id;
+        tabItem.dataset.tooltip = this.getTabTooltip(type, pinned);
+        tabItem.title = this.getTabTooltip(type, pinned);
+        if (pinned) {
+            tabItem.classList.add('is-pinned');
+        }
 
         // 根据类型选择图标
         const iconHtml = pinned ? ICONS.home : (ICONS[type] || ICONS.browser);
-        tabItem.innerHTML = iconHtml;
+        tabItem.innerHTML = `<span class="tab-icon">${iconHtml}</span>`;
 
         if (!pinned) {
             const closeBtn = document.createElement('div');
@@ -352,8 +577,8 @@ class TabManager {
 
         // 核心：实时同步 URL 和标题 (修复百度/Google Mismatch)
         const updateInfo = () => {
-            tabData.url = webview.getURL();
-            tabData.title = webview.getTitle();
+            tabData.url = this.getWebviewUrl(webview, tabData.url);
+            tabData.title = this.getWebviewTitle(webview, tabData.title);
             if (id === this.activeId) {
                 this.urlBar.value = tabData.url;
                 if (this.popup.style.display === 'block' && this.popup.dataset.tabId === id) {
@@ -363,8 +588,25 @@ class TabManager {
         };
 
         webview.addEventListener('did-finish-load', updateInfo);
+        webview.addEventListener('did-finish-load', () => {
+            this.clearInternalRetry(id);
+        });
         webview.addEventListener('did-navigate', updateInfo);
         webview.addEventListener('did-navigate-in-page', updateInfo);
+        webview.addEventListener('did-fail-load', (event) => {
+            if (event.errorCode === -3) {
+                return;
+            }
+
+            console.warn('[Navigation] Webview failed to load:', {
+                id,
+                errorCode: event.errorCode,
+                errorDescription: event.errorDescription,
+                url: event.validatedURL || tabData.url,
+            });
+            tabData.title = '等待服务启动中...';
+            this.scheduleManagedTabRetry(tabData, event.validatedURL || tabData.url);
+        });
         webview.addEventListener('page-title-updated', (e) => {
             tabData.title = e.title;
             if (id === this.activeId && this.popup.style.display === 'block') {
@@ -374,6 +616,64 @@ class TabManager {
 
         this.switchTab(id);
         return id;
+    }
+
+    async resolveHermesDashboardUrl() {
+        const fallbackUrl = 'http://127.0.0.1:9119';
+
+        try {
+            if (window.electronAPI?.supervisor?.getStatus) {
+                const status = await window.electronAPI.supervisor.getStatus();
+                const supervisorCandidate = String(
+                    status?.hermes_dashboard?.dashboard_url
+                    || status?.hermes_dashboard?.url
+                    || ''
+                ).trim();
+                if (supervisorCandidate) {
+                    return supervisorCandidate;
+                }
+            }
+
+            let backendBase = 'http://127.0.0.1:7000';
+            if (window.electronAPI?.app?.getInfo) {
+                const info = await window.electronAPI.app.getInfo();
+                backendBase = String(info?.backendUrl || backendBase).replace(/\/+$/, '');
+            }
+
+            const response = await fetch(`${backendBase}/api/v1/agent/config/hermes/runtime`);
+            const payload = await response.json().catch(() => ({}));
+            const candidate = String(payload?.data?.dashboard_url || '').trim();
+            return candidate || fallbackUrl;
+        } catch (error) {
+            console.warn('[Shell] Failed to resolve Hermes dashboard URL, using fallback:', error);
+            return fallbackUrl;
+        }
+    }
+
+    async openHermesDashboard() {
+        const url = await this.resolveHermesDashboardUrl();
+        const existing = this.tabs.find((tab) => tab.type === 'hermes');
+
+        if (existing) {
+            const currentUrl = this.getWebviewUrl(existing.webview, existing.url);
+            if (currentUrl !== url) {
+                existing.url = url;
+                this.loadWebviewUrl(existing.webview, url);
+            }
+            this.switchTab(existing.id);
+            return;
+        }
+
+        this.addTab(url, 'hermes', false, {
+            initialUrl: url,
+            partition: 'persist:hermes-dashboard'
+        });
+    }
+
+    syncUtilityButtons() {
+        if (!this.hermesButton) return;
+        const active = this.activeTab();
+        this.hermesButton.classList.toggle('active', active?.type === 'hermes');
     }
 
     switchTab(id) {
@@ -386,9 +686,11 @@ class TabManager {
         if (active) {
             active.webview.classList.add('active');
             active.tabItem.classList.add('active');
-            this.urlBar.value = active.webview.getURL() || active.url;
+            this.urlBar.value = this.getWebviewUrl(active.webview, active.url);
             this.activeId = id;
         }
+
+        this.syncUtilityButtons();
     }
 
     removeTab(id) {
@@ -399,11 +701,14 @@ class TabManager {
 
         tab.webview.remove();
         tab.tabItem.remove();
+        this.clearInternalRetry(id);
         this.tabs.splice(index, 1);
 
         if (this.activeId === id && this.tabs.length > 0) {
             this.switchTab(this.tabs[this.tabs.length - 1].id);
         }
+
+        this.syncUtilityButtons();
     }
 
     activeTab() {
@@ -428,8 +733,9 @@ class TabManager {
 
     syncPopupInfo(tab) {
         document.getElementById('p-title').textContent = tab.title || (tab.pinned ? 'SynapseAutomation' : '无标题会话');
-        this.pUrlDisplay.textContent = tab.webview.getURL() || tab.url;
-        this.pUrlInput.value = tab.webview.getURL() || tab.url;
+        const currentUrl = this.getWebviewUrl(tab.webview, tab.url);
+        this.pUrlDisplay.textContent = currentUrl;
+        this.pUrlInput.value = currentUrl;
     }
 
     hidePopup() {
@@ -439,7 +745,27 @@ class TabManager {
 
 // ========== 设置面板功能 ==========
 
-const API_BASE = 'http://localhost:7000/api/v1/system';
+let API_BASE = 'http://127.0.0.1:7000/api/v1/system';
+
+async function hydrateSystemApiBase() {
+    if (!window.electronAPI?.app?.getInfo) {
+        return API_BASE;
+    }
+
+    try {
+        const info = await window.electronAPI.app.getInfo();
+        const candidate = String(info?.systemApiBaseUrl || '').trim();
+        if (candidate) {
+            API_BASE = candidate.replace(/\/+$/, '');
+        }
+    } catch (error) {
+        console.warn('[Shell] Failed to hydrate system API base:', error);
+    }
+
+    return API_BASE;
+}
+
+void hydrateSystemApiBase();
 
 function toggleSettingsPanel() {
     const panel = document.getElementById('settings-panel');
@@ -660,4 +986,85 @@ async function forceKillAllProcesses() {
     }
 }
 
-window.onload = () => { new TabManager(); };
+restartAllServices = async function () {
+    try {
+        if (window.electronAPI?.system?.restartAll) {
+            const result = await window.electronAPI.system.restartAll();
+            if (!result?.success) {
+                throw new Error(result?.error || '服务重启失败');
+            }
+        } else {
+            const response = await fetch(`${API_BASE}/supervisor/restart`, { method: 'POST' });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || '服务重启失败');
+            }
+        }
+
+        showToast('所有服务已重启');
+    } catch (error) {
+        showToast(`重启失败: ${error.message}`, 'error');
+    }
+};
+
+stopAllServices = async function () {
+    if (!confirm('确认停止所有服务？')) return;
+
+    try {
+        if (window.electronAPI?.system?.stopAll) {
+            const result = await window.electronAPI.system.stopAll();
+            if (!result?.success) {
+                throw new Error(result?.error || '停止服务失败');
+            }
+        } else {
+            const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || '停止服务失败');
+            }
+        }
+
+        showToast('所有服务已停止');
+    } catch (error) {
+        showToast(`停止失败: ${error.message}`, 'error');
+    }
+};
+
+function bootstrapShell() {
+    if (window.__tabManagerInstance) {
+        return window.__tabManagerInstance;
+    }
+
+    const manager = new TabManager();
+    window.__tabManagerInstance = manager;
+    return manager;
+}
+
+function scheduleHomeHydration(delayMs = 0) {
+    const manager = bootstrapShell();
+    if (!manager?.hydrateHomeTab) {
+        return;
+    }
+
+    setTimeout(() => {
+        manager.hydrateHomeTab().catch((error) => {
+            console.warn('[Shell] Delayed home hydration failed:', error);
+        });
+    }, delayMs);
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        bootstrapShell();
+        scheduleHomeHydration(1200);
+        scheduleHomeHydration(4000);
+    }, { once: true });
+} else {
+    bootstrapShell();
+    scheduleHomeHydration(1200);
+    scheduleHomeHydration(4000);
+}
+
+window.addEventListener('load', () => {
+    scheduleHomeHydration(0);
+});

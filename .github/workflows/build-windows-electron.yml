@@ -14,6 +14,7 @@ on:
       - "syn_frontend_react/**"
       - "syn_backend/**"
       - "scripts/release/**"
+      - "scripts/hermes/**"
       - "scripts/packaging/**"
       - "build/**"
       - "browsers/**"
@@ -27,6 +28,7 @@ on:
       - "syn_frontend_react/**"
       - "syn_backend/**"
       - "scripts/release/**"
+      - "scripts/hermes/**"
       - "scripts/packaging/**"
       - "build/**"
       - "browsers/**"
@@ -46,6 +48,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: recursive
 
       - name: Setup Node.js
@@ -70,9 +73,13 @@ jobs:
           $desktopPackage = Get-Content "desktop-electron/package.json" -Raw | ConvertFrom-Json
           $version = $desktopPackage.version
           $buildVersion = "$version.${{ github.run_number }}"
+          $releaseTag = "v$buildVersion"
+          $releaseName = "SynapseAutomation $buildVersion"
           $releaseFile = "SynapseAutomation-$buildVersion-setup.exe"
           "app_version=$version" >> $env:GITHUB_OUTPUT
           "build_version=$buildVersion" >> $env:GITHUB_OUTPUT
+          "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
+          "release_name=$releaseName" >> $env:GITHUB_OUTPUT
           "release_file=$releaseFile" >> $env:GITHUB_OUTPUT
 
       - name: Install frontend dependencies
@@ -95,17 +102,38 @@ jobs:
         shell: pwsh
         run: npm --prefix .\desktop-electron ci
 
-      - name: Install Python build tools
+      - name: Prepare packaged synenv
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r .\requirements.txt
-          python -m pip install pyinstaller psutil playwright patchright
+          python -m venv .\synenv
+          .\synenv\Scripts\python.exe -m pip install --upgrade pip
+          .\synenv\Scripts\python.exe -m pip install -r .\requirements.txt
+          .\synenv\Scripts\python.exe -m pip install pyinstaller psutil playwright patchright
+          .\synenv\Scripts\python.exe -c "import platform, patchright, playwright; print(platform.python_version())"
+
+      - name: Prepare embedded Hermes runtime
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\hermes\setup-local-hermes.ps1 -Branch main -WebUIVersion v0.51.50
+
+          $requiredHermesPaths = @(
+            (Join-Path $env:GITHUB_WORKSPACE "synenv\Scripts\python.exe"),
+            (Join-Path $env:GITHUB_WORKSPACE "synenv\.hermes-runtime-ready"),
+            (Join-Path $env:GITHUB_WORKSPACE "tools\hermes-agent\run_agent.py"),
+            (Join-Path $env:GITHUB_WORKSPACE "tools\hermes-webui\server.py"),
+            (Join-Path $env:GITHUB_WORKSPACE "tools\hermes-webui\static\index.html")
+          )
+
+          foreach ($requiredPath in $requiredHermesPaths) {
+            if (-not (Test-Path $requiredPath)) {
+              throw "Missing embedded Hermes runtime path: $requiredPath"
+            }
+          }
 
       - name: Build packaged backend service executables
         shell: pwsh
         run: |
-          $env:PACKAGING_PYTHON = "python"
+          $env:PACKAGING_PYTHON = (Join-Path $env:GITHUB_WORKSPACE "synenv\Scripts\python.exe")
           powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\packaging\build_services.ps1
 
           $serviceDist = Join-Path $env:GITHUB_WORKSPACE "dist\services"
@@ -159,12 +187,49 @@ jobs:
       - name: Build Supervisor executable
         shell: pwsh
         run: |
-          python -m PyInstaller .\build\supervisor.spec --clean
+          .\synenv\Scripts\python.exe -m PyInstaller .\build\supervisor.spec --clean
           $supervisorExe = Join-Path $env:GITHUB_WORKSPACE "dist\supervisor.exe"
           if (-not (Test-Path $supervisorExe)) {
             throw "Missing supervisor executable: $supervisorExe"
           }
           Copy-Item -LiteralPath $supervisorExe -Destination (Join-Path $env:GITHUB_WORKSPACE "desktop-electron\resources\supervisor\supervisor.exe") -Force
+
+      - name: Prune packaged synenv caches and dev tools
+        shell: pwsh
+        run: |
+          $synenv = Join-Path $env:GITHUB_WORKSPACE "synenv"
+          $sitePackages = Join-Path $synenv "Lib\site-packages"
+          $scriptNames = @(
+            "pytest.exe", "py.test.exe", "coverage.exe", "coverage3.exe", "coverage-3.11.exe",
+            "black.exe", "blackd.exe", "flake8.exe",
+            "pyinstaller.exe", "pyi-archive_viewer.exe", "pyi-bindepend.exe",
+            "pyi-grab_version.exe", "pyi-makespec.exe", "pyi-set_version.exe"
+          )
+          foreach ($scriptName in $scriptNames) {
+            $scriptPath = Join-Path $synenv "Scripts\$scriptName"
+            if (Test-Path $scriptPath) {
+              Remove-Item -LiteralPath $scriptPath -Force
+            }
+          }
+
+          if (Test-Path $sitePackages) {
+            $packagePatterns = @(
+              "pytest*", "coverage*", "black*", "flake8*", "pyinstaller*", "PyInstaller*",
+              "altgraph*", "pefile*", "pywin32_ctypes*"
+            )
+            foreach ($pattern in $packagePatterns) {
+              Get-ChildItem -Path $sitePackages -Recurse -Force -ErrorAction SilentlyContinue -Filter $pattern |
+                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Get-ChildItem -Path $sitePackages -Recurse -Directory -Force -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -in @("__pycache__", "tests", "test", ".pytest_cache") } |
+              Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            Get-ChildItem -Path $sitePackages -Recurse -File -Force -ErrorAction SilentlyContinue -Include *.pyc,*.pyo |
+              Remove-Item -Force -ErrorAction SilentlyContinue
+          }
+
+          $synenvBytes = (Get-ChildItem -Path $synenv -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
+          "synenv_payload_mb=$([math]::Round($synenvBytes / 1MB, 2))" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Build unpacked Electron app
         shell: pwsh
@@ -191,13 +256,25 @@ jobs:
             (Join-Path $resourcesDir "frontend\standalone\server.js"),
             (Join-Path $resourcesDir "services\backend\backend.exe"),
             (Join-Path $resourcesDir "services\playwright-worker\playwright-worker.exe"),
-            (Join-Path $resourcesDir "services\celery-worker\celery-worker.exe")
+            (Join-Path $resourcesDir "services\celery-worker\celery-worker.exe"),
+            (Join-Path $resourcesDir "synenv\Scripts\python.exe"),
+            (Join-Path $resourcesDir "synenv\.hermes-runtime-ready"),
+            (Join-Path $resourcesDir "tools\hermes-agent\run_agent.py"),
+            (Join-Path $resourcesDir "tools\hermes-webui\server.py"),
+            (Join-Path $resourcesDir "tools\hermes-webui\static\index.html"),
+            (Join-Path $resourcesDir "scripts\hermes\hermes.ps1")
           )
 
           foreach ($required in $requiredFiles) {
             if (-not (Test-Path $required)) {
               throw "Missing packaged runtime file: $required"
             }
+          }
+
+          $pythonExe = Join-Path $resourcesDir "synenv\Scripts\python.exe"
+          & $pythonExe -c "import platform, patchright, playwright; print(platform.python_version())"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Packaged synenv Python cannot import patchright/playwright."
           }
 
           $allChrome = Get-ChildItem -Path (Join-Path $resourcesDir "browsers") -Filter chrome.exe -Recurse
@@ -228,6 +305,10 @@ jobs:
             throw "Duplicate Playwright driver node.exe should be created at runtime, not packaged: $duplicatePlaywrightNode"
           }
 
+          "packaged_python=$(Join-Path $resourcesDir "synenv\Scripts\python.exe")" >> $env:GITHUB_STEP_SUMMARY
+          "packaged_hermes_agent=$(Join-Path $resourcesDir "tools\hermes-agent\run_agent.py")" >> $env:GITHUB_STEP_SUMMARY
+          "packaged_hermes_webui=$(Join-Path $resourcesDir "tools\hermes-webui\server.py")" >> $env:GITHUB_STEP_SUMMARY
+
           $resourceBytes = (Get-ChildItem -Path $resourcesDir -Recurse -File | Measure-Object Length -Sum).Sum
           "resources_payload_mb=$([math]::Round($resourceBytes / 1MB, 2))" >> $env:GITHUB_STEP_SUMMARY
 
@@ -244,6 +325,18 @@ jobs:
           $installer = Get-ChildItem -Path $distBuild -Filter *.exe | Select-Object -First 1
           if (-not $installer) {
             throw "No Electron installer .exe found in desktop-electron\\dist-build"
+          }
+          $resourcesDir = Join-Path $env:GITHUB_WORKSPACE "desktop-electron\dist-build\win-unpacked\resources"
+          if (-not (Test-Path $resourcesDir)) {
+            throw "Missing final win-unpacked resources directory after installer build: $resourcesDir"
+          }
+          $patchrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\patchright\driver\node.exe"
+          $duplicatePlaywrightNode = Join-Path $resourcesDir "services\playwright-worker\_internal\playwright\driver\node.exe"
+          if (-not (Test-Path $patchrightNode)) {
+            throw "Missing final packaged patchright driver node runtime: $patchrightNode"
+          }
+          if (Test-Path $duplicatePlaywrightNode) {
+            throw "Duplicate Playwright driver node.exe should not be packaged by default: $duplicatePlaywrightNode"
           }
           "installer_mb=$([math]::Round($installer.Length / 1MB, 2))" >> $env:GITHUB_STEP_SUMMARY
 
@@ -262,6 +355,44 @@ jobs:
           "release_exe=$releaseExe" >> $env:GITHUB_OUTPUT
         id: release_asset
 
+      - name: Ensure versioned release tag exists
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.meta.outputs.release_tag }}"
+          $existingTag = git ls-remote --tags origin "refs/tags/$tag"
+          if ([string]::IsNullOrWhiteSpace($existingTag)) {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a $tag $env:GITHUB_SHA -m "Release $tag"
+            git push origin "refs/tags/$tag"
+            Write-Host "Created versioned release tag: $tag"
+          } else {
+            Write-Host "Versioned release tag already exists: $tag"
+          }
+
+      - name: Publish versioned release executable
+        if: github.event_name != 'pull_request'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.meta.outputs.release_tag }}
+          name: ${{ steps.meta.outputs.release_name }}
+          prerelease: false
+          draft: false
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
+          makeLatest: true
+          commit: ${{ github.sha }}
+          body: |
+            Automated Windows release build from `main`.
+            Version: `${{ steps.meta.outputs.app_version }}`
+            Build: `${{ steps.meta.outputs.build_version }}`
+            Tag: `${{ steps.meta.outputs.release_tag }}`
+            Commit: `${{ github.sha }}`
+          artifacts: |
+            .release-assets/*.exe
+
       - name: Publish rolling release executable
         if: github.event_name != 'pull_request'
         uses: ncipollo/release-action@v1
@@ -277,6 +408,7 @@ jobs:
           body: |
             Automated Electron Windows build from `main`.
             Version: `${{ steps.meta.outputs.build_version }}`
+            Tag: `${{ steps.meta.outputs.release_tag }}`
             Commit: `${{ github.sha }}`
           artifacts: |
             .release-assets/*.exe

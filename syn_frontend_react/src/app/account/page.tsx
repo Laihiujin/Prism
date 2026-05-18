@@ -99,10 +99,17 @@ const loginStatusMap: Record<string, { label: string; variant: "default" | "seco
   unknown: { label: "未检测", variant: "outline" },
 }
 
+loginStatusMap.error = { label: "检测失败", variant: "destructive" }
+
 interface AccountFormState {
   id?: string
   name: string
   platform: PlatformKey
+}
+
+interface LoginStatusDetail {
+  account_id?: string
+  login_status?: string
 }
 
 function AccountPageContent() {
@@ -200,6 +207,29 @@ function AccountPageContent() {
       return matchTab && matchKeyword
     })
   }, [accounts, activeTab, keyword])
+
+  const applyLoginStatusDetails = useCallback((details: LoginStatusDetail[] | undefined) => {
+    if (!Array.isArray(details) || details.length === 0) return
+
+    const detailMap = new Map(
+      details
+        .filter((item) => item?.account_id && item?.login_status && item.login_status !== "error")
+        .map((item) => [String(item.account_id), String(item.login_status)])
+    )
+
+    if (detailMap.size === 0) return
+
+    startTransition(() => {
+      setAccounts((current) =>
+        current.map((account) => {
+          const nextLoginStatus = detailMap.get(account.id)
+          return nextLoginStatus
+            ? ({ ...account, login_status: nextLoginStatus } as Account)
+            : account
+        })
+      )
+    })
+  }, [])
 
   const resetDialogState = () => {
     setFormState({ id: undefined, name: "", platform: "kuaishou" })
@@ -439,65 +469,20 @@ function AccountPageContent() {
   const handleOpenCreatorCenter = async (account: Account) => {
     const accountId = account.id
     try {
-      // 1. 获取需要打开的 URL 和 Cookie 数据
-      const response = await fetch(
-        `${backendBaseUrl}/api/v1/accounts/${encodeURIComponent(accountId)}/creator-center/data`,
-        { method: "GET" }
+      const openResponse = await fetch(
+        `${backendBaseUrl}/api/v1/accounts/${encodeURIComponent(accountId)}/creator-center/open`,
+        { method: "POST" }
       )
-      const res = await response.json()
+      const openResult = await openResponse.json().catch(() => ({}))
 
-      if (!response.ok || !res.success) {
-        throw new Error(res.detail || res.message || "获取账号数据失败")
+      if (!openResponse.ok || !openResult?.success) {
+        throw new Error(openResult?.detail || openResult?.message || "启动 Chromium 失败")
       }
 
-      const { url, storage_state, platform } = res.data
-      const cookies = storage_state?.cookies || []
-
-      // 2. Electron webview shell exposes openCreatorTab via preload.
-      const electronAPI = typeof window !== 'undefined' ? (window as any).electronAPI : undefined
-      const openCreatorTab = electronAPI?.browser?.openCreatorTab
-
-      if (typeof openCreatorTab === 'function') {
-        openCreatorTab({
-          type: 'OPEN_CREATOR_TAB',
-          url,
-          cookies,
-          platform,
-          storageState: storage_state,
-          accountId,
-        })
-
-        toast({
-          title: "正在侧边栏打开",
-          description: `正在为您加载 ${account.platform} 创作中心...`,
-        })
-      } else if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
-        // Backward-compatible fallback for older shells.
-        window.parent.postMessage({
-          type: 'OPEN_CREATOR_TAB',
-          url,
-          cookies,
-          platform,
-          storageState: storage_state,
-          accountId,
-        }, '*')
-
-        toast({
-          title: "正在侧边栏打开",
-          description: `正在为您加载 ${account.platform} 创作中心...`,
-        })
-      } else {
-        // 非 Electron 环境，回退到原有后台打开逻辑 (仅用于兼容性)
-        const openResponse = await fetch(
-          `${backendBaseUrl}/api/v1/accounts/${encodeURIComponent(accountId)}/creator-center/open`,
-          { method: "POST" }
-        )
-        if (!openResponse.ok) throw new Error("启动浏览器失败")
-        toast({
-          title: "已请求打开创作者中心",
-          // description: "浏览器窗口已启动 (非集成模式)",
-        })
-      }
+      toast({
+        title: "已请求打开创作者中心",
+        description: `${account.platform} 已打开`,
+      })
     } catch (e) {
       console.error("Open Creator Center Error:", e)
       toast({ variant: "destructive", title: "打开失败", description: String(e) })
@@ -514,28 +499,18 @@ function AccountPageContent() {
       })
 
       if (!response.ok) {
-        throw new Error("检查失败")
+        throw new Error("check login status failed")
       }
 
       const result = await response.json()
 
       if (result.success) {
-        // 强制刷新账号列表
+        applyLoginStatusDetails(result.details)
         await queryClient.invalidateQueries({ queryKey: ["accounts"] })
         await refetch()
-
-        const logged_in = result.logged_in || 0
-        const session_expired = result.session_expired || 0
-        const errors = result.errors || 0
-
-        toast({
-          title: "正常",
-          // description: `在线=${logged_in}, 掉线=${session_expired}, 错误=${errors}`
-        })
       }
     } catch (e) {
       console.error("Check Login Status Error:", e)
-      toast({ variant: "destructive", title: "检查失败", description: String(e) })
     }
   }
 
@@ -879,24 +854,15 @@ function AccountPageContent() {
                   })
                   const json = await res.json()
                   if (json.success) {
-                    // 强制刷新账号列表
+                    applyLoginStatusDetails(json.details)
                     await queryClient.invalidateQueries({ queryKey: ["accounts"] })
                     await refetch()
-
-                    const logged_in = json.logged_in || 0
-                    const session_expired = json.session_expired || 0
-                    const errors = json.errors || 0
-
-                    toast({
-                      variant: "success",
-                      title: "检测完成",
-                      // description: `在线=${logged_in}, 掉线=${session_expired}, 错误=${errors}`
-                    })
+                    return
                   } else {
                     throw new Error(json.message || "检测失败")
                   }
                 } catch (e) {
-                  toast({ variant: "destructive", title: "检测失败", description: String(e) })
+                  console.error("Check All Login Status Error:", e)
                 } finally {
                   setIsStatusChecking(false)
                 }

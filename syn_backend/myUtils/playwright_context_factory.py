@@ -48,6 +48,14 @@ def _normalize_browser_choice(choice: Any, fallback: str = "chromium") -> str:
     return fallback
 
 
+def _read_platform_browser_choice_from_env(platform: str) -> Any:
+    env_name = f"SYNAPSE_PLATFORM_BROWSER_{platform.upper()}"
+    value = os.getenv(env_name)
+    if value is None and platform == "channels":
+        value = os.getenv("SYNAPSE_PLATFORM_BROWSER_TENCENT")
+    return value
+
+
 def _load_platform_browser_preferences() -> Dict[str, str]:
     raw_preferences: Dict[str, Any] = {}
 
@@ -72,9 +80,12 @@ def _load_platform_browser_preferences() -> Dict[str, str]:
 
     normalized: Dict[str, str] = {}
     for platform, default_choice in PLATFORM_BROWSER_DEFAULTS.items():
+        env_override = _read_platform_browser_choice_from_env(platform)
+        if env_override is not None:
+            raw_preferences[platform] = env_override
         raw_value = raw_preferences.get(platform)
         if raw_value is None and platform == "channels":
-          raw_value = raw_preferences.get("tencent")
+            raw_value = raw_preferences.get("tencent")
         normalized[platform] = _normalize_browser_choice(raw_value, default_choice)
     return normalized
 

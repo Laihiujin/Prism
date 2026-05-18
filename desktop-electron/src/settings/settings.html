@@ -13,7 +13,7 @@
         }
 
         body {
-            background: linear-gradient(135deg, #0a0a0e 0%, #1a1a2e 100%);
+            background: #000000;
             color: #ffffff;
             height: 100vh;
             display: flex;
@@ -23,9 +23,8 @@
 
         .header {
             padding: 24px 40px;
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid rgba(124, 77, 255, 0.3);
-            backdrop-filter: blur(10px);
+            background: #000000;
+            border-bottom: 1px solid #1a1a1a;
             -webkit-app-region: drag;
         }
 
@@ -37,7 +36,7 @@
 
         .header p {
             font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.65);
             margin-top: 6px;
         }
 
@@ -64,12 +63,11 @@
         }
 
         .section {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(124, 77, 255, 0.2);
+            background: #000000;
+            border: 1px solid #1a1a1a;
             border-radius: 16px;
             padding: 24px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-shadow: none;
         }
 
         .section-title {
@@ -79,7 +77,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            color: #7C4DFF;
+            color: #ffffff;
         }
 
         .section-subtitle {
@@ -99,16 +97,16 @@
             align-items: center;
             justify-content: space-between;
             padding: 16px 18px;
-            background: rgba(0, 0, 0, 0.4);
+            background: #050505;
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid #151515;
             transition: all 0.3s ease;
         }
 
         .action-row:hover {
-            background: rgba(0, 0, 0, 0.5);
-            border-color: rgba(124, 77, 255, 0.3);
-            transform: translateX(4px);
+            background: #0a0a0a;
+            border-color: #2a2a2a;
+            transform: none;
         }
 
         .action-info {
@@ -118,7 +116,7 @@
         }
 
         .action-icon {
-            font-size: 20px;
+            display: none;
         }
 
         .action-text {
@@ -156,36 +154,39 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #7C4DFF 0%, #9575FF 100%);
+            background: #111111;
             color: white;
-            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.4);
+            border: 1px solid #2a2a2a;
+            box-shadow: none;
         }
 
         .btn-primary:hover:not(:disabled) {
-            background: linear-gradient(135deg, #6A3DE8 0%, #8464EE 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(124, 77, 255, 0.5);
+            background: #1a1a1a;
+            transform: none;
+            box-shadow: none;
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #F44336 0%, #E57373 100%);
+            background: #111111;
             color: white;
-            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+            border: 1px solid #2a2a2a;
+            box-shadow: none;
         }
 
         .btn-danger:hover:not(:disabled) {
-            background: linear-gradient(135deg, #D32F2F 0%, #EF5350 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(244, 67, 54, 0.5);
+            background: #1a1a1a;
+            transform: none;
+            box-shadow: none;
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
+            background: #0d0d0d;
             color: white;
+            border: 1px solid #232323;
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.15);
+            background: #161616;
         }
 
         .spinner {
@@ -217,16 +218,16 @@
         }
 
         .logs-container {
-            background: rgba(0, 0, 0, 0.6);
+            background: #050505;
             border-radius: 12px;
-            border: 1px solid rgba(124, 77, 255, 0.2);
+            border: 1px solid #1a1a1a;
             padding: 20px;
             flex: 1;
             overflow-y: auto;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 13px;
             line-height: 1.8;
-            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+            box-shadow: none;
         }
 
         .log-line {
@@ -242,23 +243,23 @@
         }
 
         .log-line.info {
-            color: #66BB6A;
-            border-left: 3px solid #66BB6A;
+            color: #d9d9d9;
+            border-left: 3px solid #4a4a4a;
             padding-left: 8px;
         }
         .log-line.error {
-            color: #EF5350;
-            border-left: 3px solid #EF5350;
+            color: #f0f0f0;
+            border-left: 3px solid #6a6a6a;
             padding-left: 8px;
         }
         .log-line.warning {
-            color: #FFCA28;
-            border-left: 3px solid #FFCA28;
+            color: #cfcfcf;
+            border-left: 3px solid #585858;
             padding-left: 8px;
         }
         .log-line.system {
-            color: #7C4DFF;
-            border-left: 3px solid #7C4DFF;
+            color: #ffffff;
+            border-left: 3px solid #7a7a7a;
             padding-left: 8px;
         }
 
@@ -269,8 +270,8 @@
 
         .filter-btn {
             padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: #0d0d0d;
+            border: 1px solid #232323;
             border-radius: 6px;
             color: rgba(255, 255, 255, 0.7);
             font-size: 13px;
@@ -280,16 +281,16 @@
         }
 
         .filter-btn.active {
-            background: linear-gradient(135deg, #7C4DFF 0%, #9575FF 100%);
-            border-color: #7C4DFF;
+            background: #161616;
+            border-color: #3a3a3a;
             color: white;
-            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.4);
+            box-shadow: none;
         }
 
         .filter-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(124, 77, 255, 0.5);
-            transform: translateY(-2px);
+            background: #161616;
+            border-color: #3a3a3a;
+            transform: none;
         }
 
         ::-webkit-scrollbar {
@@ -297,17 +298,17 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
+            background: #050505;
             border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
+            background: #2f2f2f;
             border-radius: 3px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: #424242;
         }
 
         /* Toast 通知 */
@@ -316,10 +317,9 @@
             top: 24px;
             right: 24px;
             padding: 14px 24px;
-            background: rgba(0, 0, 0, 0.95);
-            backdrop-filter: blur(10px);
+            background: #050505;
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid #2a2a2a;
             color: white;
             font-size: 14px;
             font-weight: 500;
@@ -327,7 +327,7 @@
             opacity: 0;
             transform: translateX(400px);
             transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: none;
         }
 
         .toast.show {
@@ -336,13 +336,64 @@
         }
 
         .toast.success {
-            border-color: #66BB6A;
-            box-shadow: 0 8px 32px rgba(102, 187, 106, 0.3);
+            border-color: #3a3a3a;
+            box-shadow: none;
         }
 
         .toast.error {
-            border-color: #EF5350;
-            box-shadow: 0 8px 32px rgba(239, 83, 80, 0.3);
+            border-color: #4a4a4a;
+            box-shadow: none;
+        }
+
+        #refresh-icon {
+            display: none;
+        }
+
+        .runtime-status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .runtime-status-card {
+            padding: 14px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .runtime-status-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .runtime-status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .runtime-status-pill.online {
+            background: rgba(102, 187, 106, 0.18);
+            color: #8BE28F;
+        }
+
+        .runtime-status-pill.offline {
+            background: rgba(239, 83, 80, 0.18);
+            color: #FF9E99;
+        }
+
+        .runtime-status-meta {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.68);
+            word-break: break-all;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -355,6 +406,28 @@
     <div class="container">
         <!-- 左侧面板 -->
         <div class="left-panel">
+            <div class="section">
+                <div class="section-title">Hermes 运行状态</div>
+                <div class="section-subtitle">Gateway 是共享后端，Dashboard 和 WebUI 是两个独立入口，状态分开显示</div>
+                <div class="runtime-status-grid">
+                    <div class="runtime-status-card">
+                        <div class="runtime-status-name">Hermes Gateway</div>
+                        <div class="runtime-status-pill offline" id="hermes-gateway-pill">离线</div>
+                        <div class="runtime-status-meta" id="hermes-gateway-meta">未检测到运行中的 gateway</div>
+                    </div>
+                    <div class="runtime-status-card">
+                        <div class="runtime-status-name">Hermes Dashboard</div>
+                        <div class="runtime-status-pill offline" id="hermes-dashboard-pill">离线</div>
+                        <div class="runtime-status-meta" id="hermes-dashboard-meta">未检测到 dashboard</div>
+                    </div>
+                    <div class="runtime-status-card">
+                        <div class="runtime-status-name">Hermes WebUI</div>
+                        <div class="runtime-status-pill offline" id="hermes-webui-pill">离线</div>
+                        <div class="runtime-status-meta" id="hermes-webui-meta">未检测到 webui</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 进程控制 -->
             <div class="section">
                 <div class="section-title">🔧 进程控制</div>
@@ -365,7 +438,7 @@
                             <span class="action-icon">🔄</span>
                             <div class="action-text">
                                 <span class="action-label">重启所有服务</span>
-                                <span class="action-desc">Backend + Worker + Celery</span>
+                                <span class="action-desc">Frontend + Supervisor + Backend + Worker + Hermes + Celery</span>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="restartAll()">
@@ -383,6 +456,19 @@
                         </div>
                         <button class="btn btn-primary" onclick="restartBackend()">
                             <span id="restart-backend-icon">重启</span>
+                        </button>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-info">
+                            <span class="action-icon">🛰️</span>
+                            <div class="action-text">
+                                <span class="action-label">重启 Hermes Gateway</span>
+                                <span class="action-desc">仅重启共享 Hermes gateway，不影响 FastAPI / worker / UI 入口</span>
+                            </div>
+                        </div>
+                        <button id="restart-gateway-btn" class="btn btn-primary" onclick="restartHermesGateway()">
+                            <span id="restart-gateway-icon" data-default-label="重启">重启</span>
                         </button>
                     </div>
 
@@ -503,11 +589,88 @@
     </div>
 
     <script>
-        const API_BASE = 'http://127.0.0.1:7000/api/v1/system';
+        let API_BASE = 'http://127.0.0.1:7000/api/v1/system';
         const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI);
         let currentLogFilter = 'all';
         let autoRefreshInterval = null;
         let serviceRestartCooldownUntil = 0;
+
+        async function hydrateSystemApiBase() {
+            if (!window.electronAPI?.app?.getInfo) {
+                return API_BASE;
+            }
+
+            try {
+                const info = await window.electronAPI.app.getInfo();
+                const candidate = String(info?.systemApiBaseUrl || '').trim();
+                if (candidate) {
+                    API_BASE = candidate.replace(/\/+$/, '');
+                }
+            } catch (error) {
+                console.warn('Failed to hydrate system API base:', error);
+            }
+
+            return API_BASE;
+        }
+
+        function getBackendBaseFromSystemApi() {
+            return API_BASE.replace(/\/api\/v1\/system\/?$/, '');
+        }
+
+        function setRuntimeStatus(name, online, detail) {
+            const pill = document.getElementById(`${name}-pill`);
+            const meta = document.getElementById(`${name}-meta`);
+            if (!pill || !meta) return;
+            pill.textContent = online ? '在线' : '离线';
+            pill.className = `runtime-status-pill ${online ? 'online' : 'offline'}`;
+            meta.textContent = detail;
+        }
+
+        async function refreshHermesRuntimeStatus() {
+            try {
+                const [supervisorResponse, runtimeResponse] = await Promise.all([
+                    fetch(`${API_BASE}/supervisor/status`),
+                    fetch(`${getBackendBaseFromSystemApi()}/api/v1/agent/config/hermes/runtime`)
+                ]);
+
+                const supervisorPayload = await supervisorResponse.json().catch(() => ({}));
+                const runtimePayload = await runtimeResponse.json().catch(() => ({}));
+                const supervisorData = supervisorPayload?.data || {};
+                const runtime = runtimePayload?.data || {};
+                const gateway = supervisorData?.hermes_gateway || supervisorData?.gateway || {};
+                const dashboard = supervisorData?.hermes_dashboard || supervisorData?.dashboard || {};
+                const webui = supervisorData?.hermes_webui || supervisorData?.webui || {};
+                const gatewayOnline = Boolean(gateway?.running);
+                const gatewaySource = gateway?.external ? '外部实例' : gateway?.managed ? 'Supervisor 托管' : '共享网关';
+                const sharedGatewayHint = gatewayOnline ? '共享 Gateway 已在线' : '共享 Gateway 未运行';
+
+                setRuntimeStatus(
+                    'hermes-gateway',
+                    gatewayOnline,
+                    gatewayOnline
+                        ? `PID ${gateway?.pid || runtime?.gateway_pid || '-'} · ${gatewaySource}`
+                        : '未检测到运行中的 gateway'
+                );
+                setRuntimeStatus(
+                    'hermes-dashboard',
+                    Boolean(dashboard?.running || runtime?.dashboard_running),
+                    (dashboard?.running || runtime?.dashboard_running)
+                        ? `${dashboard?.dashboard_url || dashboard?.url || runtime?.dashboard_url || 'http://127.0.0.1:9119'} · 共用 Gateway`
+                        : `未检测到 dashboard · ${sharedGatewayHint}`
+                );
+                setRuntimeStatus(
+                    'hermes-webui',
+                    Boolean(webui?.running || runtime?.webui_running),
+                    (webui?.running || runtime?.webui_running)
+                        ? `${webui?.webui_url || webui?.url || runtime?.webui_url || 'http://127.0.0.1:9131'} · 共用 Gateway`
+                        : `未检测到 webui · ${sharedGatewayHint}`
+                );
+            } catch (error) {
+                addLog('警告', 'Hermes 运行状态读取失败: ' + error.message);
+            }
+        }
+
+        void hydrateSystemApiBase();
 
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
@@ -583,6 +746,7 @@
                 addLog('错误', '重启失败: ' + error.message);
             } finally {
                 btn.textContent = originalText;
+                refreshHermesRuntimeStatus();
             }
         }
 
@@ -606,6 +770,31 @@
                 addLog('错误', '重启失败: ' + error.message);
             } finally {
                 btn.textContent = originalText;
+                refreshHermesRuntimeStatus();
+            }
+        }
+
+        async function restartHermesGateway() {
+            const btn = document.querySelector('#restart-gateway-icon');
+            const originalText = btn.textContent;
+            btn.innerHTML = '<span class="spinner"></span>';
+
+            try {
+                const response = await fetch(`${API_BASE}/supervisor/restart/hermes-gateway`, { method: 'POST' });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('✅ Hermes Gateway 已重启', 'success');
+                    addLog('系统', 'Hermes Gateway 重启成功');
+                } else {
+                    throw new Error(data.detail || '重启失败');
+                }
+            } catch (error) {
+                showToast('❌ 重启失败: ' + error.message, 'error');
+                addLog('错误', 'Hermes Gateway 重启失败: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+                refreshHermesRuntimeStatus();
             }
         }
 
@@ -838,13 +1027,93 @@
             });
         }
 
+        function stripLeadingIcons() {
+            document.querySelectorAll('.header h1, .section-title').forEach(element => {
+                element.textContent = element.textContent
+                    .replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/gu, '')
+                    .trim();
+            });
+        }
+
+        restartAll = async function (...args) {
+            const btn = document.querySelector('#restart-all-icon');
+            const originalText = btn?.textContent || '';
+            if (btn) {
+                btn.innerHTML = '<span class="spinner"></span>';
+            }
+
+            try {
+                if (window.electronAPI?.system?.restartAll) {
+                    const result = await window.electronAPI.system.restartAll();
+                    if (!result?.success) {
+                        throw new Error(result?.error || '服务重启失败');
+                    }
+                } else {
+                    const response = await fetch(`${API_BASE}/supervisor/restart`, { method: 'POST' });
+                    if (!response.ok) {
+                        throw new Error(await parseResponseError(response, '服务重启失败'));
+                    }
+                }
+
+                showToast('所有服务已重启', 'success');
+                addLog('系统', '所有服务已重启');
+            } catch (error) {
+                showToast(`重启失败: ${error.message}`, 'error');
+                addLog('错误', '重启失败: ' + error.message);
+            } finally {
+                if (btn) {
+                    btn.textContent = originalText;
+                }
+                refreshHermesRuntimeStatus();
+            }
+        };
+
+        const originalStopAll = stopAll;
+        stopAll = async function (...args) {
+            if (!confirm('确认停止所有服务？')) return;
+
+            try {
+                if (window.electronAPI?.system?.stopAll) {
+                    const result = await window.electronAPI.system.stopAll();
+                    if (!result?.success) {
+                        throw new Error(result?.error || '停止服务失败');
+                    }
+                } else {
+                    return await originalStopAll.apply(this, args);
+                }
+
+                showToast('所有服务已停止', 'success');
+                addLog('系统', '所有服务已停止');
+            } catch (error) {
+                showToast(`停止失败: ${error.message}`, 'error');
+                addLog('错误', '停止失败: ' + error.message);
+            } finally {
+                refreshHermesRuntimeStatus();
+            }
+        };
+
+        const originalForceKillProcesses = forceKillProcesses;
+        forceKillProcesses = async function (...args) {
+            try {
+                return await originalForceKillProcesses.apply(this, args);
+            } finally {
+                refreshHermesRuntimeStatus();
+            }
+        };
+
+        stripLeadingIcons();
+
         // 初始化
         window.addEventListener('DOMContentLoaded', () => {
             addLog('系统', '设置页面已就绪');
             refreshLogs();
+            refreshHermesRuntimeStatus();
 
-            // 每 30 秒自动刷新日志
-            autoRefreshInterval = setInterval(refreshLogs, 30000);
+            // 每 30 秒自动刷新日志和 Hermes 运行状态
+            autoRefreshInterval = setInterval(() => {
+                refreshLogs();
+                refreshHermesRuntimeStatus();
+            }, 30000);
         });
 
         // 页面卸载时清理

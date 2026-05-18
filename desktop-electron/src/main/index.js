@@ -13,8 +13,8 @@ log.transports.console.level = 'debug';
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  console.log('鈿狅笍 搴旂敤宸插湪杩愯涓紝閫€鍑烘瀹炰緥');
-  log.info('鈿狅笍 搴旂敤宸插湪杩愯涓紝閫€鍑烘瀹炰緥');
+  console.log('Another SynapseAutomation instance is already running. Exiting.');
+  log.info('Another SynapseAutomation instance is already running. Exiting.');
   app.quit();
   process.exit(0);
 }
@@ -40,34 +40,40 @@ class SynapseApp {
     this.appIconPath = null;
     this.tray = null;
     this.isQuitting = false;
+    this.isRestarting = false;
+    this.isPackagedRuntime = false;
+    this.frontendPort = 3000;
     this.runtimeSettings = {
-      browserHeadless: true
+      browserHeadless: true,
+      automationRuntime: 'patchright'
     };
   }
 
   async initialize() {
-    console.log('馃殌 SynapseAutomation 鍚姩涓?..');
-    log.info('馃殌 SynapseAutomation 鍚姩涓?..');
+    console.log('SynapseAutomation is starting...');
+    log.info('SynapseAutomation is starting...');
 
     // 绛夊緟 Electron 鍑嗗灏辩华
     await app.whenReady();
 
-    // 妫€鏌ユ槸鍚﹀瓨鍦ㄦ墦鍖呭悗鐨?supervisor.exe 鏉ュ垽鏂槸鍚︿负鐢熶骇鐜
-    const supervisorExePath = path.join(process.resourcesPath, 'supervisor', 'supervisor.exe');
-    const supervisorExists = fs.existsSync(supervisorExePath);
-    this.isDev = !app.isPackaged;
     this.repoRoot = path.join(__dirname, '../../../');
+    this.isPackagedRuntime = this.detectPackagedRuntime();
+    this.isDev = !this.isPackagedRuntime;
+    const supervisorPaths = this.getSupervisorPaths();
+    const supervisorExists = Boolean(supervisorPaths.exePath || supervisorPaths.scriptPath);
     this.appIconPath = this.getAppIconPath();
     this.runtimeSettings = this.loadRuntimeSettings();
     process.env.PLAYWRIGHT_HEADLESS = this.runtimeSettings.browserHeadless ? 'true' : 'false';
+    process.env.SYNAPSE_PLAYWRIGHT_RUNTIME = this.runtimeSettings.automationRuntime;
+    this.applyPlatformBrowserPreferenceEnv(process.env, this.runtimeSettings.platformBrowserPreferences || {});
     this.setupTray();
 
-    console.log('馃搷 App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged);
-    console.log('馃搷 resourcesPath:', process.resourcesPath);
-    console.log('馃搷 supervisor.exe exists:', supervisorExists, 'at:', supervisorExePath);
-    log.info('馃搷 App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged);
-    log.info('馃搷 resourcesPath:', process.resourcesPath);
-    log.info('馃搷 supervisor.exe exists:', supervisorExists);
+    console.log('App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged, 'isPackagedRuntime:', this.isPackagedRuntime);
+    console.log('resourcesPath:', process.resourcesPath);
+    console.log('supervisor paths:', supervisorPaths);
+    log.info('App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged, 'isPackagedRuntime:', this.isPackagedRuntime);
+    log.info('resourcesPath:', process.resourcesPath);
+    log.info('supervisor paths:', supervisorPaths);
 
     // 1. 璁剧疆 Playwright 娴忚鍣ㄨ矾寰?
     this.setupPlaywrightPath();
@@ -75,17 +81,17 @@ class SynapseApp {
     // 2. 鍚姩鍚庣/鍓嶇鏈嶅姟锛堢敓浜ч粯璁ゅ惎鍔紝寮€鍙戝彲鐢?SYNAPSE_START_SERVICES=1 寮哄埗锛?
     const shouldStartServices = process.env.SYNAPSE_START_SERVICES === '1' || !this.isDev;
     const showLauncher = process.env.SYNAPSE_SHOW_LAUNCHER === '1'; // 鏄惁鏄剧ず鍚姩绠＄悊鍣?
-    console.log('馃搷 Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
-    console.log('馃搷 Show launcher:', showLauncher);
-    log.info('馃搷 Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
-    log.info('馃搷 Show launcher:', showLauncher);
+    console.log('Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
+    console.log('Show launcher:', showLauncher);
+    log.info('Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
+    log.info('Show launcher:', showLauncher);
 
     if (shouldStartServices) {
-      console.log('馃敡 Starting services...');
-      log.info('馃敡 Starting services...');
+      console.log('Starting services...');
+      log.info('Starting services...');
       await this.startServices();
-      console.log('鉁?Services started');
-      log.info('鉁?Services started');
+      console.log('Services started');
+      log.info('Services started');
     }
 
     // 3. 鍒涘缓绐楀彛锛堝鏋滃惎鐢ㄥ惎鍔ㄧ鐞嗗櫒锛屽垯鏄剧ず鍚姩绠＄悊鍣紱鍚﹀垯鍒涘缓涓荤獥鍙ｏ級
@@ -101,7 +107,7 @@ class SynapseApp {
     // 5. 璁剧疆搴旂敤浜嬩欢
     this.setupAppEvents();
 
-    log.info('鉁?SynapseAutomation 鍚姩瀹屾垚');
+    log.info('SynapseAutomation startup complete');
   }
 
   setupPlaywrightPath() {
@@ -111,11 +117,11 @@ class SynapseApp {
     if (isDev) {
       // 寮€鍙戠幆澧冿細浣跨敤椤圭洰鏍圭洰褰曠殑娴忚鍣?
       this.playwrightBrowserPath = path.join(__dirname, '../../../browsers');
-      log.info('馃敡 寮€鍙戞ā寮?- 娴忚鍣ㄨ矾寰?', this.playwrightBrowserPath);
+      log.info('Dev mode Playwright browser path:', this.playwrightBrowserPath);
     } else {
       // 鐢熶骇鐜锛氫娇鐢ㄦ墦鍖呭悗鐨勬祻瑙堝櫒
       this.playwrightBrowserPath = path.join(process.resourcesPath, 'browsers');
-      log.info('馃摝 鐢熶骇妯″紡 - 娴忚鍣ㄨ矾寰?', this.playwrightBrowserPath);
+      log.info('Packaged mode Playwright browser path:', this.playwrightBrowserPath);
     }
 
     // 璁剧疆鐜鍙橀噺锛岃 Playwright 浣跨敤鎸囧畾鐨勬祻瑙堝櫒
@@ -123,24 +129,244 @@ class SynapseApp {
 
     // 楠岃瘉娴忚鍣ㄦ槸鍚﹀瓨鍦?
     if (fs.existsSync(this.playwrightBrowserPath)) {
-      log.info('鉁?Playwright 娴忚鍣ㄨ矾寰勫凡璁剧疆');
+      log.info('Playwright browser path is ready');
     } else {
-      log.warn('鈿狅笍 Playwright 娴忚鍣ㄨ矾寰勪笉瀛樺湪锛岃嚜鍔ㄥ寲鍔熻兘鍙兘鏃犳硶浣跨敤');
+      log.warn('Playwright browser path does not exist; automation features may be unavailable.');
     }
+  }
+
+  detectPackagedRuntime() {
+    if (app.isPackaged) {
+      return true;
+    }
+
+    const executableName = path.basename(process.execPath || '').toLowerCase();
+    const runningViaElectronBinary = executableName === 'electron.exe' || executableName === 'electron';
+    const packagedMarkers = [
+      path.join(process.resourcesPath, 'supervisor', 'supervisor.exe'),
+      path.join(process.resourcesPath, 'frontend', 'standalone', 'server.js'),
+      path.join(process.resourcesPath, 'services', 'backend', 'backend.exe')
+    ];
+
+    return !runningViaElectronBinary && packagedMarkers.some((markerPath) => fs.existsSync(markerPath));
   }
 
   getResourcesRoot() {
     return this.isDev ? this.repoRoot : process.resourcesPath;
   }
 
+  getSupervisorPaths() {
+    const packagedExePath = path.join(process.resourcesPath, 'supervisor', 'supervisor.exe');
+    const packagedScriptPath = path.join(process.resourcesPath, 'supervisor', 'supervisor.py');
+    const devSupervisorDir = path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor');
+    const devExePath = path.join(devSupervisorDir, 'supervisor.exe');
+    const devScriptPath = path.join(devSupervisorDir, 'supervisor.py');
+    const exePath = this.resolveFirstPath(
+      this.isDev
+        ? [devExePath, packagedExePath]
+        : [packagedExePath, devExePath]
+    );
+    const scriptPath = exePath
+      ? null
+      : this.resolveFirstPath(
+          this.isDev
+            ? [devScriptPath, packagedScriptPath]
+            : [packagedScriptPath, devScriptPath]
+        );
+
+    return {
+      exePath,
+      scriptPath,
+      cwd: exePath ? path.dirname(exePath) : (scriptPath ? path.dirname(scriptPath) : null)
+    };
+  }
+
+  normalizeBackendUrl(rawUrl) {
+    const fallbackPort = this.resolveBackendPort(rawUrl);
+    const fallback = `http://127.0.0.1:${fallbackPort}`;
+    const candidate = String(rawUrl || '').trim().replace(/\/+$/, '') || fallback;
+
+    try {
+      const url = new URL(candidate);
+      if (url.hostname === 'localhost') {
+        url.hostname = '127.0.0.1';
+      }
+      return url.toString().replace(/\/+$/, '');
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  resolveBackendPort(rawUrl) {
+    const envPort = [
+      process.env.SYN_BACKEND_PORT,
+      process.env.BACKEND_PORT
+    ].find((value) => String(value || '').trim());
+
+    const parsedEnvPort = Number.parseInt(envPort, 10);
+    if (Number.isInteger(parsedEnvPort) && parsedEnvPort > 0) {
+      return parsedEnvPort;
+    }
+
+    try {
+      if (rawUrl) {
+        const url = new URL(String(rawUrl).trim());
+        const parsedUrlPort = Number.parseInt(url.port, 10);
+        if (Number.isInteger(parsedUrlPort) && parsedUrlPort > 0) {
+          return parsedUrlPort;
+        }
+      }
+    } catch (error) {
+      // Ignore malformed URL and fall back to the default port.
+    }
+
+    return 7000;
+  }
+
+  getBackendBaseUrl() {
+    const rawUrl = [
+      process.env.SYN_BACKEND_URL,
+      process.env.NEXT_PUBLIC_SYN_BACKEND_URL,
+      process.env.NEXT_PUBLIC_BACKEND_URL
+    ].find((value) => String(value || '').trim());
+
+    return this.normalizeBackendUrl(rawUrl);
+  }
+
+  getBackendPort() {
+    return this.resolveBackendPort(this.getBackendBaseUrl());
+  }
+
+  getBackendApiBaseUrl() {
+    return `${this.getBackendBaseUrl()}/api/v1`;
+  }
+
+  getSystemApiBaseUrl() {
+    return `${this.getBackendApiBaseUrl()}/system`;
+  }
+
+  getPreferredFrontendPort() {
+    const envPort = [
+      process.env.SYN_FRONTEND_PORT,
+      process.env.FRONTEND_PORT,
+      process.env.PORT
+    ].find((value) => String(value || '').trim());
+
+    const parsedEnvPort = Number.parseInt(envPort, 10);
+    if (Number.isInteger(parsedEnvPort) && parsedEnvPort > 0) {
+      return parsedEnvPort;
+    }
+
+    return 3000;
+  }
+
+  getFrontendPort() {
+    const currentPort = Number.parseInt(String(this.frontendPort || ''), 10);
+    if (Number.isInteger(currentPort) && currentPort > 0) {
+      return currentPort;
+    }
+    return this.getPreferredFrontendPort();
+  }
+
+  getFrontendBaseUrl() {
+    return `http://127.0.0.1:${this.getFrontendPort()}`;
+  }
+
+  async findAvailablePort(preferredPort, attempts = 20) {
+    for (let offset = 0; offset < attempts; offset += 1) {
+      const candidatePort = preferredPort + offset;
+      if (await this.canBindPort(candidatePort)) {
+        return candidatePort;
+      }
+    }
+
+    throw new Error(`Unable to find an available port starting from ${preferredPort}`);
+  }
+
   getRuntimeSettingsPath() {
     return path.join(app.getPath('userData'), 'runtime-settings.json');
   }
 
+  normalizeBooleanSetting(value, defaultValue = true) {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['true', '1', 'yes', 'on'].includes(normalized)) {
+        return true;
+      }
+      if (['false', '0', 'no', 'off'].includes(normalized)) {
+        return false;
+      }
+    }
+    if (typeof value === 'number') {
+      if (value === 1) {
+        return true;
+      }
+      if (value === 0) {
+        return false;
+      }
+    }
+    return defaultValue;
+  }
+
+  getDefaultPlatformBrowserPreferences() {
+    return {
+      douyin: 'chromium',
+      kuaishou: 'chromium',
+      xiaohongshu: 'chromium',
+      channels: 'chromium',
+      bilibili: 'chromium'
+    };
+  }
+
+  normalizePlatformBrowserKey(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'tencent') {
+      return 'channels';
+    }
+    return normalized;
+  }
+
+  normalizePlatformBrowserChoice(value, fallback = 'chromium') {
+    return ['auto', 'chromium', 'firefox'].includes(value) ? value : fallback;
+  }
+
+  normalizePlatformBrowserPreferences(raw = {}) {
+    const defaults = this.getDefaultPlatformBrowserPreferences();
+    const normalized = { ...defaults };
+
+    for (const [platform, defaultChoice] of Object.entries(defaults)) {
+      const directValue = raw?.[platform];
+      const aliasValue = platform === 'channels' ? raw?.tencent : undefined;
+      const candidate = typeof directValue === 'string'
+        ? directValue.trim().toLowerCase()
+        : typeof aliasValue === 'string'
+          ? aliasValue.trim().toLowerCase()
+          : null;
+      normalized[platform] = this.normalizePlatformBrowserChoice(candidate, defaultChoice);
+    }
+
+    return normalized;
+  }
+
   normalizeRuntimeSettings(raw = {}) {
     return {
-      browserHeadless: raw.browserHeadless !== false
+      browserHeadless: this.normalizeBooleanSetting(raw.browserHeadless, true),
+      automationRuntime: raw.automationRuntime === 'playwright' ? 'playwright' : 'patchright',
+      platformBrowserPreferences: this.normalizePlatformBrowserPreferences(raw.platformBrowserPreferences)
     };
+  }
+
+  applyPlatformBrowserPreferenceEnv(targetEnv, rawPreferences = {}) {
+    const preferences = this.normalizePlatformBrowserPreferences(rawPreferences);
+    targetEnv.SYNAPSE_PLATFORM_BROWSER_PREFERENCES = JSON.stringify(preferences);
+    for (const [platform, choice] of Object.entries(preferences)) {
+      targetEnv[`SYNAPSE_PLATFORM_BROWSER_${platform.toUpperCase()}`] = choice;
+    }
+    targetEnv.SYNAPSE_PLATFORM_BROWSER_TENCENT = preferences.channels;
+    return preferences;
   }
 
   loadRuntimeSettings() {
@@ -166,6 +392,8 @@ class SynapseApp {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
     this.runtimeSettings = settings;
     process.env.PLAYWRIGHT_HEADLESS = settings.browserHeadless ? 'true' : 'false';
+    process.env.SYNAPSE_PLAYWRIGHT_RUNTIME = settings.automationRuntime;
+    this.applyPlatformBrowserPreferenceEnv(process.env, settings.platformBrowserPreferences || {});
     return settings;
   }
 
@@ -176,11 +404,98 @@ class SynapseApp {
   }
 
   getPythonPath() {
-    const pythonPath = path.join(this.getResourcesRoot(), 'synenv', 'Scripts', 'python.exe');
-    if (fs.existsSync(pythonPath)) {
-      return pythonPath;
+    return this.getPythonRuntime().path;
+  }
+
+  getSynenvSitePackagesPath() {
+    const candidates = [
+      path.join(this.getResourcesRoot(), 'synenv', 'Lib', 'site-packages'),
+      path.join(this.getResourcesRoot(), 'synenv', 'lib', 'site-packages')
+    ];
+    return this.resolveFirstPath(candidates) || null;
+  }
+
+  buildPythonEnv(baseEnv = process.env) {
+    const sitePackagesPath = this.getSynenvSitePackagesPath();
+    if (!sitePackagesPath) {
+      return baseEnv;
     }
-    return 'python';
+
+    const existing = String(baseEnv.PYTHONPATH || '')
+      .split(path.delimiter)
+      .filter((entry) => entry && entry !== sitePackagesPath);
+    return {
+      ...baseEnv,
+      PYTHONPATH: [sitePackagesPath, ...existing].join(path.delimiter)
+    };
+  }
+
+  testPythonExecutable(command, args = []) {
+    try {
+      const result = spawnSync(command, [...args, '-c', 'import sys; print(sys.version)'], {
+        cwd: this.getResourcesRoot(),
+        env: this.buildPythonEnv(process.env),
+        encoding: 'utf8',
+        windowsHide: true,
+        timeout: 10000
+      });
+
+      if (result.error) {
+        return { ok: false, error: result.error.message };
+      }
+      if (result.status !== 0) {
+        return {
+          ok: false,
+          error: String(result.stderr || result.stdout || '').trim() || `python_probe_failed:${result.status}`
+        };
+      }
+      return { ok: true, version: String(result.stdout || '').trim() };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  getPythonRuntime() {
+    if (this.pythonRuntimeCache) {
+      return this.pythonRuntimeCache;
+    }
+
+    const packagedPython = path.join(this.getResourcesRoot(), 'synenv', 'Scripts', 'python.exe');
+    const candidates = [];
+    if (fs.existsSync(packagedPython)) {
+      candidates.push({ path: packagedPython, args: [], source: 'synenv' });
+    }
+    candidates.push({ path: 'python', args: [], source: 'system' });
+
+    const failures = [];
+    for (const candidate of candidates) {
+      const probe = this.testPythonExecutable(candidate.path, candidate.args);
+      if (probe.ok) {
+        this.pythonRuntimeCache = {
+          path: candidate.path,
+          args: candidate.args,
+          source: candidate.source,
+          version: probe.version,
+          sitePackagesPath: this.getSynenvSitePackagesPath(),
+          error: null
+        };
+        if (candidate.source !== 'synenv') {
+          log.warn('Packaged synenv Python is unavailable; using fallback Python:', candidate.path);
+        }
+        return this.pythonRuntimeCache;
+      }
+      failures.push(`${candidate.source}:${probe.error}`);
+    }
+
+    this.pythonRuntimeCache = {
+      path: packagedPython,
+      args: [],
+      source: 'missing',
+      version: null,
+      sitePackagesPath: this.getSynenvSitePackagesPath(),
+      error: failures.join(' | ')
+    };
+    return this.pythonRuntimeCache;
   }
 
   getNpmCommand() {
@@ -210,48 +525,14 @@ class SynapseApp {
       return;
     }
 
-    const resourcesRoot = this.getResourcesRoot();
-    const venvDir = path.join(resourcesRoot, 'synenv');
-    const cfgPath = path.join(venvDir, 'pyvenv.cfg');
-    if (!fs.existsSync(cfgPath)) {
-      log.warn('pyvenv.cfg not found:', cfgPath);
-      return;
-    }
-
-    const pythonHome = path.join(venvDir, '_python');
-    const pythonExe = path.join(pythonHome, 'python.exe');
-    const expected = {
-      home: pythonHome,
-      executable: pythonExe,
-      command: `${pythonExe} -m venv ${venvDir}`
-    };
-
-    const raw = fs.readFileSync(cfgPath, 'utf8');
-    const eol = raw.includes('\r\n') ? '\r\n' : '\n';
-    const lines = raw.split(/\r?\n/);
-    let changed = false;
-
-    const updated = lines.map((line) => {
-      const match = line.match(/^(\w+)\s*=\s*(.*)$/);
-      if (!match) {
-        return line;
+    const runtime = this.getPythonRuntime();
+    if (runtime.source === 'missing') {
+      log.error('No usable Python runtime found:', runtime.error);
+    } else {
+      log.info('Python runtime selected:', runtime.path, `(${runtime.source})`);
+      if (runtime.sitePackagesPath) {
+        log.info('Packaged Python site-packages exposed via PYTHONPATH:', runtime.sitePackagesPath);
       }
-      const key = match[1];
-      if (!Object.prototype.hasOwnProperty.call(expected, key)) {
-        return line;
-      }
-      const nextValue = expected[key];
-      const nextLine = `${key} = ${nextValue}`;
-      if (line !== nextLine) {
-        changed = true;
-        return nextLine;
-      }
-      return line;
-    });
-
-    if (changed) {
-      fs.writeFileSync(cfgPath, updated.join(eol), 'utf8');
-      log.info('pyvenv.cfg updated for current install path:', cfgPath);
     }
   }
 
@@ -284,6 +565,10 @@ class SynapseApp {
     for (const dir of this.getSubdirs(chromiumRoot, 'hibbiki-')) {
       candidates.push(path.join(dir, 'Chrome-bin', 'chrome.exe'));
     }
+    for (const dir of this.getSubdirs(browsersRoot, 'chromium-')) {
+      candidates.push(path.join(dir, 'chrome-win64', 'chrome.exe'));
+      candidates.push(path.join(dir, 'chrome-win', 'chrome.exe'));
+    }
     for (const dir of this.getSubdirs(chromiumRoot, 'chromium-')) {
       candidates.push(path.join(dir, 'chrome-win64', 'chrome.exe'));
       candidates.push(path.join(dir, 'chrome-win', 'chrome.exe'));
@@ -293,6 +578,466 @@ class SynapseApp {
     }
 
     return this.resolveFirstPath(candidates) || null;
+  }
+
+  resolveFirefoxPath(browsersRoot) {
+    const candidates = [];
+
+    for (const dir of this.getSubdirs(browsersRoot, 'firefox-')) {
+      candidates.push(path.join(dir, 'firefox', 'firefox.exe'));
+    }
+    for (const dir of this.getSubdirs(path.join(browsersRoot, 'firefox'), 'firefox-')) {
+      candidates.push(path.join(dir, 'firefox', 'firefox.exe'));
+    }
+
+    return this.resolveFirstPath(candidates) || null;
+  }
+
+  getBrowserAssetVersion(executablePath) {
+    if (!executablePath) {
+      return null;
+    }
+
+    const parts = String(executablePath).split(/[\\/]+/).reverse();
+    const prefixes = ['hibbiki-', 'chromium-', 'chrome-', 'firefox-'];
+    return parts.find((part) => prefixes.some((prefix) => part.startsWith(prefix))) || null;
+  }
+
+  getPythonPackageInfo(packageName) {
+    const runtime = this.getPythonRuntime();
+    const pythonPath = runtime.path;
+    const inspectCode = [
+      'import importlib.metadata',
+      'import importlib.util',
+      'import pathlib',
+      'import json',
+      `name = ${JSON.stringify(packageName)}`,
+      'payload = {"installed": False, "version": None, "error": None, "driverInstalled": None, "driverPath": None}',
+      'spec = importlib.util.find_spec(name)',
+      'if spec is not None:',
+      '    payload["installed"] = True',
+      '    try:',
+      '        payload["version"] = importlib.metadata.version(name)',
+      '    except Exception:',
+      '        payload["version"] = None',
+      '    try:',
+      '        pkg_dir = pathlib.Path(spec.origin).resolve().parent if spec.origin else None',
+      '        driver = pkg_dir / "driver" / ("node.exe" if __import__("sys").platform == "win32" else "node") if pkg_dir else None',
+      '        payload["driverPath"] = str(driver) if driver else None',
+      '        payload["driverInstalled"] = bool(driver and driver.exists())',
+      '    except Exception as exc:',
+      '        payload["driverInstalled"] = False',
+      '        payload["error"] = str(exc)',
+      'print(json.dumps(payload, ensure_ascii=True))'
+    ].join('\n');
+
+    try {
+      if (runtime.source === 'missing') {
+        return {
+          installed: false,
+          version: null,
+          driverInstalled: false,
+          driverPath: null,
+          error: runtime.error || 'python_runtime_unavailable'
+        };
+      }
+
+      const result = spawnSync(pythonPath, [...runtime.args, '-c', inspectCode], {
+        cwd: this.getResourcesRoot(),
+        env: this.buildPythonEnv(process.env),
+        encoding: 'utf8',
+        windowsHide: true
+      });
+
+      if (result.error) {
+        return {
+          installed: false,
+          version: null,
+          driverInstalled: false,
+          driverPath: null,
+          error: result.error.message
+        };
+      }
+
+      const raw = String(result.stdout || '').trim();
+      if (!raw) {
+        return {
+          installed: false,
+          version: null,
+          driverInstalled: false,
+          driverPath: null,
+          error: String(result.stderr || '').trim() || 'empty_python_package_probe'
+        };
+      }
+
+      return JSON.parse(raw);
+    } catch (error) {
+      return {
+        installed: false,
+        version: null,
+        driverInstalled: false,
+        driverPath: null,
+        error: error.message
+      };
+    }
+  }
+
+  getPackagedWorkerRuntimeInfo(packageName) {
+    const packageRoot = path.join(
+      this.getResourcesRoot(),
+      'services',
+      'playwright-worker',
+      '_internal',
+      packageName
+    );
+    if (!fs.existsSync(packageRoot)) {
+      return {
+        installed: false,
+        version: null,
+        driverInstalled: false,
+        driverPath: null,
+        error: null
+      };
+    }
+
+    const driverPath = path.join(
+      packageRoot,
+      'driver',
+      process.platform === 'win32' ? 'node.exe' : 'node'
+    );
+    return {
+      installed: true,
+      version: null,
+      driverInstalled: fs.existsSync(driverPath),
+      driverPath,
+      source: 'packaged-worker',
+      error: fs.existsSync(driverPath) ? null : 'driver_missing'
+    };
+  }
+
+  mergeRuntimeInfo(pythonInfo, packagedInfo) {
+    if (pythonInfo.installed) {
+      return {
+        ...pythonInfo,
+        source: pythonInfo.source || 'python',
+        driverInstalled: pythonInfo.driverInstalled || packagedInfo.driverInstalled,
+        driverPath: pythonInfo.driverInstalled ? pythonInfo.driverPath : packagedInfo.driverPath
+      };
+    }
+    if (packagedInfo.installed) {
+      return packagedInfo;
+    }
+    return pythonInfo;
+  }
+
+  getBrowserRuntimeInfo() {
+    const browsersRoot = this.getBrowsersRoot();
+    const chromiumPath = this.resolveChromePath(browsersRoot);
+    const firefoxPath = this.resolveFirefoxPath(browsersRoot);
+    const patchrightInfo = this.mergeRuntimeInfo(
+      this.getPythonPackageInfo('patchright'),
+      this.getPackagedWorkerRuntimeInfo('patchright')
+    );
+    const playwrightInfo = this.mergeRuntimeInfo(
+      this.getPythonPackageInfo('playwright'),
+      this.getPackagedWorkerRuntimeInfo('playwright')
+    );
+    const preferredRuntime = this.runtimeSettings.automationRuntime;
+
+    let activeRuntime = null;
+    const patchrightReady = patchrightInfo.installed && patchrightInfo.driverInstalled !== false;
+    const playwrightReady = playwrightInfo.installed && playwrightInfo.driverInstalled !== false;
+    if (preferredRuntime === 'playwright' && playwrightReady) {
+      activeRuntime = 'playwright';
+    } else if (preferredRuntime === 'patchright' && patchrightReady) {
+      activeRuntime = 'patchright';
+    } else if (patchrightReady) {
+      activeRuntime = 'patchright';
+    } else if (playwrightReady) {
+      activeRuntime = 'playwright';
+    }
+
+    return {
+      pythonPath: this.getPythonPath(),
+      pythonRuntime: this.getPythonRuntime(),
+      browsersPath: browsersRoot,
+      preferredRuntime,
+      activeRuntime,
+      platformBrowserPreferences: this.runtimeSettings.platformBrowserPreferences,
+      runtimes: {
+        patchright: patchrightInfo,
+        playwright: playwrightInfo
+      },
+      browsers: {
+        chromium: {
+          installed: Boolean(chromiumPath),
+          path: chromiumPath,
+          version: this.getBrowserAssetVersion(chromiumPath),
+          uninstallable: true
+        },
+        firefox: {
+          installed: Boolean(firefoxPath),
+          path: firefoxPath,
+          version: this.getBrowserAssetVersion(firefoxPath),
+          uninstallable: true,
+          required: false
+        }
+      }
+    };
+  }
+
+  getHibbikiInstallerPath() {
+    return this.resolveFirstPath([
+      path.join(this.getResourcesRoot(), 'scripts', 'packaging', 'install_hibbiki_chromium.ps1'),
+      path.join(this.repoRoot, 'scripts', 'packaging', 'install_hibbiki_chromium.ps1')
+    ]);
+  }
+
+  async installHibbikiChromium() {
+    const scriptPath = this.getHibbikiInstallerPath();
+    if (!scriptPath) {
+      return {
+        success: false,
+        output: '',
+        error: 'hibbiki_installer_not_found'
+      };
+    }
+
+    const env = this.buildPythonEnv({
+      ...process.env,
+      PLAYWRIGHT_BROWSERS_PATH: this.getBrowsersRoot(),
+      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+    });
+
+    return this.runManagedCommand(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', scriptPath,
+        '-ProjectRoot', this.getResourcesRoot(),
+        '-Clean'
+      ],
+      { env, logPrefix: 'hibbiki:chromium' }
+    );
+  }
+
+  getBrowserAssetRemovalTargets(target) {
+    const browsersRoot = this.getBrowsersRoot();
+
+    if (target === 'chromium') {
+      return [
+        path.join(browsersRoot, 'chromium'),
+        ...this.getSubdirs(browsersRoot, 'chromium-'),
+        ...this.getSubdirs(browsersRoot, 'chromium_headless_shell-'),
+        path.join(browsersRoot, 'chrome-for-testing')
+      ];
+    }
+
+    if (target === 'firefox') {
+      return [
+        path.join(browsersRoot, 'firefox'),
+        ...this.getSubdirs(browsersRoot, 'firefox-')
+      ];
+    }
+
+    return [];
+  }
+
+  uninstallBrowserComponent(target) {
+    const allowedTargets = new Set(['chromium', 'firefox']);
+    if (!allowedTargets.has(target)) {
+      return { success: false, error: `unsupported_uninstall_target:${target}` };
+    }
+
+    const removalTargets = this.getBrowserAssetRemovalTargets(target);
+    const removedPaths = [];
+
+    for (const candidate of removalTargets) {
+      if (!candidate || !fs.existsSync(candidate)) {
+        continue;
+      }
+      fs.rmSync(candidate, { recursive: true, force: true });
+      removedPaths.push(candidate);
+    }
+
+    if (target === 'firefox') {
+      const nextPreferences = this.normalizePlatformBrowserPreferences(
+        this.runtimeSettings.platformBrowserPreferences
+      );
+      let preferencesChanged = false;
+
+      for (const platform of Object.keys(nextPreferences)) {
+        if (nextPreferences[platform] === 'firefox') {
+          nextPreferences[platform] = 'chromium';
+          preferencesChanged = true;
+        }
+      }
+
+      if (preferencesChanged) {
+        this.saveRuntimeSettings({
+          platformBrowserPreferences: nextPreferences
+        });
+      }
+    }
+
+    return {
+      success: true,
+      removedPaths,
+      browserRuntimeInfo: this.getBrowserRuntimeInfo()
+    };
+  }
+
+  runManagedCommand(command, args, options = {}) {
+    const { cwd = this.getResourcesRoot(), env = process.env, logPrefix = 'command' } = options;
+
+    return new Promise((resolve) => {
+      let stdout = '';
+      let stderr = '';
+      let settled = false;
+
+      const child = spawn(command, args, {
+        cwd,
+        env,
+        windowsHide: true
+      });
+
+      const finish = (result) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        resolve(result);
+      };
+
+      child.stdout?.on('data', (chunk) => {
+        const text = chunk.toString();
+        stdout += text;
+        log.info(`[${logPrefix}] ${text.trimEnd()}`);
+      });
+
+      child.stderr?.on('data', (chunk) => {
+        const text = chunk.toString();
+        stderr += text;
+        log.warn(`[${logPrefix}] ${text.trimEnd()}`);
+      });
+
+      child.on('error', (error) => {
+        finish({
+          success: false,
+          code: -1,
+          stdout,
+          stderr,
+          error: error.message
+        });
+      });
+
+      child.on('close', (code) => {
+        finish({
+          success: code === 0,
+          code,
+          stdout,
+          stderr,
+          error: code === 0 ? null : (stderr.trim() || stdout.trim() || `command_failed:${code}`)
+        });
+      });
+    });
+  }
+
+  async installBrowserComponent(target) {
+    const allowedTargets = new Set(['chromium', 'firefox', 'patchright', 'playwright']);
+    if (!allowedTargets.has(target)) {
+      return { success: false, error: `unsupported_target:${target}` };
+    }
+
+    const pythonPath = this.getPythonPath();
+    const browsersRoot = this.getBrowsersRoot();
+    fs.mkdirSync(browsersRoot, { recursive: true });
+
+    const env = this.buildPythonEnv({
+      ...process.env,
+      PLAYWRIGHT_BROWSERS_PATH: browsersRoot,
+      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+    });
+
+    if (target === 'patchright' || target === 'playwright') {
+      const runtime = this.getPythonRuntime();
+      if (runtime.source !== 'synenv') {
+        return {
+          success: false,
+          output: '',
+          error: `packaged_python_unavailable:${runtime.error || runtime.source}`,
+          browserRuntimeInfo: this.getBrowserRuntimeInfo()
+        };
+      }
+      const result = await this.runManagedCommand(
+        pythonPath,
+        ['-m', 'pip', 'install', target],
+        { env, logPrefix: `pip:${target}` }
+      );
+
+      return {
+        success: result.success,
+        output: result.stdout,
+        error: result.error,
+        browserRuntimeInfo: this.getBrowserRuntimeInfo()
+      };
+    }
+
+    if (target === 'chromium') {
+      const installResult = await this.installHibbikiChromium();
+      return {
+        success: installResult.success,
+        output: installResult.stdout,
+        error: installResult.error,
+        browserRuntimeInfo: this.getBrowserRuntimeInfo()
+      };
+    }
+
+    const patchrightInfo = this.getPythonPackageInfo('patchright');
+    if (!patchrightInfo.installed) {
+      const runtimeInstall = await this.runManagedCommand(
+        pythonPath,
+        ['-m', 'pip', 'install', 'patchright'],
+        { env, logPrefix: 'pip:patchright' }
+      );
+
+      if (!runtimeInstall.success) {
+        return {
+          success: false,
+          output: runtimeInstall.stdout,
+          error: runtimeInstall.error,
+          browserRuntimeInfo: this.getBrowserRuntimeInfo()
+        };
+      }
+    }
+
+    let installResult = await this.runManagedCommand(
+      pythonPath,
+      ['-m', 'patchright', 'install', target],
+      { env, logPrefix: `patchright:${target}` }
+    );
+
+    if (!installResult.success) {
+      const playwrightInfo = this.getPythonPackageInfo('playwright');
+      if (playwrightInfo.installed) {
+        const fallbackResult = await this.runManagedCommand(
+          pythonPath,
+          ['-m', 'playwright', 'install', target],
+          { env, logPrefix: `playwright:${target}` }
+        );
+        if (fallbackResult.success) {
+          installResult = fallbackResult;
+        }
+      }
+    }
+
+    return {
+      success: installResult.success,
+      output: installResult.stdout,
+      error: installResult.error,
+      browserRuntimeInfo: this.getBrowserRuntimeInfo()
+    };
   }
 
   getAppIconPath() {
@@ -335,6 +1080,12 @@ class SynapseApp {
         label: 'Open settings',
         click: () => this.createSettingsWindow()
       },
+      {
+        label: 'Restart application and all processes',
+        click: () => {
+          void this.restartApplication();
+        }
+      },
       { type: 'separator' },
       {
         label: 'Quit and stop all processes',
@@ -359,7 +1110,7 @@ class SynapseApp {
     this.mainWindow.focus();
   }
 
-  async requestSupervisor(pathname, method = 'GET') {
+  async requestSupervisor(pathname, method = 'GET', timeoutMs = 20000) {
     const http = require('http');
 
     return new Promise((resolve, reject) => {
@@ -385,12 +1136,104 @@ class SynapseApp {
       });
 
       req.on('error', reject);
-      req.setTimeout(5000, () => {
+      req.setTimeout(timeoutMs, () => {
         req.destroy();
         reject(new Error(`Supervisor request timeout: ${pathname}`));
       });
       req.end();
     });
+  }
+
+  async requestSupervisorRestartAll(timeoutMs = 30000) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await this.requestSupervisor('/api/restart', 'POST', timeoutMs);
+      } catch (error) {
+        lastError = error;
+        const message = String(error?.message || '');
+        const isTimeout = message.includes('Supervisor request timeout: /api/restart');
+
+        if (!isTimeout) {
+          throw error;
+        }
+
+        log.warn(`Supervisor restart request timed out on attempt ${attempt + 1}; probing restart state...`);
+
+        try {
+          const restartState = await this.requestSupervisor('/api/restart-status', 'GET', 5000);
+          if (restartState?.data?.restart_in_progress) {
+            return { status: 'accepted', message: 'Restart already in progress' };
+          }
+        } catch (probeError) {
+          log.warn('Failed to probe supervisor restart state after timeout:', probeError);
+        }
+
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    }
+
+    throw lastError || new Error('Supervisor restart request failed');
+  }
+
+  async waitForSupervisorServices(timeoutMs = 60000, pollIntervalMs = 1000) {
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      try {
+        const restartState = await this.requestSupervisor('/api/restart-status', 'GET', 5000);
+        const statusPayload = await this.requestSupervisor('/api/status', 'GET', 5000);
+        const status = statusPayload?.data || {};
+        const isServiceReady = (service, { allowDisabled = false, optional = false } = {}) => {
+          if (!service) {
+            return optional;
+          }
+          if (service.running || service.external) {
+            return true;
+          }
+          if (allowDisabled && (service.configured === false || service.source === 'disabled')) {
+            return true;
+          }
+          return false;
+        };
+
+        const backendReady = isServiceReady(status.backend);
+        const workerReady = isServiceReady(status.playwright_worker || status.worker);
+        const celeryReady = isServiceReady(status.celery_worker || status.celery);
+        const gatewayReady = isServiceReady(status.hermes_gateway || status.gateway, {
+          allowDisabled: true,
+          optional: true
+        });
+        const hermesDashboardReady = isServiceReady(status.hermes_dashboard || status.dashboard, {
+          optional: true
+        });
+        const hermesWebuiReady = isServiceReady(status.hermes_webui || status.webui, {
+          optional: true
+        });
+        const restartInProgress = Boolean(restartState?.data?.restart_in_progress);
+
+        if (
+          backendReady &&
+          workerReady &&
+          celeryReady &&
+          gatewayReady &&
+          hermesDashboardReady &&
+          hermesWebuiReady &&
+          !restartInProgress
+        ) {
+          return true;
+        }
+      } catch (error) {
+        log.warn('Waiting for supervisor services failed; retrying...', error);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    throw new Error('Timed out waiting for supervisor services to become healthy');
   }
 
   async stopManagedServices() {
@@ -405,12 +1248,24 @@ class SynapseApp {
     this.cleanup();
   }
 
+  async restartManagedServices() {
+    log.info('Restarting managed service stack...');
+    await this.stopManagedServices();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await this.startServices();
+    await this.waitForSupervisorServices(90000, 1500);
+    this.servicesStarted = true;
+    log.info('Managed service stack restarted successfully');
+    return { success: true };
+  }
+
   async quitApplication() {
     if (this.isQuitting) {
       return { success: true };
     }
 
     this.isQuitting = true;
+    this.isRestarting = false;
     log.info('Quitting application and stopping all processes...');
 
     try {
@@ -428,6 +1283,64 @@ class SynapseApp {
     }
   }
 
+  scheduleAppRestart() {
+    const relaunchEnv = {
+      ...process.env,
+      PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false',
+      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+    };
+    this.applyPlatformBrowserPreferenceEnv(relaunchEnv, this.runtimeSettings.platformBrowserPreferences || {});
+
+    if (this.isDev) {
+      relaunchEnv.SYNAPSE_START_SERVICES = process.env.SYNAPSE_START_SERVICES || '1';
+      relaunchEnv.SYNAPSE_START_FRONTEND = process.env.SYNAPSE_START_FRONTEND || '1';
+
+      const appPath = app.getAppPath();
+      const child = spawn(process.execPath, [appPath], {
+        cwd: appPath,
+        env: relaunchEnv,
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      child.unref();
+      log.info('Scheduled dev app restart via detached Electron process');
+      return;
+    }
+
+    app.relaunch({
+      execPath: process.execPath,
+      args: process.argv.slice(1)
+    });
+    log.info('Scheduled packaged app restart via app.relaunch');
+  }
+
+  async restartApplication() {
+    if (this.isQuitting) {
+      return { success: true };
+    }
+
+    this.isQuitting = true;
+    this.isRestarting = true;
+    log.info('Restarting application and stopping all processes...');
+
+    try {
+      this.scheduleAppRestart();
+      await this.stopManagedServices();
+      if (this.tray) {
+        this.tray.destroy();
+        this.tray = null;
+      }
+      app.exit(0);
+      return { success: true };
+    } catch (error) {
+      this.isQuitting = false;
+      this.isRestarting = false;
+      log.error('Failed to restart application cleanly:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   getServiceExe(name) {
     if (this.isDev) {
       return null;
@@ -441,7 +1354,11 @@ class SynapseApp {
 
   buildServiceEnv() {
     const browsersRoot = this.getBrowsersRoot();
-    log.info('馃攳 鏋勫缓鏈嶅姟鐜鍙橀噺...');
+    const backendUrl = this.getBackendBaseUrl();
+    const backendApiBaseUrl = this.getBackendApiBaseUrl();
+    const backendPort = String(this.getBackendPort());
+    const pythonPath = this.getPythonPath();
+    log.info('Preparing service environment...');
     log.info('  - Browsers Root:', browsersRoot);
     log.info('  - Browsers Root exists:', fs.existsSync(browsersRoot));
 
@@ -452,9 +1369,23 @@ class SynapseApp {
       PYTHONIOENCODING: 'utf-8',
       SYNAPSE_APP_ROOT: appRoot,
       SYNAPSE_RESOURCES_PATH: appRoot,
+      SYNAPSE_HERMES_PYTHON: pythonPath,
+      SYNAPSE_RUNTIME_SETTINGS_PATH: this.getRuntimeSettingsPath(),
       PLAYWRIGHT_BROWSERS_PATH: browsersRoot,
-      PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false'
+      PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false',
+      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime,
+      BACKEND_PORT: backendPort,
+      SYN_BACKEND_PORT: backendPort,
+      SYN_BACKEND_URL: backendUrl,
+      NEXT_PUBLIC_SYN_BACKEND_URL: backendUrl,
+      NEXT_PUBLIC_BACKEND_URL: backendUrl,
+      NEXT_PUBLIC_API_URL: backendUrl,
+      MANUS_API_BASE_URL: backendApiBaseUrl,
+      AGENT_API_BASE_URL: backendApiBaseUrl
     };
+    const pythonEnv = this.buildPythonEnv(env);
+    Object.assign(env, pythonEnv);
+    this.applyPlatformBrowserPreferenceEnv(env, this.runtimeSettings.platformBrowserPreferences || {});
     if (!env.SYNAPSE_DATA_DIR) {
       if (this.isDev) {
         const devDataDir = path.join(this.repoRoot, 'syn_backend');
@@ -467,6 +1398,20 @@ class SynapseApp {
           fs.mkdirSync(dataDir, { recursive: true });
         }
         env.SYNAPSE_DATA_DIR = dataDir;
+        const hermesRoot = path.join(userDataDir, 'hermes');
+        const hermesHome = path.join(hermesRoot, 'home');
+        const hermesWebUiState = path.join(hermesRoot, 'webui');
+        const hermesWorkspace = path.join(hermesRoot, 'workspace');
+        const hermesConfigRoot = path.join(userDataDir, 'config');
+        [hermesHome, hermesWebUiState, hermesWorkspace, hermesConfigRoot].forEach((dirPath) => {
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+          }
+        });
+        env.SYNAPSE_HERMES_HOME = hermesHome;
+        env.SYNAPSE_HERMES_WEBUI_STATE_DIR = hermesWebUiState;
+        env.SYNAPSE_HERMES_WORKSPACE = hermesWorkspace;
+        env.SYNAPSE_HERMES_CONFIG_ROOT = hermesConfigRoot;
         log.info('  - SYNAPSE_DATA_DIR:', dataDir);
       }
     }
@@ -491,9 +1436,7 @@ class SynapseApp {
       log.warn('  - Chrome Path: NOT FOUND');
     }
 
-    const firefoxPath = this.resolveFirstPath([
-      path.join(browsersRoot, 'firefox', 'firefox-1495', 'firefox', 'firefox.exe')
-    ]);
+    const firefoxPath = this.resolveFirefoxPath(browsersRoot);
     if (firefoxPath) {
       env.LOCAL_FIREFOX_PATH = firefoxPath;
       log.info('  - Firefox Path:', firefoxPath);
@@ -524,6 +1467,33 @@ class SynapseApp {
       socket.once('timeout', () => finish(false));
       socket.once('error', () => finish(false));
       socket.connect(port, host);
+    });
+  }
+
+  canBindPort(port, host = '127.0.0.1') {
+    return new Promise((resolve) => {
+      const server = net.createServer();
+      let settled = false;
+
+      const finish = (result) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        try {
+          server.close(() => resolve(result));
+        } catch (error) {
+          resolve(result);
+        }
+      };
+
+      server.once('error', () => finish(false));
+      server.once('listening', () => finish(true));
+      server.listen({
+        host,
+        port,
+        exclusive: true
+      });
     });
   }
 
@@ -717,24 +1687,10 @@ class SynapseApp {
       return;
     }
 
-    // 鍦ㄧ敓浜х幆澧冧娇鐢?supervisor 缁熶竴绠＄悊鎵€鏈夊悗绔湇鍔?
-    if (!this.isDev) {
-      console.log('馃敡 Using supervisor to manage backend services...');
-      log.info('馃敡 Using supervisor to manage backend services...');
-      // 鐢熶骇鐜涓嬶紝supervisor 浼氳嚜宸卞惎鍔?Redis锛屾垜浠笉闇€瑕佸崟鐙惎鍔?
-      this.startSupervisor();
-      await this.startFrontend(this.buildServiceEnv());  // 鐢熶骇鐜涔熼渶瑕佸惎鍔ㄥ墠绔?
-      this.servicesStarted = true;
-      return;
-    }
-
-    // 寮€鍙戠幆澧冿細鍒嗗埆鍚姩鍚勪釜鏈嶅姟
-    const env = this.buildServiceEnv();
-    await this.startRedis(env);
-    await this.startPlaywrightWorker(env);
-    await this.startBackend(env);
-    this.startCelery(env);
-    await this.startFrontend(env);
+    console.log('Using supervisor to manage backend services...');
+    log.info('Using supervisor to manage backend services...');
+    this.startSupervisor();
+    await this.startFrontend(this.buildServiceEnv());
     this.servicesStarted = true;
   }
 
@@ -745,24 +1701,28 @@ class SynapseApp {
 
     this.ensureSynenvConfig();
     this.cleanupStaleSupervisorOnPort(7002);
-
-    const supervisorExe = path.join(process.resourcesPath, 'supervisor', 'supervisor.exe');
-    const supervisorScript = path.join(process.resourcesPath, 'supervisor', 'supervisor.py');
+    const supervisorPaths = this.getSupervisorPaths();
+    const supervisorExe = supervisorPaths.exePath;
+    const supervisorScript = supervisorPaths.scriptPath;
     const pythonPath = this.getPythonPath();
 
-    console.log('馃搷 Supervisor exe:', supervisorExe);
-    console.log('馃搷 Supervisor script:', supervisorScript);
-    log.info('馃殌 Starting Supervisor...');
+    console.log('Supervisor exe:', supervisorExe);
+    console.log('Supervisor script:', supervisorScript);
+    log.info('Starting supervisor...');
     log.info('  - Supervisor exe:', supervisorExe);
     log.info('  - Supervisor script:', supervisorScript);
-    log.info('  - Exe exists:', fs.existsSync(supervisorExe));
-    log.info('  - Script exists:', fs.existsSync(supervisorScript));
+    log.info('  - Supervisor cwd:', supervisorPaths.cwd);
+    log.info('  - Exe exists:', Boolean(supervisorExe && fs.existsSync(supervisorExe)));
+    log.info('  - Script exists:', Boolean(supervisorScript && fs.existsSync(supervisorScript)));
 
-    // 浼樺厛浣跨敤 exe锛屽鏋滀笉瀛樺湪鍒欑敤 Python 鑴氭湰
-    const launchCmd = fs.existsSync(supervisorExe) ? supervisorExe : pythonPath;
-    const launchArgs = fs.existsSync(supervisorExe) ? [] : [supervisorScript];
+    if (!supervisorExe && !supervisorScript) {
+      throw new Error('Supervisor entrypoint not found in packaged resources or desktop-electron/resources/supervisor');
+    }
 
-    console.log('馃搷 Launch command:', launchCmd, launchArgs);
+    const launchCmd = supervisorExe || pythonPath;
+    const launchArgs = supervisorExe ? [] : [supervisorScript];
+
+    console.log('Supervisor launch command:', launchCmd, launchArgs);
     log.info('  - Launch Command:', launchCmd);
     log.info('  - Launch Args:', launchArgs);
 
@@ -770,14 +1730,14 @@ class SynapseApp {
     const env = this.buildServiceEnv();
 
     this.supervisorProcess = spawn(launchCmd, launchArgs, {
-      cwd: path.dirname(supervisorScript),
+      cwd: supervisorPaths.cwd || this.getResourcesRoot(),
       env: env,
       windowsHide: true
     });
 
     this.supervisorProcess.on('error', (error) => {
-      console.error('鉂?Supervisor failed to start:', error);
-      log.error('鉂?Supervisor failed to start:', error);
+      console.error('Supervisor failed to start:', error);
+      log.error('Supervisor failed to start:', error);
     });
 
     this.supervisorProcess.stdout?.on('data', (data) => {
@@ -791,13 +1751,13 @@ class SynapseApp {
     });
 
     this.supervisorProcess.on('exit', (code) => {
-      console.warn(`鈿狅笍 Supervisor exited with code: ${code}`);
-      log.warn(`鈿狅笍 Supervisor 閫€鍑猴紝閫€鍑虹爜: ${code}`);
+      console.warn(`Supervisor exited with code: ${code}`);
+      log.warn(`Supervisor exited with code: ${code}`);
       this.supervisorProcess = null;
     });
 
-    console.log('鉁?Supervisor started');
-    log.info('鉁?Supervisor started');
+    console.log('Supervisor started');
+    log.info('Supervisor started');
   }
 
   async startRedis(env) {
@@ -808,7 +1768,7 @@ class SynapseApp {
       ? (process.env.SYNAPSE_REDIS_PATH || 'redis-server')
       : path.join(process.resourcesPath, 'redis', 'redis-server.exe');
 
-    log.info('馃З 鍚姩 Redis...');
+    log.info('Starting Redis...');
     log.info('  - Redis Path:', redisPath);
     log.info('  - Redis exists:', fs.existsSync(redisPath));
     log.info('  - Is Dev:', this.isDev);
@@ -819,7 +1779,7 @@ class SynapseApp {
     }
 
     if (!this.isDev && !fs.existsSync(redisPath)) {
-      log.error(`鉂?Redis 鏈壘鍒? ${redisPath}`);
+      log.error(`Redis executable not found: ${redisPath}`);
       return;
     }
     this.redisProcess = spawn(redisPath, [], {
@@ -834,7 +1794,7 @@ class SynapseApp {
     this.redisProcess.stdout?.on('data', (data) => log.info('[Redis]', data.toString()));
     this.redisProcess.stderr?.on('data', (data) => log.error('[Redis Error]', data.toString()));
     this.redisProcess.on('exit', (code) => {
-      log.warn(`鈿狅笍 Redis 閫€鍑猴紝閫€鍑虹爜: ${code}`);
+      log.warn(`Redis exited with code: ${code}`);
     });
   }
 
@@ -850,14 +1810,14 @@ class SynapseApp {
     const workerExe = this.getServiceExe('playwright-worker');
     const workerScript = path.join(backendDir, 'playwright_worker', 'worker.py');
 
-    log.info('馃З 鍚姩 Playwright Worker...');
+    log.info('Starting Playwright worker...');
     log.info('  - Backend Dir:', backendDir);
     log.info('  - Worker Exe:', workerExe || 'N/A');
     log.info('  - Worker Script:', workerScript);
     log.info('  - Script exists:', fs.existsSync(workerScript));
 
     if (!workerExe && !fs.existsSync(workerScript)) {
-      log.error(`鉂?Playwright Worker 鏈壘鍒? ${workerScript}`);
+      log.error(`Playwright worker script not found: ${workerScript}`);
       return;
     }
     const pythonPath = this.getPythonPath();
@@ -875,7 +1835,7 @@ class SynapseApp {
     this.playwrightWorkerProcess.stdout?.on('data', (data) => log.info('[Worker]', data.toString()));
     this.playwrightWorkerProcess.stderr?.on('data', (data) => log.error('[Worker Error]', data.toString()));
     this.playwrightWorkerProcess.on('exit', (code) => {
-      log.warn(`鈿狅笍 Playwright Worker 閫€鍑猴紝閫€鍑虹爜: ${code}`);
+      log.warn(`Playwright worker exited with code: ${code}`);
     });
   }
 
@@ -887,7 +1847,7 @@ class SynapseApp {
     const celeryExe = this.getServiceExe('celery-worker');
     const pythonPath = this.getPythonPath();
 
-    log.info('馃З 鍚姩 Celery Worker...');
+    log.info('Starting Celery worker...');
     log.info('  - Backend Dir:', backendDir);
     log.info('  - Celery Exe:', celeryExe || 'N/A');
     log.info('  - Python Path:', pythonPath);
@@ -899,9 +1859,9 @@ class SynapseApp {
         ]) || 'powershell.exe';
         const killCmd = "Get-CimInstance Win32_Process | Where-Object { ($_.Name -match 'python|celery-worker') -and ($_.CommandLine -match 'fastapi_app.tasks.celery_app' -or $_.CommandLine -match 'synapse-worker') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
         execSync(`"${powershellPath}" -NoProfile -Command "${killCmd}"`, { stdio: 'ignore' });
-        log.info('? Existing Celery workers stopped (if any).');
+        log.info('Existing Celery workers stopped (if any).');
       } catch (error) {
-        log.warn('?? Failed to stop existing Celery workers.', error);
+        log.warn('Failed to stop existing Celery workers.', error);
       }
     }
 
@@ -943,18 +1903,19 @@ class SynapseApp {
     this.celeryProcess.stdout?.on('data', (data) => log.info('[Celery]', data.toString()));
     this.celeryProcess.stderr?.on('data', (data) => log.error('[Celery Error]', data.toString()));
     this.celeryProcess.on('exit', (code) => {
-      log.warn(`鈿狅笍 Celery 閫€鍑猴紝閫€鍑虹爜: ${code}`);
+      log.warn(`Celery exited with code: ${code}`);
     });
   }
 
   async startFrontend(env) {
-    log.info(' startFrontend ?);');
+    log.info('Starting frontend...');
     log.info(`  - this.frontendProcess: ${this.frontendProcess ? 'exists' : 'null'}`);
     log.info(`  - this.isDev: ${this.isDev}`);
     const serviceEnv = env || this.buildServiceEnv();
+    const preferredFrontendPort = this.getPreferredFrontendPort();
 
     if (this.frontendProcess) {
-      log.info('? ');
+      log.info('Frontend process already exists; skipping start.');
       return;
     }
 
@@ -963,31 +1924,32 @@ class SynapseApp {
         process.env.SYNAPSE_START_FRONTEND === '1' ||
         process.env.SYNAPSE_START_SERVICES === '1';
       if (!shouldStartDevFrontend) {
-        log.info('? ?');
+        log.info('Dev frontend auto-start is disabled; skipping start.');
         return;
       }
 
-      if (await this.isPortInUse(3000)) {
-        log.warn('Frontend already running on port 3000; skipping start.');
-        return;
-      }
+      this.frontendPort = await this.findAvailablePort(preferredFrontendPort);
 
       const frontendDir = path.join(this.repoRoot, 'syn_frontend_react');
       log.info(`  - frontendDir: ${frontendDir}`);
+      log.info(`  - frontendPort: ${this.frontendPort}`);
 
       const nextCli = path.join(frontendDir, 'node_modules', 'next', 'dist', 'bin', 'next');
       const launchCmd = this.getNodeCommand();
       const launchArgs = [nextCli, 'dev', '--webpack'];
+      const backendUrl = this.getBackendBaseUrl();
       const frontendEnv = {
         ...serviceEnv,
         NODE_ENV: 'development',
-        PORT: '3000',
+        PORT: String(this.frontendPort),
         HOSTNAME: '127.0.0.1',
-        NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:7000',
-        NEXT_PUBLIC_API_URL: 'http://127.0.0.1:7000'
+        NEXT_PUBLIC_BACKEND_URL: backendUrl,
+        NEXT_PUBLIC_API_URL: backendUrl,
+        NEXT_PUBLIC_SYN_BACKEND_URL: backendUrl,
+        SYN_BACKEND_URL: backendUrl
       };
 
-      log.info(' (dev)...');
+      log.info('Launching development frontend...');
       this.frontendProcess = spawn(launchCmd, launchArgs, {
         env: frontendEnv,
         cwd: frontendDir,
@@ -996,35 +1958,36 @@ class SynapseApp {
       this.frontendProcess.stdout?.on('data', (data) => log.info('[Frontend]', data.toString()));
       this.frontendProcess.stderr?.on('data', (data) => log.error('[Frontend Error]', data.toString()));
       this.frontendProcess.on('exit', (code) => {
-        log.warn(`? ?(dev) : ${code}`);
+        log.warn(`Development frontend exited with code: ${code}`);
         this.frontendProcess = null;
       });
       return;
     }
 
-    if (await this.isPortInUse(3000)) {
-      log.warn('Frontend already running on port 3000; skipping start.');
-      return;
-    }
+    this.frontendPort = await this.findAvailablePort(preferredFrontendPort);
     const frontendDir = path.join(process.resourcesPath, 'frontend', 'standalone');
     const serverJs = path.join(frontendDir, 'server.js');
     log.info(`  - frontendDir: ${frontendDir}`);
     log.info(`  - serverJs: ${serverJs}`);
     log.info(`  - serverJs exists: ${fs.existsSync(serverJs)}`);
+    log.info(`  - frontendPort: ${this.frontendPort}`);
 
     if (!fs.existsSync(serverJs)) {
-      log.warn(`? : ${serverJs}`);
+      log.warn(`Frontend server entrypoint not found: ${serverJs}`);
       return;
     }
-    log.info(' ?...');
+    log.info('Launching packaged frontend...');
+    const backendUrl = this.getBackendBaseUrl();
     const frontendEnv = {
       ...serviceEnv,
       ELECTRON_RUN_AS_NODE: '1',
       NODE_ENV: 'production',
-      PORT: '3000',
+      PORT: String(this.frontendPort),
       HOSTNAME: '127.0.0.1',
-      NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:7000',
-      SYN_BACKEND_URL: 'http://127.0.0.1:7000',
+      NEXT_PUBLIC_BACKEND_URL: backendUrl,
+      NEXT_PUBLIC_API_URL: backendUrl,
+      NEXT_PUBLIC_SYN_BACKEND_URL: backendUrl,
+      SYN_BACKEND_URL: backendUrl,
       NEXT_TELEMETRY_DISABLED: '1'
     };
     this.frontendProcess = spawn(process.execPath, [serverJs], {
@@ -1035,7 +1998,7 @@ class SynapseApp {
     this.frontendProcess.stdout?.on('data', (data) => log.info('[Frontend]', data.toString()));
     this.frontendProcess.stderr?.on('data', (data) => log.error('[Frontend Error]', data.toString()));
     this.frontendProcess.on('exit', (code) => {
-      log.warn(`? : ${code}`);
+      log.warn(`Packaged frontend exited with code: ${code}`);
     });
   }
 
@@ -1044,8 +2007,9 @@ class SynapseApp {
     if (this.backendProcess) {
       return;
     }
-    if (await this.isPortInUse(7000)) {
-      log.warn('Backend already running on port 7000; skipping start.');
+    const backendPort = this.getBackendPort();
+    if (await this.isPortInUse(backendPort)) {
+      log.warn(`Backend already running on port ${backendPort}; skipping start.`);
       return;
     }
     const backendDir = this.getBackendDir();
@@ -1053,7 +2017,7 @@ class SynapseApp {
     const pythonPath = this.getPythonPath();
     const mainScript = path.join(backendDir, 'fastapi_app', 'run.py');
 
-    log.info('馃攧 鍚姩 FastAPI 鍚庣...');
+    log.info('Starting FastAPI backend...');
     log.info('  - Backend Dir:', backendDir);
     log.info('  - Backend Dir exists:', fs.existsSync(backendDir));
     log.info('  - Backend Exe:', backendExe || 'N/A');
@@ -1064,7 +2028,7 @@ class SynapseApp {
 
     return new Promise((resolve, reject) => {
       if (!backendExe && !fs.existsSync(mainScript)) {
-        log.error(`鉂?FastAPI 鑴氭湰鏈壘鍒? ${mainScript}`);
+        log.error(`FastAPI entry script not found: ${mainScript}`);
         resolve();
         return;
       }
@@ -1079,6 +2043,7 @@ class SynapseApp {
         cwd: backendDir,
         env: {
           ...env,
+          PORT: String(backendPort),
           PYTHONPATH: backendDir
         },
         windowsHide: true
@@ -1088,7 +2053,7 @@ class SynapseApp {
         const output = data.toString();
         log.info('[Backend]', output);
         if (output.includes('Uvicorn running') || output.includes('Application startup complete')) {
-          log.info('鉁?FastAPI 鍚庣鍚姩鎴愬姛');
+          log.info('FastAPI backend started successfully');
           resolve();
         }
       });
@@ -1098,12 +2063,12 @@ class SynapseApp {
       });
 
       this.backendProcess.on('error', (error) => {
-        log.error('鉂?鍚庣杩涚▼鍚姩澶辫触:', error);
+        log.error('Backend process failed to start:', error);
         reject(error);
       });
 
       this.backendProcess.on('exit', (code) => {
-        log.warn(`鈿狅笍 鍚庣杩涚▼閫€鍑猴紝閫€鍑虹爜: ${code}`);
+        log.warn(`Backend process exited with code: ${code}`);
       });
 
       setTimeout(() => {
@@ -1114,7 +2079,7 @@ class SynapseApp {
   }
 
   createLauncherWindow() {
-    log.info('馃殌 鍒涘缓鍚姩绠＄悊鍣ㄧ獥鍙?..');
+    log.info('Creating launcher window...');
 
     this.launcherWindow = new BrowserWindow({
       width: 800,
@@ -1135,20 +2100,20 @@ class SynapseApp {
 
     // 鍔犺浇鍚姩绠＄悊鍣ㄩ〉闈?
     const launcherPath = path.join(__dirname, '../launcher/launcher.html');
-    log.info('馃摝 鍔犺浇鍚姩绠＄悊鍣?', launcherPath);
+    log.info('Loading launcher page:', launcherPath);
     this.launcherWindow.loadFile(launcherPath);
 
     // 绐楀彛鍏抽棴浜嬩欢
     this.launcherWindow.on('closed', () => {
       this.launcherWindow = null;
-      log.info('馃殌 鍚姩绠＄悊鍣ㄥ凡鍏抽棴');
+      log.info('Launcher window closed');
     });
 
     this.launcherWindow.show();
   }
 
   createSettingsWindow() {
-    log.info('鈿欙笍 鍒涘缓璁剧疆绐楀彛...');
+    log.info('Creating settings window...');
 
     // 濡傛灉璁剧疆绐楀彛宸插瓨鍦紝鐩存帴鏄剧ず
     if (this.settingsWindow) {
@@ -1176,7 +2141,7 @@ class SynapseApp {
 
     // 鍔犺浇璁剧疆椤甸潰
     const settingsPath = path.join(__dirname, '../settings/settings.html');
-    log.info('馃摝 鍔犺浇璁剧疆椤甸潰:', settingsPath);
+    log.info('Loading settings page:', settingsPath);
     this.settingsWindow.loadFile(settingsPath);
 
     // 绐楀彛鍏抽棴浜嬩欢
@@ -1236,7 +2201,7 @@ class SynapseApp {
   }
 
   setupIPC() {
-    log.info('馃敆 璁剧疆 IPC 閫氫俊...');
+    log.info('Setting up IPC handlers...');
 
     // 鑾峰彇 Playwright 娴忚鍣ㄨ矾寰?
     ipcMain.handle('playwright:getBrowserPath', () => {
@@ -1245,7 +2210,7 @@ class SynapseApp {
 
     // 鍒涘缓鍙鍖栨祻瑙堝櫒绐楀彛锛堢敤浜庤皟璇曞拰棰勮锛?
     ipcMain.handle('browser:createVisual', async (event, url, options = {}) => {
-      log.info('馃寪 鍒涘缓鍙鍖栨祻瑙堝櫒绐楀彛:', url);
+      log.info('Creating visual browser window:', url);
 
       const browserWindow = new BrowserWindow({
         width: options.width || 1200,
@@ -1287,10 +2252,17 @@ class SynapseApp {
       return {
         version: app.getVersion(),
         name: app.getName(),
-        isPackaged: app.isPackaged,
+        isPackaged: this.isPackagedRuntime,
+        runtimeMode: this.isPackagedRuntime ? 'packaged' : 'development',
         resourcesPath: process.resourcesPath,
         playwrightBrowserPath: this.playwrightBrowserPath,
-        runtimeSettings: this.runtimeSettings
+        runtimeSettings: this.runtimeSettings,
+        browserRuntimeInfo: this.getBrowserRuntimeInfo(),
+        backendUrl: this.getBackendBaseUrl(),
+        backendPort: this.getBackendPort(),
+        frontendUrl: this.getFrontendBaseUrl(),
+        frontendPort: this.getFrontendPort(),
+        systemApiBaseUrl: this.getSystemApiBaseUrl()
       };
     });
 
@@ -1300,17 +2272,59 @@ class SynapseApp {
 
     ipcMain.handle('settings:update', (event, settings = {}) => {
       try {
+        if (settings.automationRuntime === 'patchright' || settings.automationRuntime === 'playwright') {
+          const runtimeInfo = this.getBrowserRuntimeInfo();
+          const selectedRuntime = runtimeInfo.runtimes[settings.automationRuntime];
+          if (!selectedRuntime?.installed || selectedRuntime.driverInstalled === false) {
+            return {
+              success: false,
+              error: `runtime_incomplete:${settings.automationRuntime}`,
+              browserRuntimeInfo: runtimeInfo
+            };
+          }
+        }
         const nextSettings = this.saveRuntimeSettings(settings);
-        return { success: true, settings: nextSettings };
+        return {
+          success: true,
+          settings: nextSettings,
+          browserRuntimeInfo: this.getBrowserRuntimeInfo()
+        };
       } catch (error) {
         log.error('Failed to update runtime settings:', error);
         return { success: false, error: error.message };
       }
     });
 
+    ipcMain.handle('browserRuntime:getStatus', () => {
+      try {
+        return { success: true, browserRuntimeInfo: this.getBrowserRuntimeInfo() };
+      } catch (error) {
+        log.error('Failed to inspect browser runtime info:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('browserRuntime:install', async (event, target) => {
+      try {
+        return await this.installBrowserComponent(target);
+      } catch (error) {
+        log.error(`Failed to install browser runtime target ${target}:`, error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('browserRuntime:uninstall', async (event, target) => {
+      try {
+        return this.uninstallBrowserComponent(target);
+      } catch (error) {
+        log.error(`Failed to uninstall browser runtime target ${target}:`, error);
+        return { success: false, error: error.message };
+      }
+    });
+
     // 璁剧疆 Session Cookies
     ipcMain.handle('session:setCookies', async (event, partition, cookies) => {
-      log.info(`馃崻 涓哄垎鍖?${partition} 璁剧疆 ${cookies.length} 涓?Cookies`);
+      log.info(`Setting ${cookies.length} cookies for partition ${partition}`);
       const { session } = require('electron');
       const sess = session.fromPartition(partition);
 
@@ -1351,7 +2365,7 @@ class SynapseApp {
           await sess.cookies.set(details);
           results.push({ name: cookie.name, domain: cookie.domain, success: true });
         } catch (error) {
-          log.error(`鉂?Cookie 璁剧疆澶辫触 ${cookie?.name || '<unknown>'}:`, error);
+          log.error(`Failed to set cookie ${cookie?.name || '<unknown>'}:`, error);
           results.push({ name: cookie?.name, domain: cookie?.domain, success: false, error: error.message });
         }
       }
@@ -1362,7 +2376,7 @@ class SynapseApp {
       } catch (error) {
         log.warn(`Cookie flush failed for partition ${partition}:`, error);
       }
-      log.info(`鉁?鍒嗗尯 ${partition} Cookies 璁剧疆瀹屾垚: ${results.length - failed.length}/${results.length}`);
+      log.info(`Cookie setup finished for ${partition}: ${results.length - failed.length}/${results.length}`);
       return { success: failed.length === 0, results };
     });
 
@@ -1370,17 +2384,17 @@ class SynapseApp {
 
     // 閲嶅惎鍓嶇鏈嶅姟
     ipcMain.handle('system:restart-frontend', async () => {
-      log.info('馃攧 閲嶅惎鍓嶇鏈嶅姟...');
+      log.info('Restarting frontend service...');
       try {
         if (this.frontendProcess) {
           this.frontendProcess.kill();
           this.frontendProcess = null;
         }
         await this.startFrontend();
-        log.info('鉁?鍓嶇鏈嶅姟閲嶅惎鎴愬姛');
+        log.info('Frontend service restarted successfully');
         return { success: true };
       } catch (error) {
-        log.error('鉂?鍓嶇鏈嶅姟閲嶅惎澶辫触:', error);
+        log.error('Failed to restart frontend service:', error);
         return { success: false, error: error.message };
       }
     });
@@ -1389,8 +2403,8 @@ class SynapseApp {
     ipcMain.handle('system:restart-backend', async () => {
       log.info('Restarting backend service...');
       try {
-        if (!this.isDev && this.supervisorProcess && !this.supervisorProcess.killed) {
-          await this.requestSupervisor('/api/restart/backend', 'POST');
+        if (this.supervisorProcess && !this.supervisorProcess.killed) {
+          await this.requestSupervisor('/api/restart/backend', 'POST', 30000);
         } else {
           if (this.backendProcess) {
             this.backendProcess.kill();
@@ -1408,22 +2422,9 @@ class SynapseApp {
 
     // 閲嶅惎鎵€鏈夋湇鍔?
     ipcMain.handle('system:restart-all', async () => {
-      log.info('Restarting all services...');
+        log.info('Restarting all services...');
       try {
-        if (!this.isDev && this.supervisorProcess && !this.supervisorProcess.killed) {
-          await this.requestSupervisor('/api/restart', 'POST');
-          if (this.frontendProcess) {
-            this.frontendProcess.kill();
-            this.frontendProcess = null;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-          await this.startFrontend(this.buildServiceEnv());
-          this.servicesStarted = true;
-        } else {
-          await this.stopManagedServices();
-          await new Promise((resolve) => setTimeout(resolve, 1500));
-          await this.startServices();
-        }
+        await this.restartManagedServices();
         log.info('All services restarted successfully');
         return { success: true };
       } catch (error) {
@@ -1449,6 +2450,10 @@ class SynapseApp {
       return this.quitApplication();
     });
 
+    ipcMain.handle('system:restart-app', async () => {
+      return this.restartApplication();
+    });
+
     // 鑾峰彇绯荤粺鐘舵€?
     ipcMain.handle('system:get-status', () => {
       return {
@@ -1463,6 +2468,26 @@ class SynapseApp {
         supervisor: {
           running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
           pid: this.supervisorProcess?.pid
+        },
+        playwright_worker: {
+          running: this.playwrightWorkerProcess !== null && !this.playwrightWorkerProcess.killed,
+          pid: this.playwrightWorkerProcess?.pid
+        },
+        celery_worker: {
+          running: this.celeryProcess !== null && !this.celeryProcess.killed,
+          pid: this.celeryProcess?.pid
+        },
+        hermes_gateway: {
+          running: false,
+          pid: null,
+        },
+        hermes_dashboard: {
+          running: false,
+          pid: null,
+        },
+        hermes_webui: {
+          running: false,
+          pid: null,
         }
       };
     });
@@ -1472,6 +2497,43 @@ class SynapseApp {
     // 鑾峰彇 supervisor 绠＄悊鐨勬湇鍔＄姸鎬?
     ipcMain.handle('supervisor:get-status', async () => {
       try {
+        if (!this.supervisorProcess || this.supervisorProcess.killed) {
+          return {
+            frontend: {
+              running: this.frontendProcess !== null && !this.frontendProcess.killed,
+              pid: this.frontendProcess?.pid
+            },
+            backend: {
+              running: this.backendProcess !== null && !this.backendProcess.killed,
+              pid: this.backendProcess?.pid
+            },
+            supervisor: {
+              running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
+              pid: this.supervisorProcess?.pid
+            },
+            playwright_worker: {
+              running: this.playwrightWorkerProcess !== null && !this.playwrightWorkerProcess.killed,
+              pid: this.playwrightWorkerProcess?.pid
+            },
+            celery_worker: {
+              running: this.celeryProcess !== null && !this.celeryProcess.killed,
+              pid: this.celeryProcess?.pid
+            },
+            hermes_gateway: {
+              running: false,
+              pid: null,
+            },
+            hermes_dashboard: {
+              running: false,
+              pid: null,
+            },
+            hermes_webui: {
+              running: false,
+              pid: null,
+            }
+          };
+        }
+
         const http = require('http');
 
         return new Promise((resolve, reject) => {
@@ -1485,12 +2547,30 @@ class SynapseApp {
             res.on('end', () => {
               try {
                 const result = JSON.parse(data);
+                const payload = result.data || {};
                 // 娣诲姞鍓嶇鐘舵€?
-                result.data.frontend = {
+                payload.frontend = {
                   running: this.frontendProcess !== null && !this.frontendProcess.killed,
                   pid: this.frontendProcess?.pid
                 };
-                resolve(result.data);
+                const workerStatus = payload.playwright_worker || payload.worker || { running: false, pid: null, external: false };
+                const celeryStatus = payload.celery_worker || payload.celery || { running: false, pid: null, external: false };
+                const gatewayStatus = payload.hermes_gateway || payload.gateway || { running: false, pid: null, external: false };
+                const hermesDashboardStatus = payload.hermes_dashboard || payload.dashboard || { running: false, pid: null, external: false };
+                const hermesWebuiStatus = payload.hermes_webui || payload.webui || { running: false, pid: null, external: false };
+                resolve({
+                  backend: payload.backend || { running: false, pid: null, external: false },
+                  playwright_worker: workerStatus,
+                  celery_worker: celeryStatus,
+                  hermes_gateway: gatewayStatus,
+                  hermes_dashboard: hermesDashboardStatus,
+                  hermes_webui: hermesWebuiStatus,
+                  frontend: payload.frontend,
+                  supervisor: {
+                    running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
+                    pid: this.supervisorProcess?.pid
+                  }
+                });
               } catch (error) {
                 reject(error);
               }
@@ -1507,7 +2587,7 @@ class SynapseApp {
           });
         });
       } catch (error) {
-        log.error('鑾峰彇 supervisor 鐘舵€佸け璐?', error);
+        log.error('Failed to get supervisor status:', error);
         throw error;
       }
     });
@@ -1549,7 +2629,7 @@ class SynapseApp {
           req.end();
         });
       } catch (error) {
-        log.error('鍚姩鏈嶅姟澶辫触:', error);
+        log.error('Failed to start supervisor-managed services:', error);
         return { success: false, error: error.message };
       }
     });
@@ -1594,7 +2674,7 @@ class SynapseApp {
           req.end();
         });
       } catch (error) {
-        log.error('鍋滄鏈嶅姟澶辫触:', error);
+        log.error('Failed to stop supervisor-managed services:', error);
         return { success: false, error: error.message };
       }
     });
@@ -1602,47 +2682,10 @@ class SynapseApp {
     // 閲嶅惎鎵€鏈夋湇鍔?
     ipcMain.handle('supervisor:restart-all', async () => {
       try {
-        const http = require('http');
-
-        return new Promise((resolve, reject) => {
-          const req = http.request({
-            hostname: '127.0.0.1',
-            port: 7002,
-            path: '/api/restart',
-            method: 'POST'
-          }, (res) => {
-            let data = '';
-
-            res.on('data', (chunk) => {
-              data += chunk;
-            });
-
-            res.on('end', () => {
-              try {
-                const result = JSON.parse(data);
-                // 閲嶅惎鍓嶇
-                if (this.frontendProcess) {
-                  this.frontendProcess.kill();
-                  this.frontendProcess = null;
-                }
-                setTimeout(() => {
-                  this.startFrontend();
-                }, 2000);
-                resolve({ success: true, message: result.message });
-              } catch (error) {
-                reject(error);
-              }
-            });
-          });
-
-          req.on('error', (error) => {
-            reject(error);
-          });
-
-          req.end();
-        });
+        await this.restartManagedServices();
+        return { success: true, message: 'Restart completed' };
       } catch (error) {
-        log.error('閲嶅惎鏈嶅姟澶辫触:', error);
+        log.error('Failed to restart supervisor-managed services:', error);
         return { success: false, error: error.message };
       }
     });
@@ -1663,28 +2706,30 @@ class SynapseApp {
 
         return { success: true };
       } catch (error) {
-        log.error('鍚姩涓诲簲鐢ㄥけ璐?', error);
+        log.error('Failed to launch main application window:', error);
         return { success: false, error: error.message };
       }
     });
 
     // ========== 鎵撳紑璁剧疆绐楀彛 ==========
     ipcMain.handle('window:openSettings', () => {
-      log.info('鈿欙笍 鎵撳紑璁剧疆绐楀彛');
+      log.info('Opening settings window');
       this.createSettingsWindow();
       return { success: true };
     });
 
     // ========== 鏁版嵁娓呯悊 IPC ==========
     ipcMain.handle('system:clear-video-data', async (event, options = {}) => {
-      log.info('馃棏锔?娓呯悊瑙嗛鏁版嵁...');
+      log.info('Clearing video data...');
       try {
         const http = require('http');
+        const backendBaseUrl = new URL(this.getBackendBaseUrl());
+        const backendPort = Number.parseInt(backendBaseUrl.port, 10) || (backendBaseUrl.protocol === 'https:' ? 443 : 80);
 
         return new Promise((resolve, reject) => {
           const req = http.request({
-            hostname: '127.0.0.1',
-            port: 7000,  // 淇: FastAPI 榛樿绔彛鏄?7000 鑰岄潪 8000
+            hostname: backendBaseUrl.hostname,
+            port: backendPort,
             path: '/api/v1/system/clear-video-data',
             method: 'POST'
           }, (res) => {
@@ -1698,21 +2743,21 @@ class SynapseApp {
               try {
                 const result = JSON.parse(data);
                 if (res.statusCode === 200) {
-                  log.info('鉁?瑙嗛鏁版嵁娓呯悊鎴愬姛');
+                  log.info('Video data cleared successfully');
                   resolve(result);
                 } else {
-                  log.error('鉂?瑙嗛鏁版嵁娓呯悊澶辫触:', result);
-                  reject(new Error(result.detail || '娓呯悊澶辫触'));
+                  log.error('Video data clear failed:', result);
+                  reject(new Error(result.detail || 'Clear operation failed'));
                 }
               } catch (error) {
-                log.error('鉂?瑙ｆ瀽鍝嶅簲澶辫触:', error);
+                log.error('Failed to parse clear-video-data response:', error);
                 reject(error);
               }
             });
           });
 
           req.on('error', (error) => {
-            log.error('鉂?璇锋眰澶辫触:', error);
+            log.error('clear-video-data request failed:', error);
             reject(error);
           });
 
@@ -1724,12 +2769,12 @@ class SynapseApp {
           req.end();
         });
       } catch (error) {
-        log.error('鉂?娓呯悊瑙嗛鏁版嵁澶辫触:', error);
+        log.error('Failed to clear video data:', error);
         return { success: false, error: error.message };
       }
     });
 
-    log.info('鉁?IPC 閫氫俊璁剧疆瀹屾垚');
+    log.info('IPC handlers ready');
   }
 
   setupAppEvents() {
@@ -1812,21 +2857,19 @@ const synapseApp = new SynapseApp();
 
 // 鎹曡幏鏈鐞嗙殑閿欒
 process.on('uncaughtException', (error) => {
-  log.error('鉂?鏈崟鑾风殑寮傚父:', error);
+  log.error('Uncaught exception:', error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  log.error('鉂?鏈鐞嗙殑 Promise 鎷掔粷:', reason);
+  log.error('Unhandled promise rejection:', reason);
 });
 
 // 鍒濆鍖栧簲鐢?
 synapseApp.initialize().catch((error) => {
-  log.error('鉂?搴旂敤鍒濆鍖栧け璐?', error);
+  log.error('Application initialization failed:', error);
   if (app && app.quit) {
     app.quit();
   } else {
     process.exit(1);
   }
 });
-
-

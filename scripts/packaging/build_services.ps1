@@ -289,7 +289,6 @@ function Prune-PlaywrightDriverNode {
 
   $patchrightNode = Find-PackagedDriverNode -TargetDir $targetDir -RuntimeName "patchright"
   $playwrightNodes = @(Get-PackagedDriverNodes -TargetDir $targetDir -RuntimeName "playwright")
-  $playwrightNode = $playwrightNodes | Select-Object -First 1
   $expectedPatchrightNode = Join-Path $targetDir "_internal\patchright\driver\node.exe"
 
   if (-not $patchrightNode) {
@@ -299,10 +298,6 @@ function Prune-PlaywrightDriverNode {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $expectedPatchrightNode) | Out-Null
         Copy-Item -LiteralPath $sourcePatchrightNode -Destination $expectedPatchrightNode -Force
         Write-Host "Injected patchright driver node.exe into packaged $TargetName from $sourcePatchrightNode"
-      } elseif ($playwrightNode) {
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $expectedPatchrightNode) | Out-Null
-        Copy-Item -LiteralPath $playwrightNode -Destination $expectedPatchrightNode -Force
-        Write-Host "Rebased packaged Playwright driver node.exe into patchright runtime for $TargetName from $playwrightNode"
       }
 
       $patchrightNode = Find-PackagedDriverNode -TargetDir $targetDir -RuntimeName "patchright"
@@ -311,16 +306,6 @@ function Prune-PlaywrightDriverNode {
       }
     }
     return
-  }
-
-  if ($patchrightNode -ne $expectedPatchrightNode) {
-    $expectedPatchrightDir = Split-Path $expectedPatchrightNode -Parent
-    if (-not (Test-Path $expectedPatchrightDir)) {
-      New-Item -ItemType Directory -Force -Path $expectedPatchrightDir | Out-Null
-    }
-    Move-Item -LiteralPath $patchrightNode -Destination $expectedPatchrightNode -Force
-    Write-Host "Rebased patchright driver node.exe to $expectedPatchrightNode"
-    $patchrightNode = $expectedPatchrightNode
   }
 
   foreach ($candidate in $playwrightNodes) {

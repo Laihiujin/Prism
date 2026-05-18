@@ -22,6 +22,7 @@ set "SUPERVISOR_PY_FALLBACK=%ROOT%\desktop-electron\dist\win-unpacked\resources\
 cd /d "%ROOT%"
 
 set PYTHONPATH=%ROOT%\syn_backend;%ROOT%\desktop-electron\resources\supervisor
+set "SYNAPSE_HERMES_PYTHON=%PY%"
 
 echo [Supervisor] Starting service manager...
 echo [Supervisor] API Port: 7002
