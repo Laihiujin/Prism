@@ -16,19 +16,29 @@ function normalizeBackendUrl(raw: string): string {
   }
 }
 
-const resolvedBackendUrl = normalizeBackendUrl(
-  process.env.SYN_BACKEND_URL ||
-    process.env.NEXT_PUBLIC_SYN_BACKEND_URL ||
-    process.env.NEXT_PUBLIC_BACKEND_URL ||
-    "http://127.0.0.1:7000"
+const publicBackendUrl = normalizeBackendUrl(
+  process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:7000"
 )
 
-const backendUrl = new URL(resolvedBackendUrl)
-const backendPattern: { protocol: "http" | "https"; hostname: string; port?: string; pathname?: string } = {
-  protocol: backendUrl.protocol.replace(":", "") as "http" | "https",
-  hostname: backendUrl.hostname,
-  ...(backendUrl.port ? { port: backendUrl.port } : {}),
+const internalBackendUrl = normalizeBackendUrl(
+  process.env.SYNAPSE_INTERNAL_BACKEND_URL ||
+    process.env.SYN_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_SYN_BACKEND_URL ||
+    publicBackendUrl
+)
+
+function toRemotePattern(
+  rawUrl: string
+): { protocol: "http" | "https"; hostname: string; port?: string; pathname?: string } {
+  const url = new URL(rawUrl)
+  return {
+    protocol: url.protocol.replace(":", "") as "http" | "https",
+    hostname: url.hostname,
+    ...(url.port ? { port: url.port } : {}),
+  }
 }
+
+const backendPatterns = [publicBackendUrl, internalBackendUrl].map(toRemotePattern)
 
 const localhostPatterns: Array<{ protocol: "http" | "https"; hostname: string; port?: string }> = [
   { protocol: "http", hostname: "localhost" },
@@ -115,7 +125,7 @@ const nextConfig: NextConfig = {
         hostname: "i2.hdslb.com",
       },
       ...localhostPatterns,
-      backendPattern,
+      ...backendPatterns,
     ],
   },
 
@@ -123,54 +133,54 @@ const nextConfig: NextConfig = {
     const docsRewrites = [
       {
         source: "/docs",
-        destination: `${resolvedBackendUrl}/apidocs/`,
+        destination: `${internalBackendUrl}/apidocs/`,
       },
       {
         source: "/apidocs/:path*",
-        destination: `${resolvedBackendUrl}/apidocs/:path*`,
+        destination: `${internalBackendUrl}/apidocs/:path*`,
       },
       {
         source: "/flasgger_static/:path*",
-        destination: `${resolvedBackendUrl}/flasgger_static/:path*`,
+        destination: `${internalBackendUrl}/flasgger_static/:path*`,
       },
     ]
 
     const backendRewrites = [
       {
         source: "/api/chat",
-        destination: `${resolvedBackendUrl}/api/v1/ai/chat`,
+        destination: `${internalBackendUrl}/api/v1/ai/chat`,
       },
       {
         source: "/api/v1/:path*",
-        destination: `${resolvedBackendUrl}/api/v1/:path*`,
+        destination: `${internalBackendUrl}/api/v1/:path*`,
       },
       {
         source: "/api/:path*",
-        destination: `${resolvedBackendUrl}/api/v1/:path*`,
+        destination: `${internalBackendUrl}/api/v1/:path*`,
       },
       {
         source: "/getFiles",
-        destination: `${resolvedBackendUrl}/getFiles`,
+        destination: `${internalBackendUrl}/getFiles`,
       },
       {
         source: "/getValidAccounts",
-        destination: `${resolvedBackendUrl}/getValidAccounts`,
+        destination: `${internalBackendUrl}/getValidAccounts`,
       },
       {
         source: "/uploadSave",
-        destination: `${resolvedBackendUrl}/uploadSave`,
+        destination: `${internalBackendUrl}/uploadSave`,
       },
       {
         source: "/deleteFile",
-        destination: `${resolvedBackendUrl}/deleteFile`,
+        destination: `${internalBackendUrl}/deleteFile`,
       },
       {
         source: "/updateFileMeta",
-        destination: `${resolvedBackendUrl}/updateFileMeta`,
+        destination: `${internalBackendUrl}/updateFileMeta`,
       },
       {
         source: "/health",
-        destination: `${resolvedBackendUrl}/health`,
+        destination: `${internalBackendUrl}/health`,
       },
     ]
 
