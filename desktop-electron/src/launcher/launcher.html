@@ -263,6 +263,15 @@
                 </div>
                 <div class="service-item">
                     <div class="service-info">
+                        <span class="status-indicator" id="status-gateway"></span>
+                        <div>
+                            <div class="service-name">Hermes Gateway</div>
+                            <div class="service-pid" id="pid-gateway">未运行</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="service-item">
+                    <div class="service-info">
                         <span class="status-indicator" id="status-frontend"></span>
                         <div>
                             <div class="service-name">Next.js 前端</div>
@@ -328,11 +337,13 @@
                 updateServiceStatus('backend', status.backend);
                 updateServiceStatus('worker', status.worker);
                 updateServiceStatus('celery', status.celery);
+                updateServiceStatus('gateway', status.gateway);
                 updateServiceStatus('frontend', status.frontend);
 
                 // 更新总体状态
                 const allRunning = status.backend.running && status.worker.running &&
-                                 status.celery.running && status.frontend.running;
+                                 status.celery.running && status.gateway.running &&
+                                 status.frontend.running;
                 const overallStatus = document.getElementById('overall-status');
                 overallStatus.className = 'status-indicator ' + (allRunning ? 'running' : 'stopped');
 

@@ -6,7 +6,9 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import asyncio
+import os
 import subprocess
+import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -22,82 +24,289 @@ router.include_router(browser_profiles_router)
 SCRIPTS_DIR = Path(__file__).parent.parent.parent.parent / "scripts"
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[5]
+
+
+def _browsers_root() -> Path:
+    return _repo_root() / "browsers"
+
+
+def _sorted_subdirs(root: Path, prefix: str) -> list[Path]:
+    try:
+        return sorted(
+            [item for item in root.iterdir() if item.is_dir() and item.name.startswith(prefix)],
+            key=lambda item: item.name,
+            reverse=True,
+        )
+    except Exception:
+        return []
+
+
+def _first_existing_path(candidates: list[Path]) -> Optional[Path]:
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _extract_browser_asset_version(executable_path: Optional[Path]) -> Optional[str]:
+    if not executable_path:
+        return None
+
+    prefixes = ("hibbiki-", "chromium-", "chrome-", "firefox-")
+    for parent in executable_path.parents:
+        if parent.name.startswith(prefixes):
+            return parent.name
+    return None
+
+
+def _resolve_chromium_path(browsers_root: Path) -> Optional[Path]:
+    chromium_root = browsers_root / "chromium"
+    candidates: list[Path] = []
+
+    for directory in _sorted_subdirs(chromium_root, "hibbiki-"):
+        candidates.append(directory / "Chrome-bin" / "chrome.exe")
+    for directory in _sorted_subdirs(browsers_root, "chromium-"):
+        candidates.append(directory / "chrome-win64" / "chrome.exe")
+        candidates.append(directory / "chrome-win" / "chrome.exe")
+    for directory in _sorted_subdirs(chromium_root, "chromium-"):
+        candidates.append(directory / "chrome-win64" / "chrome.exe")
+        candidates.append(directory / "chrome-win" / "chrome.exe")
+    for directory in _sorted_subdirs(browsers_root / "chrome-for-testing", "chrome-"):
+        candidates.append(directory / "chrome-win64" / "chrome.exe")
+
+    return _first_existing_path(candidates)
+
+
+def _resolve_firefox_path(browsers_root: Path) -> Optional[Path]:
+    candidates: list[Path] = []
+
+    for directory in _sorted_subdirs(browsers_root, "firefox-"):
+        candidates.append(directory / "firefox" / "firefox.exe")
+    for directory in _sorted_subdirs(browsers_root / "firefox", "firefox-"):
+        candidates.append(directory / "firefox" / "firefox.exe")
+
+    return _first_existing_path(candidates)
+
+
+def _get_python_package_info(package_name: str) -> Dict[str, Any]:
+    import importlib.metadata
+    import importlib.util
+
+    spec = importlib.util.find_spec(package_name)
+    payload: Dict[str, Any] = {
+        "installed": spec is not None,
+        "version": None,
+        "error": None,
+    }
+
+    if spec is None:
+        return payload
+
+    try:
+        payload["version"] = importlib.metadata.version(package_name)
+    except Exception as exc:
+        payload["error"] = str(exc)
+
+    return payload
+
+
+def _get_browser_runtime_info() -> Dict[str, Any]:
+    browsers_root = _browsers_root()
+    chromium_path = _resolve_chromium_path(browsers_root)
+    firefox_path = _resolve_firefox_path(browsers_root)
+    patchright_info = _get_python_package_info("patchright")
+    playwright_info = _get_python_package_info("playwright")
+    preferred_runtime = os.getenv("SYNAPSE_PLAYWRIGHT_RUNTIME", "patchright").strip().lower() or "patchright"
+    if preferred_runtime not in {"patchright", "playwright"}:
+        preferred_runtime = "patchright"
+
+    active_runtime = None
+    if preferred_runtime == "playwright" and playwright_info["installed"]:
+        active_runtime = "playwright"
+    elif preferred_runtime == "patchright" and patchright_info["installed"]:
+        active_runtime = "patchright"
+    elif patchright_info["installed"]:
+        active_runtime = "patchright"
+    elif playwright_info["installed"]:
+        active_runtime = "playwright"
+
+    return {
+        "pythonPath": sys.executable,
+        "browsersPath": str(browsers_root),
+        "preferredRuntime": preferred_runtime,
+        "activeRuntime": active_runtime,
+        "runtimes": {
+            "patchright": patchright_info,
+            "playwright": playwright_info,
+        },
+        "browsers": {
+            "chromium": {
+                "installed": chromium_path is not None,
+                "path": str(chromium_path) if chromium_path else None,
+                "version": _extract_browser_asset_version(chromium_path),
+                "uninstallable": True,
+            },
+            "firefox": {
+                "installed": firefox_path is not None,
+                "path": str(firefox_path) if firefox_path else None,
+                "version": _extract_browser_asset_version(firefox_path),
+                "uninstallable": True,
+            },
+        },
+    }
+
+
+def _run_runtime_command(args: list[str]) -> subprocess.CompletedProcess:
+    env = os.environ.copy()
+    env["PLAYWRIGHT_BROWSERS_PATH"] = str(_browsers_root())
+    env["SYNAPSE_PLAYWRIGHT_RUNTIME"] = _get_browser_runtime_info()["preferredRuntime"]
+    _browsers_root().mkdir(parents=True, exist_ok=True)
+    return subprocess.run(
+        [sys.executable, *args],
+        cwd=str(_repo_root()),
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+
+def _run_hibbiki_chromium_install() -> subprocess.CompletedProcess:
+    script_path = _repo_root() / "scripts" / "packaging" / "install_hibbiki_chromium.ps1"
+    if not script_path.exists():
+        raise FileNotFoundError(f"Hibbiki installer not found: {script_path}")
+
+    env = os.environ.copy()
+    env["PLAYWRIGHT_BROWSERS_PATH"] = str(_browsers_root())
+    env["SYNAPSE_PLAYWRIGHT_RUNTIME"] = _get_browser_runtime_info()["preferredRuntime"]
+    _browsers_root().mkdir(parents=True, exist_ok=True)
+    return subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+            "-ProjectRoot",
+            str(_repo_root()),
+            "-Clean",
+        ],
+        cwd=str(_repo_root()),
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+
+def _remove_path_if_exists(target: Path) -> bool:
+    if not target.exists():
+        return False
+    if target.is_dir():
+        import shutil
+
+        shutil.rmtree(target, ignore_errors=False)
+    else:
+        target.unlink()
+    return True
+
+
+def _uninstall_browser_asset(target: str) -> list[str]:
+    browsers_root = _browsers_root()
+    removed_paths: list[str] = []
+
+    if target == "chromium":
+        candidates = [
+            browsers_root / "chromium",
+            *_sorted_subdirs(browsers_root, "chromium-"),
+            *_sorted_subdirs(browsers_root, "chromium_headless_shell-"),
+            browsers_root / "chrome-for-testing",
+        ]
+    elif target == "firefox":
+        candidates = [
+            browsers_root / "firefox",
+            *_sorted_subdirs(browsers_root, "firefox-"),
+        ]
+    else:
+        raise ValueError(f"unsupported_uninstall_target:{target}")
+
+    for candidate in candidates:
+        if _remove_path_if_exists(candidate):
+            removed_paths.append(str(candidate))
+
+    return removed_paths
+
+
 class SyncDatabaseRequest(BaseModel):
     """数据库同步请求"""
     force: bool = False
 
 
 class ConfigCheckResponse(BaseModel):
-    """配置检查响应"""
+    """??????"""
     status: str
     issues: list[str]
     recommendations: list[str]
 
 
-@router.post("/sync-database", summary="同步数据库")
+@router.post("/sync-database", summary="?????")
 async def sync_database(request: SyncDatabaseRequest, background_tasks: BackgroundTasks):
     """
-    执行数据库同步操作
-    原脚本: syn_backend/sync_db_files.py
+    ?????????
+    ???: syn_backend/sync_db_files.py
     """
     try:
-        # 导入同步逻辑
         from myUtils.db_sync import sync_databases
 
-        # 在后台执行同步
-        background_tasks.add_task(
-            sync_databases,
-            force=request.force
-        )
-
+        background_tasks.add_task(sync_databases, force=request.force)
         return {
             "status": "success",
-            "message": "数据库同步任务已启动",
-            "task_id": "sync_db_" + str(asyncio.current_task().get_name())
+            "message": "??????????",
+            "task_id": "sync_db_" + str(asyncio.current_task().get_name()),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"同步失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"????: {str(e)}")
 
 
-@router.get("/check-config", response_model=ConfigCheckResponse, summary="检查系统配置")
+@router.get("/check-config", response_model=ConfigCheckResponse, summary="??????")
 async def check_config():
     """
-    检查系统配置完整性
-    原脚本: syn_backend/check_config.py
+    ?????????
+    ???: syn_backend/check_config.py
     """
     try:
         issues = []
         recommendations = []
-        
-        # 检查环境变量
+
         from fastapi_app.core.config import settings
-        
-        # 检查数据库文件
+
         db_files = [
             settings.DATABASE_PATH,
             settings.COOKIE_DB_PATH,
-            settings.AI_LOGS_DB_PATH
+            settings.AI_LOGS_DB_PATH,
         ]
-        
         for db_file in db_files:
             if not Path(db_file).exists():
-                issues.append(f"数据库文件不存在: {db_file}")
-        
-        # 检查必要目录
+                issues.append(f"????????: {db_file}")
+
         required_dirs = [
             settings.COOKIE_FILES_DIR,
             settings.VIDEO_FILES_DIR,
-            settings.UPLOAD_DIR
+            settings.UPLOAD_DIR,
         ]
-        
         for dir_path in required_dirs:
             if not Path(dir_path).exists():
-                issues.append(f"目录不存在: {dir_path}")
-                recommendations.append(f"创建目录: mkdir -p {dir_path}")
-        
-        # 检查 Playwright Worker（浏览器自动化已进程级解耦）
+                issues.append(f"?????: {dir_path}")
+                recommendations.append(f"????: mkdir -p {dir_path}")
+
         try:
             import httpx
+
             resp = httpx.get("http://127.0.0.1:7001/health", timeout=3.0)
             resp.raise_for_status()
             browser_ok = resp.json().get("status") == "ok"
@@ -105,21 +314,97 @@ async def check_config():
             browser_ok = False
 
         if not browser_ok:
-            issues.append("Playwright Worker 未运行或不可用")
-            recommendations.append("运行: scripts/launchers/start_worker.bat (Windows) 或 python syn_backend/playwright_worker/worker.py")
-        
+            issues.append("Playwright Worker ???????")
+            recommendations.append(
+                "??: scripts/launchers/start_worker.bat (Windows) ? python syn_backend/playwright_worker/worker.py"
+            )
+
         status = "healthy" if not issues else "warning"
-        
         return ConfigCheckResponse(
             status=status,
             issues=issues,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"配置检查失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"??????: {str(e)}")
 
 
-@router.post("/manual-sync", summary="手动触发账号同步")
+@router.get("/browser-runtime/status", summary="??????????")
+async def browser_runtime_status():
+    try:
+        return {
+            "success": True,
+            "browserRuntimeInfo": _get_browser_runtime_info(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"????????????: {str(e)}")
+
+
+@router.post("/browser-runtime/install/{target}", summary="??????????")
+async def browser_runtime_install(target: str):
+    target = (target or "").strip().lower()
+    allowed_targets = {"chromium", "firefox", "patchright", "playwright"}
+    if target not in allowed_targets:
+        raise HTTPException(status_code=400, detail=f"????????: {target}")
+
+    runtime_info = _get_browser_runtime_info()
+
+    if target in {"patchright", "playwright"}:
+        result = _run_runtime_command(["-m", "pip", "install", target])
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+            "error": None if result.returncode == 0 else (result.stderr.strip() or result.stdout.strip()),
+            "browserRuntimeInfo": _get_browser_runtime_info(),
+        }
+
+    if target == "chromium":
+        install_result = _run_hibbiki_chromium_install()
+    else:
+        if not runtime_info["runtimes"]["patchright"]["installed"]:
+            install_runtime = _run_runtime_command(["-m", "pip", "install", "patchright"])
+            if install_runtime.returncode != 0:
+                return {
+                    "success": False,
+                    "output": install_runtime.stdout,
+                    "error": install_runtime.stderr.strip() or install_runtime.stdout.strip(),
+                    "browserRuntimeInfo": _get_browser_runtime_info(),
+                }
+
+        install_result = _run_runtime_command(["-m", "patchright", "install", target])
+        if install_result.returncode != 0 and runtime_info["runtimes"]["playwright"]["installed"]:
+            fallback_result = _run_runtime_command(["-m", "playwright", "install", target])
+            if fallback_result.returncode == 0:
+                install_result = fallback_result
+
+    return {
+        "success": install_result.returncode == 0,
+        "output": install_result.stdout,
+        "error": None if install_result.returncode == 0 else (install_result.stderr.strip() or install_result.stdout.strip()),
+        "browserRuntimeInfo": _get_browser_runtime_info(),
+    }
+
+
+@router.post("/browser-runtime/uninstall/{target}", summary="????????????")
+async def browser_runtime_uninstall(target: str):
+    target = (target or "").strip().lower()
+    allowed_targets = {"chromium", "firefox"}
+    if target not in allowed_targets:
+        raise HTTPException(status_code=400, detail=f"????????: {target}")
+
+    try:
+        removed_paths = _uninstall_browser_asset(target)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"????????????: {str(e)}")
+
+    return {
+        "success": True,
+        "removedPaths": removed_paths,
+        "browserRuntimeInfo": _get_browser_runtime_info(),
+    }
+
+
+@router.post("/manual-sync", summary="????????")
 async def manual_sync(background_tasks: BackgroundTasks):
     """
     手动触发账号Cookie同步
@@ -652,14 +937,14 @@ async def call_supervisor_api(endpoint: str, method: str = "GET") -> Dict[str, A
         async with aiohttp.ClientSession() as session:
             if method == "GET":
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 200:
+                    if 200 <= resp.status < 300:
                         return await resp.json()
                     else:
                         text = await resp.text()
                         raise HTTPException(status_code=resp.status, detail=f"Supervisor API error: {text}")
             elif method == "POST":
                 async with session.post(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                    if resp.status == 200:
+                    if 200 <= resp.status < 300:
                         return await resp.json()
                     else:
                         text = await resp.text()
@@ -733,7 +1018,7 @@ async def restart_all_services():
 async def restart_service(service_name: str):
     """
     重启指定的服务
-    可用服务: backend, playwright-worker, celery-worker
+    可用服务: backend, playwright-worker, celery-worker, hermes-gateway
     """
     result = await call_supervisor_api(f"/restart/{service_name}", method="POST")
     return result

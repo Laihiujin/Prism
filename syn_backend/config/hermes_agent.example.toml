@@ -1,0 +1,8 @@
+[llm]
+provider = "openai"
+model = "gpt-4.1"
+api_key = "your-api-key"
+base_url = "https://api.openai.com/v1"
+
+[runtime]
+max_turns = 12

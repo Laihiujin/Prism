@@ -275,7 +275,7 @@ export async function GET() {
     const tasks = finalData?.tasks ?? []
     const finalSummary = finalData?.summary ?? buildSummaryFromTasks(tasks)
 
-    console.log(`[/api/tasks] ========== 返回 ${tasks.length} 个任务 ==========`)
+    console.log(`[/api/tasks] ========== Returned ${tasks.length} tasks ==========`)
     console.log(`[/api/tasks] Final summary:`, finalSummary)
 
     return NextResponse.json({

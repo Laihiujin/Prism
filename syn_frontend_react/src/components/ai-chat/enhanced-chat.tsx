@@ -4,32 +4,19 @@ import * as React from "react"
 import { Thread, ThreadSidebar } from "./thread-sidebar"
 import { ChatList } from "./chat-list"
 import type { ToolCall } from "./tool-call-display"
-import {
-  AgentReasoning,
-  Tool,
-  ToolHeader,
-  ToolName,
-  ToolStatus,
-  ToolResult,
-  ToolConfirmation,
-  TaskList
-} from "@/components/ai-elements"
 import type { ConfirmationState } from "@/components/ai-elements/confirmation"
 import {
   PromptInput,
-  PromptInputHeader,
   PromptInputBody,
-  PromptInputFooter,
   PromptInputTextarea,
-  PromptInputSubmit
 } from "@/components/ai-elements/prompt-input"
 import {
   Conversation,
   ConversationContent
 } from "@/components/ai-elements/conversation"
+import { HermesLogoIcon } from "@/components/hermes-logo-icon"
 import { useAgentStream } from "@/hooks/useAgentStream"
-import { Link2, Sparkles, Settings, MessageSquare, Sidebar } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { AlertTriangle, CheckCircle2, MessageSquare, Settings, Sidebar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
@@ -53,10 +40,22 @@ interface ModelConfig {
   is_active: boolean
 }
 
-export function EnhancedAIChat() {
+interface EnhancedAIChatProps {
+  initialMode?: "chat" | "agent" | "openclaw"
+  lockedMode?: boolean
+  title?: string
+  subtitle?: string
+}
+
+export function EnhancedAIChat({
+  initialMode = "chat",
+  lockedMode = false,
+  title,
+  subtitle,
+}: EnhancedAIChatProps = {}) {
   const router = useRouter()
   const { toast } = useToast()
-  const [mode, setMode] = React.useState<"chat" | "agent" | "openclaw">("chat")
+  const [mode, setMode] = React.useState<"chat" | "agent" | "openclaw">(initialMode)
 
   // Thread绠＄悊
   const [threads, setThreads] = React.useState<Thread[]>([])
@@ -113,6 +112,12 @@ export function EnhancedAIChat() {
   const [chatModelConfig, setChatModelConfig] = React.useState<ModelConfig | null>(null)
   const [agentModelConfig, setAgentModelConfig] = React.useState<ModelConfig | null>(null)
   const [openclawModelConfig, setopenclawModelConfig] = React.useState<ModelConfig | null>(null)
+
+  React.useEffect(() => {
+    if (lockedMode && mode !== initialMode) {
+      setMode(initialMode)
+    }
+  }, [initialMode, lockedMode, mode])
 
   // 鍔犺浇绾跨▼鍒楄〃锛堟寜妯″紡杩囨护锛?
   const loadThreads = React.useCallback(async () => {
@@ -227,7 +232,7 @@ export function EnhancedAIChat() {
         variant: "destructive"
       })
     }
-  }, [toast])
+  }, [decodeUnicodeEscapes, toast])
 
   // 鍒涘缓鏂扮嚎绋嬶紙甯?mode 鍙傛暟锛?
   const handleCreateThread = React.useCallback(async () => {
@@ -411,7 +416,7 @@ export function EnhancedAIChat() {
     clearManusConfirmationTimer()
     try {
       const response = await fetch(
-        `${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/agent/openclaw-confirm`,
+        `${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/agent/hermes-confirm`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -444,7 +449,7 @@ export function EnhancedAIChat() {
     if (mode === "openclaw" && manusStream.isStreaming) {
       toast({
         title: "请稍等",
-        description: "OpenClaw 正在执行中，结束后再发送下一条消息。",
+        description: "Hermes Agent 正在执行中，结束后再发送下一条消息。",
       })
       return
     }
@@ -691,7 +696,7 @@ export function EnhancedAIChat() {
           await startManusStreaming(
             value,
             undefined,
-            true,
+            false,
             threadId || undefined
           )
 
@@ -826,12 +831,9 @@ export function EnhancedAIChat() {
           break
         }
         case "confirmation_required": {
-          clearManusConfirmationTimer()
+          setManusConfirmation(null)
           setManusConfirming(false)
-          setManusConfirmation({
-            state: "request",
-            taskSummary: ev.task_summary
-          })
+          void submitManusConfirmation(true)
           break
         }
         case "confirmation_received": {
@@ -874,7 +876,7 @@ export function EnhancedAIChat() {
     }
 
     manusEventCursorRef.current = events.length
-  }, [clearManusConfirmationTimer, mode, manusStream.events, scheduleManusConfirmationClear])
+  }, [clearManusConfirmationTimer, decodeUnicodeEscapes, mode, manusStream.events, scheduleManusConfirmationClear, submitManusConfirmation])
 
   // openclaw: 鎵ц缁撴潫鍚庡皢鈥滆繍琛屾棩蹇椻€濊惤鐩樺埌绾跨▼娑堟伅锛岀‘淇濆埛鏂?鍒囨崲绾跨▼鍚?UI 浠嶈兘鐪嬪埌璁板綍
   React.useEffect(() => {
@@ -965,8 +967,7 @@ export function EnhancedAIChat() {
   }, [clearManusConfirmationTimer, mode, loadThreads, resetManusStream])
 
   return (
-    <div className="flex h-[85vh] w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl">
-      {/* Thread Sidebar */}
+    <div className="flex h-[88vh] w-full overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-[0_40px_120px_-70px_rgba(0,0,0,0.95)]">
       {sidebarOpen && (
         <ThreadSidebar
           threads={threads}
@@ -978,70 +979,81 @@ export function EnhancedAIChat() {
         />
       )}
 
-      {/* Main Chat Area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/5 bg-neutral-900/50 px-6 py-4 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white/60 hover:text-white hover:bg-white/10"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <Sidebar className="h-4 w-4" />
-            </Button>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="border-b border-white/8 bg-black px-6 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mt-1 rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                <Sidebar className="h-4 w-4" />
+              </Button>
 
-            <div>
-              <h2 className="text-base font-bold text-white">SynapseAutomation</h2>
-              <div className="flex items-center gap-2">
-                {/* <p className="text-xs font-medium text-white/50">AiAgent</p> */}
-                {/* 鏄剧ず褰撳墠妯″紡浣跨敤鐨勬ā鍨?*/}
-                {mode === "chat" && chatModelConfig && (
-                  <span className="text-xs text-blue-400/70">对话模型：{chatModelConfig.model_name}</span>
-                )}
-                {mode === "openclaw" && openclawModelConfig && (
-                  <span className="text-xs text-orange-400/70">OpenClaw 模型：{openclawModelConfig.model_name}</span>
-                )}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
+                    <HermesLogoIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold tracking-tight text-white">{title || "Hermes Agent"}</h2>
+                    <p className="text-sm text-white/55">{subtitle || "极简黑色会话窗口，直接执行当前项目任务"}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 text-xs text-white/50">
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                    模型：{mode === "chat" ? chatModelConfig?.model_name || "未配置" : openclawModelConfig?.model_name || "未配置"}
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                    会话：{threads.length}
+                  </div>
+                </div>
               </div>
             </div>
 
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/ai-agent/settings")}
-              className="text-white/60 hover:text-white hover:bg-white/10"
-            >
-              <Settings className="h-4 w-4 mr-1" />
-              閰嶇疆
-            </Button>
-            <Badge
-              variant="outline"
-              title={connectionError || (isConnected ? "系统运行正常" : "未配置 AI 服务")}
-              className={`gap-1 text-xs font-normal transition-all ${isConnected
-                ? connectionError
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
-                  : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                : "border-white/10 bg-white/5 text-white/40"
+            <div className="flex flex-wrap items-center gap-3">
+              <div
+                title={connectionError || (isConnected ? "Hermes 运行正常" : "未连接到 AI 后端")}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
+                  isConnected
+                    ? connectionError
+                      ? "border-amber-500/35 bg-amber-500/10 text-amber-200"
+                      : "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
+                    : "border-white/10 bg-white/5 text-white/55"
                 }`}
-            >
-              <Sparkles className="h-3 w-3" />
-              {isConnected ? (connectionError ? "不稳定" : "在线") : "离线"}
-            </Badge>
+              >
+                {isConnected && !connectionError ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                )}
+                {isConnected ? (connectionError ? "连接不稳定" : "Hermes 在线") : "Hermes 离线"}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/ai-agent/settings")}
+                className="rounded-full border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                运行时与入口
+              </Button>
+            </div>
           </div>
         </div>
 
-
-        <div className="border-b border-white/5 bg-neutral-900/40 px-6 py-3">
-          <div className="relative flex items-center justify-center">
+        {!lockedMode && (
+          <div className="border-b border-white/8 bg-black/20 px-6 py-3">
+            <div className="relative flex items-center justify-center">
               <Tabs value={mode === "agent" ? "chat" : mode} onValueChange={(v) => setMode(v as "chat" | "agent" | "openclaw")}>
-                <TabsList className="grid w-[520px] grid-cols-2 bg-white/5">
+                <TabsList className="grid w-[520px] grid-cols-2 rounded-full border border-white/10 bg-white/5 p-1">
                   <TabsTrigger
                     value="chat"
-                    className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-black"
                     title={chatModelConfig ? `使用模型：${chatModelConfig.model_name}` : "对话模式"}
                   >
                     <MessageSquare className="mr-2 h-3 w-3" />
@@ -1049,60 +1061,34 @@ export function EnhancedAIChat() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="openclaw"
-                    className="text-xs data-[state=active]:bg-orange-600 data-[state=active]:text-white"
-                    title={openclawModelConfig ? `使用模型：${openclawModelConfig.model_name}` : "OpenClaw 模式"}
+                    className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-black"
+                    title={openclawModelConfig ? `使用模型：${openclawModelConfig.model_name}` : "Hermes Agent 模式"}
                   >
-                    <Sparkles className="mr-2 h-3 w-3" />
-                    OpenClaw
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+                    <HermesLogoIcon className="mr-2 h-3 w-3" />
+                    Hermes Agent
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
+        )}
+
+        <div className="flex-1 overflow-hidden">
+          <Conversation className="h-full">
+            <ConversationContent>
+              <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+                <ChatList
+                  messages={messages.filter((m: any) => m.role !== "tool") as any}
+                  isLoading={isLoading}
+                  showTypingIndicator
+                />
+              </div>
+            </ConversationContent>
+          </Conversation>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Messages Area */}
-          <div className="flex-1 bg-gradient-to-b from-black to-neutral-950">
-            <Conversation className="h-full">
-              <ConversationContent>
-                <div className="mx-auto w-full max-w-4xl space-y-6">
-                  {mode === "openclaw" && manusStream.tasks.length > 0 && (
-                    <div className="w-full rounded-2xl border border-white/10 bg-black/40 p-4 space-y-3 shadow-xl backdrop-blur-sm transition-all hover:border-white/20">
-                      <TaskList
-                        title="工具任务队列"
-                        tasks={manusStream.tasks.map(task => ({
-                          id: task.id,
-                          title: task.name,
-                          status: task.status,
-                          metadata: task.metadata
-                        }))}
-                      />
-                    </div>
-                  )}
-                  <ChatList
-                    messages={messages.filter((m: any) => m.role !== 'tool') as any}
-                    isLoading={isLoading}
-                    showTypingIndicator={true}
-                    showAvatars={false}
-                  />
-                  {mode === "openclaw" && manusConfirmation && (
-                    <ToolConfirmation
-                      state={manusConfirmation.state}
-                      taskSummary={manusConfirmation.taskSummary}
-                      disabled={manusConfirming}
-                      onAccept={() => submitManusConfirmation(true)}
-                      onReject={() => submitManusConfirmation(false)}
-                    />
-                  )}
-                </div>
-              </ConversationContent>
-            </Conversation>
-          </div>
-        </div>
-
-        {/* Input Area */}
-        <div className="bg-black pb-4 pt-2">
-          <div className="mx-auto w-full max-w-4xl px-4">
+        <div className="border-t border-white/8 bg-black px-4 pb-4 pt-3">
+          <div className="mx-auto w-full max-w-4xl">
             <PromptInput
               value={input}
               onValueChange={setInput}
@@ -1112,17 +1098,15 @@ export function EnhancedAIChat() {
               }}
             >
               <PromptInputBody>
-                <div className="relative">
+                <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 shadow-[0_30px_80px_-60px_rgba(0,0,0,0.8)]">
                   <PromptInputTextarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                      // Enter 鍙戦€侊紝Shift+Enter 鎹㈣
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault()
                         const text = input.trim()
                         if (!text) return
-                        // 妫€鏌ユ槸鍚﹀彲浠ュ彂閫?
                         const canSend = !isLoading &&
                           !(mode === "openclaw" && manusStream.isStreaming) &&
                           !(mode === "agent" && isAgentThinking)
@@ -1131,13 +1115,26 @@ export function EnhancedAIChat() {
                         }
                       }
                     }}
-                    placeholder={connectionError ? `AI 连接异常：${connectionError}` : (!isConnected ? "请输入消息..." : (mode === "agent" ? "描述你的任务..." : "输入消息..."))}
-                    className="bg-black/40 text-white border-white/10 pr-20"
+                    placeholder={
+                      connectionError
+                        ? `AI 连接异常：${connectionError}`
+                        : !isConnected
+                          ? "请先在系统设置页完成 Hermes 模型提供商配置"
+                          : mode === "agent"
+                            ? "描述你的任务..."
+                            : "告诉 Hermes 你的目标、脚本或文件路径"
+                    }
+                    className="min-h-[112px] border-0 bg-transparent px-3 py-3 pr-3 text-base text-white placeholder:text-white/30 focus-visible:ring-0"
                   />
-                  <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                    {/* openclaw 妯″紡锛氫粎淇濈暀鍋滄鎸夐挳 */}
-                    {mode === "openclaw" && (
-                      <>
+
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 px-2 pt-3">
+                    <div className="flex flex-wrap gap-2 text-xs text-white/50">
+                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Enter 发送</div>
+                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Shift + Enter 换行</div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {mode === "openclaw" && (
                         <Button
                           size="sm"
                           variant="destructive"
@@ -1146,23 +1143,22 @@ export function EnhancedAIChat() {
                             stopManusStreaming()
                           }}
                           disabled={!manusStream.isStreaming}
-                          className="h-8"
+                          className="rounded-full"
                           type="button"
                         >
                           停止
                         </Button>
-                      </>
-                    )}
+                      )}
 
-                    {/* 鍙戦€佹寜閽?*/}
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={isLoading || (mode === "openclaw" && manusStream.isStreaming) || (mode === "agent" && isAgentThinking)}
-                      className="h-8"
-                    >
-                        发送
-                    </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={isLoading || (mode === "openclaw" && manusStream.isStreaming) || (mode === "agent" && isAgentThinking)}
+                        className="rounded-full bg-white text-black hover:bg-white/90"
+                      >
+                        发送给 Hermes
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </PromptInputBody>

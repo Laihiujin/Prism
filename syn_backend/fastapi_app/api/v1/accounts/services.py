@@ -54,10 +54,10 @@ class AccountService:
             total = len(accounts)
             items = accounts[skip:skip + limit]
 
-            logger.info(f"查询账号列表: total={total}, platform={platform}, status={status}")
+            logger.info(f"Listing accounts: total={total}, platform={platform}, status={status}")
             return {"total": total, "items": items}
         except Exception as e:
-            logger.error(f"查询账号列表失败: {e}")
+            logger.error(f"Failed to list accounts: {e}")
             raise
 
     async def get_account(self, account_id: str) -> Optional[Dict[str, Any]]:
@@ -67,12 +67,12 @@ class AccountService:
             if not account:
                 raise NotFoundException(f"账号不存在: {account_id}")
 
-            logger.info(f"查询账号详情: {account_id}")
+            logger.info(f"Loading account details: {account_id}")
             return account
         except NotFoundException:
             raise
         except Exception as e:
-            logger.error(f"查询账号详情失败: {e}")
+            logger.error(f"Failed to load account details: {e}")
             raise
 
     async def create_account(self, account_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -81,10 +81,10 @@ class AccountService:
             platform = account_data.get("platform")
             self.manager.add_account(platform, account_data)
 
-            logger.info(f"创建账号成功: {account_data.get('account_id')}")
+            logger.info(f"Created account: {account_data.get('account_id')}")
             return {"success": True, "message": "账号创建成功"}
         except Exception as e:
-            logger.error(f"创建账号失败: {e}")
+            logger.error(f"Failed to create account: {e}")
             raise BadRequestException(f"创建账号失败: {str(e)}")
 
     async def update_account(
@@ -104,12 +104,12 @@ class AccountService:
             if not success:
                 raise BadRequestException("更新失败")
 
-            logger.info(f"更新账号成功: {account_id}")
+            logger.info(f"Updated account: {account_id}")
             return {"success": True, "message": "账号更新成功"}
         except (NotFoundException, BadRequestException):
             raise
         except Exception as e:
-            logger.error(f"更新账号失败: {e}")
+            logger.error(f"Failed to update account: {e}")
             raise
 
     async def delete_account(self, account_id: str) -> Dict[str, Any]:
@@ -119,12 +119,12 @@ class AccountService:
             if not success:
                 raise NotFoundException(f"账号不存在: {account_id}")
 
-            logger.info(f"删除账号成功: {account_id}")
+            logger.info(f"Deleted account: {account_id}")
             return {"success": True, "message": "账号删除成功"}
         except NotFoundException:
             raise
         except Exception as e:
-            logger.error(f"删除账号失败: {e}")
+            logger.error(f"Failed to delete account: {e}")
             raise
 
 
@@ -132,7 +132,7 @@ class AccountService:
     async def deep_sync(self) -> Dict[str, Any]:
         """深度同步账号"""
         try:
-            logger.info("开始深度同步账号")
+            logger.info("Starting deep account sync")
             stats = self.manager.deep_sync_accounts()
 
             return {
@@ -145,21 +145,21 @@ class AccountService:
                 "message": f"同步完成: 新增 {stats['added']} 个, 标记丢失 {stats['marked_missing']} 个"
             }
         except Exception as e:
-            logger.error(f"深度同步失败: {e}")
+            logger.error(f"Deep account sync failed: {e}")
             raise
 
     async def delete_invalid_accounts(self) -> Dict[str, Any]:
         """删除所有失效账号"""
         try:
             count = self.manager.delete_invalid_accounts()
-            logger.info(f"删除失效账号: {count} 个")
+            logger.info(f"Deleted invalid accounts: {count}")
             return {
                 "success": True,
                 "count": count,
                 "message": f"已删除 {count} 个失效账号"
             }
         except Exception as e:
-            logger.error(f"删除失效账号失败: {e}")
+            logger.error(f"Failed to delete invalid accounts: {e}")
             raise
 
     async def get_stats(self) -> Dict[str, int]:
@@ -188,7 +188,7 @@ class AccountService:
 
             return stats
         except Exception as e:
-            logger.error(f"获取统计失败: {e}")
+            logger.error(f"Failed to load account stats: {e}")
             raise
 
 
@@ -285,7 +285,7 @@ class AccountService:
     async def sync_user_info(self) -> Dict[str, Any]:
         """同步所有账号的用户信息"""
         try:
-            logger.info('开始同步用户信息')
+            logger.info('Starting user info sync')
             from myUtils.fetch_user_info_service import fetch_all_user_info
             stats = await fetch_all_user_info()
 
@@ -298,7 +298,7 @@ class AccountService:
                 'message': f"同步完成: 更新 {stats['updated']} 个, 失败 {stats['failed']} 个, 跳过 {stats['skipped']} 个"
             }
         except Exception as e:
-            logger.error(f'同步用户信息失败: {e}')
+            logger.error(f'User info sync failed: {e}')
             raise
 
 # 全局服务实例

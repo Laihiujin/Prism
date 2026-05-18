@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -6,21 +6,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SynapseAutomation</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
         :root {
-            --sidebar-width: 60px;
-            --navbar-height: 48px;
-            --bg-main: #000000;
-            --bg-sidebar: rgba(10, 10, 12, 0.8);
-            --bg-popup: rgba(18, 18, 22, 0.9);
-            --accent: #7C4DFF;
-            --border: rgba(255, 255, 255, 0.08);
-            --text-main: #FFFFFF;
-            --text-dim: #888888;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            --sidebar-width: 64px;
+            --navbar-height: 58px;
+            --bg-main: linear-gradient(180deg, #000000 0%, #030303 100%);
+            --bg-sidebar: rgba(3, 3, 4, 0.98);
+            --bg-sidebar-edge: rgba(255, 255, 255, 0.04);
+            --bg-popup: rgba(8, 8, 9, 0.98);
+            --bg-panel: rgba(8, 8, 9, 0.98);
+            --accent: #ffffff;
+            --accent-strong: #d4d4d8;
+            --accent-soft: rgba(255, 255, 255, 0.06);
+            --border: rgba(255, 255, 255, 0.06);
+            --border-strong: rgba(255, 255, 255, 0.12);
+            --text-main: #fafafa;
+            --text-dim: #8a8a93;
+            --text-muted: #5b5b63;
+            --danger: #f87171;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 20px;
+            --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.5);
+            --transition: all 0.24s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
         * {
@@ -29,11 +38,11 @@
             box-sizing: border-box;
             -webkit-user-select: none;
             user-select: none;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
 
         body {
-            background-color: var(--bg-main);
+            background: var(--bg-main);
             color: var(--text-main);
             height: 100vh;
             width: 100vw;
@@ -41,205 +50,274 @@
             display: flex;
         }
 
-        /* Sidebar */
         .sidebar {
             width: var(--sidebar-width);
             height: 100%;
-            background-color: var(--bg-sidebar);
-            backdrop-filter: blur(25px);
+            background: var(--bg-sidebar);
+            backdrop-filter: blur(16px);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            padding: 20px 0;
+            align-items: stretch;
+            padding: 10px 8px 12px;
+            gap: 10px;
             z-index: 1000;
+            position: relative;
+            box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02);
+        }
+
+        .sidebar-rail {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-height: 0;
         }
 
         .sidebar-top {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 12px;
+            align-items: stretch;
+            gap: 6px;
             flex: 1;
             width: 100%;
+            min-height: 0;
         }
 
-        .tab-item {
+        .sidebar-utility {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-top: 2px;
+        }
+
+        .tab-item,
+        .sidebar-action {
             position: relative;
-            width: 42px;
-            height: 42px;
+            width: 100%;
+            height: 46px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: var(--radius-md);
+            border-radius: 14px;
             cursor: pointer;
             transition: var(--transition);
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid transparent;
+            background: rgba(14, 14, 16, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+            overflow: visible;
         }
 
-        .tab-item:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.1);
-            transform: scale(1.05);
+        .sidebar-action {
+            height: 44px;
+            border-color: var(--border);
+            color: var(--text-dim);
+            appearance: none;
+            outline: none;
+        }
+
+        .tab-item::after,
+        .sidebar-action::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateY(-50%) translateX(-6px);
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: rgba(7, 13, 24, 0.96);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: var(--shadow-soft);
+            color: var(--text-main);
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            z-index: 1100;
+        }
+
+        .tab-item:hover::after,
+        .sidebar-action:hover::after {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .tab-item:hover,
+        .sidebar-action:hover {
+            border-color: var(--border-strong);
+            transform: translateY(-2px);
         }
 
         .tab-item.active {
-            background: rgba(124, 77, 255, 0.15);
-            border-color: rgba(124, 77, 255, 0.3);
+            background: rgba(20, 20, 22, 0.98);
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow:
+                0 10px 24px rgba(0, 0, 0, 0.24),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .sidebar-action.active {
+            background: rgba(20, 20, 22, 0.98);
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow:
+                0 10px 24px rgba(0, 0, 0, 0.24),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
 
         .tab-item.active::before {
             content: '';
             position: absolute;
-            left: -14px;
-            width: 4px;
-            height: 18px;
-            background: var(--accent);
-            border-radius: 0 4px 4px 0;
-            box-shadow: 0 0 15px var(--accent);
+            left: 5px;
+            top: 50%;
+            width: 3px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 999px;
+            transform: translateY(-50%);
+            box-shadow: none;
         }
 
-        .tab-item svg {
+        .tab-item.is-pinned {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+                rgba(15, 23, 42, 0.62);
+        }
+
+        .tab-icon {
             width: 20px;
             height: 20px;
-            color: var(--text-dim);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tab-item svg,
+        .sidebar-action svg,
+        .tab-item .hermes-logo-icon,
+        .sidebar-action .hermes-logo-icon {
+            width: 18px;
+            height: 18px;
             transition: var(--transition);
         }
 
-        .tab-item.active svg {
+        .tab-item svg,
+        .sidebar-action svg {
+            color: var(--text-dim);
+        }
+
+        .tab-item .hermes-logo-icon,
+        .sidebar-action .hermes-logo-icon {
+            display: inline-block;
+            background-color: currentColor;
+            color: var(--text-dim);
+            opacity: 0.9;
+            mask: url("./assets/hermes-agent-logo.svg") no-repeat center / contain;
+            -webkit-mask: url("./assets/hermes-agent-logo.svg") no-repeat center / contain;
+        }
+
+        .tab-item.active svg,
+        .add-btn svg,
+        .settings-btn:hover svg,
+        .sidebar-action.active svg {
             color: var(--accent);
-            filter: drop-shadow(0 0 5px var(--accent));
+        }
+
+        .tab-item.active .hermes-logo-icon,
+        .sidebar-action:hover .hermes-logo-icon,
+        .sidebar-action.active .hermes-logo-icon {
+            color: var(--accent);
+            opacity: 1;
+        }
+
+        .tab-item.active svg {
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.12));
+        }
+
+        .tab-item.active .hermes-logo-icon {
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.12));
         }
 
         .tab-close {
             position: absolute;
-            top: -4px;
-            right: -4px;
-            width: 16px;
-            height: 16px;
-            background: #ff4d4d;
+            top: 4px;
+            right: 4px;
+            width: 14px;
+            height: 14px;
+            background: rgba(10, 10, 12, 0.96);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
+            font-size: 9px;
             opacity: 0;
             transition: var(--transition);
-            color: white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            color: var(--text-muted);
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            box-shadow: 0 6px 16px rgba(2, 8, 23, 0.26);
         }
 
         .tab-item:hover .tab-close {
             opacity: 1;
         }
 
+        .tab-close:hover {
+            color: #fda4af;
+            border-color: rgba(251, 113, 133, 0.36);
+            background: rgba(24, 24, 27, 0.96);
+        }
+
         .add-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text-dim);
-            transition: var(--transition);
-            margin-top: auto;
+            background: rgba(14, 14, 16, 0.94);
+            border-color: rgba(255, 255, 255, 0.1);
         }
 
         .add-btn:hover {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: white;
-            transform: rotate(90deg);
+            box-shadow:
+                0 12px 26px rgba(0, 0, 0, 0.24),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
         }
 
-        .settings-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text-dim);
-            transition: var(--transition);
-            margin-top: 12px;
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .settings-btn:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.1);
-            color: var(--accent);
-            transform: scale(1.05);
-        }
-
-        .settings-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        /* Main Content */
         .main-area {
             flex: 1;
             display: flex;
             flex-direction: column;
             position: relative;
+            min-width: 0;
         }
 
         .navbar {
             height: var(--navbar-height);
-            background: linear-gradient(to bottom, #0a0a0c, #000);
+            background: rgba(4, 4, 5, 0.92);
+            backdrop-filter: blur(20px);
             display: flex;
             align-items: center;
-            padding: 0 24px;
-            gap: 20px;
+            padding: 0 22px;
+            gap: 16px;
             border-bottom: 1px solid var(--border);
-        }
-
-        .nav-controls {
-            display: flex;
-            gap: 8px;
-        }
-
-        .nav-btn {
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-dim);
-            cursor: pointer;
-            border-radius: 6px;
-            transition: var(--transition);
-        }
-
-        .nav-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
         }
 
         .address-bar {
             flex: 1;
-            height: 32px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 10px;
+            height: 40px;
+            background: rgba(10, 10, 12, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
             display: flex;
             align-items: center;
-            padding: 0 16px;
-            max-width: 800px;
+            padding: 0 18px;
+            max-width: 860px;
             margin: 0 auto;
             transition: var(--transition);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
         }
 
         .address-bar:focus-within {
-            border-color: var(--accent);
-            background: rgba(124, 77, 255, 0.05);
-            box-shadow: 0 0 15px rgba(124, 77, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.18);
+            background: rgba(16, 16, 18, 0.96);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
         }
 
         .address-bar input {
@@ -250,12 +328,18 @@
             outline: none;
             color: var(--text-main);
             font-size: 13px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
             text-align: center;
+        }
+
+        .address-bar input::placeholder {
+            color: var(--text-muted);
         }
 
         .webview-container {
             flex: 1;
-            background: #000;
+            background: #020202;
             position: relative;
         }
 
@@ -272,27 +356,26 @@
             display: flex;
         }
 
-        /* Tab Details Popup - PREMIUM GLASS */
         .tab-popup {
             position: fixed;
-            left: 70px;
+            left: calc(var(--sidebar-width) + 14px);
             width: 320px;
             background: var(--bg-popup);
-            backdrop-filter: blur(25px);
-            border: 1.5px solid rgba(124, 77, 255, 0.2);
+            backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: var(--radius-lg);
             padding: 20px;
             display: none;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
             z-index: 10000;
             transform-origin: left center;
-            animation: popupReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: popupReveal 0.24s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
         @keyframes popupReveal {
             from {
                 opacity: 0;
-                transform: scale(0.9) translateX(-15px);
+                transform: scale(0.94) translateX(-12px);
             }
 
             to {
@@ -303,8 +386,8 @@
 
         .p-title {
             font-size: 14px;
-            font-weight: 600;
-            color: #fff;
+            font-weight: 700;
+            color: var(--text-main);
             margin-bottom: 14px;
             white-space: nowrap;
             overflow: hidden;
@@ -322,8 +405,8 @@
             color: var(--text-dim);
             font-size: 12px;
             padding: 10px 14px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.04);
+            border-radius: var(--radius-sm);
+            background: rgba(18, 18, 20, 0.88);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -333,9 +416,9 @@
         }
 
         .p-url-display:hover {
-            border-color: rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.07);
-            color: #fff;
+            border-color: var(--border-strong);
+            background: rgba(22, 22, 24, 0.98);
+            color: var(--text-main);
         }
 
         .p-url-input {
@@ -344,16 +427,16 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: #151518;
-            border: 2px solid var(--accent);
-            border-radius: 10px;
-            color: #fff;
+            background: rgba(20, 20, 22, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--radius-sm);
+            color: var(--text-main);
             padding: 0 14px;
             font-size: 12px;
             outline: none;
             display: none;
-            box-shadow: 0 0 20px rgba(124, 77, 255, 0.2);
-            animation: inputScale 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+            animation: inputScale 0.18s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
         @keyframes inputScale {
@@ -384,12 +467,12 @@
             align-items: center;
             justify-content: center;
             padding: 6px;
-            border-radius: 8px;
+            border-radius: 10px;
         }
 
         .p-tool-icon:hover {
             color: var(--accent);
-            background: rgba(124, 77, 255, 0.1);
+            background: var(--accent-soft);
             transform: translateY(-2px);
         }
 
@@ -399,29 +482,29 @@
         }
 
         #p-close {
-            color: rgba(255, 50, 50, 0.6);
+            color: rgba(248, 113, 113, 0.72);
         }
 
         #p-close:hover {
-            color: #ff4d4d;
-            background: rgba(255, 50, 50, 0.1);
+            color: #fca5a5;
+            background: rgba(248, 113, 113, 0.12);
         }
 
-        /* 设置面板样式 */
         .settings-panel {
             position: fixed;
-            left: 72px;
-            top: 0;
-            bottom: 0;
-            width: 420px;
-            background: rgba(10, 10, 14, 0.98);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            left: calc(var(--sidebar-width) + 10px);
+            top: 10px;
+            bottom: 10px;
+            width: 430px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(22px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
             z-index: 1000;
-            transform: translateX(-100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(calc(-100% - 18px));
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
             overflow-y: auto;
-            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 24px 60px rgba(2, 8, 23, 0.45);
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
@@ -442,34 +525,38 @@
             align-items: center;
             position: sticky;
             top: 0;
-            background: rgba(10, 10, 14, 0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(8, 8, 9, 0.92);
+            backdrop-filter: blur(12px);
             z-index: 10;
         }
 
         .settings-header h2 {
             font-size: 18px;
-            font-weight: 600;
-            color: #fff;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
         }
 
         .settings-close {
-            min-width: 44px;
-            height: 32px;
-            padding: 0 10px;
+            min-width: 52px;
+            height: 34px;
+            padding: 0 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-dim);
             font-size: 12px;
+            font-weight: 600;
             transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .settings-close:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #fff;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
         }
 
         .settings-content {
@@ -481,18 +568,18 @@
         }
 
         .settings-section-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.16em;
             margin-bottom: 12px;
         }
 
         .settings-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 10px;
+            background: rgba(18, 18, 20, 0.84);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
             padding: 14px 16px;
             margin-bottom: 10px;
             display: flex;
@@ -500,11 +587,13 @@
             justify-content: space-between;
             transition: all 0.2s;
             cursor: pointer;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
         }
 
         .settings-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(24, 24, 26, 0.96);
+            border-color: rgba(255, 255, 255, 0.14);
+            transform: translateY(-1px);
         }
 
         .settings-item-info {
@@ -513,13 +602,14 @@
 
         .settings-item-label {
             font-size: 14px;
-            color: #fff;
+            color: var(--text-main);
+            font-weight: 600;
             margin-bottom: 4px;
         }
 
         .settings-item-desc {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-dim);
         }
 
         .settings-item-action {
@@ -527,54 +617,54 @@
         }
 
         .settings-btn-small {
-            padding: 6px 14px;
+            padding: 7px 14px;
             font-size: 12px;
-            border-radius: 6px;
+            border-radius: 10px;
             border: none;
             cursor: pointer;
             transition: all 0.2s;
-            font-weight: 500;
+            font-weight: 700;
         }
 
         .settings-btn-primary {
-            background: rgba(124, 77, 255, 0.15);
+            background: rgba(255, 255, 255, 0.1);
             color: var(--accent);
-            border: 1px solid rgba(124, 77, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
 
         .settings-btn-primary:hover {
-            background: rgba(124, 77, 255, 0.25);
+            background: rgba(255, 255, 255, 0.16);
         }
 
         .settings-btn-danger {
-            background: rgba(244, 67, 54, 0.15);
-            color: #EF5350;
-            border: 1px solid rgba(244, 67, 54, 0.3);
+            background: rgba(248, 113, 113, 0.14);
+            color: var(--danger);
+            border: 1px solid rgba(248, 113, 113, 0.22);
         }
 
         .settings-btn-danger:hover {
-            background: rgba(244, 67, 54, 0.25);
+            background: rgba(248, 113, 113, 0.22);
         }
 
         .settings-btn-secondary {
             background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-dim);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .settings-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.12);
         }
 
-        /* 遮罩层 */
         .settings-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.62);
+            backdrop-filter: blur(6px);
             z-index: 999;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s;
+            transition: opacity 0.28s ease;
         }
 
         .settings-overlay.open {
@@ -585,23 +675,20 @@
 </head>
 
 <body>
-    <!-- 设置遮罩层 -->
     <div class="settings-overlay" id="settings-overlay"></div>
 
-    <!-- 设置面板 -->
     <div class="settings-panel" id="settings-panel">
         <div class="settings-header">
             <h2>系统设置</h2>
             <div class="settings-close" id="settings-close">关闭</div>
         </div>
         <div class="settings-content">
-            <!-- 进程控制 -->
             <div class="settings-section">
                 <div class="settings-section-title">进程控制</div>
                 <div class="settings-item" onclick="restartAllServices()">
                     <div class="settings-item-info">
                         <div class="settings-item-label">重启所有服务</div>
-                        <div class="settings-item-desc">Backend + Worker + Celery</div>
+                        <div class="settings-item-desc">Frontend + Supervisor + Backend + Worker + Hermes + Celery</div>
                     </div>
                     <div class="settings-item-action">
                         <button class="settings-btn-small settings-btn-primary">重启</button>
@@ -627,7 +714,6 @@
                 </div>
             </div>
 
-            <!-- 数据清理 -->
             <div class="settings-section">
                 <div class="settings-section-title">数据清理</div>
                 <div class="settings-item" onclick="clearMaterialsData()">
@@ -668,7 +754,6 @@
                 </div>
             </div>
 
-            <!-- 紧急操作 -->
             <div class="settings-section">
                 <div class="settings-section-title">紧急操作</div>
                 <div class="settings-item" onclick="runSystemCheck()">
@@ -703,22 +788,39 @@
     </div>
 
     <div class="sidebar">
-        <div class="sidebar-top" id="sidebar-tabs">
-            <!-- Tabs will be injected here -->
+        <div class="sidebar-rail">
+            <div class="sidebar-top" id="sidebar-tabs">
+                <!-- Tabs will be injected here -->
+            </div>
         </div>
-        <div class="add-btn" id="add-tab" title="新建会话">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-        </div>
-        <div class="settings-btn" id="settings-btn" title="系统设置">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m18.2-5.2l-4.2 4.2m0 6l4.2 4.2"></path>
-            </svg>
+
+        <div class="sidebar-utility">
+            <button class="sidebar-action add-btn" id="add-tab" type="button" title="新建会话" data-tooltip="新建会话">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="4" y="4" width="16" height="16" rx="4"></rect>
+                    <path d="M12 8.5v7"></path>
+                    <path d="M8.5 12h7"></path>
+                </svg>
+            </button>
+
+            <button class="sidebar-action hermes-btn" id="hermes-dashboard-btn" type="button" title="Hermes Agent"
+                data-tooltip="Hermes Agent">
+                <span class="hermes-logo-icon" aria-hidden="true"></span>
+            </button>
+
+            <button class="sidebar-action settings-btn" id="settings-btn" type="button" title="系统设置"
+                data-tooltip="系统设置">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M4 7h16"></path>
+                    <path d="M4 12h16"></path>
+                    <path d="M4 17h16"></path>
+                    <circle cx="15" cy="7" r="2"></circle>
+                    <circle cx="9" cy="12" r="2"></circle>
+                    <circle cx="13" cy="17" r="2"></circle>
+                </svg>
+            </button>
         </div>
     </div>
 
@@ -733,7 +835,6 @@
         </div>
     </div>
 
-    <!-- 弹窗设计 -->
     <div id="tab-popup" class="tab-popup">
         <div id="p-title" class="p-title">会话加载中...</div>
 

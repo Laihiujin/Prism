@@ -20,6 +20,8 @@ for %%I in ("%ProgramFiles%") do set "PF64=%%~sI"
 
 set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%..\..") do set "PROJECT_ROOT=%%~fI\"
+set "PROJECT_ROOT_ARG=%PROJECT_ROOT%"
+if "%PROJECT_ROOT_ARG:~-1%"=="\" set "PROJECT_ROOT_ARG=%PROJECT_ROOT_ARG:~0,-1%"
 cd /d "%PROJECT_ROOT%desktop-electron"
 set "ELECTRON_DIST=dist-build"
 
@@ -28,13 +30,101 @@ set "ELECTRON_DIST=dist-build"
 :: ============================================
 echo [0/7] Sanitize release workspace...
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\release\prepare-release.ps1" -ProjectRoot "%PROJECT_ROOT%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\release\prepare-release.ps1" -ProjectRoot "%PROJECT_ROOT_ARG%"
 if errorlevel 1 (
     echo ERROR: release workspace sanitization failed
     pause
     exit /b 1
 )
 echo OK: release workspace sanitized
+echo.
+
+:: ============================================
+:: 0.25 Prepare packaged synenv and Hermes runtime
+:: ============================================
+echo [0.25/7] Prepare packaged synenv and Hermes runtime...
+echo.
+if not exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
+    python -m venv "%PROJECT_ROOT%synenv"
+    if errorlevel 1 (
+        echo ERROR: failed to create synenv virtual environment
+        pause
+        exit /b 1
+    )
+)
+
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install --upgrade pip
+if errorlevel 1 (
+    echo ERROR: failed to upgrade pip in synenv
+    pause
+    exit /b 1
+)
+
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install -r "%PROJECT_ROOT%requirements.txt"
+if errorlevel 1 (
+    echo ERROR: failed to install packaging requirements into synenv
+    pause
+    exit /b 1
+)
+
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install pyinstaller psutil playwright patchright
+if errorlevel 1 (
+    echo ERROR: failed to install packaged runtime dependencies into synenv
+    pause
+    exit /b 1
+)
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\hermes\setup-local-hermes.ps1" -Branch main -WebUIVersion v0.51.50
+if errorlevel 1 (
+    echo ERROR: failed to prepare embedded Hermes runtime
+    pause
+    exit /b 1
+)
+
+if not exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
+    echo ERROR: embedded runtime missing python: %PROJECT_ROOT%synenv\Scripts\python.exe
+    pause
+    exit /b 1
+)
+if not exist "%PROJECT_ROOT%synenv\_python\python.exe" (
+    echo ERROR: embedded runtime missing base python home: %PROJECT_ROOT%synenv\_python\python.exe
+    pause
+    exit /b 1
+)
+if not exist "%PROJECT_ROOT%synenv\.hermes-runtime-ready" (
+    echo ERROR: embedded runtime readiness marker missing: %PROJECT_ROOT%synenv\.hermes-runtime-ready
+    pause
+    exit /b 1
+)
+if not exist "%PROJECT_ROOT%tools\hermes-agent\run_agent.py" (
+    echo ERROR: embedded Hermes agent missing: %PROJECT_ROOT%tools\hermes-agent\run_agent.py
+    pause
+    exit /b 1
+)
+if not exist "%PROJECT_ROOT%tools\hermes-webui\server.py" (
+    echo ERROR: embedded Hermes WebUI missing: %PROJECT_ROOT%tools\hermes-webui\server.py
+    pause
+    exit /b 1
+)
+echo OK: packaged synenv and Hermes runtime ready
+echo.
+
+:: ============================================
+:: 0.5 Build packaged backend services
+:: ============================================
+echo [0.5/7] Build packaged backend services...
+echo.
+if exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
+    set "PACKAGING_PYTHON=%PROJECT_ROOT%synenv\Scripts\python.exe"
+)
+if not defined PACKAGING_TARGETS set "PACKAGING_TARGETS=backend,celery-worker,playwright-worker"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\packaging\build_services.ps1"
+if errorlevel 1 (
+    echo ERROR: packaged backend service build failed
+    pause
+    exit /b 1
+)
+echo OK: packaged backend services built
 echo.
 
 :: ============================================
@@ -266,6 +356,24 @@ if not "%BUILD_DIR_RC%"=="0" (
 
 set "UNPACKED_RES=%ELECTRON_DIST%\win-unpacked\resources"
 if exist "%UNPACKED_RES%" (
+    if not exist "%UNPACKED_RES%\synenv\Scripts\python.exe" (
+        if exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
+            echo Copying synenv into win-unpacked resources...
+            xcopy /E /I /Y "%PROJECT_ROOT%synenv" "%UNPACKED_RES%\synenv\" >nul
+        ) else (
+            echo WARNING: synenv source missing: %PROJECT_ROOT%synenv
+        )
+    )
+    if not exist "%UNPACKED_RES%\synenv\_python\python.exe" (
+        if exist "%PROJECT_ROOT%synenv\_python\python.exe" (
+            echo Copying synenv base python home into win-unpacked resources...
+            xcopy /E /I /Y "%PROJECT_ROOT%synenv\_python" "%UNPACKED_RES%\synenv\_python\" >nul
+        ) else (
+            echo ERROR: synenv base python home missing: %PROJECT_ROOT%synenv\_python\python.exe
+            pause
+            exit /b 1
+        )
+    )
     if not exist "%UNPACKED_RES%\browsers" (
         if exist "%PROJECT_ROOT%browsers" (
             echo Copying browsers into win-unpacked resources...
@@ -300,8 +408,39 @@ if exist "%UNPACKED_RES%" (
     ) else (
         echo WARNING: syn_backend source missing: %PROJECT_ROOT%syn_backend
     )
+
+    if not exist "%UNPACKED_RES%\tools\hermes-agent\run_agent.py" (
+        if exist "%PROJECT_ROOT%tools\hermes-agent\run_agent.py" (
+            echo Copying Hermes agent into win-unpacked resources...
+            xcopy /E /I /Y "%PROJECT_ROOT%tools\hermes-agent" "%UNPACKED_RES%\tools\hermes-agent\" >nul
+        ) else (
+            echo WARNING: Hermes agent source missing: %PROJECT_ROOT%tools\hermes-agent
+        )
+    )
+
+    if not exist "%UNPACKED_RES%\tools\hermes-webui\server.py" (
+        if exist "%PROJECT_ROOT%tools\hermes-webui\server.py" (
+            echo Copying Hermes WebUI into win-unpacked resources...
+            xcopy /E /I /Y "%PROJECT_ROOT%tools\hermes-webui" "%UNPACKED_RES%\tools\hermes-webui\" >nul
+        ) else (
+            echo WARNING: Hermes WebUI source missing: %PROJECT_ROOT%tools\hermes-webui
+        )
+    )
 ) else (
     echo WARNING: %UNPACKED_RES% not found; skip resource sync.
+)
+
+if exist "%UNPACKED_RES%" (
+    if not exist "%UNPACKED_RES%\synenv\Scripts\python.exe" (
+        echo ERROR: win-unpacked missing synenv python: %UNPACKED_RES%\synenv\Scripts\python.exe
+        pause
+        exit /b 1
+    )
+    if not exist "%UNPACKED_RES%\synenv\_python\python.exe" (
+        echo ERROR: win-unpacked missing synenv base python home: %UNPACKED_RES%\synenv\_python\python.exe
+        pause
+        exit /b 1
+    )
 )
 
 :: ============================================
@@ -378,37 +517,7 @@ if "!PACKAGE_TYPE!"=="" set "PACKAGE_TYPE=2"
 
 if "!PACKAGE_TYPE!"=="3" goto :DONE
 
-if "!PACKAGE_TYPE!"=="1" (
-    echo.
-    echo ============================================
-    echo Stage 2: build installer ^(NSIS^)
-    echo ============================================
-    echo.
-    set "EB_CLI=%CD%\node_modules\electron-builder\cli.js"
-    if exist "!EB_CLI!" (
-        powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; node '!EB_CLI!' --win --x64 --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
-    ) else (
-        powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; npm run build -- --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
-    )
-    if errorlevel 1 (
-        echo ERROR: npm run build failed
-        pause
-        exit /b 1
-    )
-    if exist "%ELECTRON_DIST%\*.exe" (
-        move "%ELECTRON_DIST%\*.exe" "%OUTPUT_DIR%\" >nul
-        if errorlevel 1 (
-            echo ERROR: failed to move NSIS installer
-            pause
-            exit /b 1
-        )
-    ) else (
-        echo ERROR: NSIS installer not found in %ELECTRON_DIST%
-        pause
-        exit /b 1
-    )
-    goto :DONE
-)
+if "!PACKAGE_TYPE!"=="1" goto :BUILD_NSIS_INSTALLER
 
 if "!PACKAGE_TYPE!"=="2" (
     echo.
@@ -417,7 +526,7 @@ if "!PACKAGE_TYPE!"=="2" (
     echo ============================================
     echo.
 
-    cd /d "%SCRIPT_DIR%desktop-electron"
+    cd /d "%PROJECT_ROOT%desktop-electron"
     set "APP_VERSION=%CURRENT_VERSION%"
     set "APP_BUILD_NUM=%BUILD_NUM%"
     set "SOURCE_DIR=!CD!\!OUTPUT_DIR!\win-unpacked"
@@ -449,8 +558,11 @@ if "!PACKAGE_TYPE!"=="2" (
     set "INNO_COMPIL32=C:\Program Files (x86)\Inno Setup 6\Compil32.exe"
     if exist "!INNO_ISCC!" (
         "!INNO_ISCC!" installer.iss
-    ) else (
+    ) else if exist "!INNO_COMPIL32!" (
         "!INNO_COMPIL32!" /cc installer.iss
+    ) else (
+        echo WARNING: Inno Setup not found, falling back to NSIS installer...
+        goto :BUILD_NSIS_INSTALLER
     )
     if errorlevel 1 (
         echo ERROR: Inno Setup compilation failed
@@ -459,6 +571,37 @@ if "!PACKAGE_TYPE!"=="2" (
     )
     goto :DONE
 )
+
+:BUILD_NSIS_INSTALLER
+echo.
+echo ============================================
+echo Stage 2: build installer ^(NSIS^)
+echo ============================================
+echo.
+set "EB_CLI=%CD%\node_modules\electron-builder\cli.js"
+if exist "!EB_CLI!" (
+    powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; node '!EB_CLI!' --win --x64 --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
+) else (
+    powershell -NoProfile -Command "Set-Location -LiteralPath '%CD%'; npm run build -- --config.extraMetadata.version=%CURRENT_VERSION% --config.buildVersion=%FULL_VERSION%"
+)
+if errorlevel 1 (
+    echo ERROR: npm run build failed
+    pause
+    exit /b 1
+)
+if exist "%ELECTRON_DIST%\*.exe" (
+    move "%ELECTRON_DIST%\*.exe" "%OUTPUT_DIR%\" >nul
+    if errorlevel 1 (
+        echo ERROR: failed to move NSIS installer
+        pause
+        exit /b 1
+    )
+) else (
+    echo ERROR: NSIS installer not found in %ELECTRON_DIST%
+    pause
+    exit /b 1
+)
+goto :DONE
 
 echo ERROR: invalid packaging type: !PACKAGE_TYPE!
 pause

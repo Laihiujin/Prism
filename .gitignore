@@ -59,6 +59,7 @@ Thumbs.db
 
 # Logs / runtime data
 *.log
+/logs/
 logs/*
 .env
 *.sqlite
@@ -94,11 +95,14 @@ syn_backend/Redis/
 config/cookiesFile/*.json
 config/browser_profiles/
 # config/conf.py
+syn_backend/config/hermes_agent.toml
 
 # Playwright / browser downloads
 /.playwright-browsers*/
 /.chrome-for-testing*/
 /.tmp-*
+/.tmp-channels-debug/
+/.tmp-hibbiki/
 tmp/
 browsers/.links/
 browsers/chromium/hibbiki-*/
@@ -115,8 +119,10 @@ browsers/firefox/winldd-1007/*
 
 # Build / packaging output
 dist/
+/dist/
 dist-out/
 build/supervisor/
+/build/supervisor/
 build_output/
 scripts/packaging/*
 !scripts/packaging/build-package.bat
@@ -161,5 +167,10 @@ data/analytics/
 data/crawler_output/
 data/videos/
 tmp-runtime-data/
+/tmp-runtime-data/
+/gcm-diagnose.log
+tools/hermes-agent/
+tools/hermes-home/
+tools/hermes-webui/
 
 LaunchScript/python-3.11.9-embed-amd64.zip

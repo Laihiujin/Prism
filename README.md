@@ -209,6 +209,7 @@ Content-Type: application/json
 - `syn_frontend_react/`：矩阵投放控制台（Next.js）；
 - `desktop-electron/`：桌面客户端与打包脚本；
 - `scripts/`：启动、调试、维护脚本；
+- `scripts/tests/`：手动与集成验证脚本（原 `Test/` 目录已收纳至此）；
 ---
 
 ## 合规提示
@@ -223,8 +224,7 @@ Content-Type: application/json
 本项目在能力建设上受益于开源生态，以下项目提供了启发或参考：
 - [social-auto-upload](https://github.com/dreammis/social-auto-upload)
 - [Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
-- [hermesAgent](https://github.com/nousresearch/hermes-agent)
-- [hermes-webui](https://github.com/nesquena/hermes-webui)
+- [OpenManus](https://github.com/FoundationAgents/OpenManus)
 
 ---
 

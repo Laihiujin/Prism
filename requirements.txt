@@ -48,7 +48,6 @@ schedule
 # ============================================
 playwright
 patchright
-browser-use
 cdp-use
 selenium
 webdriver-manager
@@ -75,7 +74,6 @@ anthropic
 tiktoken
 tenacity
 # langchain
-# langchain-openai
 # langchain-anthropic
 # langchain-community
 # langchain-core

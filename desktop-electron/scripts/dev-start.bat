@@ -35,7 +35,7 @@ echo NOTE: Dev mode does not auto-start backend services.
 echo Start them manually:
 echo    1. Backend: ..\scripts\launchers\start_backend_synenv.bat
 echo    2. Worker:  ..\scripts\launchers\start_worker.bat
-echo    3. Celery:  ..\..\LaunchScript\start_celery_worker_synenv.bat
+echo    3. Celery:  ..\scripts\launchers\start_celery_synenv.bat
 echo    4. Frontend: cd ..\syn_frontend_react ^&^& npm run dev
 echo.
 

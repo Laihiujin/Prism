@@ -54,7 +54,7 @@ class AgentConfirmRequest(BaseModel):
     approved: bool = Field(..., description="用户是否同意执行")
 
 
-def _normalize_openclaw_context(
+def _normalize_agent_context(
     raw: Optional[Union[Dict[str, Any], str, list]]
 ) -> Optional[Dict[str, Any]]:
     if raw is None:
@@ -70,25 +70,34 @@ def _format_sse(payload: Dict[str, Any]) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-@router.post("/openclaw-run", response_model=Response[AgentRunResponse])
-async def openclaw_run(request: AgentRunRequest):
-    from ....agent.openclaw_agent import run_openclaw_goal
+async def _run_agent_once(request: AgentRunRequest):
+    from ....agent.hermes_agent import run_hermes_goal
 
     try:
-        result = await run_openclaw_goal(
+        result = await run_hermes_goal(
             goal=request.goal,
-            context=_normalize_openclaw_context(request.context),
+            context=_normalize_agent_context(request.context),
         )
         return Response(success=True, data=AgentRunResponse(**result))
     except Exception as e:
-        logger.error(f"[OpenClawRun] failed: {e}", exc_info=True)
+        logger.error(f"[HermesRun] failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
 
 
-async def openclaw_stream_execution(
+@router.post("/hermes-run", response_model=Response[AgentRunResponse])
+async def hermes_run(request: AgentRunRequest):
+    return await _run_agent_once(request)
+
+
+@router.post("/openclaw-run", response_model=Response[AgentRunResponse])
+async def openclaw_run(request: AgentRunRequest):
+    return await hermes_run(request)
+
+
+async def hermes_stream_execution(
     goal: str,
     context: Optional[Union[Dict[str, Any], str, list]] = None,
     require_confirmation: bool = False,
@@ -97,7 +106,7 @@ async def openclaw_stream_execution(
     del thread_id
     global _agent_stop_event, _agent_confirm_event, _agent_confirm_approved
 
-    from ....agent.openclaw_agent import run_openclaw_goal
+    from ....agent.hermes_agent import run_hermes_goal
 
     _agent_stop_event = asyncio.Event()
     _agent_confirm_event = None
@@ -123,7 +132,7 @@ async def openclaw_stream_execution(
 
     try:
         async with _agent_stream_lock:
-            normalized_context = _normalize_openclaw_context(context)
+            normalized_context = _normalize_agent_context(context)
             queue: "asyncio.Queue[Optional[Dict[str, Any]]]" = asyncio.Queue()
             step_counter = 0
 
@@ -131,7 +140,7 @@ async def openclaw_stream_execution(
                 {
                     "type": "init",
                     "status": "starting",
-                    "message": "OpenClaw is preparing the Hermes agent.",
+                    "message": "Hermes Agent 正在准备运行环境。",
                 }
             )
             yield _format_sse(
@@ -140,7 +149,7 @@ async def openclaw_stream_execution(
                     "plan": {
                         "goal": goal,
                         "context": normalized_context or {},
-                        "mode": "openclaw-hermes",
+                        "mode": "hermes-agent",
                     },
                 }
             )
@@ -150,7 +159,7 @@ async def openclaw_stream_execution(
                 yield _format_sse(
                     {
                         "type": "confirmation_required",
-                        "message": "Approve this OpenClaw task before execution.",
+                        "message": "请确认是否执行这个 Hermes Agent 任务。",
                         "task_summary": {"goal": goal, "context": normalized_context or {}},
                     }
                 )
@@ -181,7 +190,7 @@ async def openclaw_stream_execution(
 
             async def worker() -> None:
                 try:
-                    result = await run_openclaw_goal(
+                    result = await run_hermes_goal(
                         goal=goal,
                         context=normalized_context,
                         event_handler=lambda event: on_event(event, queue),
@@ -211,7 +220,7 @@ async def openclaw_stream_execution(
 
             await task
     except Exception as e:
-        logger.error(f"[OpenClawStream] failed: {e}", exc_info=True)
+        logger.error(f"[HermesStream] failed: {e}", exc_info=True)
         yield _format_sse({"type": "error", "error": str(e)})
     finally:
         _agent_stop_event = None
@@ -219,10 +228,10 @@ async def openclaw_stream_execution(
         _agent_confirm_approved = None
 
 
-@router.post("/openclaw-stream")
-async def openclaw_stream(request: StreamAgentRequest):
+@router.post("/hermes-stream")
+async def hermes_stream(request: StreamAgentRequest):
     return StreamingResponse(
-        openclaw_stream_execution(
+        hermes_stream_execution(
             request.goal,
             request.context,
             request.require_confirmation,
@@ -233,23 +242,38 @@ async def openclaw_stream(request: StreamAgentRequest):
     )
 
 
-@router.post("/openclaw-stop")
-async def openclaw_stop():
+@router.post("/openclaw-stream")
+async def openclaw_stream(request: StreamAgentRequest):
+    return await hermes_stream(request)
+
+
+@router.post("/hermes-stop")
+async def hermes_stop():
     global _agent_stop_event
     if _agent_stop_event:
         _agent_stop_event.set()
-        return Response(success=True, data={"message": "Stop signal sent."})
-    return Response(success=False, data={"message": "No running agent task."})
+        return Response(success=True, data={"message": "已发送 Hermes 停止信号。"})
+    return Response(success=False, data={"message": "当前没有正在运行的 Hermes 任务。"})
+
+
+@router.post("/openclaw-stop")
+async def openclaw_stop():
+    return await hermes_stop()
+
+
+@router.post("/hermes-confirm")
+async def hermes_confirm(request: AgentConfirmRequest):
+    global _agent_confirm_event, _agent_confirm_approved
+    if not _agent_confirm_event:
+        return Response(success=False, data={"message": "当前没有待确认的 Hermes 任务。"})
+    _agent_confirm_approved = bool(request.approved)
+    _agent_confirm_event.set()
+    return Response(success=True, data={"approved": _agent_confirm_approved})
 
 
 @router.post("/openclaw-confirm")
 async def openclaw_confirm(request: AgentConfirmRequest):
-    global _agent_confirm_event, _agent_confirm_approved
-    if not _agent_confirm_event:
-        return Response(success=False, data={"message": "No pending confirmation request."})
-    _agent_confirm_approved = bool(request.approved)
-    _agent_confirm_event.set()
-    return Response(success=True, data={"approved": _agent_confirm_approved})
+    return await hermes_confirm(request)
 
 
 @router.post("/save-script", response_model=Response[SaveScriptResponse])

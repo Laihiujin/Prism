@@ -21,10 +21,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     get: () => invoke('settings:get'),
     update: (settings) => invoke('settings:update', settings)
   },
+  browserRuntime: {
+    getStatus: () => invoke('browserRuntime:getStatus'),
+    install: (target) => invoke('browserRuntime:install', target),
+    uninstall: (target) => invoke('browserRuntime:uninstall', target)
+  },
   system: {
     restartFrontend: () => invoke('system:restart-frontend'),
     restartBackend: () => invoke('system:restart-backend'),
     restartAll: () => invoke('system:restart-all'),
+    restartApp: () => invoke('system:restart-app'),
     stopAll: () => invoke('system:stop-all'),
     quitApp: () => invoke('system:quit-app'),
     getStatus: () => invoke('system:get-status'),
