@@ -16,6 +16,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional
 from loguru import logger
 
 from .hermes_config import (
+    build_hermes_pythonpath,
     detect_git_bash_path,
     ensure_runtime_ui_defaults,
     get_backend_root,
@@ -163,28 +164,11 @@ def _ensure_runtime_home(config: Optional[Dict[str, Any]] = None) -> Path:
 
 def _build_hermes_pythonpath() -> str:
     """Build a child-process PYTHONPATH without the backend utils shadowing Hermes."""
-    hermes_source = str(get_hermes_source_path())
-    backend_root = str(get_backend_root().resolve())
-    entries: List[str] = [hermes_source]
-    seen = {hermes_source.lower()}
-
-    for raw_entry in str(os.environ.get("PYTHONPATH") or "").split(os.pathsep):
-        entry = raw_entry.strip()
-        if not entry:
-            continue
-        try:
-            resolved = str(Path(entry).expanduser().resolve())
-        except Exception:
-            resolved = entry
-        if resolved.lower() == backend_root.lower():
-            continue
-        key = entry.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        entries.append(entry)
-
-    return os.pathsep.join(entries)
+    return build_hermes_pythonpath(
+        get_hermes_source_path(),
+        base=os.environ.get("PYTHONPATH"),
+        exclude=(get_backend_root(),),
+    )
 
 
 def _build_process_env(home_path: Path) -> Dict[str, str]:
