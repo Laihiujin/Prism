@@ -24,8 +24,8 @@ email-validator
 # ============================================
 # 数据库
 # ============================================
-sqlalchemy
-alembic
+sqlalchemy==2.0.49
+alembic==1.18.4
 aiomysql
 pymysql
 asyncpg

@@ -1,6 +1,6 @@
 param(
     [string]$Branch = "main",
-    [string]$WebUIVersion = "v0.51.50",
+    [string]$WebUIVersion = "v0.51.91",
     [switch]$Force
 )
 
@@ -12,6 +12,7 @@ $hermesHome = Join-Path $repoRoot "tools\hermes-home"
 $synenvPath = Join-Path $repoRoot "synenv"
 $pythonExe = Join-Path $synenvPath "Scripts\python.exe"
 $runtimeStamp = Join-Path $synenvPath ".hermes-runtime-ready"
+$hermesConfigPath = Join-Path $hermesRoot "hermes_cli\config.py"
 $requiredExistingPaths = @(
     $pythonExe,
     $runtimeStamp,
@@ -20,6 +21,18 @@ $requiredExistingPaths = @(
     (Join-Path $repoRoot "tools\hermes-webui\static\index.html")
 )
 
+function Test-ContainsMergeMarkers {
+    param(
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        return $false
+    }
+
+    return [bool](Select-String -Path $Path -Pattern '^(<<<<<<<|=======|>>>>>>>)' -Quiet)
+}
+
 if (-not $Force) {
     $hasPreparedRuntime = $true
     foreach ($requiredPath in $requiredExistingPaths) {
@@ -27,6 +40,12 @@ if (-not $Force) {
             $hasPreparedRuntime = $false
             break
         }
+    }
+
+    if ($hasPreparedRuntime -and (Test-ContainsMergeMarkers -Path $hermesConfigPath)) {
+        Write-Warning "Existing Hermes runtime contains unresolved merge markers. Forcing a clean refresh of tools\\hermes-agent."
+        $hasPreparedRuntime = $false
+        $Force = $true
     }
 
     if ($hasPreparedRuntime) {
@@ -43,8 +62,8 @@ if (-not (Test-Path $hermesRoot)) {
     git clone --depth 1 --branch $Branch https://github.com/NousResearch/hermes-agent.git $hermesRoot
 } elseif ($Force) {
     git -C $hermesRoot fetch --depth 1 origin $Branch
-    git -C $hermesRoot checkout $Branch
-    git -C $hermesRoot pull --ff-only origin $Branch
+    git -C $hermesRoot reset --hard "origin/$Branch"
+    git -C $hermesRoot clean -fd
 }
 
 if (-not (Test-Path $pythonExe)) {
@@ -104,13 +123,20 @@ foreach ($candidate in $gitBashCandidates) {
 if ($gitBashPath) {
     $webPath = Join-Path $hermesRoot "web"
     if (Test-Path $webPath) {
+        $nodeModulesPath = Join-Path $webPath "node_modules"
+        if (Test-Path $nodeModulesPath) {
+            Remove-Item -LiteralPath $nodeModulesPath -Recurse -Force
+        }
         $webPathUnix = $webPath -replace '\\', '/'
         if ($webPathUnix -match '^([A-Za-z]):/(.*)$') {
             $drive = $matches[1].ToLower()
             $rest = $matches[2]
             $webPathUnix = "/$drive/$rest"
         }
-        & $gitBashPath -lc "cd '$webPathUnix' && npm install && npm run build"
+        & $gitBashPath -lc "cd '$webPathUnix' && if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Hermes dashboard web build failed with exit code $LASTEXITCODE."
+        }
     }
 }
 

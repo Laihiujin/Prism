@@ -43,6 +43,8 @@ class SynapseApp {
     this.isRestarting = false;
     this.isPackagedRuntime = false;
     this.frontendPort = 3000;
+    this.backendPort = null;
+    this.playwrightWorkerPort = null;
     this.runtimeSettings = {
       browserHeadless: true,
       automationRuntime: 'patchright'
@@ -204,7 +206,7 @@ class SynapseApp {
     }
   }
 
-  resolveBackendPort(rawUrl) {
+  getConfiguredBackendPort(rawUrl) {
     const envPort = [
       process.env.SYN_BACKEND_PORT,
       process.env.BACKEND_PORT
@@ -230,6 +232,15 @@ class SynapseApp {
     return 7000;
   }
 
+  resolveBackendPort(rawUrl) {
+    const configuredPort = this.getConfiguredBackendPort(rawUrl);
+    const selectedPort = Number.parseInt(String(this.backendPort || ''), 10);
+    if (Number.isInteger(selectedPort) && selectedPort > 0) {
+      return selectedPort;
+    }
+    return configuredPort;
+  }
+
   getBackendBaseUrl() {
     const rawUrl = [
       process.env.SYN_BACKEND_URL,
@@ -242,6 +253,28 @@ class SynapseApp {
 
   getBackendPort() {
     return this.resolveBackendPort(this.getBackendBaseUrl());
+  }
+
+  getConfiguredPlaywrightWorkerPort() {
+    const envPort = [
+      process.env.PLAYWRIGHT_WORKER_PORT,
+      process.env.SYN_PLAYWRIGHT_WORKER_PORT
+    ].find((value) => String(value || '').trim());
+
+    const parsedEnvPort = Number.parseInt(envPort, 10);
+    if (Number.isInteger(parsedEnvPort) && parsedEnvPort > 0) {
+      return parsedEnvPort;
+    }
+
+    return 7001;
+  }
+
+  getPlaywrightWorkerPort() {
+    const selectedPort = Number.parseInt(String(this.playwrightWorkerPort || ''), 10);
+    if (Number.isInteger(selectedPort) && selectedPort > 0) {
+      return selectedPort;
+    }
+    return this.getConfiguredPlaywrightWorkerPort();
   }
 
   getBackendApiBaseUrl() {
@@ -288,6 +321,28 @@ class SynapseApp {
     }
 
     throw new Error(`Unable to find an available port starting from ${preferredPort}`);
+  }
+
+  async resolveManagedPort(preferredPort, ownsPortCheck, reservedPorts = new Set(), attempts = 20) {
+    for (let offset = 0; offset < attempts; offset += 1) {
+      const candidatePort = preferredPort + offset;
+      if (reservedPorts.has(candidatePort)) {
+        continue;
+      }
+
+      if (await this.isPortInUse(candidatePort)) {
+        if (ownsPortCheck && await ownsPortCheck(candidatePort)) {
+          return candidatePort;
+        }
+        continue;
+      }
+
+      if (await this.canBindPort(candidatePort)) {
+        return candidatePort;
+      }
+    }
+
+    throw new Error(`Unable to resolve managed port starting from ${preferredPort}`);
   }
 
   getRuntimeSettingsPath() {
@@ -977,6 +1032,26 @@ class SynapseApp {
           browserRuntimeInfo: this.getBrowserRuntimeInfo()
         };
       }
+
+      const conflictingRuntime = target === 'patchright' ? 'playwright' : 'patchright';
+      const conflictingInfo = this.getPythonPackageInfo(conflictingRuntime);
+      if (conflictingInfo.installed) {
+        const uninstallResult = await this.runManagedCommand(
+          pythonPath,
+          ['-m', 'pip', 'uninstall', '-y', conflictingRuntime],
+          { env, logPrefix: `pip:remove:${conflictingRuntime}` }
+        );
+
+        if (!uninstallResult.success) {
+          return {
+            success: false,
+            output: uninstallResult.stdout,
+            error: uninstallResult.error,
+            browserRuntimeInfo: this.getBrowserRuntimeInfo()
+          };
+        }
+      }
+
       const result = await this.runManagedCommand(
         pythonPath,
         ['-m', 'pip', 'install', target],
@@ -1019,25 +1094,16 @@ class SynapseApp {
       }
     }
 
-    let installResult = await this.runManagedCommand(
-      pythonPath,
-      ['-m', 'patchright', 'install', target],
-      { env, logPrefix: `patchright:${target}` }
-    );
+    const preferredRuntime = (this.runtimeSettings.automationRuntime === 'playwright') ? 'playwright' : 'patchright';
+    const installCommand = preferredRuntime === 'playwright'
+      ? ['-m', 'playwright', 'install', target]
+      : ['-m', 'patchright', 'install', target];
 
-    if (!installResult.success) {
-      const playwrightInfo = this.getPythonPackageInfo('playwright');
-      if (playwrightInfo.installed) {
-        const fallbackResult = await this.runManagedCommand(
-          pythonPath,
-          ['-m', 'playwright', 'install', target],
-          { env, logPrefix: `playwright:${target}` }
-        );
-        if (fallbackResult.success) {
-          installResult = fallbackResult;
-        }
-      }
-    }
+    const installResult = await this.runManagedCommand(
+      pythonPath,
+      installCommand,
+      { env, logPrefix: `${preferredRuntime}:${target}` }
+    );
 
     return {
       success: installResult.success,
@@ -1364,6 +1430,7 @@ class SynapseApp {
     const backendUrl = this.getBackendBaseUrl();
     const backendApiBaseUrl = this.getBackendApiBaseUrl();
     const backendPort = String(this.getBackendPort());
+    const playwrightWorkerPort = String(this.getPlaywrightWorkerPort());
     const pythonPath = this.getPythonPath();
     log.info('Preparing service environment...');
     log.info('  - Browsers Root:', browsersRoot);
@@ -1383,6 +1450,8 @@ class SynapseApp {
       SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime,
       BACKEND_PORT: backendPort,
       SYN_BACKEND_PORT: backendPort,
+      PLAYWRIGHT_WORKER_PORT: playwrightWorkerPort,
+      SYN_PLAYWRIGHT_WORKER_PORT: playwrightWorkerPort,
       SYN_BACKEND_URL: backendUrl,
       NEXT_PUBLIC_SYN_BACKEND_URL: backendUrl,
       NEXT_PUBLIC_BACKEND_URL: backendUrl,
@@ -1501,6 +1570,88 @@ class SynapseApp {
         port,
         exclusive: true
       });
+    });
+  }
+
+  requestLocalJson(port, pathName, timeoutMs = 2000) {
+    const http = require('http');
+
+    return new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port,
+        path: pathName,
+        method: 'GET'
+      }, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            resolve(data ? JSON.parse(data) : {});
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.setTimeout(timeoutMs, () => {
+        req.destroy();
+        reject(new Error(`Local request timeout: ${port}${pathName}`));
+      });
+      req.end();
+    });
+  }
+
+  async isSynapseBackendOnPort(port) {
+    if (!(await this.isPortInUse(port))) {
+      return false;
+    }
+
+    try {
+      const payload = await this.requestLocalJson(port, '/health', 2000);
+      return String(payload?.status || '').toLowerCase() === 'healthy' && Boolean(payload?.version);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async isPlaywrightWorkerOnPort(port) {
+    if (!(await this.isPortInUse(port))) {
+      return false;
+    }
+
+    try {
+      const payload = await this.requestLocalJson(port, '/health', 2000);
+      return String(payload?.status || '').toLowerCase() === 'ok' && payload?.service === 'playwright-worker';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async prepareManagedServicePorts() {
+    const configuredWorkerPort = this.getConfiguredPlaywrightWorkerPort();
+    const configuredBackendPort = this.getConfiguredBackendPort();
+
+    this.backendPort = await this.resolveManagedPort(
+      configuredBackendPort,
+      this.isSynapseBackendOnPort.bind(this),
+      new Set([configuredWorkerPort])
+    );
+
+    this.playwrightWorkerPort = await this.resolveManagedPort(
+      configuredWorkerPort,
+      this.isPlaywrightWorkerOnPort.bind(this),
+      new Set([this.backendPort])
+    );
+
+    log.info('Managed service ports prepared:', {
+      backendPort: this.backendPort,
+      playwrightWorkerPort: this.playwrightWorkerPort
     });
   }
 
@@ -1694,6 +1845,7 @@ class SynapseApp {
       return;
     }
 
+    await this.prepareManagedServicePorts();
     console.log('Using supervisor to manage backend services...');
     log.info('Using supervisor to manage backend services...');
     this.startSupervisor();
@@ -1809,8 +1961,12 @@ class SynapseApp {
     if (this.playwrightWorkerProcess) {
       return;
     }
-    if (await this.isPortInUse(7001)) {
-      log.warn('Playwright Worker already running on port 7001; skipping start.');
+    if (!this.playwrightWorkerPort) {
+      await this.prepareManagedServicePorts();
+    }
+    const workerPort = this.getPlaywrightWorkerPort();
+    if (await this.isPlaywrightWorkerOnPort(workerPort)) {
+      log.warn(`Playwright Worker already running on port ${workerPort}; skipping start.`);
       return;
     }
     const backendDir = this.getBackendDir();
@@ -1835,7 +1991,7 @@ class SynapseApp {
     log.info('  - Launch Args:', launchArgs.join(' '));
 
     this.playwrightWorkerProcess = spawn(launchCmd, launchArgs, {
-      env: { ...env, PYTHONPATH: backendDir },
+      env: { ...env, PYTHONPATH: backendDir, PLAYWRIGHT_WORKER_PORT: String(workerPort) },
       cwd: backendDir,
       windowsHide: true
     });
@@ -2019,8 +2175,11 @@ class SynapseApp {
     if (this.backendProcess) {
       return;
     }
+    if (!this.backendPort) {
+      await this.prepareManagedServicePorts();
+    }
     const backendPort = this.getBackendPort();
-    if (await this.isPortInUse(backendPort)) {
+    if (await this.isSynapseBackendOnPort(backendPort)) {
       log.warn(`Backend already running on port ${backendPort}; skipping start.`);
       return;
     }
