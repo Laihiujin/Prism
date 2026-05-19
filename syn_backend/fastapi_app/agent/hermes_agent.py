@@ -682,22 +682,37 @@ async def _start_dashboard_backend(
 
 
 async def start_hermes_dashboard(
-    port: int = 9119,
+    port: Optional[int] = None,
     backend_override: Optional[Literal["official", "webui"]] = None,
 ) -> Dict[str, Any]:
     runtime = get_runtime_summary()
     backend = _resolve_dashboard_backend(runtime, backend_override)
     if backend is None:
         raise RuntimeError("Hermes dashboard backend is not installed. Run scripts\\hermes\\setup-local-hermes.ps1 first.")
-    return await _start_dashboard_backend(backend, port)
+    resolved_port = (
+        port
+        if isinstance(port, int) and port > 0
+        else _get_runtime_port("SYNAPSE_HERMES_DASHBOARD_PORT", 9119)
+    )
+    return await _start_dashboard_backend(backend, resolved_port)
 
 
 async def start_hermes_interfaces(
-    dashboard_port: int = 9119,
-    webui_port: int = 9131,
+    dashboard_port: Optional[int] = None,
+    webui_port: Optional[int] = None,
 ) -> Dict[str, Any]:
-    await _start_dashboard_backend("official", dashboard_port)
-    return await _start_dashboard_backend("webui", webui_port)
+    resolved_dashboard_port = (
+        dashboard_port
+        if isinstance(dashboard_port, int) and dashboard_port > 0
+        else _get_runtime_port("SYNAPSE_HERMES_DASHBOARD_PORT", 9119)
+    )
+    resolved_webui_port = (
+        webui_port
+        if isinstance(webui_port, int) and webui_port > 0
+        else _get_runtime_port("SYNAPSE_HERMES_WEBUI_PORT", 9131)
+    )
+    await _start_dashboard_backend("official", resolved_dashboard_port)
+    return await _start_dashboard_backend("webui", resolved_webui_port)
 
 
 async def _stop_spawned_process(
