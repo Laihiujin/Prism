@@ -67,14 +67,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip uninstall -y patchright
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip uninstall -y playwright
 if errorlevel 1 (
-    echo ERROR: failed to remove stale patchright package from synenv
+    echo ERROR: failed to remove conflicting playwright package from synenv
     pause
     exit /b 1
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install pyinstaller psutil playwright patchright==1.59.1
+"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install pyinstaller psutil patchright==1.59.1
 if errorlevel 1 (
     echo ERROR: failed to install packaged runtime dependencies into synenv
     pause
@@ -88,7 +88,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\hermes\setup-local-hermes.ps1" -Branch main -WebUIVersion v0.51.50
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\hermes\setup-local-hermes.ps1" -Branch main -WebUIVersion v0.51.91
 if errorlevel 1 (
     echo ERROR: failed to prepare embedded Hermes runtime
     pause

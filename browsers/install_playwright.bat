@@ -30,13 +30,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [1/3] Checking Python browser runtimes...
+echo [1/3] Checking Python browser runtime...
 python -c "import playwright" >nul 2>&1
-if errorlevel 1 (
-    echo   Installing playwright...
-    python -m pip install playwright
+if not errorlevel 1 (
+    echo   Removing conflicting playwright runtime...
+    python -m pip uninstall -y playwright
     if errorlevel 1 (
-        echo [ERROR] Failed to install playwright
+        echo [ERROR] Failed to remove conflicting playwright runtime
         popd
         if not defined SYNAPSE_NO_PAUSE pause
         exit /b 1
@@ -45,9 +45,8 @@ if errorlevel 1 (
 
 python -c "import patchright" >nul 2>&1
 if errorlevel 1 (
-    echo   Installing patchright...
-    python -m pip uninstall -y patchright >nul 2>&1
-    python -m pip install --upgrade --force-reinstall patchright==1.59.1
+    echo   Installing patchright 1.59.1...
+    python -m pip install patchright==1.59.1
     if errorlevel 1 (
         echo [ERROR] Failed to install patchright
         popd
