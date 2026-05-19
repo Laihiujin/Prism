@@ -946,6 +946,17 @@ class SynapseApp {
         { env, logPrefix: `pip:remove:${target}` }
       );
 
+      if (result.success && this.runtimeSettings.automationRuntime === target) {
+        const fallbackRuntime = target === 'patchright' ? 'playwright' : 'patchright';
+        const fallbackInfo = this.mergeRuntimeInfo(
+          this.getPythonPackageInfo(fallbackRuntime),
+          this.getPackagedWorkerRuntimeInfo(fallbackRuntime)
+        );
+        if (fallbackInfo.installed && fallbackInfo.driverInstalled !== false) {
+          this.saveRuntimeSettings({ automationRuntime: fallbackRuntime });
+        }
+      }
+
       return {
         success: result.success,
         output: result.stdout,
@@ -1076,7 +1087,10 @@ class SynapseApp {
       }
 
       const conflictingRuntime = target === 'patchright' ? 'playwright' : 'patchright';
-      const conflictingInfo = this.getPythonPackageInfo(conflictingRuntime);
+      const conflictingInfo = this.mergeRuntimeInfo(
+        this.getPythonPackageInfo(conflictingRuntime),
+        this.getPackagedWorkerRuntimeInfo(conflictingRuntime)
+      );
       if (conflictingInfo.installed) {
         const uninstallResult = await this.runManagedCommand(
           pythonPath,

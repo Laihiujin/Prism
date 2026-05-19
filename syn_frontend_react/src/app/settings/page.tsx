@@ -194,6 +194,8 @@ export default function SettingsPage() {
     setAutomationRuntime,
     installPatchright,
     installPlaywright,
+    uninstallPatchright,
+    uninstallPlaywright,
     installChromium,
     installFirefox,
     uninstallChromium,
@@ -579,26 +581,48 @@ export default function SettingsPage() {
                 <div className="mt-3 text-xs text-white/60">
                   {browserRuntimeInfo?.activeRuntime === "patchright"
                     ? "当前已启用"
-                    : browserRuntimeInfo?.runtimes?.patchright?.error || "推荐用于 Chromium 自动化"}
+                    : browserRuntimeInfo?.runtimes?.patchright?.installed
+                      ? "可切换为默认自动化运行时"
+                      : browserRuntimeInfo?.runtimes?.patchright?.error || "推荐用于 Chromium 自动化"}
                 </div>
-                <Button
-                  onClick={() => void installPatchright()}
-                  disabled={loading.installPatchright}
-                  variant="secondary"
-                    className="mt-4 w-full border-white/10 bg-black text-white hover:bg-white/5"
-                >
-                  {loading.installPatchright ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      安装中...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-2 h-4 w-4" />
-                      {browserRuntimeInfo?.runtimes?.patchright?.installed ? "重装 Patchright" : "安装 Patchright"}
-                    </>
-                  )}
-                </Button>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    onClick={() => void installPatchright()}
+                    disabled={loading.installPatchright}
+                    variant="secondary"
+                    className="flex-1 border-white/10 bg-black text-white hover:bg-white/5"
+                  >
+                    {loading.installPatchright ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        安装中...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        {browserRuntimeInfo?.runtimes?.patchright?.installed ? "重装 Patchright" : "安装 Patchright"}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => void uninstallPatchright()}
+                    disabled={loading.uninstallPatchright || !browserRuntimeInfo?.runtimes?.patchright?.installed}
+                    variant="secondary"
+                    className="border border-white/10 bg-black text-white/70 hover:bg-white/5"
+                  >
+                    {loading.uninstallPatchright ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        卸载中...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        卸载
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <div className="rounded-xl border border-white/10 bg-black p-4">
@@ -620,26 +644,48 @@ export default function SettingsPage() {
                 <div className="mt-3 text-xs text-white/60">
                   {browserRuntimeInfo?.activeRuntime === "playwright"
                     ? "当前已启用"
-                    : "可作为兼容后备运行时"}
+                    : browserRuntimeInfo?.runtimes?.playwright?.installed
+                      ? "可切换为默认自动化运行时"
+                      : "可作为兼容后备运行时"}
                 </div>
-                <Button
-                  onClick={() => void installPlaywright()}
-                  disabled={loading.installPlaywright}
-                  variant="secondary"
-                    className="mt-4 w-full border-white/10 bg-black text-white hover:bg-white/5"
-                >
-                  {loading.installPlaywright ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      安装中...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-2 h-4 w-4" />
-                      {browserRuntimeInfo?.runtimes?.playwright?.installed ? "重装 Playwright" : "安装 Playwright"}
-                    </>
-                  )}
-                </Button>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    onClick={() => void installPlaywright()}
+                    disabled={loading.installPlaywright}
+                    variant="secondary"
+                    className="flex-1 border-white/10 bg-black text-white hover:bg-white/5"
+                  >
+                    {loading.installPlaywright ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        安装中...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="mr-2 h-4 w-4" />
+                        {browserRuntimeInfo?.runtimes?.playwright?.installed ? "重装 Playwright" : "安装 Playwright"}
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => void uninstallPlaywright()}
+                    disabled={loading.uninstallPlaywright || !browserRuntimeInfo?.runtimes?.playwright?.installed}
+                    variant="secondary"
+                    className="border border-white/10 bg-black text-white/70 hover:bg-white/5"
+                  >
+                    {loading.uninstallPlaywright ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        卸载中...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        卸载
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
