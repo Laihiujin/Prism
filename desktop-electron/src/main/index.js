@@ -1217,6 +1217,55 @@ class SynapseApp {
     });
   }
 
+  syncManagedServicePortsFromStatus(statusPayload) {
+    const status = statusPayload?.data || statusPayload || {};
+    const backendStatus = status.backend || {};
+    const workerStatus = status.playwright_worker || status.worker || {};
+    const parsePort = (value) => {
+      const parsed = Number.parseInt(String(value || ''), 10);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    };
+
+    const nextBackendPort = parsePort(backendStatus.port);
+    const nextWorkerPort = parsePort(workerStatus.port);
+
+    if (nextBackendPort && nextBackendPort !== this.backendPort) {
+      log.info(`Syncing backend port from supervisor status: ${this.backendPort || 'unset'} -> ${nextBackendPort}`);
+      this.backendPort = nextBackendPort;
+    }
+
+    if (nextWorkerPort && nextWorkerPort !== this.playwrightWorkerPort) {
+      log.info(`Syncing playwright-worker port from supervisor status: ${this.playwrightWorkerPort || 'unset'} -> ${nextWorkerPort}`);
+      this.playwrightWorkerPort = nextWorkerPort;
+    }
+
+    if (nextBackendPort) {
+      const backendUrl = this.getBackendBaseUrl();
+      const backendApiBaseUrl = this.getBackendApiBaseUrl();
+      process.env.BACKEND_PORT = String(this.getBackendPort());
+      process.env.SYN_BACKEND_PORT = process.env.BACKEND_PORT;
+      process.env.SYN_BACKEND_URL = backendUrl;
+      process.env.NEXT_PUBLIC_SYN_BACKEND_URL = backendUrl;
+      process.env.NEXT_PUBLIC_BACKEND_URL = backendUrl;
+      process.env.NEXT_PUBLIC_API_URL = backendUrl;
+      process.env.MANUS_API_BASE_URL = backendApiBaseUrl;
+      process.env.AGENT_API_BASE_URL = backendApiBaseUrl;
+    }
+
+    if (nextWorkerPort) {
+      process.env.PLAYWRIGHT_WORKER_PORT = String(this.getPlaywrightWorkerPort());
+      process.env.SYN_PLAYWRIGHT_WORKER_PORT = process.env.PLAYWRIGHT_WORKER_PORT;
+    }
+
+    return status;
+  }
+
+  async getSupervisorStatus(timeoutMs = 5000) {
+    const statusPayload = await this.requestSupervisor('/api/status', 'GET', timeoutMs);
+    this.syncManagedServicePortsFromStatus(statusPayload);
+    return statusPayload;
+  }
+
   async requestSupervisorRestartAll(timeoutMs = 30000) {
     let lastError = null;
 
@@ -1258,7 +1307,7 @@ class SynapseApp {
     while (Date.now() < deadline) {
       try {
         const restartState = await this.requestSupervisor('/api/restart-status', 'GET', 5000);
-        const statusPayload = await this.requestSupervisor('/api/status', 'GET', 5000);
+        const statusPayload = await this.getSupervisorStatus(5000);
         const status = statusPayload?.data || {};
         const isServiceReady = (service, { allowDisabled = false, optional = false } = {}) => {
           if (!service) {
@@ -1326,7 +1375,6 @@ class SynapseApp {
     await this.stopManagedServices();
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await this.startServices();
-    await this.waitForSupervisorServices(90000, 1500);
     this.servicesStarted = true;
     log.info('Managed service stack restarted successfully');
     return { success: true };
@@ -1636,17 +1684,19 @@ class SynapseApp {
   async prepareManagedServicePorts() {
     const configuredWorkerPort = this.getConfiguredPlaywrightWorkerPort();
     const configuredBackendPort = this.getConfiguredBackendPort();
+    const reservedPorts = new Set();
 
     this.backendPort = await this.resolveManagedPort(
       configuredBackendPort,
       this.isSynapseBackendOnPort.bind(this),
-      new Set([configuredWorkerPort])
+      reservedPorts
     );
+    reservedPorts.add(this.backendPort);
 
     this.playwrightWorkerPort = await this.resolveManagedPort(
       configuredWorkerPort,
       this.isPlaywrightWorkerOnPort.bind(this),
-      new Set([this.backendPort])
+      reservedPorts
     );
 
     log.info('Managed service ports prepared:', {
@@ -1849,6 +1899,7 @@ class SynapseApp {
     console.log('Using supervisor to manage backend services...');
     log.info('Using supervisor to manage backend services...');
     this.startSupervisor();
+    await this.waitForSupervisorServices(90000, 1500);
     await this.startFrontend(this.buildServiceEnv());
     this.servicesStarted = true;
   }
@@ -2705,58 +2756,30 @@ class SynapseApp {
           };
         }
 
-        const http = require('http');
-
-        return new Promise((resolve, reject) => {
-          const req = http.get('http://127.0.0.1:7002/api/status', (res) => {
-            let data = '';
-
-            res.on('data', (chunk) => {
-              data += chunk;
-            });
-
-            res.on('end', () => {
-              try {
-                const result = JSON.parse(data);
-                const payload = result.data || {};
-                // 娣诲姞鍓嶇鐘舵€?
-                payload.frontend = {
-                  running: this.frontendProcess !== null && !this.frontendProcess.killed,
-                  pid: this.frontendProcess?.pid
-                };
-                const workerStatus = payload.playwright_worker || payload.worker || { running: false, pid: null, external: false };
-                const celeryStatus = payload.celery_worker || payload.celery || { running: false, pid: null, external: false };
-                const gatewayStatus = payload.hermes_gateway || payload.gateway || { running: false, pid: null, external: false };
-                const hermesDashboardStatus = payload.hermes_dashboard || payload.dashboard || { running: false, pid: null, external: false };
-                const hermesWebuiStatus = payload.hermes_webui || payload.webui || { running: false, pid: null, external: false };
-                resolve({
-                  backend: payload.backend || { running: false, pid: null, external: false },
-                  playwright_worker: workerStatus,
-                  celery_worker: celeryStatus,
-                  hermes_gateway: gatewayStatus,
-                  hermes_dashboard: hermesDashboardStatus,
-                  hermes_webui: hermesWebuiStatus,
-                  frontend: payload.frontend,
-                  supervisor: {
-                    running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
-                    pid: this.supervisorProcess?.pid
-                  }
-                });
-              } catch (error) {
-                reject(error);
-              }
-            });
-          });
-
-          req.on('error', (error) => {
-            reject(error);
-          });
-
-          req.setTimeout(5000, () => {
-            req.destroy();
-            reject(new Error('Request timeout'));
-          });
-        });
+        const result = await this.getSupervisorStatus(5000);
+        const payload = result?.data || {};
+        payload.frontend = {
+          running: this.frontendProcess !== null && !this.frontendProcess.killed,
+          pid: this.frontendProcess?.pid
+        };
+        const workerStatus = payload.playwright_worker || payload.worker || { running: false, pid: null, external: false };
+        const celeryStatus = payload.celery_worker || payload.celery || { running: false, pid: null, external: false };
+        const gatewayStatus = payload.hermes_gateway || payload.gateway || { running: false, pid: null, external: false };
+        const hermesDashboardStatus = payload.hermes_dashboard || payload.dashboard || { running: false, pid: null, external: false };
+        const hermesWebuiStatus = payload.hermes_webui || payload.webui || { running: false, pid: null, external: false };
+        return {
+          backend: payload.backend || { running: false, pid: null, external: false },
+          playwright_worker: workerStatus,
+          celery_worker: celeryStatus,
+          hermes_gateway: gatewayStatus,
+          hermes_dashboard: hermesDashboardStatus,
+          hermes_webui: hermesWebuiStatus,
+          frontend: payload.frontend,
+          supervisor: {
+            running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
+            pid: this.supervisorProcess?.pid
+          }
+        };
       } catch (error) {
         log.error('Failed to get supervisor status:', error);
         throw error;

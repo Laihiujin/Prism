@@ -596,6 +596,16 @@ class Supervisor:
         for service_name in ("backend", "playwright-worker", "hermes-dashboard", "hermes-webui"):
             reserved_ports.add(self._resolve_dynamic_service_port(service_name, reserved_ports))
 
+    def _get_reserved_dynamic_ports(self, current_name: str) -> set[int]:
+        reserved_ports: set[int] = set()
+        for service_name in ("backend", "playwright-worker", "hermes-dashboard", "hermes-webui"):
+            if service_name == current_name:
+                continue
+            port = self.service_ports.get(service_name)
+            if isinstance(port, int) and port > 0:
+                reserved_ports.add(port)
+        return reserved_ports
+
     def _build_hermes_cli_launch(self, *cli_args: str) -> List[str]:
         if not self.python_exe:
             raise FileNotFoundError("No shared python runtime available for Hermes CLI")
@@ -1059,8 +1069,8 @@ class Supervisor:
             self.mark_external_service(name, False)
             return True
 
-        if name in {"hermes-dashboard", "hermes-webui"}:
-            self._resolve_dynamic_service_port(name)
+        if name in {"backend", "playwright-worker", "hermes-dashboard", "hermes-webui"}:
+            self._resolve_dynamic_service_port(name, self._get_reserved_dynamic_ports(name))
             self.mark_external_service(name, False)
             return True
 
