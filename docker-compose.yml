@@ -25,7 +25,11 @@ services:
       SYNAPSE_ENV: docker
       SYNAPSE_APP_ROOT: /app
       SYNAPSE_DATA_DIR: /app/runtime-data
-      SYNAPSE_SUPERVISOR_MANAGES_HERMES_UI: "1"
+      SYNAPSE_SUPERVISOR_MANAGES_HERMES_UI: "0"
+      SYNAPSE_HERMES_BIND_HOST: 0.0.0.0
+      SYNAPSE_HERMES_PUBLIC_HOST: 127.0.0.1
+      SYNAPSE_HERMES_HOME: /app/runtime-data/hermes-home
+      SYNAPSE_HERMES_WEBUI_STATE_DIR: /app/runtime-data/hermes-home/webui
       HOST: 0.0.0.0
       PORT: "7000"
       REDIS_URL: redis://redis:6379/0
@@ -40,6 +44,8 @@ services:
       CELERY_CONCURRENCY: "8"
     ports:
       - "7000:7000"
+      - "9119:9119"
+      - "9131:9131"
     volumes:
       - ./runtime-data/app:/app/runtime-data
     healthcheck:
