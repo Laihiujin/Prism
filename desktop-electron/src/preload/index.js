@@ -1,63 +1,79 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
+
+const isMissingRestartAllHandler = (error) =>
+  String(error?.message || error || '').includes("No handler registered for 'system:restart-all'");
+
+const restartAllWithFallback = async () => {
+  try {
+    return await invoke('system:restart-all');
+  } catch (error) {
+    if (!isMissingRestartAllHandler(error)) {
+      throw error;
+    }
+    return invoke('supervisor:restart-all');
+  }
+};
+
 // 暴露安全的 API 给渲染进程
 contextBridge.exposeInMainWorld('electronAPI', {
   // Playwright 相关
   playwright: {
-    getBrowserPath: () => ipcRenderer.invoke('playwright:getBrowserPath')
+    getBrowserPath: () => invoke('playwright:getBrowserPath')
   },
 
   // 浏览器窗口管理
   browser: {
-    createVisual: (url, options) => ipcRenderer.invoke('browser:createVisual', url, options),
-    closeVisual: (windowId) => ipcRenderer.invoke('browser:closeVisual', windowId)
+    createVisual: (url, options) => invoke('browser:createVisual', url, options),
+    closeVisual: (windowId) => invoke('browser:closeVisual', windowId)
   },
 
   // 会话管理
   session: {
-    setCookies: (partition, cookies) => ipcRenderer.invoke('session:setCookies', partition, cookies)
+    setCookies: (partition, cookies) => invoke('session:setCookies', partition, cookies)
   },
 
   // 应用信息
   app: {
-    getInfo: () => ipcRenderer.invoke('app:getInfo')
+    getInfo: () => invoke('app:getInfo')
   },
 
   settings: {
-    get: () => ipcRenderer.invoke('settings:get'),
-    update: (settings) => ipcRenderer.invoke('settings:update', settings)
+    get: () => invoke('settings:get'),
+    update: (settings) => invoke('settings:update', settings)
   },
 
   browserRuntime: {
-    getStatus: () => ipcRenderer.invoke('browserRuntime:getStatus'),
-    install: (target) => ipcRenderer.invoke('browserRuntime:install', target),
-    uninstall: (target) => ipcRenderer.invoke('browserRuntime:uninstall', target)
+    getStatus: () => invoke('browserRuntime:getStatus'),
+    install: (target) => invoke('browserRuntime:install', target),
+    uninstall: (target) => invoke('browserRuntime:uninstall', target)
   },
 
   // 系统管理
   system: {
-    restartFrontend: () => ipcRenderer.invoke('system:restart-frontend'),
-    restartBackend: () => ipcRenderer.invoke('system:restart-backend'),
-    restartAll: () => ipcRenderer.invoke('system:restart-all'),
-    restartApp: () => ipcRenderer.invoke('system:restart-app'),
-    stopAll: () => ipcRenderer.invoke('system:stop-all'),
-    quitApp: () => ipcRenderer.invoke('system:quit-app'),
-    getStatus: () => ipcRenderer.invoke('system:get-status'),
-    clearVideoData: (options) => ipcRenderer.invoke('system:clear-video-data', options)
+    restartFrontend: () => invoke('system:restart-frontend'),
+    restartBackend: () => invoke('system:restart-backend'),
+    restartAll: () => restartAllWithFallback(),
+    restartApp: () => invoke('system:restart-app'),
+    stopAll: () => invoke('system:stop-all'),
+    quitApp: () => invoke('system:quit-app'),
+    getStatus: () => invoke('system:get-status'),
+    clearVideoData: (options) => invoke('system:clear-video-data', options)
   },
 
   // Supervisor 管理（用于启动管理器）
   supervisor: {
-    getStatus: () => ipcRenderer.invoke('supervisor:get-status'),
-    startAll: () => ipcRenderer.invoke('supervisor:start-all'),
-    stopAll: () => ipcRenderer.invoke('supervisor:stop-all'),
-    restartAll: () => ipcRenderer.invoke('supervisor:restart-all'),
-    launchMainApp: () => ipcRenderer.invoke('supervisor:launch-main-app')
+    getStatus: () => invoke('supervisor:get-status'),
+    startAll: () => invoke('supervisor:start-all'),
+    stopAll: () => invoke('supervisor:stop-all'),
+    restartAll: () => invoke('supervisor:restart-all'),
+    launchMainApp: () => invoke('supervisor:launch-main-app')
   },
 
   // 窗口管理
   window: {
-    openSettings: () => ipcRenderer.invoke('window:openSettings')
+    openSettings: () => invoke('window:openSettings')
   }
 });
 
