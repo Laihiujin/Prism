@@ -1381,25 +1381,15 @@ class SynapseApp {
         const backendReady = isServiceReady(status.backend);
         const workerReady = isServiceReady(status.playwright_worker || status.worker);
         const celeryReady = isServiceReady(status.celery_worker || status.celery);
-        const gatewayReady = isServiceReady(status.hermes_gateway || status.gateway, {
-          allowDisabled: true,
-          optional: true
-        });
-        const hermesDashboardReady = isServiceReady(status.hermes_dashboard || status.dashboard, {
-          optional: true
-        });
-        const hermesWebuiReady = isServiceReady(status.hermes_webui || status.webui, {
-          optional: true
-        });
         const restartInProgress = Boolean(restartState?.data?.restart_in_progress);
 
+        // Hermes sidecars are non-blocking for desktop startup. They may be
+        // absent, disabled, or recover asynchronously, but the packaged app
+        // should still finish booting once the core automation stack is ready.
         if (
           backendReady &&
           workerReady &&
           celeryReady &&
-          gatewayReady &&
-          hermesDashboardReady &&
-          hermesWebuiReady &&
           !restartInProgress
         ) {
           return true;
