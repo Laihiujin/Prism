@@ -129,8 +129,19 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
                     time.sleep(1)
 
                 started = self.supervisor.start_named_service(service)
+                service_status = self.supervisor.get_service_status(service)
+                if not started and not service_status.get("running"):
+                    self._send_json(
+                        {
+                            "status": "error",
+                            "message": f"{service} failed to restart",
+                            "data": service_status,
+                        },
+                        500,
+                    )
+                    return
                 message = f"{service} restarted" if started else f"{service} already running"
-                self._send_json({"status": "success", "message": message})
+                self._send_json({"status": "success", "message": message, "data": service_status})
             except Exception as exc:
                 logger.error("Restart service %s failed: %s", service, exc)
                 self._send_json({"status": "error", "message": str(exc)}, 500)

@@ -20,6 +20,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -227,10 +228,10 @@ class Supervisor:
     def __init__(self) -> None:
         self.manager = ProcessManager()
         self.service_ports = {
-            "backend": 7000,
-            "playwright-worker": 7001,
-            "hermes-dashboard": 9119,
-            "hermes-webui": 9131,
+            "backend": self._read_env_port(("BACKEND_PORT", "SYN_BACKEND_PORT"), 7000),
+            "playwright-worker": self._read_env_port(("PLAYWRIGHT_WORKER_PORT", "SYN_PLAYWRIGHT_WORKER_PORT"), 7001),
+            "hermes-dashboard": self._read_env_port(("SYNAPSE_HERMES_DASHBOARD_PORT",), 9119),
+            "hermes-webui": self._read_env_port(("SYNAPSE_HERMES_WEBUI_PORT",), 9131),
         }
         self.preferred_service_ports = dict(self.service_ports)
         self.external_services: Dict[str, bool] = {}
@@ -289,6 +290,20 @@ class Supervisor:
         logger.info("Shared Python runtime: %s", self.python_exe or "not available")
         if self.synenv_site_packages:
             logger.info("Packaged site-packages: %s", self.synenv_site_packages)
+
+    @staticmethod
+    def _read_env_port(keys: Tuple[str, ...], default: int) -> int:
+        for key in keys:
+            raw_value = str(os.environ.get(key) or "").strip()
+            if not raw_value:
+                continue
+            try:
+                parsed = int(raw_value)
+            except ValueError:
+                continue
+            if parsed > 0:
+                return parsed
+        return default
 
     def _get_gateway_state_path(self) -> Path:
         return self.hermes_home_dir / "gateway_state.json"
@@ -545,23 +560,27 @@ class Supervisor:
         *,
         host: str = "127.0.0.1",
         max_attempts: int = 32,
+        reserved_ports: Optional[set[int]] = None,
     ) -> int:
         candidate = max(int(preferred_port), 1)
         for _ in range(max_attempts):
+            if reserved_ports and candidate in reserved_ports:
+                candidate += 1
+                continue
             if self._can_bind_port(candidate, host=host):
                 return candidate
             candidate += 1
         raise RuntimeError(f"No available port found starting from {preferred_port}")
 
-    def _resolve_dynamic_service_port(self, name: str) -> int:
+    def _resolve_dynamic_service_port(self, name: str, reserved_ports: Optional[set[int]] = None) -> int:
         preferred_port = self.preferred_service_ports.get(name, self.service_ports.get(name))
         if preferred_port is None:
             raise KeyError(f"Unknown service port mapping: {name}")
         current_port = self.service_ports.get(name, preferred_port)
-        if self._can_bind_port(current_port):
+        if (not reserved_ports or current_port not in reserved_ports) and self._can_bind_port(current_port):
             return current_port
 
-        resolved_port = self._find_available_port(preferred_port)
+        resolved_port = self._find_available_port(preferred_port, reserved_ports=reserved_ports)
         if resolved_port != current_port:
             logger.warning(
                 "Port %s for %s is unavailable; reassigned to %s",
@@ -573,8 +592,9 @@ class Supervisor:
         return resolved_port
 
     def _refresh_dynamic_service_ports(self) -> None:
-        for service_name in ("hermes-dashboard", "hermes-webui"):
-            self._resolve_dynamic_service_port(service_name)
+        reserved_ports: set[int] = set()
+        for service_name in ("backend", "playwright-worker", "hermes-dashboard", "hermes-webui"):
+            reserved_ports.add(self._resolve_dynamic_service_port(service_name, reserved_ports))
 
     def _build_hermes_cli_launch(self, *cli_args: str) -> List[str]:
         if not self.python_exe:
@@ -671,6 +691,9 @@ class Supervisor:
         for platform, choice in platform_browser_preferences.items():
             env[f"SYNAPSE_PLATFORM_BROWSER_{platform.upper()}"] = choice
         env["SYNAPSE_PLATFORM_BROWSER_TENCENT"] = platform_browser_preferences.get("channels", "chromium")
+        env["BACKEND_PORT"] = str(self.service_ports["backend"])
+        env["SYN_BACKEND_PORT"] = str(self.service_ports["backend"])
+        env["PLAYWRIGHT_WORKER_PORT"] = str(self.service_ports["playwright-worker"])
         env["ENABLE_OCR_RESCUE"] = "1"
         env["ENABLE_SELENIUM_RESCUE"] = "1"
         env["ENABLE_SELENIUM_DEBUG"] = "1"
@@ -836,12 +859,65 @@ class Supervisor:
             env.setdefault("HERMES_SKIP_CHMOD", "1")
         return env
 
+    def _http_ok(self, url: str, timeout: float = 2.0) -> bool:
+        try:
+            request = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return 200 <= getattr(response, "status", 0) < 500
+        except Exception:
+            return False
+
+    def _is_service_ready(self, name: str) -> bool:
+        if not self.manager.is_running(name):
+            return False
+
+        if name == "hermes-dashboard":
+            port = self.service_ports["hermes-dashboard"]
+            return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/")
+
+        if name == "hermes-webui":
+            port = self.service_ports["hermes-webui"]
+            if not self.is_port_in_use(port):
+                return False
+            return (
+                self._http_ok(f"http://127.0.0.1:{port}/?syn_shell_health=1")
+                and self._http_ok(f"http://127.0.0.1:{port}/static/boot.js?syn_shell_health=1")
+            )
+
+        if name == "backend":
+            port = self.service_ports["backend"]
+            return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/health")
+
+        if name == "playwright-worker":
+            port = self.service_ports["playwright-worker"]
+            return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/health")
+
+        return True
+
+    def wait_for_service_ready(self, name: str, timeout: float = 20.0, poll_interval: float = 0.5) -> bool:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            proc = self.manager.processes.get(name)
+            if proc is not None and proc.poll() is not None:
+                return False
+            if self._is_service_ready(name):
+                return True
+            time.sleep(poll_interval)
+        return self._is_service_ready(name)
+
     def start_named_service(self, name: str, env: Optional[Dict[str, str]] = None) -> bool:
         if not self.can_start_service(name):
             return False
         try:
             launch_cmd, cwd = self.get_service_launch(name)
-            return self.manager.start_process(name, launch_cmd, cwd, self.get_service_env(name, env))
+            started = self.manager.start_process(name, launch_cmd, cwd, self.get_service_env(name, env))
+            if not started:
+                return False
+            if name in {"backend", "playwright-worker", "hermes-dashboard", "hermes-webui"} and not self.wait_for_service_ready(name):
+                logger.warning("%s failed readiness after startup", name)
+                self.manager.stop_process(name)
+                return False
+            return True
         except Exception as exc:
             logger.warning("Skipping %s startup: %s", name, exc)
             return False
@@ -911,6 +987,17 @@ class Supervisor:
         proc = self.manager.processes.get(name)
         managed_running = self.manager.is_running(name)
         external_running = self.is_external_running(name)
+        service_port = self.service_ports.get(name)
+
+        if not managed_running and service_port:
+            port_open = self.is_port_in_use(service_port)
+            if port_open and not external_running:
+                external_running = True
+                self.mark_external_service(name, True)
+            elif external_running and not port_open:
+                external_running = False
+                self.mark_external_service(name, False)
+
         pid = proc.pid if managed_running and proc else None
 
         if name == "hermes-gateway" and external_running and pid is None:
@@ -927,7 +1014,13 @@ class Supervisor:
             "managed": managed_running,
             "source": source,
         }
-        if name == "hermes-dashboard":
+        if name == "backend":
+            payload["port"] = self.service_ports["backend"]
+            payload["url"] = f"http://127.0.0.1:{self.service_ports['backend']}"
+        elif name == "playwright-worker":
+            payload["port"] = self.service_ports["playwright-worker"]
+            payload["url"] = f"http://127.0.0.1:{self.service_ports['playwright-worker']}"
+        elif name == "hermes-dashboard":
             payload["port"] = self.service_ports["hermes-dashboard"]
             payload["url"] = f"http://127.0.0.1:{self.service_ports['hermes-dashboard']}"
             payload["dashboard_url"] = payload["url"]
@@ -984,7 +1077,7 @@ class Supervisor:
         return True
 
     def _kill_conflicting_processes(self) -> None:
-        for port in (6379, 7000, 7001):
+        for port in (6379,):
             if self.is_port_in_use(port) and self.kill_port_conflict:
                 for pid in self._find_pids_by_port(port):
                     self._terminate_pid(pid)

@@ -1382,6 +1382,7 @@ if __name__ == "__main__":
     HOST = "127.0.0.1"
     PORT = 7001  # 使用不同的端口，避免与 API 服务冲突
 
+    PORT = int(os.getenv("PLAYWRIGHT_WORKER_PORT", str(PORT)))
     logger.info(f"Starting Playwright Worker on http://{HOST}:{PORT}")
 
     # 启动服务（不使用 reload）

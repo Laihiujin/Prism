@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "v0.51.50",
+    [string]$Version = "v0.51.91",
     [switch]$Force
 )
 
@@ -128,7 +128,7 @@ function Apply-SynapseHermesBranding {
     }
 
     $indexPath = Join-Path $staticRoot "index.html"
-    $indexHtml = Get-Content -LiteralPath $indexPath -Raw
+    $indexHtml = Get-Content -LiteralPath $indexPath -Raw -Encoding utf8
     $indexHtml = $indexHtml.Replace('<html lang="en">', '<html lang="zh-CN">')
     $baseHrefScript = '<script>(function(){var path=location.pathname,marker=''/session/'',i=path.indexOf(marker),p;i>=0?p=(path.slice(0,i+1)||''/''):p=(path.endsWith(''/'')?path:(path.replace(/\/[^\/]*$/,''/'')||''/''));document.write(''<base href="''+location.origin+p+''">'');})()</script>'
     $fileModeGuard = @'
@@ -179,7 +179,7 @@ function Apply-SynapseHermesBranding {
     Set-Content -LiteralPath $indexPath -Value $indexHtml -Encoding utf8
 
     $stylePath = Join-Path $staticRoot "style.css"
-    $styleCss = Get-Content -LiteralPath $stylePath -Raw
+    $styleCss = Get-Content -LiteralPath $stylePath -Raw -Encoding utf8
     $styleCss = Replace-First $styleCss ':root\.dark\s*\{.*?\n\s*\}' @'
 :root.dark {
     --bg:#000000;--sidebar:#050505;--border:#171717;--border2:rgba(255,255,255,0.12);
@@ -213,7 +213,7 @@ function Apply-SynapseHermesBranding {
     Set-Content -LiteralPath $stylePath -Value $styleCss -Encoding utf8
 
     $bootJsPath = Join-Path $staticRoot "boot.js"
-    $bootJs = Get-Content -LiteralPath $bootJsPath -Raw
+    $bootJs = Get-Content -LiteralPath $bootJsPath -Raw -Encoding utf8
     $newChatHandler = @'
 $('btnNewChat').onclick=async()=>{
   await newSession();await renderSessionList();closeMobileSidebar();$('msg').focus();
@@ -223,7 +223,7 @@ $('btnNewChat').onclick=async()=>{
     Set-Content -LiteralPath $bootJsPath -Value $bootJs -Encoding utf8
 
     $swJsPath = Join-Path $staticRoot "sw.js"
-    $swJs = Get-Content -LiteralPath $swJsPath -Raw
+    $swJs = Get-Content -LiteralPath $swJsPath -Raw -Encoding utf8
     $swJs = $swJs.Replace("  './static/favicon.svg',`n  './static/favicon-32.png',`n  './manifest.json',", "  './static/favicon.svg',`n  './static/favicon-32.png',`n  './static/hermes.svg',`n  './manifest.json',")
     $swJs = $swJs.Replace("  './static/favicon.svg',`n  './static/favicon-32.png',`n  './static/hermes-agent-logo-white.svg',`n  './manifest.json',", "  './static/favicon.svg',`n  './static/favicon-32.png',`n  './static/hermes.svg',`n  './manifest.json',")
     Set-Content -LiteralPath $swJsPath -Value $swJs -Encoding utf8
@@ -234,7 +234,7 @@ $('btnNewChat').onclick=async()=>{
     $settings = @{}
     if (Test-Path $webUiSettingsPath) {
         try {
-            $loaded = Get-Content -LiteralPath $webUiSettingsPath -Raw | ConvertFrom-Json -AsHashtable
+            $loaded = Get-Content -LiteralPath $webUiSettingsPath -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
             if ($loaded -is [hashtable]) {
                 $settings = $loaded
             }
@@ -316,7 +316,7 @@ $versionModule = @(
 Set-Content -LiteralPath $versionModulePath -Value $versionModule -Encoding utf8
 
 $configPyPath = Join-Path $hermesWebUiRoot "api\config.py"
-$configPy = Get-Content -LiteralPath $configPyPath -Raw
+$configPy = Get-Content -LiteralPath $configPyPath -Raw -Encoding utf8
 $configPatchMarker = "def _delete_models_cache_on_disk() -> None:`n    try:`n        cache_path = globals().get(""_models_cache_path"")"
 if ($configPy -notmatch [regex]::Escape($configPatchMarker)) {
     $hotfix = @'
@@ -335,7 +335,7 @@ def _delete_models_cache_on_disk() -> None:
 }
 
 $helpersPath = Join-Path $hermesWebUiRoot "api\helpers.py"
-$helpersText = Get-Content -LiteralPath $helpersPath -Raw
+$helpersText = Get-Content -LiteralPath $helpersPath -Raw -Encoding utf8
 $helpersText = $helpersText -replace "handler\.send_header\('X-Frame-Options', 'DENY'\)\r?\n", ""
 $helpersText = $helpersText -replace "(?m)^[ \t]+handler\.send_header\('Referrer-Policy', 'same-origin'\)$", "    handler.send_header('Referrer-Policy', 'same-origin')"
 $helpersText = $helpersText -replace "connect-src 'self' https://cdn\.jsdelivr\.net; ", "connect-src 'self' https://cdn.jsdelivr.net http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; "
@@ -343,12 +343,12 @@ $helpersText = $helpersText -replace "base-uri 'self'; form-action 'self'", "bas
 Set-Content -LiteralPath $helpersPath -Value $helpersText -Encoding utf8
 
 $configPyPath = Join-Path $hermesWebUiRoot "api\config.py"
-$configPy = Get-Content -LiteralPath $configPyPath -Raw
+$configPy = Get-Content -LiteralPath $configPyPath -Raw -Encoding utf8
 $configPy = $configPy.Replace('    "language": "en",  # UI locale code; must match a key in static/i18n.js LOCALES', '    "language": "zh",  # UI locale code; must match a key in static/i18n.js LOCALES')
 Set-Content -LiteralPath $configPyPath -Value $configPy -Encoding utf8
 
 $serverPyPath = Join-Path $hermesWebUiRoot "server.py"
-$serverPy = Get-Content -LiteralPath $serverPyPath -Raw
+$serverPy = Get-Content -LiteralPath $serverPyPath -Raw -Encoding utf8
 $serverPy = $serverPy -replace "frame-ancestors 'self'; ", "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*; "
 Set-Content -LiteralPath $serverPyPath -Value $serverPy -Encoding utf8
 
