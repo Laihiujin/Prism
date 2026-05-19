@@ -236,7 +236,13 @@ def _seed_webui_preferences(state_dir: Path) -> None:
 
 
 def _dashboard_url(port: int) -> str:
-    return f"http://127.0.0.1:{port}"
+    public_host = str(os.getenv("SYNAPSE_HERMES_PUBLIC_HOST") or "127.0.0.1").strip() or "127.0.0.1"
+    return f"http://{public_host}:{port}"
+
+
+def _get_runtime_bind_host() -> str:
+    bind_host = str(os.getenv("SYNAPSE_HERMES_BIND_HOST") or "127.0.0.1").strip()
+    return bind_host or "127.0.0.1"
 
 
 def _get_runtime_port(env_key: str, fallback: int) -> int:
@@ -627,7 +633,7 @@ async def _start_dashboard_backend(
             *_build_hermes_cli_bootstrap_args(
                 "dashboard",
                 "--host",
-                "127.0.0.1",
+                _get_runtime_bind_host(),
                 "--port",
                 str(port),
                 "--no-open",
@@ -641,7 +647,7 @@ async def _start_dashboard_backend(
     else:
         webui_path = get_hermes_webui_path()
         env["HERMES_WEBUI_AGENT_DIR"] = str(get_hermes_source_path())
-        env["HERMES_WEBUI_HOST"] = "127.0.0.1"
+        env["HERMES_WEBUI_HOST"] = _get_runtime_bind_host()
         env["HERMES_WEBUI_PORT"] = str(port)
         env["HERMES_WEBUI_PYTHON"] = str(get_hermes_python_path())
         env["HERMES_WEBUI_STATE_DIR"] = str(webui_state_path)

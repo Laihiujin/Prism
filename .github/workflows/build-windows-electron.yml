@@ -92,10 +92,38 @@ jobs:
           $env:SYN_BACKEND_URL = "http://127.0.0.1:7000"
           $env:NEXT_PUBLIC_SYN_BACKEND_URL = "http://127.0.0.1:7000"
           $env:NEXT_PUBLIC_BACKEND_URL = "http://127.0.0.1:7000"
-          npm --prefix .\syn_frontend_react run build
-          $serverJs = Join-Path $env:GITHUB_WORKSPACE "syn_frontend_react\.next\standalone\server.js"
-          if (-not (Test-Path $serverJs)) {
-            throw "Missing frontend standalone output: $serverJs"
+          $frontendDir = Join-Path $env:GITHUB_WORKSPACE "syn_frontend_react"
+          $nextDir = Join-Path $frontendDir ".next"
+          $serverJs = Join-Path $nextDir "standalone\server.js"
+          $attemptCount = 2
+          $buildSucceeded = $false
+
+          for ($attempt = 1; $attempt -le $attemptCount; $attempt++) {
+            if (Test-Path $nextDir) {
+              Remove-Item -LiteralPath $nextDir -Recurse -Force -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 2
+            }
+
+            & npm --prefix .\syn_frontend_react run build
+            $buildExitCode = $LASTEXITCODE
+            $serverJsExists = Test-Path $serverJs
+
+            if ($buildExitCode -eq 0 -and $serverJsExists) {
+              $buildSucceeded = $true
+              break
+            }
+
+            Write-Warning "Frontend standalone build attempt $attempt/$attemptCount incomplete. exit=$buildExitCode serverJsExists=$serverJsExists"
+            if ($attempt -lt $attemptCount) {
+              Start-Sleep -Seconds 3
+            }
+          }
+
+          if (-not $buildSucceeded) {
+            if (Test-Path (Join-Path $nextDir "standalone")) {
+              Get-ChildItem -Path (Join-Path $nextDir "standalone") -Force | Format-Table -AutoSize | Out-String | Write-Host
+            }
+            throw "Missing frontend standalone output after $attemptCount attempts: $serverJs"
           }
 
       - name: Install Electron dependencies
