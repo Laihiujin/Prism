@@ -74,6 +74,28 @@ def _expected_chromium_executable_via_playwright() -> str | None:
         return None
 
 
+def _resolve_runtime_module_name() -> str:
+    preferred = os.getenv("SYNAPSE_PLAYWRIGHT_RUNTIME", "").strip().lower()
+    if preferred in {"patchright", "playwright"}:
+        return preferred
+
+    try:
+        from utils.playwright_provider import PLAYWRIGHT_RUNTIME
+
+        resolved = str(PLAYWRIGHT_RUNTIME).strip().lower()
+        if resolved in {"patchright", "playwright"}:
+            return resolved
+    except Exception:
+        pass
+
+    return "patchright"
+
+
+def _runtime_install_command() -> list[str]:
+    runtime_module = _resolve_runtime_module_name()
+    return [sys.executable, "-m", runtime_module, "install", "chromium"]
+
+
 def _acquire_lock(lock_path: Path, timeout_s: int = 300) -> bool:
     start = time.monotonic()
     while time.monotonic() - start < timeout_s:
@@ -108,7 +130,7 @@ def ensure_playwright_chromium_installed(
     Key goals:
     - Do not rely on any external/system browser.
     - Use a deterministic on-disk path that can be bundled into an exe distribution.
-    - Auto-run `python -m playwright install chromium` on first run.
+    - Auto-run the active browser runtime installer on first run.
     """
     install_ran = False
     installed = False
@@ -215,16 +237,16 @@ def ensure_playwright_chromium_installed(
             )
 
         # Run installer in this process.
-        cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
+        cmd = _runtime_install_command()
         install_ran = True
         try:
             subprocess.run(cmd, check=True, timeout=timeout_s)
         except subprocess.TimeoutExpired:
-            error = "playwright_install_timeout"
+            error = "runtime_install_timeout"
         except subprocess.CalledProcessError as e:
-            error = f"playwright_install_failed:{e.returncode}"
+            error = f"runtime_install_failed:{e.returncode}"
         except Exception as e:
-            error = f"playwright_install_error:{type(e).__name__}"
+            error = f"runtime_install_error:{type(e).__name__}"
 
         expected_exe = _expected_chromium_executable_via_playwright()
         chromium_exe = None

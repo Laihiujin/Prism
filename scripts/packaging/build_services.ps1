@@ -160,7 +160,6 @@ $targetOptions = @{
     "--collect-all", "starlette",
     "--collect-all", "uvicorn",
     "--collect-all", "patchright",
-    "--collect-all", "playwright",
     "--collect-all", "pydantic",
     "--collect-all", "pydantic_core",
     "--collect-all", "pydantic_settings",
