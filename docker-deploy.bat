@@ -1,13 +1,15 @@
 @echo off
 setlocal EnableExtensions
+chcp 65001 >nul
 cd /d "%~dp0"
 
 if not exist "runtime-data" mkdir "runtime-data"
 if not exist "runtime-data\\app" mkdir "runtime-data\\app"
+if not exist "runtime-data\\app\\hermes-home" mkdir "runtime-data\\app\\hermes-home"
 if not exist "runtime-data\\redis" mkdir "runtime-data\\redis"
 
 echo [INFO] Building and starting SynapseAutomation Docker stack...
-docker compose up -d --build
+docker compose up -d --build --remove-orphans
 if errorlevel 1 exit /b %ERRORLEVEL%
 
 echo [INFO] Waiting for backend health...
@@ -24,14 +26,28 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo [INFO] Waiting for HermesAgent Dashboard...
+powershell -NoProfile -Command "$deadline=(Get-Date).AddMinutes(4); do { try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9119 -TimeoutSec 5; if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { exit 0 } } catch {}; Start-Sleep -Seconds 2 } while ((Get-Date) -lt $deadline); exit 1"
+if errorlevel 1 (
+  echo [ERROR] HermesAgent Dashboard health check timed out.
+  docker compose logs --tail 120 app
+  exit /b 1
+)
+
+echo [INFO] Waiting for HermesAgent WebUI...
+powershell -NoProfile -Command "$deadline=(Get-Date).AddMinutes(4); do { try { $r=Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9131 -TimeoutSec 5; if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { exit 0 } } catch {}; Start-Sleep -Seconds 2 } while ((Get-Date) -lt $deadline); exit 1"
+if errorlevel 1 (
+  echo [ERROR] HermesAgent WebUI health check timed out.
+  docker compose logs --tail 120 app
+  exit /b 1
+)
+
 echo.
 echo [OK] SynapseAutomation Docker services are ready.
 echo Frontend: http://localhost:3000
 echo Backend:  http://localhost:7000
 echo Docs:     http://localhost:7000/api/docs
+echo Hermes Dashboard: http://localhost:9119
+echo Hermes WebUI:     http://localhost:9131
 echo.
 docker compose ps
-
-echo.
-echo [INFO] Launching Electron desktop...
-start "" cmd /c call "\"%~dp0launch-electron-desktop.bat\""
