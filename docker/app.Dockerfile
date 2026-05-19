@@ -11,16 +11,16 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./requirements.txt
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+RUN python -m pip install --break-system-packages --upgrade pip \
+    && python -m pip install --break-system-packages -r requirements.txt
 
 COPY syn_backend ./syn_backend
 COPY tools/hermes-agent ./tools/hermes-agent
 COPY tools/hermes-webui ./tools/hermes-webui
 COPY docker/start-app.sh ./docker/start-app.sh
 
-RUN python -m venv /opt/hermes-venv \
-    && /opt/hermes-venv/bin/pip install -e ./tools/hermes-agent[web] \
+RUN python -m venv --system-site-packages /opt/hermes-venv \
+    && /opt/hermes-venv/bin/pip install --no-build-isolation --no-deps -e ./tools/hermes-agent[web] \
     && /opt/hermes-venv/bin/pip install -r ./tools/hermes-webui/requirements.txt \
     && touch /opt/hermes-venv/.hermes-runtime-ready \
     && chmod +x ./docker/start-app.sh \

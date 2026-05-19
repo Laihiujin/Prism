@@ -21,9 +21,7 @@ browsers
 desktop-electron/dist
 desktop-electron/out
 desktop-electron/resources
-tools/hermes-agent
 tools/hermes-home
-tools/hermes-webui
 .env
 *.log
 *.db

@@ -3,7 +3,7 @@ FROM node:22-bookworm-slim AS deps
 WORKDIR /app/syn_frontend_react
 
 COPY syn_frontend_react/package.json syn_frontend_react/package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 FROM node:22-bookworm-slim AS builder
 
