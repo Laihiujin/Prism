@@ -4,16 +4,17 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
 import { API_ENDPOINTS } from "@/lib/env"
+import { resolveRuntimeBackendBase } from "@/lib/runtime-backend"
 
-const DASHBOARD_PORT = 9119
-const WEBUI_PORT = 9131
-const FALLBACK_WEBUI_URL = `http://127.0.0.1:${WEBUI_PORT}`
-const WEBUI_ASSET_REV = "hermes-composer-fix-20260513c"
+const FALLBACK_WEBUI_URL = "http://127.0.0.1:9131"
+const WEBUI_ASSET_REV = "hermes-composer-fix-20260519"
 const STARTUP_ERROR_FALLBACK = "Hermes WebUI 启动失败，请检查 Hermes 运行时或模型配置。"
 
 type HermesRuntime = {
   webui_running?: boolean
   webui_url?: string
+  webui_port?: number
+  dashboard_port?: number
 }
 
 type HermesBootState = "booting" | "ready" | "error"
@@ -44,6 +45,7 @@ function extractErrorMessage(payload: unknown, status: number): string {
 
 export default function AIAgentPage() {
   const [iframeKey, setIframeKey] = useState(0)
+  const [backendBase, setBackendBase] = useState(API_ENDPOINTS.base)
   const [webuiUrl, setWebuiUrl] = useState(FALLBACK_WEBUI_URL)
   const [bootState, setBootState] = useState<HermesBootState>("booting")
   const [bootMessage, setBootMessage] = useState("正在启动 Hermes WebUI…")
@@ -66,8 +68,8 @@ export default function AIAgentPage() {
       return false
     }
 
-    const loadRuntimeStatus = async () => {
-      const response = await fetch(`${API_ENDPOINTS.base}/api/v1/agent/config/hermes/runtime`, {
+    const loadRuntimeStatus = async (baseUrl: string) => {
+      const response = await fetch(`${baseUrl}/api/v1/agent/config/hermes/runtime`, {
         cache: "no-store",
       })
       const payload = await response.json().catch(() => ({}))
@@ -79,10 +81,24 @@ export default function AIAgentPage() {
       setBootMessage("正在启动 Hermes WebUI…")
 
       try {
-        const response = await fetch(`${API_ENDPOINTS.base}/api/v1/agent/config/hermes/dashboard/start`, {
+        const baseUrl = await resolveRuntimeBackendBase()
+        if (!active) {
+          return
+        }
+        setBackendBase(baseUrl)
+
+        const currentRuntime = await loadRuntimeStatus(baseUrl).catch(() => null)
+        if (!active) {
+          return
+        }
+        if (applyRuntime(currentRuntime)) {
+          return
+        }
+
+        const response = await fetch(`${baseUrl}/api/v1/agent/config/hermes/dashboard/start`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ port: DASHBOARD_PORT, webui_port: WEBUI_PORT }),
+          body: JSON.stringify({}),
           cache: "no-store",
         })
         const payload = await response.json().catch(() => ({}))
@@ -100,6 +116,17 @@ export default function AIAgentPage() {
           return
         }
 
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+          if (!active) {
+            return
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+          const nextRuntime = await loadRuntimeStatus(baseUrl).catch(() => null)
+          if (applyRuntime(nextRuntime)) {
+            return
+          }
+        }
+
         throw new Error("Hermes WebUI 尚未就绪，请稍后重试。")
       } catch (error) {
         if (!active) {
@@ -107,7 +134,8 @@ export default function AIAgentPage() {
         }
 
         try {
-          const runtime = await loadRuntimeStatus()
+          const baseUrl = await resolveRuntimeBackendBase().catch(() => API_ENDPOINTS.base)
+          const runtime = await loadRuntimeStatus(baseUrl)
           if (applyRuntime(runtime)) {
             return
           }
@@ -148,6 +176,7 @@ export default function AIAgentPage() {
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/55">
             目标地址：{webuiUrl}
           </div>
+          <div className="mt-2 text-xs text-white/35">Backend：{backendBase}</div>
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"

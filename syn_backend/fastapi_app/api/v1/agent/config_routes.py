@@ -55,8 +55,8 @@ class AgentConfigResponse(BaseModel):
 
 
 class DashboardStartRequest(BaseModel):
-    port: int = Field(default=9119, ge=1024, le=65535)
-    webui_port: int = Field(default=9131, ge=1024, le=65535)
+    port: Optional[int] = Field(default=None, ge=1024, le=65535)
+    webui_port: Optional[int] = Field(default=None, ge=1024, le=65535)
     backend: Optional[str] = Field(default=None)
 
 
