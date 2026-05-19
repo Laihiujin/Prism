@@ -14,6 +14,8 @@ const ICONS = {
 };
 
 const TAB_LABELS = {
+    'hermes-dashboard': 'HermesAgentDashboard',
+    'hermes-webui': 'HermesWebUI',
     home: '工作台',
     browser: '浏览器',
     hermes: 'Hermes 控制台',
@@ -39,6 +41,11 @@ class TabManager {
         this.pUrlDisplay = document.getElementById('p-url-display');
         this.pUrlInput = document.getElementById('p-url-input');
         this.hermesButton = document.getElementById('hermes-dashboard-btn');
+        this.hermesMenuGroup = document.getElementById('hermes-menu-group');
+        this.hermesMenu = document.getElementById('hermes-entry-menu');
+        this.hermesDashboardEntry = document.getElementById('hermes-dashboard-entry');
+        this.hermesWebuiEntry = document.getElementById('hermes-webui-entry');
+        this.hermesMenuOpen = false;
 
         if (this.sidebar) {
             this.sidebar.innerHTML = '';
@@ -67,9 +74,51 @@ class TabManager {
         };
 
         if (this.hermesButton) {
-            this.hermesButton.onclick = () => {
+            this.hermesButton.onclick = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.toggleHermesMenu();
+            };
+        }
+
+        if (this.hermesDashboardEntry) {
+            this.hermesDashboardEntry.onclick = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.closeHermesMenu();
                 this.openHermesDashboard();
             };
+        }
+
+        if (this.hermesWebuiEntry) {
+            this.hermesWebuiEntry.onclick = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.closeHermesMenu();
+                this.openHermesWebui();
+            };
+        }
+
+        document.addEventListener('pointerdown', (event) => {
+            if (!this.hermesMenuOpen || !this.hermesMenuGroup) {
+                return;
+            }
+
+            if (!this.hermesMenuGroup.contains(event.target)) {
+                this.closeHermesMenu();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeHermesMenu();
+            }
+        });
+
+        if (this.hermesMenu) {
+            this.hermesMenu.addEventListener('pointerdown', (event) => {
+                event.stopPropagation();
+            });
         }
 
         // 设置按钮点击 - 打开/关闭设置面板
@@ -272,7 +321,7 @@ class TabManager {
             return true;
         }
 
-        return ['hermes', 'lumenx'].includes(tab.type);
+        return this.isHermesTabType(tab.type) || tab.type === 'lumenx';
     }
 
     scheduleManagedTabRetry(tab, failedUrl) {
@@ -618,19 +667,62 @@ class TabManager {
         return id;
     }
 
-    async resolveHermesDashboardUrl() {
-        const fallbackUrl = 'http://127.0.0.1:9119';
+    isHermesTabType(type) {
+        return ['hermes', 'hermes-dashboard', 'hermes-webui'].includes(type);
+    }
+
+    setHermesMenuOpen(open) {
+        this.hermesMenuOpen = Boolean(open);
+
+        if (this.hermesButton) {
+            this.hermesButton.classList.toggle('menu-open', this.hermesMenuOpen);
+            this.hermesButton.setAttribute('aria-expanded', this.hermesMenuOpen ? 'true' : 'false');
+        }
+
+        if (this.hermesMenu) {
+            this.hermesMenu.classList.toggle('open', this.hermesMenuOpen);
+        }
+    }
+
+    toggleHermesMenu() {
+        this.setHermesMenuOpen(!this.hermesMenuOpen);
+        this.syncUtilityButtons();
+    }
+
+    closeHermesMenu() {
+        if (!this.hermesMenuOpen) {
+            return;
+        }
+
+        this.setHermesMenuOpen(false);
+        this.syncUtilityButtons();
+    }
+
+    async resolveHermesRuntimeUrls() {
+        const urls = {
+            dashboard: 'http://127.0.0.1:9119',
+            webui: 'http://127.0.0.1:9131'
+        };
 
         try {
             if (window.electronAPI?.supervisor?.getStatus) {
                 const status = await window.electronAPI.supervisor.getStatus();
-                const supervisorCandidate = String(
+                const dashboardCandidate = String(
                     status?.hermes_dashboard?.dashboard_url
                     || status?.hermes_dashboard?.url
                     || ''
                 ).trim();
-                if (supervisorCandidate) {
-                    return supervisorCandidate;
+                if (dashboardCandidate) {
+                    urls.dashboard = dashboardCandidate;
+                }
+
+                const webuiCandidate = String(
+                    status?.hermes_webui?.webui_url
+                    || status?.hermes_webui?.url
+                    || ''
+                ).trim();
+                if (webuiCandidate) {
+                    urls.webui = webuiCandidate;
                 }
             }
 
@@ -642,17 +734,28 @@ class TabManager {
 
             const response = await fetch(`${backendBase}/api/v1/agent/config/hermes/runtime`);
             const payload = await response.json().catch(() => ({}));
-            const candidate = String(payload?.data?.dashboard_url || '').trim();
-            return candidate || fallbackUrl;
+            const dashboardCandidate = String(payload?.data?.dashboard_url || '').trim();
+            if (dashboardCandidate) {
+                urls.dashboard = dashboardCandidate;
+            }
+
+            const webuiCandidate = String(payload?.data?.webui_url || '').trim();
+            if (webuiCandidate) {
+                urls.webui = webuiCandidate;
+            }
         } catch (error) {
-            console.warn('[Shell] Failed to resolve Hermes dashboard URL, using fallback:', error);
-            return fallbackUrl;
+            console.warn('[Shell] Failed to resolve Hermes runtime URLs, using fallback:', error);
         }
+
+        return urls;
     }
 
-    async openHermesDashboard() {
-        const url = await this.resolveHermesDashboardUrl();
-        const existing = this.tabs.find((tab) => tab.type === 'hermes');
+    async openHermesSurface(surface) {
+        const runtimeUrls = await this.resolveHermesRuntimeUrls();
+        const tabType = surface === 'webui' ? 'hermes-webui' : 'hermes-dashboard';
+        const url = surface === 'webui' ? runtimeUrls.webui : runtimeUrls.dashboard;
+        const partition = surface === 'webui' ? 'persist:hermes-webui' : 'persist:hermes-dashboard';
+        const existing = this.tabs.find((tab) => tab.type === tabType);
 
         if (existing) {
             const currentUrl = this.getWebviewUrl(existing.webview, existing.url);
@@ -664,19 +767,28 @@ class TabManager {
             return;
         }
 
-        this.addTab(url, 'hermes', false, {
+        this.addTab(url, tabType, false, {
             initialUrl: url,
-            partition: 'persist:hermes-dashboard'
+            partition
         });
+    }
+
+    async openHermesDashboard() {
+        await this.openHermesSurface('dashboard');
+    }
+
+    async openHermesWebui() {
+        await this.openHermesSurface('webui');
     }
 
     syncUtilityButtons() {
         if (!this.hermesButton) return;
         const active = this.activeTab();
-        this.hermesButton.classList.toggle('active', active?.type === 'hermes');
+        this.hermesButton.classList.toggle('active', this.hermesMenuOpen || this.isHermesTabType(active?.type));
     }
 
     switchTab(id) {
+        this.closeHermesMenu();
         this.tabs.forEach(t => {
             t.webview.classList.remove('active');
             t.tabItem.classList.remove('active');

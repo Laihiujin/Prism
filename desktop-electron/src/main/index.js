@@ -1,5 +1,6 @@
 ﻿const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
 const path = require('path');
+const { nativeTheme } = require('electron');
 const { spawn, spawnSync, execSync } = require('child_process');
 const net = require('net');
 const log = require('electron-log');
@@ -61,6 +62,8 @@ class SynapseApp {
 
     // 绛夊緟 Electron 鍑嗗灏辩华
     await app.whenReady();
+    nativeTheme.themeSource = 'dark';
+    log.info('Applied default dark theme source for Electron browser surfaces');
 
     this.repoRoot = path.join(__dirname, '../../../');
     this.isPackagedRuntime = this.detectPackagedRuntime();
@@ -1793,6 +1796,98 @@ class SynapseApp {
     )];
   }
 
+  getManagedServiceResourceMarkers() {
+    const candidates = [
+      this.repoRoot,
+      path.join(this.repoRoot, 'syn_backend'),
+      path.join(this.repoRoot, 'tools', 'hermes-agent'),
+      path.join(this.repoRoot, 'tools', 'hermes-webui'),
+      path.join(process.resourcesPath, 'syn_backend'),
+      path.join(process.resourcesPath, 'tools', 'hermes-agent'),
+      path.join(process.resourcesPath, 'tools', 'hermes-webui'),
+      path.join(process.resourcesPath, 'services', 'backend'),
+      path.join(process.resourcesPath, 'supervisor'),
+      path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor')
+    ];
+
+    return [...new Set(
+      candidates
+        .filter(Boolean)
+        .map((candidate) => path.normalize(candidate).toLowerCase())
+    )];
+  }
+
+  listRepoManagedServicePids() {
+    if (process.platform !== 'win32') {
+      return [];
+    }
+
+    try {
+      const markers = this.getManagedServiceResourceMarkers()
+        .map((marker) => `'${marker.replace(/'/g, "''")}'`)
+        .join(', ');
+      const psCommand = [
+        '$ErrorActionPreference = "SilentlyContinue"',
+        `$markers = @(${markers})`,
+        '$keywords = @(',
+        "  'fastapi_app\\\\run.py',",
+        "  'playwright_worker\\\\worker.py',",
+        "  'tools\\\\hermes-webui\\\\server.py',",
+        "  'hermes_cli.main',",
+        "  'celery_app',",
+        "  'supervisor.py'",
+        ')',
+        '$pids = Get-CimInstance Win32_Process | Where-Object {',
+        '  $name = [string]$_.Name',
+        '  $cmd = [string]$_.CommandLine',
+        '  $exe = [string]$_.ExecutablePath',
+        '  $cmdLower = $cmd.ToLower()',
+        '  $exeLower = $exe.ToLower()',
+        '  $belongsToRepo = $false',
+        '  foreach ($marker in $markers) {',
+        '    if (($cmdLower -and $cmdLower.Contains($marker)) -or ($exeLower -and $exeLower.Contains($marker))) {',
+        '      $belongsToRepo = $true',
+        '      break',
+        '    }',
+        '  }',
+        '  if (-not $belongsToRepo) { return $false }',
+        "  $serviceByName = $name.ToLower() -in @('backend.exe', 'supervisor.exe')",
+        '  $serviceByCommand = $false',
+        '  foreach ($keyword in $keywords) {',
+        '    if ($cmdLower -and $cmdLower.Contains($keyword)) {',
+        '      $serviceByCommand = $true',
+        '      break',
+        '    }',
+        '  }',
+        '  $serviceByName -or $serviceByCommand',
+        '} | Select-Object -ExpandProperty ProcessId -Unique',
+        'if ($pids) { $pids | ConvertTo-Json -Compress }'
+      ].join('; ');
+      const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', psCommand], {
+        encoding: 'utf8',
+        windowsHide: true
+      });
+
+      if (result.error || result.status !== 0) {
+        return [];
+      }
+
+      const raw = String(result.stdout || '').trim();
+      if (!raw) {
+        return [];
+      }
+
+      const parsed = JSON.parse(raw);
+      const values = Array.isArray(parsed) ? parsed : [parsed];
+      return values
+        .map((value) => Number.parseInt(value, 10))
+        .filter((value) => Number.isInteger(value) && value > 0);
+    } catch (error) {
+      log.warn('Failed to inspect repo managed service processes:', error);
+      return [];
+    }
+  }
+
   listRepoSupervisorPids() {
     if (process.platform !== 'win32') {
       return [];
@@ -1929,11 +2024,26 @@ class SynapseApp {
     }
   }
 
+  cleanupStaleManagedServices() {
+    const terminated = [];
+
+    for (const pid of this.listRepoManagedServicePids()) {
+      if (this.terminateProcessByPid(pid)) {
+        terminated.push(pid);
+      }
+    }
+
+    if (terminated.length > 0) {
+      log.warn(`Terminated stale repo managed service process(es) before startup: ${terminated.join(', ')}`);
+    }
+  }
+
   async startServices() {
     if (this.servicesStarted) {
       return;
     }
 
+    this.cleanupStaleManagedServices();
     await this.prepareManagedServicePorts();
     console.log('Using supervisor to manage backend services...');
     log.info('Using supervisor to manage backend services...');
@@ -2423,7 +2533,7 @@ class SynapseApp {
       minWidth: 1200,
       minHeight: 700,
       show: false,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#0a0a0e',
       titleBarStyle: 'default',
       autoHideMenuBar: true,
       icon: this.appIconPath || undefined,
@@ -2477,6 +2587,7 @@ class SynapseApp {
         width: options.width || 1200,
         height: options.height || 800,
         show: true,
+        backgroundColor: '#0a0a0e',
         icon: this.appIconPath || undefined,
         title: options.title || 'Browser Preview',
         webPreferences: {

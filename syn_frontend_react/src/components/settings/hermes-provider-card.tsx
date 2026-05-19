@@ -230,7 +230,7 @@ export function HermesProviderCard() {
     "http://127.0.0.1:9119"
 
   return (
-    <Card className="border-white/10 bg-white/5">
+    <Card className="border-white/10 bg-white/0">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-white">
           Hermes 模型提供商

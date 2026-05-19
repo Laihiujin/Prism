@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, Suspense } from "react"
+import React, { useState, Suspense } from "react"
+import { usePathname } from "next/navigation"
+import { HermesEmbeddedHost } from "@/components/hermes/hermes-embedded-host"
 import { SidebarNew } from "@/components/layout/sidebar-new"
 import { NavbarNew } from "@/components/layout/navbar-new"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -8,6 +10,8 @@ import { Sheet, SheetContent } from "@/components/ui/sheet"
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const pathname = usePathname()
+  const hermesActive = pathname === "/ai-agent"
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-black text-foreground selection:bg-white/20 selection:text-white md:min-h-screen md:w-full">
@@ -43,12 +47,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Suspense fallback={<div className="h-16 border-b border-white/10 bg-black/40" />}>
           <NavbarNew onMenuClick={() => setMobileNavOpen(true)} />
         </Suspense>
-        <main className="flex-1 overflow-y-auto p-0">
+        <main className="relative flex-1 overflow-y-auto p-0">
           <Suspense fallback={null}>
-            <div className="mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className={hermesActive ? "hidden" : "mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700"}>
               {children}
             </div>
           </Suspense>
+          <HermesEmbeddedHost active={hermesActive} />
         </main>
       </div>
     </div>
