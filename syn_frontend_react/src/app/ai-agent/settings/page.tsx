@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { API_ENDPOINTS } from "@/lib/env"
+import { resolveRuntimeBackendBase } from "@/lib/runtime-backend"
 
 type HermesRuntime = {
   source_path?: string
@@ -43,10 +44,13 @@ type HermesRuntime = {
 
 export default function HermesSettingsPage() {
   const [runtime, setRuntime] = useState<HermesRuntime | null>(null)
+  const [backendBase, setBackendBase] = useState(API_ENDPOINTS.base)
 
   const loadRuntime = useCallback(async () => {
+    const baseUrl = await resolveRuntimeBackendBase().catch(() => API_ENDPOINTS.base)
+    setBackendBase(baseUrl)
     try {
-      const response = await fetch(`${API_ENDPOINTS.base}/api/v1/agent/config/hermes/runtime`)
+      const response = await fetch(`${baseUrl}/api/v1/agent/config/hermes/runtime`, { cache: "no-store" })
       const payload = await response.json()
       setRuntime(payload?.data || null)
     } catch {
@@ -58,8 +62,11 @@ export default function HermesSettingsPage() {
     let active = true
 
     const run = async () => {
+      const baseUrl = await resolveRuntimeBackendBase().catch(() => API_ENDPOINTS.base)
+      if (!active) return
+      setBackendBase(baseUrl)
       try {
-        const response = await fetch(`${API_ENDPOINTS.base}/api/v1/agent/config/hermes/runtime`)
+        const response = await fetch(`${baseUrl}/api/v1/agent/config/hermes/runtime`, { cache: "no-store" })
         const payload = await response.json()
         if (!active) return
         startTransition(() => {
@@ -108,7 +115,7 @@ export default function HermesSettingsPage() {
 
       <PageHeader
         title="Hermes Agent 设置"
-        description="这里保留 Hermes Dashboard 入口和本地运行时状态。模型提供商配置已经移到系统设置页。"
+        description="这里显示 Electron 当前正在使用的 Hermes 运行时、Dashboard 和 WebUI 入口。"
         actions={
           <div className="flex gap-2">
             <Button
@@ -129,27 +136,33 @@ export default function HermesSettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5 text-primary" />
-              Dashboard 入口
+              入口
             </CardTitle>
             <CardDescription className="text-white/60">
-              Hermes Dashboard 已经集成到 Electron 外壳侧边栏底部，这个页面只负责说明入口和运行时状态。
+              Backend 以 Electron 运行时注入为准，不再依赖编译期的 7000 默认值。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-white/80">
-            <div>1. 在 Electron 侧边栏底部固定入口中直接打开 Hermes Dashboard。</div>
-            <div>2. 在系统设置页维护模型提供商、模型、API Key 和最大轮次。</div>
-            <div>3. Hermes Dashboard、CLI 和 Synapse 调用共用同一份 Hermes Home 配置。</div>
+            <div>Runtime Backend：{backendBase}</div>
+            <div>Dashboard：{dashboardUrl}</div>
+            <div>WebUI：{webuiUrl}</div>
             <div className="flex flex-wrap gap-3 pt-2">
               <Button asChild variant="outline" className="border-white/10 bg-white/5">
                 <a href="/settings">
                   <Settings2 className="mr-2 h-4 w-4" />
-                  前往系统设置页
+                  打开系统设置
                 </a>
               </Button>
               <Button asChild variant="outline" className="border-white/10 bg-white/5">
                 <a href={dashboardUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-2 h-4 w-4" />
-                  单独打开 Dashboard
+                  打开 Dashboard
+                </a>
+              </Button>
+              <Button asChild variant="outline" className="border-white/10 bg-white/5">
+                <a href={webuiUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  打开 WebUI
                 </a>
               </Button>
             </div>
@@ -163,17 +176,16 @@ export default function HermesSettingsPage() {
               本地运行时
             </CardTitle>
             <CardDescription className="text-white/60">
-              用于确认 Hermes CLI、Dashboard 和本地运行目录是否就绪。
+              用于确认 Hermes CLI、Dashboard 和 WebUI 是否真的安装并跑在当前 Electron 使用的环境里。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-white/80">
             <div>Agent 运行时：{runtime?.agent_installed ? "已安装" : "未安装"}</div>
             <div>官方 Dashboard：{runtime?.official_dashboard_installed ? "已安装" : "未安装"}</div>
             <div>兼容 WebUI：{runtime?.webui_installed ? "已安装" : "未安装"}</div>
-            <div>共享 Gateway：{runtime?.gateway_running ? `运行中 · PID ${runtime?.gateway_pid ?? "-"}` : `未运行 · ${runtime?.gateway_state || "stopped"}`}</div>
-            <div>官方 Dashboard 运行态：{runtime?.dashboard_running ? `运行中 · ${dashboardUrl}` : `未运行 · ${dashboardUrl}`}</div>
-            <div>聊天 WebUI 运行态：{runtime?.webui_running ? `运行中 · ${webuiUrl}` : `未运行 · ${webuiUrl}`}</div>
-            <div className="text-xs text-white/50">Dashboard 和 WebUI 共用同一个 Hermes gateway，只是两个独立入口。</div>
+            <div>共享 Gateway：{runtime?.gateway_running ? `运行中，PID ${runtime?.gateway_pid ?? "-"}` : `未运行，${runtime?.gateway_state || "stopped"}`}</div>
+            <div>Dashboard 状态：{runtime?.dashboard_running ? `运行中，${dashboardUrl}` : `未运行，${dashboardUrl}`}</div>
+            <div>WebUI 状态：{runtime?.webui_running ? `运行中，${webuiUrl}` : `未运行，${webuiUrl}`}</div>
             <div>源码目录：{runtime?.source_path || "未检测到"}</div>
             <div>Dashboard dist：{runtime?.dashboard_dist_path || "未检测到"}</div>
             <div>WebUI 目录：{runtime?.webui_path || "未检测到"}</div>
@@ -185,11 +197,6 @@ export default function HermesSettingsPage() {
               CLI 命令
               <div className="mt-2 break-all font-mono text-white">{cliCommand}</div>
             </div>
-            {!runtime?.agent_installed && (
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200">
-                先运行 `scripts\hermes\setup-local-hermes.ps1`，把 Hermes CLI、Dashboard 和 WebUI 依赖安装到共享的 `synenv` 运行时。
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
