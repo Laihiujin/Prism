@@ -390,9 +390,18 @@ async def browser_runtime_install(target: str):
 @router.post("/browser-runtime/uninstall/{target}", summary="????????????")
 async def browser_runtime_uninstall(target: str):
     target = (target or "").strip().lower()
-    allowed_targets = {"chromium", "firefox"}
+    allowed_targets = {"chromium", "firefox", "patchright", "playwright"}
     if target not in allowed_targets:
         raise HTTPException(status_code=400, detail=f"????????: {target}")
+
+    if target in {"patchright", "playwright"}:
+        result = _run_runtime_command(["-m", "pip", "uninstall", "-y", target])
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+            "error": None if result.returncode == 0 else (result.stderr.strip() or result.stdout.strip()),
+            "browserRuntimeInfo": _get_browser_runtime_info(),
+        }
 
     try:
         removed_paths = _uninstall_browser_asset(target)

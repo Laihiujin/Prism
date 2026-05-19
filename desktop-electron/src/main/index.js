@@ -170,23 +170,31 @@ class SynapseApp {
     const devSupervisorDir = path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor');
     const devExePath = path.join(devSupervisorDir, 'supervisor.exe');
     const devScriptPath = path.join(devSupervisorDir, 'supervisor.py');
-    const exePath = this.resolveFirstPath(
-      this.isDev
-        ? [devExePath, packagedExePath]
-        : [packagedExePath, devExePath]
-    );
-    const scriptPath = exePath
+    const preferScriptInDev = this.isDev;
+    const exePath = preferScriptInDev
       ? null
-      : this.resolveFirstPath(
-          this.isDev
-            ? [devScriptPath, packagedScriptPath]
-            : [packagedScriptPath, devScriptPath]
-        );
+      : this.resolveFirstPath([packagedExePath, devExePath]);
+    const scriptPath = this.resolveFirstPath(
+      preferScriptInDev
+        ? [devScriptPath, packagedScriptPath]
+        : exePath
+          ? []
+          : [packagedScriptPath, devScriptPath]
+    );
+    const fallbackExePath = exePath || (
+      scriptPath
+        ? null
+        : this.resolveFirstPath(
+            this.isDev
+              ? [devExePath, packagedExePath]
+              : [packagedExePath, devExePath]
+          )
+    );
 
     return {
-      exePath,
+      exePath: fallbackExePath,
       scriptPath,
-      cwd: exePath ? path.dirname(exePath) : (scriptPath ? path.dirname(scriptPath) : null)
+      cwd: fallbackExePath ? path.dirname(fallbackExePath) : (scriptPath ? path.dirname(scriptPath) : null)
     };
   }
 
@@ -906,10 +914,41 @@ class SynapseApp {
     return [];
   }
 
-  uninstallBrowserComponent(target) {
-    const allowedTargets = new Set(['chromium', 'firefox']);
+  async uninstallBrowserComponent(target) {
+    const allowedTargets = new Set(['chromium', 'firefox', 'patchright', 'playwright']);
     if (!allowedTargets.has(target)) {
       return { success: false, error: `unsupported_uninstall_target:${target}` };
+    }
+
+    if (target === 'patchright' || target === 'playwright') {
+      const runtime = this.getPythonRuntime();
+      if (runtime.source !== 'synenv') {
+        return {
+          success: false,
+          output: '',
+          error: `packaged_python_unavailable:${runtime.error || runtime.source}`,
+          browserRuntimeInfo: this.getBrowserRuntimeInfo()
+        };
+      }
+
+      const env = this.buildPythonEnv({
+        ...process.env,
+        PLAYWRIGHT_BROWSERS_PATH: this.getBrowsersRoot(),
+        SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+      });
+
+      const result = await this.runManagedCommand(
+        this.getPythonPath(),
+        ['-m', 'pip', 'uninstall', '-y', target],
+        { env, logPrefix: `pip:remove:${target}` }
+      );
+
+      return {
+        success: result.success,
+        output: result.stdout,
+        error: result.error,
+        browserRuntimeInfo: this.getBrowserRuntimeInfo()
+      };
     }
 
     const removalTargets = this.getBrowserAssetRemovalTargets(target);
@@ -2537,7 +2576,7 @@ class SynapseApp {
 
     ipcMain.handle('browserRuntime:uninstall', async (event, target) => {
       try {
-        return this.uninstallBrowserComponent(target);
+        return await this.uninstallBrowserComponent(target);
       } catch (error) {
         log.error(`Failed to uninstall browser runtime target ${target}:`, error);
         return { success: false, error: error.message };
