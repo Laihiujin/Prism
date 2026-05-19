@@ -144,6 +144,11 @@
             transform: translateY(-50%) translateX(0);
         }
 
+        .sidebar-action.menu-open::after {
+            opacity: 0;
+            transform: translateY(-50%) translateX(-6px);
+        }
+
         .tab-item:hover,
         .sidebar-action:hover {
             border-color: var(--border-strong);
@@ -277,6 +282,82 @@
             box-shadow:
                 0 12px 26px rgba(0, 0, 0, 0.24),
                 inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+
+        .sidebar-action-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-action-menu {
+            position: absolute;
+            left: calc(100% + 12px);
+            bottom: 50%;
+            transform: translateY(50%) translateX(-8px);
+            min-width: 224px;
+            padding: 10px;
+            border-radius: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(8, 8, 10, 0.96);
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.36),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            z-index: 1200;
+        }
+
+        .sidebar-action-menu.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(50%) translateX(0);
+        }
+
+        .sidebar-action-option {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            background: rgba(18, 18, 22, 0.92);
+            color: var(--text-main);
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: left;
+        }
+
+        .sidebar-action-option:hover {
+            border-color: rgba(255, 255, 255, 0.16);
+            background: rgba(24, 24, 28, 0.98);
+            transform: translateY(-1px);
+        }
+
+        .sidebar-action-option:focus-visible {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.24);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+        }
+
+        .sidebar-action-option-title {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .sidebar-action-option-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.4;
         }
 
         .main-area {
@@ -804,10 +885,22 @@
                 </svg>
             </button>
 
-            <button class="sidebar-action hermes-btn" id="hermes-dashboard-btn" type="button" title="Hermes Agent"
-                data-tooltip="Hermes Agent">
-                <span class="hermes-logo-icon" aria-hidden="true"></span>
-            </button>
+            <div class="sidebar-action-group" id="hermes-menu-group">
+                <button class="sidebar-action hermes-btn" id="hermes-dashboard-btn" type="button" title="Hermes"
+                    data-tooltip="Hermes" aria-haspopup="menu" aria-expanded="false" aria-controls="hermes-entry-menu">
+                    <span class="hermes-logo-icon" aria-hidden="true"></span>
+                </button>
+                <div class="sidebar-action-menu" id="hermes-entry-menu" role="menu" aria-label="Hermes entries">
+                    <button class="sidebar-action-option" id="hermes-dashboard-entry" type="button" role="menuitem">
+                        <span class="sidebar-action-option-title">HermesAgentDashboard</span>
+                        <span class="sidebar-action-option-desc">进入 Dashboard 界面</span>
+                    </button>
+                    <button class="sidebar-action-option" id="hermes-webui-entry" type="button" role="menuitem">
+                        <span class="sidebar-action-option-title">HermesWebUI</span>
+                        <span class="sidebar-action-option-desc">进入 WebUI 界面</span>
+                    </button>
+                </div>
+            </div>
 
             <button class="sidebar-action settings-btn" id="settings-btn" type="button" title="系统设置"
                 data-tooltip="系统设置">
