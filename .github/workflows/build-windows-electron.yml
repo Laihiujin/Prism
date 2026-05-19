@@ -108,9 +108,9 @@ jobs:
           python -m venv .\synenv
           .\synenv\Scripts\python.exe -m pip install --upgrade pip
           .\synenv\Scripts\python.exe -m pip install -r .\requirements.txt
-          .\synenv\Scripts\python.exe -m pip uninstall -y patchright
-          .\synenv\Scripts\python.exe -m pip install pyinstaller psutil playwright "patchright==1.59.1"
-          .\synenv\Scripts\python.exe -c "import platform, importlib.metadata; patchright_version = importlib.metadata.version('patchright'); playwright_version = importlib.metadata.version('playwright'); assert patchright_version == '1.59.1', patchright_version; print(platform.python_version()); print('patchright=' + patchright_version); print('playwright=' + playwright_version)"
+          .\synenv\Scripts\python.exe -m pip uninstall -y playwright patchright
+          .\synenv\Scripts\python.exe -m pip install pyinstaller psutil "patchright==1.59.1"
+          .\synenv\Scripts\python.exe -c "import platform, importlib.metadata; patchright_version = importlib.metadata.version('patchright'); assert patchright_version == '1.59.1', patchright_version; print(platform.python_version()); print('patchright=' + patchright_version)"
 
       - name: Prepare embedded Hermes runtime
         shell: pwsh
@@ -273,9 +273,9 @@ jobs:
           }
 
           $pythonExe = Join-Path $resourcesDir "synenv\Scripts\python.exe"
-          & $pythonExe -c "import platform, patchright, playwright; print(platform.python_version())"
+          & $pythonExe -c "import platform, patchright; print(platform.python_version())"
           if ($LASTEXITCODE -ne 0) {
-            throw "Packaged synenv Python cannot import patchright/playwright."
+            throw "Packaged synenv Python cannot import patchright."
           }
 
           $allChrome = Get-ChildItem -Path (Join-Path $resourcesDir "browsers") -Filter chrome.exe -Recurse
