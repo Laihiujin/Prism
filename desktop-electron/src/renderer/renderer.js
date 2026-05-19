@@ -15,7 +15,7 @@ const ICONS = {
 
 const TAB_LABELS = {
     'hermes-dashboard': 'HermesAgentDashboard',
-    'hermes-webui': 'HermesWebUI',
+    'hermes-webui': 'HermesAgentWebUI',
     home: '工作台',
     browser: '浏览器',
     hermes: 'Hermes 控制台',
@@ -155,7 +155,10 @@ class TabManager {
             this.pUrlDisplay.style.display = 'none';
             this.pUrlInput.style.display = 'block';
             this.pUrlInput.focus();
-            this.pUrlInput.select();
+            const cursorAt = this.pUrlInput.value.length;
+            if (typeof this.pUrlInput.setSelectionRange === 'function') {
+                this.pUrlInput.setSelectionRange(cursorAt, cursorAt);
+            }
         };
 
         this.pUrlInput.onblur = () => {
@@ -659,7 +662,7 @@ class TabManager {
         webview.addEventListener('page-title-updated', (e) => {
             tabData.title = e.title;
             if (id === this.activeId && this.popup.style.display === 'block') {
-                document.getElementById('p-title').textContent = e.title;
+                this.syncPopupInfo(tabData);
             }
         });
 
@@ -843,8 +846,20 @@ class TabManager {
         this.pUrlInput.style.display = 'none';
     }
 
+    getPopupTitle(tab) {
+        if (this.isHermesTabType(tab?.type)) {
+            return 'HermesAgent';
+        }
+
+        if (tab?.pinned) {
+            return 'SynapseAutomation';
+        }
+
+        return tab?.title || '无标题会话';
+    }
+
     syncPopupInfo(tab) {
-        document.getElementById('p-title').textContent = tab.title || (tab.pinned ? 'SynapseAutomation' : '无标题会话');
+        document.getElementById('p-title').textContent = this.getPopupTitle(tab);
         const currentUrl = this.getWebviewUrl(tab.webview, tab.url);
         this.pUrlDisplay.textContent = currentUrl;
         this.pUrlInput.value = currentUrl;
