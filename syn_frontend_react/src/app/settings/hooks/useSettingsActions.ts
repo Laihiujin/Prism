@@ -24,6 +24,8 @@ interface LoadingState {
   setPlatformBrowser: boolean
   installPatchright: boolean
   installPlaywright: boolean
+  uninstallPatchright: boolean
+  uninstallPlaywright: boolean
   installChromium: boolean
   installFirefox: boolean
   uninstallChromium: boolean
@@ -129,6 +131,8 @@ export function useSettingsActions() {
     setPlatformBrowser: false,
     installPatchright: false,
     installPlaywright: false,
+    uninstallPatchright: false,
+    uninstallPlaywright: false,
     installChromium: false,
     installFirefox: false,
     uninstallChromium: false,
@@ -230,7 +234,7 @@ export function useSettingsActions() {
   }
 
   const uninstallBrowserRuntimeTarget = async (
-    target: "chromium" | "firefox"
+    target: "patchright" | "playwright" | "chromium" | "firefox"
   ) => {
     if (isElectron) {
       const electron = (window as any).electronAPI
@@ -556,7 +560,7 @@ export function useSettingsActions() {
       syncBrowserRuntimeInfo(result.browserRuntimeInfo)
 
       let restartSucceeded = true
-      if (isElectron && (target === "chromium" || target === "firefox")) {
+      if (target === "patchright" || target === "playwright" || isElectron) {
         restartSucceeded = await restartServicesAfterBrowserAssetChange()
       }
 
@@ -589,8 +593,8 @@ export function useSettingsActions() {
   }
 
   const uninstallBrowserAsset = async (
-    key: "uninstallChromium" | "uninstallFirefox",
-    target: "chromium" | "firefox",
+    key: "uninstallPatchright" | "uninstallPlaywright" | "uninstallChromium" | "uninstallFirefox",
+    target: "patchright" | "playwright" | "chromium" | "firefox",
     label: string
   ) => {
     await handleAction(key, async () => {
@@ -601,7 +605,7 @@ export function useSettingsActions() {
 
       syncBrowserRuntimeInfo(result.browserRuntimeInfo)
 
-      const restartSucceeded = isElectron
+      const restartSucceeded = (target === "patchright" || target === "playwright" || isElectron)
         ? await restartServicesAfterBrowserAssetChange()
         : true
 
@@ -623,6 +627,14 @@ export function useSettingsActions() {
 
   const uninstallFirefox = async () => {
     await uninstallBrowserAsset("uninstallFirefox", "firefox", "Firefox")
+  }
+
+  const uninstallPatchright = async () => {
+    await uninstallBrowserAsset("uninstallPatchright", "patchright", "Patchright")
+  }
+
+  const uninstallPlaywright = async () => {
+    await uninstallBrowserAsset("uninstallPlaywright", "playwright", "Playwright")
   }
 
   const quitApp = async () => {
@@ -766,6 +778,8 @@ export function useSettingsActions() {
     setPlatformBrowserPreference,
     installPatchright,
     installPlaywright,
+    uninstallPatchright,
+    uninstallPlaywright,
     installChromium,
     installFirefox,
     uninstallChromium,
