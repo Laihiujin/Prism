@@ -350,6 +350,18 @@ async def browser_runtime_install(target: str):
     runtime_info = _get_browser_runtime_info()
 
     if target in {"patchright", "playwright"}:
+        conflicting_runtime = "playwright" if target == "patchright" else "patchright"
+        conflicting_info = runtime_info["runtimes"][conflicting_runtime]
+        if conflicting_info["installed"]:
+            uninstall_result = _run_runtime_command(["-m", "pip", "uninstall", "-y", conflicting_runtime])
+            if uninstall_result.returncode != 0:
+                return {
+                    "success": False,
+                    "output": uninstall_result.stdout,
+                    "error": uninstall_result.stderr.strip() or uninstall_result.stdout.strip(),
+                    "browserRuntimeInfo": _get_browser_runtime_info(),
+                }
+
         result = _run_runtime_command(["-m", "pip", "install", target])
         return {
             "success": result.returncode == 0,
