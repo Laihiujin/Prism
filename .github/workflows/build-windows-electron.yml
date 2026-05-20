@@ -159,6 +159,11 @@ jobs:
             }
           }
 
+      - name: Smoke test Electron runtime wiring
+        shell: pwsh
+        run: |
+          node .\desktop-electron\scripts\electron-runtime-smoke.cjs
+
       - name: Build packaged backend service executables
         shell: pwsh
         run: |

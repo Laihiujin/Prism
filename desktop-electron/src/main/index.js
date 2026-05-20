@@ -528,8 +528,20 @@ class SynapseApp {
     }
   }
 
+  shouldReuseCachedPythonRuntime() {
+    if (!this.pythonRuntimeCache) {
+      return false;
+    }
+
+    if (this.pythonRuntimeCache.source !== 'synenv') {
+      return false;
+    }
+
+    return fs.existsSync(this.pythonRuntimeCache.path);
+  }
+
   getPythonRuntime() {
-    if (this.pythonRuntimeCache) {
+    if (this.shouldReuseCachedPythonRuntime()) {
       return this.pythonRuntimeCache;
     }
 
