@@ -11,12 +11,12 @@ $hermesRoot = Join-Path $repoRoot "tools\hermes-agent"
 $hermesWebUiRoot = Join-Path $repoRoot "tools\hermes-webui"
 $hermesHome = Join-Path $repoRoot "tools\hermes-home"
 $brandingAssetsRoot = Join-Path $PSScriptRoot "assets"
-$pythonExe = Join-Path $repoRoot "synenv\Scripts\python.exe"
+$pythonExe = Join-Path $repoRoot "prismenv\Scripts\python.exe"
 $downloadRoot = Join-Path $repoRoot "tmp\hermes-webui-install"
 $zipPath = Join-Path $downloadRoot "$Version.zip"
 $extractRoot = Join-Path $downloadRoot "extract"
 $downloadUrl = "https://codeload.github.com/nesquena/hermes-webui/zip/refs/tags/$Version"
-$webUiBuildVersion = "$Version-synapse-black2"
+$webUiBuildVersion = "$Version-prism-black2"
 
 function Replace-First {
     param(
@@ -85,7 +85,7 @@ function Stop-HermesWebUiProcesses {
     }
 }
 
-function Apply-SynapseHermesBranding {
+function Apply-PrismHermesBranding {
     param(
         [string]$WebUiRoot,
         [string]$AssetsRoot,
@@ -175,7 +175,7 @@ function Apply-SynapseHermesBranding {
               <div style="font-size:11px;color:var(--muted);margin-top:4px" data-i18n="settings_desc_session_endless_scroll">When enabled, older messages load automatically as you scroll upward. When disabled, use the older-messages button.</div>
             </div>
 '@)
-    $indexHtml = $indexHtml.Replace('<script src="static/boot.js?v=__WEBUI_VERSION__" defer></script>', '<script src="static/boot.js?v=__WEBUI_VERSION__&syn=black3" defer></script>')
+    $indexHtml = $indexHtml.Replace('<script src="static/boot.js?v=__WEBUI_VERSION__" defer></script>', '<script src="static/boot.js?v=__WEBUI_VERSION__&prism=black3" defer></script>')
     Set-Content -LiteralPath $indexPath -Value $indexHtml -Encoding utf8
 
     $stylePath = Join-Path $staticRoot "style.css"
@@ -361,7 +361,7 @@ $manifest = [ordered]@{
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
-Apply-SynapseHermesBranding -WebUiRoot $hermesWebUiRoot -AssetsRoot $brandingAssetsRoot -HermesHomePath $hermesHome
+Apply-PrismHermesBranding -WebUiRoot $hermesWebUiRoot -AssetsRoot $brandingAssetsRoot -HermesHomePath $hermesHome
 
 & $pythonExe -m pip install -r (Join-Path $hermesWebUiRoot "requirements.txt")
 
