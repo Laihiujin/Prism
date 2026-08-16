@@ -7,15 +7,15 @@ $ErrorActionPreference = "Stop"
 
 $appRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $hermesRoot = Join-Path $appRoot "tools\hermes-agent"
-$hermesHome = if ($env:SYNAPSE_HERMES_HOME) {
-    $env:SYNAPSE_HERMES_HOME
+$hermesHome = if ($env:PRISM_HERMES_HOME) {
+    $env:PRISM_HERMES_HOME
 } else {
     Join-Path $appRoot "tools\hermes-home"
 }
-$pythonExe = if ($env:SYNAPSE_HERMES_PYTHON -and (Test-Path $env:SYNAPSE_HERMES_PYTHON)) {
-    $env:SYNAPSE_HERMES_PYTHON
+$pythonExe = if ($env:PRISM_HERMES_PYTHON -and (Test-Path $env:PRISM_HERMES_PYTHON)) {
+    $env:PRISM_HERMES_PYTHON
 } else {
-    Join-Path $appRoot "synenv\Scripts\python.exe"
+    Join-Path $appRoot "prismenv\Scripts\python.exe"
 }
 
 if (-not (Test-Path $pythonExe)) {
