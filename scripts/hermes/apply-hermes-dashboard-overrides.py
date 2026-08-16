@@ -78,7 +78,7 @@ def patch_config_example(path: Path) -> None:
             section_body += "  theme: mono\n"
         content = re.sub(section_pattern, "dashboard:\n" + section_body, content, count=1)
     else:
-        content = content.rstrip() + "\n\n# SynapseAutomation Hermes dashboard defaults\ndashboard:\n  theme: mono\n"
+        content = content.rstrip() + "\n\n# Prism Hermes dashboard defaults\ndashboard:\n  theme: mono\n"
     write_text(path, content)
 
 
