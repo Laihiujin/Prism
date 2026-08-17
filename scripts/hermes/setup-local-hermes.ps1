@@ -9,9 +9,9 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $hermesRoot = Join-Path $repoRoot "tools\hermes-agent"
 $hermesHome = Join-Path $repoRoot "tools\hermes-home"
-$synenvPath = Join-Path $repoRoot "synenv"
-$pythonExe = Join-Path $synenvPath "Scripts\python.exe"
-$runtimeStamp = Join-Path $synenvPath ".hermes-runtime-ready"
+$prismenvPath = Join-Path $repoRoot "prismenv"
+$pythonExe = Join-Path $prismenvPath "Scripts\python.exe"
+$runtimeStamp = Join-Path $prismenvPath ".hermes-runtime-ready"
 $hermesConfigPath = Join-Path $hermesRoot "hermes_cli\config.py"
 $requiredExistingPaths = @(
     $pythonExe,
@@ -49,7 +49,7 @@ if (-not $Force) {
     }
 
     if ($hasPreparedRuntime) {
-        Write-Host "Hermes runtime already prepared. Reusing existing synenv, agent, and WebUI assets."
+        Write-Host "Hermes runtime already prepared. Reusing existing prismenv, agent, and WebUI assets."
         Write-Host "Hermes source :" $hermesRoot
         Write-Host "Hermes python :" $pythonExe
         Write-Host "Hermes home   :" $hermesHome
@@ -67,11 +67,11 @@ if (-not (Test-Path $hermesRoot)) {
 }
 
 if (-not (Test-Path $pythonExe)) {
-    python -m venv $synenvPath
+    python -m venv $prismenvPath
 }
 
 if (-not (Test-Path $pythonExe)) {
-    throw "Synapse Python runtime not found: $pythonExe"
+    throw "Prism Python runtime not found: $pythonExe"
 }
 
 & $pythonExe -m pip install --upgrade pip wheel "setuptools<82"
@@ -193,6 +193,6 @@ if ($gitBashPath) {
 }
 Write-Host ""
 Write-Host "Next:"
-Write-Host "  1. Save model config in the SynapseAutomation Hermes settings page."
+Write-Host "  1. Save model config in the Prism Hermes settings page."
 Write-Host "  2. Start Hermes WebUI from the same page, or run:"
 Write-Host "     powershell -ExecutionPolicy Bypass -File `"$repoRoot\scripts\hermes\hermes.ps1`" --version"
