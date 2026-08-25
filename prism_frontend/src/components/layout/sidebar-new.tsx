@@ -141,9 +141,9 @@ export function SidebarNew({
         initial={false}
         animate={{ width: collapsed ? 80 : 280 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className={cn("relative flex h-screen flex-col border-r border-white/10 bg-black text-white", className)}
+        className={cn("relative flex h-screen flex-col border-r border-border bg-background text-foreground", className)}
       >
-        <div className="flex h-16 items-center justify-between border-b border-white/10 px-6">
+        <div className="flex h-16 items-center justify-between border-b border-border px-6">
           <AnimatePresence mode="wait">
             {!collapsed ? (
               <motion.div
@@ -184,7 +184,7 @@ export function SidebarNew({
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <h3 className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-white/40">
+                      <h3 className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-foreground/40">
                         {section.label}
                       </h3>
                     </motion.div>
@@ -203,7 +203,7 @@ export function SidebarNew({
                         <div
                           className={cn(
                             "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                            "text-white/70 hover:bg-white/5 hover:text-white",
+                            "text-foreground/70 hover:bg-accent hover:text-accent-foreground",
                           )}
                         >
                           <Icon className="relative h-5 w-5 shrink-0" suppressHydrationWarning />
@@ -221,7 +221,7 @@ export function SidebarNew({
                               </motion.span>
                             )}
                           </AnimatePresence>
-                          {!collapsed && <ChevronDown className="ml-auto h-4 w-4 text-white/40" />}
+                          {!collapsed && <ChevronDown className="ml-auto h-4 w-4 text-foreground/40" />}
                         </div>
                       )
 
@@ -230,7 +230,7 @@ export function SidebarNew({
                           <TooltipProvider key={item.label} delayDuration={0}>
                             <Tooltip>
                               <TooltipTrigger asChild>{triggerContent}</TooltipTrigger>
-                              <TooltipContent side="right" className="border-white/10 bg-black text-white">
+                              <TooltipContent side="right" className="border-border bg-background text-foreground">
                                 {item.label}
                               </TooltipContent>
                             </Tooltip>
@@ -252,7 +252,7 @@ export function SidebarNew({
                                   onClick={() => onNavigate?.()}
                                   className={cn(
                                     "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
-                                    childActive ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white",
+                                    childActive ? "bg-primary/15 text-primary-foreground" : "text-foreground/60 hover:bg-accent hover:text-accent-foreground",
                                   )}
                                 >
                                   <ChildIcon className="h-4 w-4 shrink-0" suppressHydrationWarning />
@@ -271,7 +271,7 @@ export function SidebarNew({
                         onClick={() => onNavigate?.()}
                         className={cn(
                           "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                          isActive ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
+                          isActive ? "bg-primary/15 text-primary-foreground" : "text-foreground/70 hover:bg-accent hover:text-accent-foreground",
                         )}
                       >
                         <Icon className="relative h-5 w-5 shrink-0" suppressHydrationWarning />
@@ -297,7 +297,7 @@ export function SidebarNew({
                         <TooltipProvider key={item.label} delayDuration={0}>
                           <Tooltip>
                             <TooltipTrigger asChild>{itemContent}</TooltipTrigger>
-                            <TooltipContent side="right" className="border-white/10 bg-black text-white">
+                            <TooltipContent side="right" className="border-border bg-background text-foreground">
                               {item.label}
                             </TooltipContent>
                           </Tooltip>
@@ -319,7 +319,7 @@ export function SidebarNew({
               variant="ghost"
               size="icon"
               onClick={() => setCollapsed(!collapsed)}
-              className="h-10 w-10 rounded-xl text-white/70 hover:bg-white/5 hover:text-white"
+              className="h-10 w-10 rounded-xl text-foreground/70 hover:bg-accent hover:text-accent-foreground"
             >
               <motion.div animate={{ rotate: collapsed ? 180 : 0 }} transition={{ duration: 0.2 }}>
                 <ChevronsLeft className="h-5 w-5" />

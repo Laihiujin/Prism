@@ -267,7 +267,7 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={cn(
-        "sticky top-0 z-50 flex h-16 items-center justify-between border-b border-white/10 bg-black/40 px-6 backdrop-blur-xl relative",
+        "sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-background/60 px-6 backdrop-blur-xl relative",
         className
       )}
     >
@@ -276,7 +276,7 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-white/70 hover:text-white hover:bg-white/10"
+            className="md:hidden text-foreground/70 hover:text-foreground hover:bg-accent"
             onClick={onMenuClick}
             aria-label="打开菜单"
           >
@@ -287,11 +287,11 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
 
       <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:block">
         <div className="group relative w-80">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-hover:text-white" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-hover:text-foreground" />
           <Input
             value={inputValue}
             placeholder="Search... 输入 / 跳转页面"
-            className="h-9 w-full rounded-2xl border-white/10 bg-black pl-9 pr-12 text-sm text-white transition-all focus:w-[22rem] focus:border-white/20 focus:bg-black focus:shadow-glow-white/10"
+            className="h-9 w-full rounded-2xl border-border bg-background pl-9 pr-12 text-sm text-foreground transition-all focus:w-[22rem] focus:border-primary/40 focus:bg-background"
             onChange={(event) => handleChange(event.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => {
@@ -311,21 +311,21 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
           />
           <Badge
             variant="outline"
-            className="pointer-events-none absolute right-3 top-1/2 h-5 -translate-y-1/2 border-white/10 bg-white/5 px-1.5 font-mono text-[10px] text-white/45"
+            className="pointer-events-none absolute right-3 top-1/2 h-5 -translate-y-1/2 border-border bg-accent/60 px-1.5 font-mono text-[10px] text-foreground/45"
           >
             /
           </Badge>
 
           {showSlashResults && (
-            <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950/95 shadow-2xl backdrop-blur-xl">
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-[0.18em] text-white/40">Page Search</span>
-                  <Badge variant="secondary" className="border border-white/10 bg-white/5 text-[10px] text-white/55">
+                  <span className="text-xs uppercase tracking-[0.18em] text-foreground/40">Page Search</span>
+                  <Badge variant="secondary" className="border border-border bg-accent/60 text-[10px] text-foreground/55">
                     Slash
                   </Badge>
                 </div>
-                <span className="text-xs text-white/35">Enter 跳转首项</span>
+                <span className="text-xs text-foreground/35">Enter 跳转首项</span>
               </div>
 
               <ScrollArea className="max-h-80">
@@ -333,7 +333,7 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
                   <div className="p-2">
                     {groupedResults.map((group) => (
                       <div key={group.category} className="mb-2 last:mb-0">
-                        <div className="px-2 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-white/35">
+                        <div className="px-2 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-foreground/35">
                           {group.category}
                         </div>
                         <div className="space-y-1">
@@ -345,16 +345,16 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
                                 type="button"
                                 onMouseDown={(event) => event.preventDefault()}
                                 onClick={() => navigateToRoute(route)}
-                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-white/75 transition hover:bg-white/8 hover:text-white"
+                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-foreground/75 transition hover:bg-accent hover:text-foreground"
                               >
-                                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-accent/60">
                                   <Icon className="h-4 w-4" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <div className="truncate text-sm font-medium text-white">{route.label}</div>
-                                  <div className="truncate text-xs text-white/40">{route.description}</div>
+                                  <div className="truncate text-sm font-medium text-foreground">{route.label}</div>
+                                  <div className="truncate text-xs text-foreground/40">{route.description}</div>
                                 </div>
-                                <span className="shrink-0 text-[11px] text-white/30">{route.href}</span>
+                                <span className="shrink-0 text-[11px] text-foreground/30">{route.href}</span>
                               </button>
                             )
                           })}
@@ -363,7 +363,7 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
                     ))}
                   </div>
                 ) : (
-                  <div className="px-4 py-6 text-sm text-white/45">未找到匹配页面</div>
+                  <div className="px-4 py-6 text-sm text-foreground/45">未找到匹配页面</div>
                 )}
               </ScrollArea>
             </div>
