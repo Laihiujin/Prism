@@ -14,13 +14,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hermesActive = pathname === "/ai-agent"
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-black text-foreground selection:bg-white/20 selection:text-white md:min-h-screen md:w-full">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground selection:bg-primary/30 selection:text-white md:min-h-screen md:w-full">
       {/* Animated Background */}
       <div className="fixed inset-0 z-0">
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
-        {/* Radial Gradient (White/Silver) */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_-30%,#ffffff10,transparent)]" />
+        {/* Grid Pattern (softened) */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.5)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.5)_1px,transparent_1px)] bg-[size:24px_24px]" />
+        {/* Radial Gradient (White/Silver, softened) */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_-30%,hsl(var(--primary)/0.08),transparent)]" />
       </div>
 
       {/* Desktop sidebar */}
@@ -31,20 +31,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile sidebar (sheet) */}
       <div className="md:hidden">
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-          <SheetContent side="left" className="p-0 bg-black border-white/10">
+          <SheetContent side="left" className="p-0 border-border">
             <SidebarNew
               collapsed={false}
               setCollapsed={() => { }}
               showCollapseToggle={false}
               onNavigate={() => setMobileNavOpen(false)}
-              className="border-r border-white/5"
+              className="border-r border-border/80"
             />
           </SheetContent>
         </Sheet>
       </div>
 
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden min-w-0">
-        <Suspense fallback={<div className="h-16 border-b border-white/10 bg-black/40" />}>
+        <Suspense fallback={<div className="h-16 border-b border-border bg-background/40" />}>
           <NavbarNew onMenuClick={() => setMobileNavOpen(true)} />
         </Suspense>
         <main className="relative flex-1 overflow-y-auto p-0">
