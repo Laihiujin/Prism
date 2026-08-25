@@ -5,10 +5,10 @@ setlocal EnableExtensions
 set "ROOT=%~dp0"
 set "MODE=%~1"
 set "LAUNCHERS=%ROOT%scripts\launchers"
-set "SYNENV_DIR=%ROOT%synenv"
-set "SYNENV_PY=%SYNENV_DIR%\Scripts\python.exe"
+set "PRISMENV_DIR=%ROOT%prismenv"
+set "PRISMENV_PY=%PRISMENV_DIR%\Scripts\python.exe"
 set "REQ_FILE=%ROOT%requirements.txt"
-set "REQ_STAMP=%SYNENV_DIR%\.requirements-ready"
+set "REQ_STAMP=%PRISMENV_DIR%\.requirements-ready"
 
 if /I "%MODE%"=="help" goto usage
 if /I "%MODE%"=="/?" goto usage
@@ -16,13 +16,13 @@ if /I "%MODE%"=="-h" goto usage
 if /I "%MODE%"=="--help" goto usage
 
 if /I not "%MODE%"=="conda" (
-    call :ensure_synenv
+    call :ensure_prismenv
     if errorlevel 1 exit /b %ERRORLEVEL%
 )
 
-if /I "%MODE%"=="synenv" (
-    echo [INFO] Using synenv launcher from repo root.
-    call "%LAUNCHERS%\start_stack_synenv.bat"
+if /I "%MODE%"=="prismenv" (
+    echo [INFO] Using prismenv launcher from repo root.
+    call "%LAUNCHERS%\start_stack_prismenv.bat"
     exit /b %ERRORLEVEL%
 )
 
@@ -39,8 +39,8 @@ if /I "%MODE%"=="supervisor" (
 )
 
 if "%MODE%"=="" (
-    echo [INFO] synenv ready. Starting full stack in synenv mode.
-    call "%LAUNCHERS%\start_stack_synenv.bat"
+    echo [INFO] prismenv ready. Starting full stack in prismenv mode.
+    call "%LAUNCHERS%\start_stack_prismenv.bat"
     exit /b %ERRORLEVEL%
 )
 
@@ -48,10 +48,10 @@ echo [ERROR] Unknown startup mode: %MODE%
 echo.
 goto usage_error
 
-:ensure_synenv
-if exist "%SYNENV_PY%" goto ensure_requirements
+:ensure_prismenv
+if exist "%PRISMENV_PY%" goto ensure_requirements
 
-echo [BOOTSTRAP] synenv not found. Resolving system Python...
+echo [BOOTSTRAP] prismenv not found. Resolving system Python...
 call :resolve_bootstrap_python
 if not defined BOOTSTRAP_PY (
     echo [ERROR] No usable Python interpreter found.
@@ -59,11 +59,11 @@ if not defined BOOTSTRAP_PY (
     exit /b 1
 )
 
-echo [BOOTSTRAP] Creating synenv with:
+echo [BOOTSTRAP] Creating prismenv with:
 echo   %BOOTSTRAP_PY%
-"%BOOTSTRAP_PY%" -m venv "%SYNENV_DIR%"
+"%BOOTSTRAP_PY%" -m venv "%PRISMENV_DIR%"
 if errorlevel 1 (
-    echo [ERROR] Failed to create synenv.
+    echo [ERROR] Failed to create prismenv.
     exit /b 1
 )
 
@@ -79,13 +79,13 @@ if "%NEED_INSTALL%"=="0" (
 )
 
 echo [BOOTSTRAP] Installing Python dependencies from requirements.txt...
-"%SYNENV_PY%" -m pip install --upgrade pip
+"%PRISMENV_PY%" -m pip install --upgrade pip
 if errorlevel 1 (
-    echo [ERROR] Failed to upgrade pip in synenv.
+    echo [ERROR] Failed to upgrade pip in prismenv.
     exit /b 1
 )
 
-"%SYNENV_PY%" -m pip install -r "%REQ_FILE%"
+"%PRISMENV_PY%" -m pip install -r "%REQ_FILE%"
 if errorlevel 1 (
     echo [ERROR] Failed to install Python dependencies.
     exit /b 1
@@ -116,19 +116,19 @@ if not errorlevel 1 (
 exit /b 0
 
 :usage
-echo SynapseAutomation root launcher
+echo Prism root launcher
 echo.
 echo Usage:
 echo   start.bat
-echo   start.bat synenv
+echo   start.bat prismenv
 echo   start.bat conda
 echo   start.bat supervisor
 echo.
 echo Modes:
-echo   start.bat            Ensure synenv and requirements, then start full stack in synenv mode.
-echo   start.bat synenv     Ensure synenv and start Redis, Celery, Playwright Worker, FastAPI, Frontend.
+echo   start.bat            Ensure prismenv and requirements, then start full stack in prismenv mode.
+echo   start.bat prismenv     Ensure prismenv and start Redis, Celery, Automation Worker, FastAPI, Frontend.
 echo   start.bat conda      Start the same stack through the conda launcher.
-echo   start.bat supervisor Ensure synenv and start Redis, Supervisor, and Frontend.
+echo   start.bat supervisor Ensure prismenv and start Redis, Supervisor, and Frontend.
 exit /b 0
 
 :usage_error

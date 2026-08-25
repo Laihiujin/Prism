@@ -2,7 +2,7 @@
 import json
 import os
 
-FILE_PATH = "d:/SynapseAutomation/syn_backend/data/ip_pool.json"
+FILE_PATH = "d:/Prism/prism_backend/data/ip_pool.json"
 
 def main():
     if not os.path.exists(FILE_PATH):

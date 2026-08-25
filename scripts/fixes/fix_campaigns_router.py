@@ -7,7 +7,7 @@ Fix campaigns router mount point in main.py
 import sys
 from pathlib import Path
 
-main_py = Path(r"d:\SynapseAutomation\syn_backend\fastapi_app\main.py")
+main_py = Path(r"d:\Prism\prism_backend\fastapi_app\main.py")
 
 # Read the file
 content = main_py.read_text(encoding='utf-8')

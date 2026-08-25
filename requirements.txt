@@ -1,5 +1,5 @@
 # ============================================
-# SynapseAutomation - 统一依赖文件
+# Prism - 统一依赖文件
 # ============================================
 
 # ============================================
@@ -46,7 +46,6 @@ schedule
 # ============================================
 # 浏览器自动化
 # ============================================
-playwright
 patchright==1.59.1
 cdp-use
 selenium
@@ -149,6 +148,7 @@ importlib_resources
 click
 tqdm
 qrcode[pil]
+segno>=1.6.6
 pycryptodome
 pytz
 retrying
@@ -246,10 +246,10 @@ daytona
 # ============================================
 # 安装说明
 # ============================================
-# 1. 创建虚拟环境: python -m venv synenv
+# 1. 创建虚拟环境: python -m venv prismenv
 # 2. 激活虚拟环境:
-#    - Windows: synenv\Scripts\activate
-#    - Linux/Mac: source synenv/bin/activate
+#    - Windows: prismenv\Scripts\activate
+#    - Linux/Mac: source prismenv/bin/activate
 # 3. 安装依赖: pip install -r requirements.txt
 #
 # 注意事项:

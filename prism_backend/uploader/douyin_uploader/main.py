@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 LEGACY IMPLEMENTATION:
-该模块为历史 uploader 栈实现；当前业务发布已统一走 `syn_backend/platforms/*/upload.py`。
+该模块为历史 uploader 栈实现；当前业务发布已统一走 `prism_backend/platforms/*/upload.py`。
 平台层可能仍会复用本实现，建议不要在业务层直接 import/调用。
 """
 from datetime import datetime
 
-from utils.playwright_provider import Playwright, async_playwright, Page
+from utils.automation_provider import Playwright, async_playwright, Page
 import os
 import asyncio
 from typing import Optional

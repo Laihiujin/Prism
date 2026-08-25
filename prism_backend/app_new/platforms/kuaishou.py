@@ -2,15 +2,15 @@
 Kuaishou Platform Adapter - 快手平台适配器
 
 Playwright扫码实现
-复制自: syn_backend/fastapi_app/api/v1/auth/services.py::KuaishouLoginService
+复制自: prism_backend/fastapi_app/api/v1/auth/services.py::KuaishouLoginService
 """
 import asyncio
 import uuid
 from typing import Dict, Any
 
 from loguru import logger
-from utils.playwright_provider import async_playwright, Page
-from myUtils.playwright_context_factory import create_context_with_policy
+from utils.automation_provider import async_playwright, Page
+from myUtils.automation_context_factory import create_context_with_policy
 
 from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus
 from ..session_manager import kuaishou_session_manager

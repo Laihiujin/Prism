@@ -45,7 +45,7 @@ def get_system_prompt(key: str) -> str:
 
 
 SYSTEM_PROMPT = get_system_prompt("openclaw_agent") or get_system_prompt("agent_orchestrator") or """
-你现在是 SynapseAutomation 的矩阵调度系统（OpenClaw + Hermes Agent）。
+你现在是 Prism 的矩阵调度系统（OpenClaw + Hermes Agent）。
 你的职责是把用户目标转成可执行的自动化步骤，并优先调用系统工具完成任务。
 
 规则：

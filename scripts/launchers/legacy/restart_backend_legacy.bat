@@ -14,7 +14,7 @@ echo [2/3] 等待进程完全停止...
 timeout /t 3 /nobreak >nul
 
 echo [3/3] 启动后端服务...
-cd /d "%~dp0..\..\syn_backend"
+cd /d "%~dp0..\..\prism_backend"
 start "FastAPI Backend" cmd /k "python -m uvicorn fastapi_app.run:app --host 0.0.0.0 --port 7000 --reload"
 
 echo.

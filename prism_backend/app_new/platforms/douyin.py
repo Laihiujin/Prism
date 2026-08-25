@@ -2,15 +2,15 @@
 Douyin Platform Adapter - 抖音平台适配器
 
 Playwright扫码实现
-复制自: syn_backend/fastapi_app/api/v1/auth/services.py::DouyinLoginService
+复制自: prism_backend/fastapi_app/api/v1/auth/services.py::DouyinLoginService
 """
 import asyncio
 import uuid
 from typing import Dict, Any
 
 from loguru import logger
-from utils.playwright_provider import async_playwright, Page
-from myUtils.playwright_context_factory import create_context_with_policy
+from utils.automation_provider import async_playwright, Page
+from myUtils.automation_context_factory import create_context_with_policy
 
 from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus
 from ..session_manager import douyin_session_manager
@@ -91,8 +91,10 @@ class DouyinAdapter(PlatformAdapter):
             except Exception as e:
                 logger.warning(f"[Douyin] XPath selector failed: {e}")
 
-            # 备用选择器
+            # 当前创作者中心把二维码标识在 aria-label 上；这是实时 DOM
+            # 检查确认的属性，不再退回整页截图（整页截图不能供 App 扫码）。
             selectors = [
+                'img[aria-label="二维码"]',
                 "img.qrcode_img-NPVTJs",
                 "div.qrcode-vz0gH7 img",
                 "img[alt*='二维码']",
@@ -115,22 +117,6 @@ class DouyinAdapter(PlatformAdapter):
                             )
                 except Exception:
                     continue
-
-            # 最后兜底: 截图整页
-            try:
-                shot = await page.screenshot(full_page=False)
-                if shot:
-                    import base64
-                    b64 = base64.b64encode(shot).decode("utf-8")
-                    logger.warning(f"[Douyin] QR not found, using screenshot: session={session_id[:8]}")
-                    return QRCodeData(
-                        session_id=session_id,
-                        qr_url="https://creator.douyin.com/",
-                        qr_image=f"data:image/png;base64,{b64}",
-                        expires_in=300
-                    )
-            except Exception:
-                pass
 
             raise Exception("No QR code found for Douyin")
 
@@ -171,12 +157,23 @@ class DouyinAdapter(PlatformAdapter):
             is_on_creator = "creator.douyin.com" in page.url
             on_login_page = "login" in page.url.lower()
 
-            # 提取用户信息
-            user_info = await self._extract_user_info(page, cookies_list)
-            has_user = bool(user_info.user_id)
+            # Waiting polls must remain cheap. Previously every poll tried the
+            # full user-info extraction (multiple selector timeouts), which
+            # could block the worker for many seconds per account.
+            creator_markers = False
+            if is_on_creator and not on_login_page:
+                for marker in ("作品发布", "内容管理", "数据中心"):
+                    try:
+                        if await page.get_by_text(marker, exact=True).count():
+                            creator_markers = True
+                            break
+                    except Exception:
+                        continue
 
-            # 判断登录成功
-            if is_on_creator and not on_login_page and (auth_cookies or has_user):
+            # Do not accept the SPA root alone: it can still render the login
+            # component. Require auth cookies or authenticated creator UI.
+            if is_on_creator and not on_login_page and (auth_cookies or creator_markers):
+                user_info = await self._extract_user_info(page, cookies_list)
                 try:
                     full_state = await context.storage_state()
                 except Exception as e:
@@ -325,4 +322,3 @@ class DouyinAdapter(PlatformAdapter):
         except Exception as e:
             logger.error(f"[Douyin] Extract user info failed: {e}")
             return UserInfo()
-

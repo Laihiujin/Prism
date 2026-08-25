@@ -1,6 +1,6 @@
 """
 Video analytics collection script.
-Recommended cron: 0 2 * * * cd /path/to/syn_backend && python scripts/collect_analytics.py
+Recommended cron: 0 2 * * * cd /path/to/prism_backend && python scripts/collect_analytics.py
 """
 import asyncio
 import os

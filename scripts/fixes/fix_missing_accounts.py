@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 
 # 添加项目路径
-sys.path.insert(0, str(Path(__file__).parent.parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "prism_backend"))
 
 from myUtils.cookie_manager import cookie_manager
 from loguru import logger
@@ -34,7 +34,7 @@ def main():
     print("扫描并修复未入库的 Cookie 文件")
     print("=" * 80)
 
-    cookie_dir = Path(__file__).parent.parent / "syn_backend" / "cookiesFile"
+    cookie_dir = Path(__file__).parent.parent / "prism_backend" / "cookiesFile"
 
     if not cookie_dir.exists():
         print(f"[ERROR] Cookie 目录不存在: {cookie_dir}")

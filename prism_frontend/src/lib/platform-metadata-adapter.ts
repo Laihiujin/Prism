@@ -2,7 +2,7 @@
  * 平台特定元数据配置和适配器
  */
 
-export type PlatformKey = "douyin" | "kuaishou" | "xiaohongshu" | "bilibili" | "channels"
+export type PlatformKey = "douyin" | "kuaishou" | "xiaohongshu" | "bilibili" | "channels" | "tiktok" | "youtube"
 
 /**
  * 平台字段配置
@@ -171,6 +171,40 @@ export const PLATFORM_CONFIGS: Record<PlatformKey, PlatformFieldConfig> = {
             }
         },
         layout: "title-combined"  // 实际上是纯合并，但为了区分
+    },
+
+    tiktok: {
+        name: "TikTok",
+        code: 6,
+        fields: {
+            description: {
+                enabled: true,
+                maxLength: 2_200,
+                placeholder: "Write a caption and add #hashtags",
+                label: "Caption",
+                supportsHashtags: true,
+                supportsNewline: true
+            }
+        },
+        layout: "title-combined"
+    },
+
+    youtube: {
+        name: "YouTube",
+        code: 7,
+        fields: {
+            title: { enabled: true, maxLength: 100, placeholder: "Add a title", label: "Title" },
+            description: {
+                enabled: true,
+                maxLength: 5_000,
+                placeholder: "Tell viewers about your video",
+                label: "Description",
+                supportsHashtags: true,
+                supportsNewline: true
+            },
+            tags: { enabled: true, maxCount: 15, label: "Tags" }
+        },
+        layout: "separate"
     }
 }
 
@@ -343,6 +377,16 @@ export class PlatformMetadataAdapter {
                 return {
                     description: "分享生活中的美好瞬间\n\n每一天都值得被记录",
                     tags: ["生活", "记录", "分享"]
+                }
+
+            case "tiktok":
+                return { description: "A short video worth sharing", tags: ["creator", "video"] }
+
+            case "youtube":
+                return {
+                    title: "A video worth watching",
+                    description: "A clear description that helps viewers find the video.",
+                    tags: ["video", "creator"]
                 }
 
             default:

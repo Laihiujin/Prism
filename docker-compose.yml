@@ -22,14 +22,14 @@ services:
     env_file:
       - .env
     environment:
-      SYNAPSE_ENV: docker
-      SYNAPSE_APP_ROOT: /app
-      SYNAPSE_DATA_DIR: /app/runtime-data
-      SYNAPSE_SUPERVISOR_MANAGES_HERMES_UI: "0"
-      SYNAPSE_HERMES_BIND_HOST: 0.0.0.0
-      SYNAPSE_HERMES_PUBLIC_HOST: 127.0.0.1
-      SYNAPSE_HERMES_HOME: /app/runtime-data/hermes-home
-      SYNAPSE_HERMES_WEBUI_STATE_DIR: /app/runtime-data/hermes-home/webui
+      PRISM_ENV: docker
+      PRISM_APP_ROOT: /app
+      PRISM_DATA_DIR: /app/runtime-data
+      PRISM_SUPERVISOR_MANAGES_HERMES_UI: "0"
+      PRISM_HERMES_BIND_HOST: 0.0.0.0
+      PRISM_HERMES_PUBLIC_HOST: 127.0.0.1
+      PRISM_HERMES_HOME: /app/runtime-data/hermes-home
+      PRISM_HERMES_WEBUI_STATE_DIR: /app/runtime-data/hermes-home/webui
       HOST: 0.0.0.0
       PORT: "7000"
       REDIS_URL: redis://redis:6379/0
@@ -63,7 +63,7 @@ services:
       dockerfile: docker/frontend.Dockerfile
       args:
         NEXT_PUBLIC_BACKEND_URL: http://localhost:7000
-        SYNAPSE_INTERNAL_BACKEND_URL: http://app:7000
+        PRISM_INTERNAL_BACKEND_URL: http://app:7000
     restart: unless-stopped
     depends_on:
       app:
@@ -74,7 +74,7 @@ services:
       PORT: "3000"
       NEXT_TELEMETRY_DISABLED: "1"
       NEXT_PUBLIC_BACKEND_URL: http://localhost:7000
-      SYNAPSE_INTERNAL_BACKEND_URL: http://app:7000
+      PRISM_INTERNAL_BACKEND_URL: http://app:7000
     ports:
       - "3000:3000"
     healthcheck:

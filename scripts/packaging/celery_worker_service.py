@@ -44,10 +44,10 @@ def resolve_backend_dir() -> Path:
     backend_dir = _pick_existing(roots, "backend")
     if backend_dir:
         return backend_dir
-    syn_backend_dir = _pick_existing(roots, "syn_backend")
-    if syn_backend_dir:
-        return syn_backend_dir
-    return Path(__file__).resolve().parents[2] / "syn_backend"
+    prism_backend_dir = _pick_existing(roots, "prism_backend")
+    if prism_backend_dir:
+        return prism_backend_dir
+    return Path(__file__).resolve().parents[2] / "prism_backend"
 
 
 project_root = resolve_backend_dir()
@@ -62,7 +62,7 @@ def main() -> None:
     loglevel = os.getenv("CELERY_LOGLEVEL", "info")
     pool = os.getenv("CELERY_POOL", "threads")
     concurrency = int(os.getenv("CELERY_CONCURRENCY", "1000"))
-    hostname = os.getenv("CELERY_HOSTNAME", "synapse-worker@packaged")
+    hostname = os.getenv("CELERY_HOSTNAME", "prism-worker@packaged")
 
     celery_app.worker_main(
         [

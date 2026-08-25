@@ -3,18 +3,18 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 REM =====================================================
-REM SynapseAutomation Clean Distribution v5 Builder
+REM Prism Clean Distribution v5 Builder
 REM Clean and prepare dist-v5 package
 REM =====================================================
 
 echo.
 echo ========================================
-echo  SynapseAutomation dist Clean Build
+echo  Prism dist Clean Build
 echo ========================================
 echo.
 
 REM 定义清理的目录和文件
-set "BACKEND_DIR=syn_backend"
+set "BACKEND_DIR=prism_backend"
 set "LOG_DIR=%BACKEND_DIR%\logs"
 set "DB_DIR=%BACKEND_DIR%\db"
 set "STORAGE_DIR=%BACKEND_DIR%\storage"
@@ -155,7 +155,7 @@ echo.
 
 echo [保留] 默认配置文件:
 echo [保留] - config/ai_prompts_unified.yaml
-echo [保留] - syn_backend/config/ 目录
+echo [保留] - prism_backend/config/ 目录
 echo [保留] - .env 环境变量文件
 echo [保留] - API 密钥配置
 

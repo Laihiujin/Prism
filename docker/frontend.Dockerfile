@@ -1,22 +1,22 @@
 FROM node:22-bookworm-slim AS deps
 
-WORKDIR /app/syn_frontend_react
+WORKDIR /app/prism_frontend
 
-COPY syn_frontend_react/package.json syn_frontend_react/package-lock.json ./
+COPY prism_frontend/package.json prism_frontend/package-lock.json ./
 RUN npm ci --ignore-scripts
 
 FROM node:22-bookworm-slim AS builder
 
-WORKDIR /app/syn_frontend_react
+WORKDIR /app/prism_frontend
 
-COPY --from=deps /app/syn_frontend_react/node_modules ./node_modules
-COPY syn_frontend_react/ ./
+COPY --from=deps /app/prism_frontend/node_modules ./node_modules
+COPY prism_frontend/ ./
 
 ARG NEXT_PUBLIC_BACKEND_URL=http://localhost:7000
-ARG SYNAPSE_INTERNAL_BACKEND_URL=http://app:7000
+ARG PRISM_INTERNAL_BACKEND_URL=http://app:7000
 
 ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL} \
-    SYNAPSE_INTERNAL_BACKEND_URL=${SYNAPSE_INTERNAL_BACKEND_URL} \
+    PRISM_INTERNAL_BACKEND_URL=${PRISM_INTERNAL_BACKEND_URL} \
     NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
@@ -30,11 +30,11 @@ ENV NODE_ENV=production \
     PORT=3000 \
     NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_BACKEND_URL=http://localhost:7000 \
-    SYNAPSE_INTERNAL_BACKEND_URL=http://app:7000
+    PRISM_INTERNAL_BACKEND_URL=http://app:7000
 
-COPY --from=builder /app/syn_frontend_react/public ./public
-COPY --from=builder /app/syn_frontend_react/.next/standalone ./
-COPY --from=builder /app/syn_frontend_react/.next/static ./.next/static
+COPY --from=builder /app/prism_frontend/public ./public
+COPY --from=builder /app/prism_frontend/.next/standalone ./
+COPY --from=builder /app/prism_frontend/.next/static ./.next/static
 
 EXPOSE 3000
 

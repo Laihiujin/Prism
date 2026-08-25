@@ -2,7 +2,7 @@
 Bilibili Platform Adapter - B站平台适配器
 
 纯HTTP API实现,无需Playwright
-复制自: syn_backend/fastapi_app/api/v1/auth/services.py::BilibiliLoginService
+复制自: prism_backend/fastapi_app/api/v1/auth/services.py::BilibiliLoginService
 """
 import asyncio
 import base64

@@ -5,7 +5,7 @@ echo   启动打包程序并查看日志
 echo ============================================
 echo.
 
-set "APP=%~dp0..\dist-build\win-unpacked\SynapseAutomation.exe"
+set "APP=%~dp0..\dist-build\win-unpacked\Prism.exe"
 set "RES=%~dp0..\dist-build\win-unpacked\resources"
 
 if not exist "%APP%" (
@@ -35,8 +35,8 @@ echo [2] Backend 日志:
 type "%RES%\supervisor\backend.log" 2>nul | tail -30
 echo.
 
-echo [3] Playwright Worker 日志:
-type "%RES%\supervisor\playwright-worker.log" 2>nul | tail -20
+echo [3] Automation Worker 日志:
+type "%RES%\supervisor\automation-worker.log" 2>nul | tail -20
 echo.
 
 echo [4] Celery Worker 日志:

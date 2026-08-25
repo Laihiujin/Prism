@@ -7,12 +7,12 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "SynapseAutomation - 矩阵发布控制台",
-  description: "Synapse Engine · 多平台矩阵调度中心",
+  title: "Prism - 矩阵发布控制台",
+  description: "Prism Engine · 多平台矩阵调度中心",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SynapseAutomation",
+    title: "Prism",
   },
 };
 

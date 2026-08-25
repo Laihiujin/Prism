@@ -53,26 +53,34 @@ class SessionManager:
             # ✅ 写入内存
             self._memory_sessions[session_id] = session_data
 
-            # ✅ 写入 Redis（只存储可序列化的元数据）
+            # ✅ 写入 Redis（只存储可序列化的元数据）. Redis is an
+            # optional metadata mirror; its outage must not invalidate the
+            # in-memory browser session that was already created.
             if self.redis:
-                metadata = {
-                    "session_id": session_id,
-                    "platform": self.platform_name,
-                    "created_at": session_data.get("created_at"),
-                    "status": "active"
-                }
-                self.redis.setex(
-                    self._redis_key(session_id),
-                    self._session_ttl,
-                    json.dumps(metadata, ensure_ascii=False)
-                )
-                logger.debug(f"[{self.platform_name}] Session {session_id} created in memory + Redis")
+                try:
+                    metadata = {
+                        "session_id": session_id,
+                        "platform": self.platform_name,
+                        "created_at": session_data.get("created_at"),
+                        "status": "active"
+                    }
+                    self.redis.setex(
+                        self._redis_key(session_id),
+                        self._session_ttl,
+                        json.dumps(metadata, ensure_ascii=False)
+                    )
+                    logger.debug(f"[{self.platform_name}] Session {session_id} created in memory + Redis")
+                except Exception as redis_error:
+                    logger.warning(
+                        f"[{self.platform_name}] Redis unavailable; session {session_id} remains active in memory: "
+                        f"{type(redis_error).__name__}"
+                    )
             else:
                 logger.warning(f"[{self.platform_name}] Redis unavailable, session only in memory")
 
             return True
         except Exception as e:
-            logger.error(f"[{self.platform_name}] Failed to create session {session_id}: {e}")
+            logger.error(f"[{self.platform_name}] Failed to create in-memory session {session_id}: {e}")
             return False
 
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:

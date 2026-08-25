@@ -66,6 +66,8 @@ const PLATFORM_CODE_MAP: Record<PlatformKey, number> = {
   xiaohongshu: 1,
   bilibili: 5,
   channels: 2,
+  tiktok: 6,
+  youtube: 7,
 }
 
 type IntervalMode = "account_first" | "video_first"
@@ -920,6 +922,10 @@ export default function PublishPage() {
       case "xiaohongshu": return <XhsConfig key="xhs" {...commonProps} />
       case "bilibili": return <BilibiliConfig key="bilibili" {...commonProps} />
       case "channels": return <VideoChannelConfig key="channels" {...commonProps} />
+      // TikTok and YouTube both use the shared metadata editor. Their server-side
+      // adapters add platform-specific fields such as visibility / playlist.
+      case "tiktok":
+      case "youtube": return null
       default: return null
     }
   }

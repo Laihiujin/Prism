@@ -7,6 +7,8 @@ export const PLATFORMS = [
     { key: "channels", name: "视频号", code: 2, icon: "/shiPingHao.svg", desc: "视频号矩阵多元组合", disabled: false },
     { key: "xiaohongshu", name: "小红书", code: 1, icon: "/xiaoHongShu.svg", desc: "小红书矩阵多元组合", disabled: false },
     { key: "bilibili", name: "B站", code: 5, icon: "/bilibili.svg", desc: "B站矩阵多元组合", disabled: false },
+    { key: "tiktok", name: "TikTok", code: 6, icon: "/Tiktok.svg", desc: "TikTok Studio 发布", disabled: false },
+    { key: "youtube", name: "YouTube", code: 7, icon: "/youtube.svg", desc: "YouTube Studio 发布", disabled: false },
 ] as const
 
 export type PlatformKey = typeof PLATFORMS[number]["key"]
@@ -18,7 +20,7 @@ interface PlatformSelectorProps {
 
 export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) {
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {PLATFORMS.map((platform) => {
                 const isSelected = selected.includes(platform.key)
                 return (

@@ -4,7 +4,7 @@ const { _electron: electron } = require(path.join(
   __dirname,
   "..",
   "..",
-  "syn_frontend_react",
+  "prism_frontend",
   "node_modules",
   "playwright"
 ));
@@ -58,8 +58,8 @@ async function main() {
     cwd: desktopDir,
     env: {
       ...process.env,
-      SYNAPSE_START_SERVICES: "1",
-      SYNAPSE_START_FRONTEND: "1",
+      PRISM_START_SERVICES: "1",
+      PRISM_START_FRONTEND: "1",
       PLAYWRIGHT_AUTO_INSTALL: "0",
     },
     timeout: 120000,
@@ -112,8 +112,8 @@ async function main() {
 
     assert(runtimeInfo.success === true, `browserRuntime.getStatus failed: ${runtimeInfo.error || "unknown_error"}`);
     assert(
-      pythonRuntime.source === "synenv",
-      `Expected Python runtime source=synenv, received ${pythonRuntime.source || "missing"}`
+      pythonRuntime.source === "prismenv",
+      `Expected Python runtime source=prismenv, received ${pythonRuntime.source || "missing"}`
     );
     assert(
       browserRuntimeInfo.runtimes?.patchright?.installed === true,

@@ -4,10 +4,10 @@ chcp 65001 >nul
 set "ROOT=%~dp0..\.."
 
 set "REDIS_CLI=redis-cli"
-if exist "%ROOT%\syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%ROOT%\syn_backend\Redis\redis-cli.exe"
+if exist "%ROOT%\prism_backend\Redis\redis-cli.exe" set "REDIS_CLI=%ROOT%\prism_backend\Redis\redis-cli.exe"
 
 echo ============================================
-echo   Stop All SynapseAutomation Services
+echo   Stop All Prism Services
 echo ============================================
 echo.
 
@@ -36,9 +36,9 @@ powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $
 echo [OK] Celery Worker stopped.
 
 echo.
-echo [6/8] Stopping Playwright Worker (port 7001)...
+echo [6/8] Stopping Automation Worker (port 7001)...
 powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 7001 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { cmd /c taskkill /F /T /PID $_ >nul 2>&1 }"
-echo [OK] Playwright Worker stopped.
+echo [OK] Automation Worker stopped.
 
 echo.
 echo [7/8] Stopping FastAPI Backend (port 7000)...

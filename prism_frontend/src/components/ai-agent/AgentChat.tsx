@@ -422,7 +422,7 @@ export function AgentChat() {
                                 </div>
                                 <div className="text-center mt-3">
                                     <p className="text-[10px] text-white/30 font-medium tracking-wide uppercase">
-                                        Powered by OpenClaw & Synapse AI
+                                        Powered by OpenClaw & Prism AI
                                     </p>
                                 </div>
                             </ComposerPrimitive.Root>

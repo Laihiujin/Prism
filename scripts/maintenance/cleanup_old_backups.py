@@ -13,7 +13,7 @@ def cleanup_old_backups():
     print("=" * 60)
     print()
 
-    backup_dir = Path("E:/SynapseAutomation/syn_backend/cookiesFile/backups")
+    backup_dir = Path("E:/Prism/prism_backend/cookiesFile/backups")
 
     # 查找所有根目录的json文件（旧备份）
     old_backups = list(backup_dir.glob("*.json"))
