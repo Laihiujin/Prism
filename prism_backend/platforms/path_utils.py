@@ -3,7 +3,7 @@ Path utils for platform layer.
 
 Platform uploaders accept either:
 - absolute paths (recommended)
-- legacy filenames (e.g. "account_xxx.json") that live under syn_backend/cookiesFile
+- legacy filenames (e.g. "account_xxx.json") that live under prism_backend/cookiesFile
 """
 
 from __future__ import annotations
@@ -15,11 +15,11 @@ import os
 import re
 
 
-_SYN_BACKEND_DIR = Path(__file__).resolve().parent.parent
+_PRISM_BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 
 def _is_dev_repo(base_dir: Path) -> bool:
-    env = (os.getenv("SYNAPSE_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
+    env = (os.getenv("PRISM_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
     if env in ("dev", "development", "local"):
         return True
     try:
@@ -39,22 +39,22 @@ def _load_settings_dirs() -> tuple[Path, Path]:
         videos_dir = Path(settings.VIDEO_FILES_DIR)
         return cookies_dir, videos_dir
     except Exception:
-        env_dir = os.getenv("SYNAPSE_DATA_DIR")
+        env_dir = os.getenv("PRISM_DATA_DIR")
         if env_dir:
-            return Path(env_dir) / "cookiesFile", _SYN_BACKEND_DIR / "videoFile"
-        if _is_dev_repo(_SYN_BACKEND_DIR):
-            return _SYN_BACKEND_DIR / "cookiesFile", _SYN_BACKEND_DIR / "videoFile"
+            return Path(env_dir) / "cookiesFile", _PRISM_BACKEND_DIR / "videoFile"
+        if _is_dev_repo(_PRISM_BACKEND_DIR):
+            return _PRISM_BACKEND_DIR / "cookiesFile", _PRISM_BACKEND_DIR / "videoFile"
         appdata = os.getenv("APPDATA")
         localappdata = os.getenv("LOCALAPPDATA")
         candidates = []
         if appdata:
-            candidates.append(Path(appdata) / "SynapseAutomation" / "data" / "cookiesFile")
+            candidates.append(Path(appdata) / "Prism" / "data" / "cookiesFile")
         if localappdata and localappdata != appdata:
-            candidates.append(Path(localappdata) / "SynapseAutomation" / "data" / "cookiesFile")
+            candidates.append(Path(localappdata) / "Prism" / "data" / "cookiesFile")
         for candidate in candidates:
             if candidate.exists():
-                return candidate, _SYN_BACKEND_DIR / "videoFile"
-        return _SYN_BACKEND_DIR / "cookiesFile", _SYN_BACKEND_DIR / "videoFile"
+                return candidate, _PRISM_BACKEND_DIR / "videoFile"
+        return _PRISM_BACKEND_DIR / "cookiesFile", _PRISM_BACKEND_DIR / "videoFile"
 
 
 _COOKIES_DIR, _VIDEOS_DIR = _load_settings_dirs()
@@ -117,7 +117,7 @@ def _fallback_to_dir_by_name(value: str, base_dir: Path) -> str:
 
 def _fallback_to_dir_by_segment(value: str, base_dir: Path, segment_name: str) -> str:
     """
-    If `value` contains a known segment (e.g. "...\\syn_backend\\videoFile\\foo.mp4"),
+    If `value` contains a known segment (e.g. "...\\prism_backend\\videoFile\\foo.mp4"),
     map everything after that segment into `base_dir`.
     """
     try:

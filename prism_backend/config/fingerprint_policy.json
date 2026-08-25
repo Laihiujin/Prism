@@ -3,7 +3,7 @@
     "apply_fingerprint": true,
     "apply_stealth": true,
     "use_persistent_profile": true,
-    "persistent_profile_dir": "syn_backend/browser_profiles",
+    "persistent_profile_dir": "prism_backend/browser_profiles",
     "proxy": null,
     "webrtc": {
       "mode": "mask"

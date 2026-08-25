@@ -41,7 +41,7 @@ class SelectorManager:
     def __init__(self, config_dir: Path = None):
         if config_dir is None:
             from config.conf import BASE_DIR
-            config_dir = Path(BASE_DIR) / "syn_backend" / "config" / "selectors"
+            config_dir = Path(BASE_DIR) / "prism_backend" / "config" / "selectors"
 
         self.config_dir = config_dir
         self.configs: Dict[str, Dict] = {}
@@ -180,7 +180,7 @@ class SelectorManager:
             if config.get("dynamic_detection", {}).get("snapshot_on_failure", True):
                 from config.conf import BASE_DIR
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                screenshot_path = Path(BASE_DIR) / "syn_backend" / "logs" / f"{platform}_{element_name}_fail_{timestamp}.png"
+                screenshot_path = Path(BASE_DIR) / "prism_backend" / "logs" / f"{platform}_{element_name}_fail_{timestamp}.png"
                 screenshot_path.parent.mkdir(parents=True, exist_ok=True)
 
                 try:

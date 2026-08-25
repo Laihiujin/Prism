@@ -312,7 +312,7 @@ async def get_function_calling_service() -> Optional[FunctionCallingService]:
     """Load the active function-calling model config from the database."""
 
     try:
-        db_path = os.getenv("SYNAPSE_DATABASE_PATH")
+        db_path = os.getenv("PRISM_DATABASE_PATH")
         if not db_path:
             try:
                 from fastapi_app.core.config import settings

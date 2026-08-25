@@ -135,7 +135,7 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description="Fetch video analytics from all platforms")
-    parser.add_argument('--db', type=str, default='syn_backend/db/database.db', help='Database path')
+    parser.add_argument('--db', type=str, default='prism_backend/db/database.db', help='Database path')
     parser.add_argument('--account', type=int, help='Specific account ID to fetch')
     parser.add_argument('--task', type=int, help='Specific task ID to fetch')
     parser.add_argument('--all', action='store_true', help='Fetch for all active accounts')

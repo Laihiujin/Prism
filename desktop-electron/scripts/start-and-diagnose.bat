@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   SynapseAutomation 启动和诊断
+echo   Prism 启动和诊断
 echo ============================================
 echo.
 
@@ -10,7 +10,7 @@ set "RES_DIR=%APP_DIR%\resources"
 set "SUP_DIR=%RES_DIR%\supervisor"
 
 echo [1/6] 检查文件...
-if not exist "%APP_DIR%\SynapseAutomation.exe" (
+if not exist "%APP_DIR%\Prism.exe" (
     echo ❌ 程序不存在
     pause
     exit /b 1
@@ -24,7 +24,7 @@ echo ✅ 日志已清理
 echo.
 
 echo [3/6] 启动程序...
-start "" "%APP_DIR%\SynapseAutomation.exe"
+start "" "%APP_DIR%\Prism.exe"
 echo ✅ 程序已启动
 echo.
 
@@ -74,12 +74,12 @@ if exist "%SUP_DIR%\backend.log" (
     echo ⚠️ backend.log 不存在 (后端可能未启动)
 )
 
-if exist "%SUP_DIR%\playwright-worker.log" (
-    echo [Playwright Worker 日志] (最后 15 行):
-    powershell -Command "Get-Content '%SUP_DIR%\playwright-worker.log' -Tail 15"
+if exist "%SUP_DIR%\automation-worker.log" (
+    echo [Automation Worker 日志] (最后 15 行):
+    powershell -Command "Get-Content '%SUP_DIR%\automation-worker.log' -Tail 15"
     echo.
 ) else (
-    echo ⚠️ playwright-worker.log 不存在
+    echo ⚠️ automation-worker.log 不存在
 )
 
 if exist "%SUP_DIR%\celery-worker.log" (
@@ -93,9 +93,9 @@ if exist "%SUP_DIR%\celery-worker.log" (
 echo ============================================
 echo   主进程日志
 echo ============================================
-if exist "%APPDATA%\synapse-automation\logs\main.log" (
+if exist "%APPDATA%\prism-automation\logs\main.log" (
     echo [Electron Main Process] (最后 20 行):
-    powershell -Command "Get-Content '$env:APPDATA\synapse-automation\logs\main.log' -Tail 20"
+    powershell -Command "Get-Content '$env:APPDATA\prism-automation\logs\main.log' -Tail 20"
 ) else (
     echo ⚠️ main.log 不存在
 )
@@ -108,8 +108,8 @@ echo.
 echo 日志文件位置:
 echo   - Supervisor: %SUP_DIR%\supervisor.log
 echo   - Backend: %SUP_DIR%\backend.log
-echo   - Worker: %SUP_DIR%\playwright-worker.log
+echo   - Worker: %SUP_DIR%\automation-worker.log
 echo   - Celery: %SUP_DIR%\celery-worker.log
-echo   - Main: %%APPDATA%%\synapse-automation\logs\main.log
+echo   - Main: %%APPDATA%%\prism-automation\logs\main.log
 echo.
 pause

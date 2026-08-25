@@ -3,16 +3,16 @@ chcp 65001 >nul 2>&1
 setlocal enabledelayedexpansion
 
 :: ============================================
-::   SynapseAutomation Package Script
+::   Prism Package Script
 :: ============================================
 echo.
 echo ============================================
-echo   SynapseAutomation Package Script
+echo   Prism Package Script
 echo ============================================
 echo.
 
-set "AUTO_YES=%SYNAPSE_AUTO_YES%"
-set "AUTO_PACKAGE_TYPE=%SYNAPSE_PACKAGE_TYPE%"
+set "AUTO_YES=%PRISM_AUTO_YES%"
+set "AUTO_PACKAGE_TYPE=%PRISM_PACKAGE_TYPE%"
 set "PF86="
 set "PF64="
 for %%I in ("%ProgramFiles(x86)%") do set "PF86=%%~sI"
@@ -40,50 +40,50 @@ echo OK: release workspace sanitized
 echo.
 
 :: ============================================
-:: 0.25 Prepare packaged synenv and Hermes runtime
+:: 0.25 Prepare packaged prismenv and Hermes runtime
 :: ============================================
-echo [0.25/7] Prepare packaged synenv and Hermes runtime...
+echo [0.25/7] Prepare packaged prismenv and Hermes runtime...
 echo.
-if not exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
-    python -m venv "%PROJECT_ROOT%synenv"
+if not exist "%PROJECT_ROOT%prismenv\Scripts\python.exe" (
+    python -m venv "%PROJECT_ROOT%prismenv"
     if errorlevel 1 (
-        echo ERROR: failed to create synenv virtual environment
+        echo ERROR: failed to create prismenv virtual environment
         pause
         exit /b 1
     )
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install --upgrade pip
+"%PROJECT_ROOT%prismenv\Scripts\python.exe" -m pip install --upgrade pip
 if errorlevel 1 (
-    echo ERROR: failed to upgrade pip in synenv
+    echo ERROR: failed to upgrade pip in prismenv
     pause
     exit /b 1
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install -r "%PROJECT_ROOT%requirements.txt"
+"%PROJECT_ROOT%prismenv\Scripts\python.exe" -m pip install -r "%PROJECT_ROOT%requirements.txt"
 if errorlevel 1 (
-    echo ERROR: failed to install packaging requirements into synenv
+    echo ERROR: failed to install packaging requirements into prismenv
     pause
     exit /b 1
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip uninstall -y playwright
+"%PROJECT_ROOT%prismenv\Scripts\python.exe" -m pip uninstall -y playwright
 if errorlevel 1 (
-    echo ERROR: failed to remove conflicting playwright package from synenv
+    echo ERROR: failed to remove conflicting playwright package from prismenv
     pause
     exit /b 1
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -m pip install pyinstaller psutil patchright==1.59.1
+"%PROJECT_ROOT%prismenv\Scripts\python.exe" -m pip install pyinstaller psutil patchright==1.59.1
 if errorlevel 1 (
-    echo ERROR: failed to install packaged runtime dependencies into synenv
+    echo ERROR: failed to install packaged runtime dependencies into prismenv
     pause
     exit /b 1
 )
 
-"%PROJECT_ROOT%synenv\Scripts\python.exe" -c "import importlib.metadata; version = importlib.metadata.version('patchright'); assert version == '1.59.1', version"
+"%PROJECT_ROOT%prismenv\Scripts\python.exe" -c "import importlib.metadata; version = importlib.metadata.version('patchright'); assert version == '1.59.1', version"
 if errorlevel 1 (
-    echo ERROR: packaged synenv resolved an unexpected patchright version
+    echo ERROR: packaged prismenv resolved an unexpected patchright version
     pause
     exit /b 1
 )
@@ -95,18 +95,18 @@ if errorlevel 1 (
     exit /b 1
 )
 
-if not exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
-    echo ERROR: embedded runtime missing python: %PROJECT_ROOT%synenv\Scripts\python.exe
+if not exist "%PROJECT_ROOT%prismenv\Scripts\python.exe" (
+    echo ERROR: embedded runtime missing python: %PROJECT_ROOT%prismenv\Scripts\python.exe
     pause
     exit /b 1
 )
-if not exist "%PROJECT_ROOT%synenv\_python\python.exe" (
-    echo ERROR: embedded runtime missing base python home: %PROJECT_ROOT%synenv\_python\python.exe
+if not exist "%PROJECT_ROOT%prismenv\_python\python.exe" (
+    echo ERROR: embedded runtime missing base python home: %PROJECT_ROOT%prismenv\_python\python.exe
     pause
     exit /b 1
 )
-if not exist "%PROJECT_ROOT%synenv\.hermes-runtime-ready" (
-    echo ERROR: embedded runtime readiness marker missing: %PROJECT_ROOT%synenv\.hermes-runtime-ready
+if not exist "%PROJECT_ROOT%prismenv\.hermes-runtime-ready" (
+    echo ERROR: embedded runtime readiness marker missing: %PROJECT_ROOT%prismenv\.hermes-runtime-ready
     pause
     exit /b 1
 )
@@ -120,7 +120,7 @@ if not exist "%PROJECT_ROOT%tools\hermes-webui\server.py" (
     pause
     exit /b 1
 )
-echo OK: packaged synenv and Hermes runtime ready
+echo OK: packaged prismenv and Hermes runtime ready
 echo.
 
 :: ============================================
@@ -128,10 +128,10 @@ echo.
 :: ============================================
 echo [0.5/7] Build packaged backend services...
 echo.
-if exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
-    set "PACKAGING_PYTHON=%PROJECT_ROOT%synenv\Scripts\python.exe"
+if exist "%PROJECT_ROOT%prismenv\Scripts\python.exe" (
+    set "PACKAGING_PYTHON=%PROJECT_ROOT%prismenv\Scripts\python.exe"
 )
-if not defined PACKAGING_TARGETS set "PACKAGING_TARGETS=backend,celery-worker,playwright-worker"
+if not defined PACKAGING_TARGETS set "PACKAGING_TARGETS=backend,celery-worker,automation-worker"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\packaging\build_services.ps1"
 if errorlevel 1 (
     echo ERROR: packaged backend service build failed
@@ -146,9 +146,9 @@ echo.
 :: ============================================
 echo [1/7] Check and stop running process...
 echo.
-tasklist /FI "IMAGENAME eq SynapseAutomation.exe" 2>NUL | find /I /N "SynapseAutomation.exe">NUL
+tasklist /FI "IMAGENAME eq Prism.exe" 2>NUL | find /I /N "Prism.exe">NUL
 if "%ERRORLEVEL%"=="0" (
-    echo WARNING: SynapseAutomation.exe is running
+    echo WARNING: Prism.exe is running
     if /I "%AUTO_YES%"=="1" (
         echo Auto mode: stopping process
     ) else (
@@ -160,7 +160,7 @@ if "%ERRORLEVEL%"=="0" (
         )
     )
     echo Stopping process...
-    taskkill /F /IM SynapseAutomation.exe >nul 2>&1
+    taskkill /F /IM Prism.exe >nul 2>&1
     timeout /t 2 >nul
     echo OK: process stopped
 ) else (
@@ -169,7 +169,7 @@ if "%ERRORLEVEL%"=="0" (
 echo.
 
 :: Stop packaged services that may lock dist-build/dist-out files
-powershell -Command "Get-Process | Where-Object { $_.Path -and ( $_.Path -like '*\dist-build\win-unpacked\resources\services\*' -or $_.Path -like '*\dist\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-build\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\syn_backend\*' ) } | Stop-Process -Force" >nul 2>&1
+powershell -Command "Get-Process | Where-Object { $_.Path -and ( $_.Path -like '*\dist-build\win-unpacked\resources\services\*' -or $_.Path -like '*\dist\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-build\win-unpacked\resources\prism_backend\*' -or $_.Path -like '*\dist\win-unpacked\resources\prism_backend\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\prism_backend\*' ) } | Stop-Process -Force" >nul 2>&1
 
 :: ============================================
 :: 2. Check Supervisor
@@ -301,7 +301,7 @@ if not exist "icon.ico" (
 echo [6/7] Building frontend (Next.js standalone)...
 echo.
 
-set "FRONTEND_DIR=%PROJECT_ROOT%syn_frontend_react"
+set "FRONTEND_DIR=%PROJECT_ROOT%prism_frontend"
 if not exist "%FRONTEND_DIR%\package.json" (
     echo ERROR: frontend directory not found: %FRONTEND_DIR%
     pause
@@ -370,20 +370,20 @@ if not "%BUILD_DIR_RC%"=="0" (
 
 set "UNPACKED_RES=%ELECTRON_DIST%\win-unpacked\resources"
 if exist "%UNPACKED_RES%" (
-    if not exist "%UNPACKED_RES%\synenv\Scripts\python.exe" (
-        if exist "%PROJECT_ROOT%synenv\Scripts\python.exe" (
-            echo Copying synenv into win-unpacked resources...
-            xcopy /E /I /Y "%PROJECT_ROOT%synenv" "%UNPACKED_RES%\synenv\" >nul
+    if not exist "%UNPACKED_RES%\prismenv\Scripts\python.exe" (
+        if exist "%PROJECT_ROOT%prismenv\Scripts\python.exe" (
+            echo Copying prismenv into win-unpacked resources...
+            xcopy /E /I /Y "%PROJECT_ROOT%prismenv" "%UNPACKED_RES%\prismenv\" >nul
         ) else (
-            echo WARNING: synenv source missing: %PROJECT_ROOT%synenv
+            echo WARNING: prismenv source missing: %PROJECT_ROOT%prismenv
         )
     )
-    if not exist "%UNPACKED_RES%\synenv\_python\python.exe" (
-        if exist "%PROJECT_ROOT%synenv\_python\python.exe" (
-            echo Copying synenv base python home into win-unpacked resources...
-            xcopy /E /I /Y "%PROJECT_ROOT%synenv\_python" "%UNPACKED_RES%\synenv\_python\" >nul
+    if not exist "%UNPACKED_RES%\prismenv\_python\python.exe" (
+        if exist "%PROJECT_ROOT%prismenv\_python\python.exe" (
+            echo Copying prismenv base python home into win-unpacked resources...
+            xcopy /E /I /Y "%PROJECT_ROOT%prismenv\_python" "%UNPACKED_RES%\prismenv\_python\" >nul
         ) else (
-            echo ERROR: synenv base python home missing: %PROJECT_ROOT%synenv\_python\python.exe
+            echo ERROR: prismenv base python home missing: %PROJECT_ROOT%prismenv\_python\python.exe
             pause
             exit /b 1
         )
@@ -405,22 +405,22 @@ if exist "%UNPACKED_RES%" (
         )
     )
 
-    if exist "%PROJECT_ROOT%syn_backend" (
-        echo Updating syn_backend in win-unpacked resources...
-        if exist "%UNPACKED_RES%\syn_backend" (
-            echo   - Removing old syn_backend...
-            rd /s /q "%UNPACKED_RES%\syn_backend" 2>nul
+    if exist "%PROJECT_ROOT%prism_backend" (
+        echo Updating prism_backend in win-unpacked resources...
+        if exist "%UNPACKED_RES%\prism_backend" (
+            echo   - Removing old prism_backend...
+            rd /s /q "%UNPACKED_RES%\prism_backend" 2>nul
         )
-        echo   - Copying latest syn_backend ^(excluding user data^)...
-        robocopy "%PROJECT_ROOT%syn_backend" "%UNPACKED_RES%\syn_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
+        echo   - Copying latest prism_backend ^(excluding user data^)...
+        robocopy "%PROJECT_ROOT%prism_backend" "%UNPACKED_RES%\prism_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
         if errorlevel 8 (
-            echo ERROR: failed to copy syn_backend
+            echo ERROR: failed to copy prism_backend
             pause
             exit /b 1
         )
-        echo   OK: syn_backend updated successfully
+        echo   OK: prism_backend updated successfully
     ) else (
-        echo WARNING: syn_backend source missing: %PROJECT_ROOT%syn_backend
+        echo WARNING: prism_backend source missing: %PROJECT_ROOT%prism_backend
     )
 
     if not exist "%UNPACKED_RES%\tools\hermes-agent\run_agent.py" (
@@ -445,13 +445,13 @@ if exist "%UNPACKED_RES%" (
 )
 
 if exist "%UNPACKED_RES%" (
-    if not exist "%UNPACKED_RES%\synenv\Scripts\python.exe" (
-        echo ERROR: win-unpacked missing synenv python: %UNPACKED_RES%\synenv\Scripts\python.exe
+    if not exist "%UNPACKED_RES%\prismenv\Scripts\python.exe" (
+        echo ERROR: win-unpacked missing prismenv python: %UNPACKED_RES%\prismenv\Scripts\python.exe
         pause
         exit /b 1
     )
-    if not exist "%UNPACKED_RES%\synenv\_python\python.exe" (
-        echo ERROR: win-unpacked missing synenv base python home: %UNPACKED_RES%\synenv\_python\python.exe
+    if not exist "%UNPACKED_RES%\prismenv\_python\python.exe" (
+        echo ERROR: win-unpacked missing prismenv base python home: %UNPACKED_RES%\prismenv\_python\python.exe
         pause
         exit /b 1
     )
@@ -502,7 +502,7 @@ echo.
 echo Output directory: %OUTPUT_DIR%\win-unpacked
 echo.
 echo Please test:
-echo   1. Run: %OUTPUT_DIR%\win-unpacked\SynapseAutomation.exe
+echo   1. Run: %OUTPUT_DIR%\win-unpacked\Prism.exe
 echo   2. Check Supervisor starts
 echo   3. Check backend service status
 echo   4. Check frontend access
@@ -554,17 +554,17 @@ if "!PACKAGE_TYPE!"=="2" (
         exit /b 1
     )
 
-    if not exist "!SOURCE_DIR!\resources\syn_backend" (
-        if exist "!PROJECT_ROOT!syn_backend" (
-            echo INFO: syn_backend missing in output; copying...
-            robocopy "!PROJECT_ROOT!syn_backend" "!SOURCE_DIR!\resources\syn_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
+    if not exist "!SOURCE_DIR!\resources\prism_backend" (
+        if exist "!PROJECT_ROOT!prism_backend" (
+            echo INFO: prism_backend missing in output; copying...
+            robocopy "!PROJECT_ROOT!prism_backend" "!SOURCE_DIR!\resources\prism_backend" /E /NFL /NDL /NJH /NJS /XD "__pycache__" ".pytest_cache" "tests" "logs" "backups" "browser_profiles" "videoFile" "cookiesFile" "fingerprints" /XF "*.pyc" "*.pyo" "test_*" "*.db" "*.db-*" "*.sqlite" "*.sqlite-*" "frontend_accounts_snapshot.json" >nul
             if errorlevel 8 (
-                echo ERROR: failed to copy syn_backend
+                echo ERROR: failed to copy prism_backend
                 pause
                 exit /b 1
             )
         ) else (
-            echo WARNING: syn_backend source missing: !PROJECT_ROOT!syn_backend
+            echo WARNING: prism_backend source missing: !PROJECT_ROOT!prism_backend
         )
     )
 

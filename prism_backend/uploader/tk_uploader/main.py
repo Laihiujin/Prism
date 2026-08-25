@@ -2,7 +2,7 @@
 import re
 from datetime import datetime
 
-from utils.playwright_provider import Playwright, async_playwright
+from utils.automation_provider import Playwright, async_playwright
 import os
 import asyncio
 from uploader.tk_uploader.tk_config import Tk_Locator

@@ -3,7 +3,7 @@ Direct crawler test - no API calls
 """
 import asyncio
 import sys
-sys.path.insert(0, 'syn_backend/douyin_tiktok_api')
+sys.path.insert(0, 'prism_backend/douyin_tiktok_api')
 
 from crawlers.hybrid.hybrid_crawler import HybridCrawler
 

@@ -192,7 +192,7 @@ class DouyinSecUidResolver:
         这是最稳定但性能最差的方案
         """
         try:
-            from utils.playwright_provider import async_playwright
+            from utils.automation_provider import async_playwright
             
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)

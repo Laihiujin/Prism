@@ -10,9 +10,9 @@ echo.
 
 set "ROOT=%~dp0..\.."
 
-call "%ROOT%\synenv\Scripts\activate.bat"
+call "%ROOT%\prismenv\Scripts\activate.bat"
 
-set "PY=%ROOT%\synenv\Scripts\python.exe"
+set "PY=%ROOT%\prismenv\Scripts\python.exe"
 
 set "SUPERVISOR_EXE=%ROOT%\desktop-electron\resources\supervisor\supervisor.exe"
 set "SUPERVISOR_EXE_FALLBACK=%ROOT%\desktop-electron\dist\win-unpacked\resources\supervisor\supervisor.exe"
@@ -21,15 +21,15 @@ set "SUPERVISOR_PY_FALLBACK=%ROOT%\desktop-electron\dist\win-unpacked\resources\
 
 cd /d "%ROOT%"
 
-set PYTHONPATH=%ROOT%\syn_backend;%ROOT%\desktop-electron\resources\supervisor
-set "SYNAPSE_HERMES_PYTHON=%PY%"
+set PYTHONPATH=%ROOT%\prism_backend;%ROOT%\desktop-electron\resources\supervisor
+set "PRISM_HERMES_PYTHON=%PY%"
 
 echo [Supervisor] Starting service manager...
 echo [Supervisor] API Port: 7002
 echo [Supervisor] Log: logs\supervisor.log
 echo.
 
-if exist "%ROOT%\syn_backend" if exist "%PY%" if exist "%SUPERVISOR_PY%" (
+if exist "%ROOT%\prism_backend" if exist "%PY%" if exist "%SUPERVISOR_PY%" (
     "%PY%" "%SUPERVISOR_PY%"
 ) else if exist "%SUPERVISOR_EXE%" (
     "%SUPERVISOR_EXE%"

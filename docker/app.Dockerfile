@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright/python:v1.57.0-noble
+FROM python:3.11-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -12,9 +12,10 @@ RUN apt-get update \
 
 COPY requirements.txt ./requirements.txt
 RUN python -m pip install --break-system-packages --upgrade pip \
-    && python -m pip install --break-system-packages -r requirements.txt
+    && python -m pip install --break-system-packages -r requirements.txt \
+    && python -m patchright install --with-deps chromium
 
-COPY syn_backend ./syn_backend
+COPY prism_backend ./prism_backend
 COPY tools/hermes-agent ./tools/hermes-agent
 COPY tools/hermes-webui ./tools/hermes-webui
 COPY docker/start-app.sh ./docker/start-app.sh

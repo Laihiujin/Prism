@@ -1,11 +1,11 @@
-# SynapseAutomation Repo Layout And Cleanup
+# Prism Repo Layout And Cleanup
 
 This repository mixes long-lived source trees, local runtimes, and generated build output. Do not bulk-move top-level folders unless the call sites are verified first.
 
 ## Stable top-level directories
 
-- `syn_backend/`: FastAPI backend, workers, platform adapters, and Python services.
-- `syn_frontend_react/`: React frontend source.
+- `prism_backend/`: FastAPI backend, workers, platform adapters, and Python services.
+- `prism_frontend/`: React frontend source.
 - `desktop-electron/`: Electron desktop shell and packaging project.
 - `scripts/`: launch, packaging, maintenance, release, and Hermes helper scripts.
 - `scripts/tests/`: manual and integration verification scripts moved out of the old top-level `Test/`.
@@ -35,9 +35,9 @@ These are disposable and should not stay in the repo root once they are no longe
 - `.tmp-channels-debug/`
 - `.tmp-hibbiki/`
 - `gcm-diagnose.log`
-- `syn_backend/logs/`
-- `syn_frontend_react/.next/`
-- `syn_frontend_react/out/`
+- `prism_backend/logs/`
+- `prism_frontend/.next/`
+- `prism_frontend/out/`
 - `desktop-electron/dist-build/`
 - `desktop-electron/out/`
 
@@ -46,8 +46,8 @@ These are disposable and should not stay in the repo root once they are no longe
 Delete these only when you intentionally want to rebuild local dependencies:
 
 - `node_modules/`
-- `syn_frontend_react/node_modules/`
-- `synenv/`
+- `prism_frontend/node_modules/`
+- `prismenv/`
 - browser payload folders under `browsers/`
 - `build/supervisor/`
 

@@ -4,7 +4,7 @@ Test Douyin API video data fetching
 """
 import sys
 import asyncio
-sys.path.append('syn_backend/douyin_tiktok_api')
+sys.path.append('prism_backend/douyin_tiktok_api')
 
 from crawlers.douyin.web.web_crawler import DouyinWebCrawler
 from crawlers.hybrid.hybrid_crawler import HybridCrawler

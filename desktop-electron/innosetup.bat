@@ -1,4 +1,4 @@
-cd /d E:\demo_account\SynapseAutomation\desktop-electron
+cd /d E:\demo_account\Prism\desktop-electron
 
 set APP_VERSION=1.1.0
 set APP_BUILD_NUM=1

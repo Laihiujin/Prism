@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 
 
 def _is_dev_repo(base_dir: Path) -> bool:
-    env = (os.getenv("SYNAPSE_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
+    env = (os.getenv("PRISM_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
     if env in ("dev", "development", "local"):
         return True
     try:
@@ -26,7 +26,7 @@ def _resolve_profiles_dir() -> Path:
         from fastapi_app.core.config import settings
         return Path(settings.BROWSER_PROFILES_DIR)
     except Exception:
-        env_dir = os.getenv("SYNAPSE_DATA_DIR")
+        env_dir = os.getenv("PRISM_DATA_DIR")
         if env_dir:
             return Path(env_dir) / "browser_profiles"
         if _is_dev_repo(BASE_DIR):
@@ -35,9 +35,9 @@ def _resolve_profiles_dir() -> Path:
         appdata = os.getenv("APPDATA")
         local_root = os.getenv("LOCALAPPDATA")
         if appdata:
-            candidates.append(Path(appdata) / "SynapseAutomation" / "data" / "browser_profiles")
+            candidates.append(Path(appdata) / "Prism" / "data" / "browser_profiles")
         if local_root and local_root != appdata:
-            candidates.append(Path(local_root) / "SynapseAutomation" / "data" / "browser_profiles")
+            candidates.append(Path(local_root) / "Prism" / "data" / "browser_profiles")
         for candidate in candidates:
             if candidate.exists():
                 return candidate
@@ -49,7 +49,7 @@ def _resolve_fingerprints_dir() -> Path:
         from fastapi_app.core.config import settings
         return Path(settings.FINGERPRINTS_DIR)
     except Exception:
-        env_dir = os.getenv("SYNAPSE_DATA_DIR")
+        env_dir = os.getenv("PRISM_DATA_DIR")
         if env_dir:
             return Path(env_dir) / "fingerprints"
         if _is_dev_repo(BASE_DIR):
@@ -58,9 +58,9 @@ def _resolve_fingerprints_dir() -> Path:
         appdata = os.getenv("APPDATA")
         local_root = os.getenv("LOCALAPPDATA")
         if appdata:
-            candidates.append(Path(appdata) / "SynapseAutomation" / "data" / "fingerprints")
+            candidates.append(Path(appdata) / "Prism" / "data" / "fingerprints")
         if local_root and local_root != appdata:
-            candidates.append(Path(local_root) / "SynapseAutomation" / "data" / "fingerprints")
+            candidates.append(Path(local_root) / "Prism" / "data" / "fingerprints")
         for candidate in candidates:
             if candidate.exists():
                 return candidate
@@ -263,7 +263,7 @@ async def _export_state_for_account(profile_dir: Path, platform: str, account_id
         return False
 
     try:
-            from utils.playwright_provider import async_playwright
+            from utils.automation_provider import async_playwright
     except Exception as exc:
         logger.warning(f"[ProfileManager] Playwright missing: {exc}")
         return False

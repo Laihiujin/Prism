@@ -12,7 +12,7 @@ echo ============================================
 echo.
 
 set "ROOT_DIR=%~dp0..\..\.."
-set "FRONTEND_DIR=%ROOT_DIR%\syn_frontend_react"
+set "FRONTEND_DIR=%ROOT_DIR%\prism_frontend"
 
 echo WARNING: 此脚本将：
 echo   1. 停止所有 Node.js 进程
@@ -36,7 +36,7 @@ echo.
 
 taskkill /F /IM node.exe >nul 2>&1
 taskkill /F /IM next.exe >nul 2>&1
-taskkill /F /IM SynapseAutomation.exe >nul 2>&1
+taskkill /F /IM Prism.exe >nul 2>&1
 
 echo OK: 进程已停止
 timeout /t 2 >nul
@@ -108,8 +108,8 @@ timeout /t 3 >nul
 
 cd /d "%ROOT_DIR%"
 
-set SYNAPSE_AUTO_YES=1
-set SYNAPSE_PACKAGE_TYPE=2
+set PRISM_AUTO_YES=1
+set PRISM_PACKAGE_TYPE=2
 
 call scripts\packaging\build-package.bat
 

@@ -10,6 +10,8 @@ const platformMap: Record<number, PlatformKey> = {
   3: "douyin",
   4: "kuaishou",
   5: "bilibili",
+  6: "tiktok",
+  7: "youtube",
 }
 
 const statusMap: Record<string, "正常" | "异常" | "待激活" | "在线"> = {

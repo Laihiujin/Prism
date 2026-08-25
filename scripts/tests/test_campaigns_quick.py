@@ -12,9 +12,9 @@ import sys
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from syn_backend.fastapi_app.core.async_task_pool import AsyncTaskPool
-from syn_backend.fastapi_app.core.rate_limiter import RateLimiter
-from syn_backend.fastapi_app.api.v1.campaigns.schemas import (
+from prism_backend.fastapi_app.core.async_task_pool import AsyncTaskPool
+from prism_backend.fastapi_app.core.rate_limiter import RateLimiter
+from prism_backend.fastapi_app.api.v1.campaigns.schemas import (
     PlanCreate,
     PackageCreate,
     TimeStrategy,

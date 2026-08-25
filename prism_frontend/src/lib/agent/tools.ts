@@ -26,7 +26,7 @@ const run_script = tool(
     description:
       "Run a backend automation script by filename with optional arguments",
     schema: z.object({
-      name: z.string().describe("The script filename inside syn_backend/scripts"),
+      name: z.string().describe("The script filename inside prism_backend/scripts"),
       args: z
         .array(z.string())
         .optional()

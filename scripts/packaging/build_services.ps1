@@ -6,7 +6,7 @@ if ($env:PACKAGING_PYTHON) {
   $pythonCandidates += $env:PACKAGING_PYTHON
 }
 $pythonCandidates += @(
-  (Join-Path $root "synenv\Scripts\python.exe"),
+  (Join-Path $root "prismenv\Scripts\python.exe"),
   "python"
 )
 
@@ -45,7 +45,7 @@ $build = Join-Path $root "dist\build"
 
 New-Item -ItemType Directory -Force -Path $dist, $spec, $build | Out-Null
 
-@("backend.exe", "celery-worker.exe", "playwright-worker.exe") | ForEach-Object {
+@("backend.exe", "celery-worker.exe", "automation-worker.exe") | ForEach-Object {
   $legacyExe = Join-Path $dist $_
   if (Test-Path $legacyExe) {
     Remove-Item -LiteralPath $legacyExe -Force
@@ -79,8 +79,8 @@ $common = @(
   "--onedir",
   "--hidden-import", "zoneinfo",
   "--hidden-import", "_zoneinfo",
-  "--paths", (Join-Path $root "syn_backend"),
-  "--paths", (Join-Path $root "syn_backend\douyin_tiktok_api"),
+  "--paths", (Join-Path $root "prism_backend"),
+  "--paths", (Join-Path $root "prism_backend\douyin_tiktok_api"),
   "--distpath", $dist,
   "--workpath", $build,
   "--specpath", $spec
@@ -107,7 +107,7 @@ $targetOptions = @{
     "--hidden-import", "fastapi.middleware",
     "--hidden-import", "fastapi.middleware.cors",
     "--hidden-import", "celery.fixups",
-    "--hidden-import", "playwright_worker.client",
+    "--hidden-import", "automation_worker.client",
     "--collect-submodules", "http",
     "--collect-submodules", "email",
     "--collect-submodules", "fastapi",
@@ -144,7 +144,7 @@ $targetOptions = @{
     "--collect-all", "pydantic",
     "--collect-all", "pydantic_core"
   )
-  "playwright-worker" = @(
+  "automation-worker" = @(
     "--hidden-import", "fastapi.middleware",
     "--hidden-import", "fastapi.middleware.cors",
     "--collect-submodules", "http",
@@ -153,7 +153,7 @@ $targetOptions = @{
     "--collect-submodules", "starlette",
     "--collect-submodules", "fastapi_app",
     "--collect-submodules", "app_new",
-    "--collect-submodules", "playwright_worker",
+    "--collect-submodules", "automation_worker",
     "--collect-submodules", "utils",
     "--collect-submodules", "crawlers",
     "--collect-all", "fastapi",
@@ -167,7 +167,7 @@ $targetOptions = @{
   )
 }
 
-$targets = @("backend", "celery-worker", "playwright-worker")
+$targets = @("backend", "celery-worker", "automation-worker")
 if ($env:PACKAGING_TARGETS) {
   $targets = $env:PACKAGING_TARGETS.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 }
@@ -175,7 +175,7 @@ if ($env:PACKAGING_TARGETS) {
 $entryScripts = @{
   "backend" = "$PSScriptRoot\backend_service.py"
   "celery-worker" = "$PSScriptRoot\celery_worker_service.py"
-  "playwright-worker" = "$PSScriptRoot\playwright_worker_service.py"
+  "automation-worker" = "$PSScriptRoot\automation_worker_service.py"
 }
 
 function Find-PackagedDriverNode {
@@ -291,7 +291,7 @@ function Prune-PlaywrightDriverNode {
   $expectedPatchrightNode = Join-Path $targetDir "_internal\patchright\driver\node.exe"
 
   if (-not $patchrightNode) {
-    if ($TargetName -eq "playwright-worker") {
+    if ($TargetName -eq "automation-worker") {
       $sourcePatchrightNode = Get-PatchrightDriverNodeSource
       if ($sourcePatchrightNode) {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $expectedPatchrightNode) | Out-Null
@@ -320,7 +320,7 @@ function Prune-PlaywrightDriverNode {
     throw "Duplicate Playwright driver node.exe still packaged in $TargetName after pruning: $remainingList"
   }
 
-  if ($TargetName -eq "playwright-worker") {
+  if ($TargetName -eq "automation-worker") {
     $verifiedPatchrightNode = Find-PackagedDriverNode -TargetDir $targetDir -RuntimeName "patchright"
     if (-not $verifiedPatchrightNode) {
       throw "Missing patchright driver node.exe in packaged $TargetName after pruning."

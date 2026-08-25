@@ -116,7 +116,7 @@ node_modules/
 # Environment
 .env
 .env.local
-synenv/
+prismenv/
 
 # Build artifacts
 desktop-electron/dist/
