@@ -21,26 +21,34 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = REPO_ROOT / "prism_backend"
 FRONTEND_ROOT = REPO_ROOT / "prism_frontend"
+HERMES_SOURCE = REPO_ROOT / "tools" / "hermes-agent"
+HERMES_HOME = REPO_ROOT / "tools" / "hermes-home"
+HERMES_WEBUI = REPO_ROOT / "tools" / "hermes-webui"
 LOG_DIR = REPO_ROOT / "logs"
 RUN_DIR = LOG_DIR / "run"
 
 IS_WINDOWS = sys.platform == "win32"
 
 # Service registry order matters for start/stop sequencing.
-SERVICE_NAMES = ("redis", "worker", "backend", "celery", "frontend")
+SERVICE_NAMES = (
+    "redis", "worker", "backend", "celery",
+    "hermes-dashboard", "hermes-webui", "frontend",
+)
 
 DEFAULT_PORTS: Dict[str, int] = {
     "backend": 7000,
     "worker": 7001,
     "frontend": 3000,
     "redis": 6379,
+    "hermes-dashboard": 9119,
+    "hermes-webui": 9131,
 }
 
 
@@ -52,6 +60,7 @@ class Service:
     port: Optional[int]
     health_path: Optional[str]
     optional: bool = False
+    env_extra: Dict[str, str] = field(default_factory=dict)
 
     @property
     def pid_file(self) -> Path:
@@ -116,6 +125,26 @@ def _next_bin() -> Optional[str]:
     if entry.exists():
         return str(entry)
     return shutil.which("next")
+
+
+def _hermes_python() -> Optional[str]:
+    """Resolve the Hermes runtime interpreter (prismenv)."""
+    override = os.getenv("PRISM_HERMES_PYTHON")
+    if override and Path(override).exists():
+        return override
+    if IS_WINDOWS:
+        candidate = REPO_ROOT / "prismenv" / "Scripts" / "python.exe"
+    else:
+        candidate = REPO_ROOT / "prismenv" / "bin" / "python"
+    return str(candidate) if candidate.exists() else None
+
+
+def _hermes_bootstrap(source: str, *cli_args: str) -> str:
+    return (
+        "import runpy, sys; "
+        f"sys.path.insert(0, {source!r}); "
+        "runpy.run_module('hermes_cli.main', run_name='__main__')"
+    )
 
 
 def _base_env() -> Dict[str, str]:
@@ -197,6 +226,79 @@ def build_services(dev_frontend: bool = False) -> Dict[str, Service]:
     else:
         services["frontend"] = Service("frontend", FRONTEND_ROOT, [], DEFAULT_PORTS["frontend"], "/", optional=True)
 
+    # Hermes agent UI surfaces (dashboard + webui). These run under the
+    # separate prismenv runtime and are optional when Hermes is not installed.
+    hermes_python = _hermes_python()
+    hermes_dashboard_port = DEFAULT_PORTS["hermes-dashboard"]
+    hermes_webui_port = DEFAULT_PORTS["hermes-webui"]
+
+    hermes_base_env = {
+        "HERMES_HOME": str(HERMES_HOME),
+        "HERMES_CONFIG_PATH": str(HERMES_HOME / "config.yaml"),
+        "HERMES_YOLO_MODE": "1",
+    }
+
+    if hermes_python and HERMES_SOURCE.exists():
+        services["hermes-dashboard"] = Service(
+            name="hermes-dashboard",
+            cwd=HERMES_SOURCE,
+            cmd=[
+                hermes_python,
+                "-c",
+                _hermes_bootstrap(str(HERMES_SOURCE)),
+                "dashboard",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(hermes_dashboard_port),
+                "--no-open",
+                "--skip-build",
+            ],
+            port=hermes_dashboard_port,
+            health_path="/",
+            optional=True,
+            env_extra={
+                **hermes_base_env,
+                "PYTHONPATH": str(HERMES_SOURCE),
+                "HERMES_WEB_DIST": str(HERMES_SOURCE / "hermes_cli" / "web_dist"),
+            },
+        )
+        services["hermes-webui"] = Service(
+            name="hermes-webui",
+            cwd=HERMES_WEBUI,
+            cmd=[
+                hermes_python,
+                "-c",
+                (
+                    "import runpy, sys; "
+                    f"sys.path.insert(0, {str(HERMES_WEBUI)!r}); "
+                    f"sys.path.insert(0, {str(HERMES_SOURCE)!r}); "
+                    f"runpy.run_path({str(HERMES_WEBUI / 'server.py')!r}, run_name='__main__')"
+                ),
+            ],
+            port=hermes_webui_port,
+            health_path="/?prism_shell_health=1",
+            optional=True,
+            env_extra={
+                **hermes_base_env,
+                "PYTHONPATH": os.pathsep.join([str(HERMES_WEBUI), str(HERMES_SOURCE)]),
+                "HERMES_WEBUI_AGENT_DIR": str(HERMES_SOURCE),
+                "HERMES_WEBUI_HOST": "127.0.0.1",
+                "HERMES_WEBUI_PORT": str(hermes_webui_port),
+                "HERMES_WEBUI_PYTHON": hermes_python,
+                "HERMES_WEBUI_STATE_DIR": str(HERMES_HOME / "webui"),
+                "HERMES_WEBUI_DEFAULT_WORKSPACE": str(REPO_ROOT),
+                "HERMES_SKIP_CHMOD": "1",
+            },
+        )
+    else:
+        services["hermes-dashboard"] = Service(
+            "hermes-dashboard", HERMES_SOURCE, [], hermes_dashboard_port, "/", optional=True,
+        )
+        services["hermes-webui"] = Service(
+            "hermes-webui", HERMES_WEBUI, [], hermes_webui_port, "/?prism_shell_health=1", optional=True,
+        )
+
     return services
 
 
@@ -252,11 +354,14 @@ def start_service(svc: Service, env: Dict[str, str]) -> bool:
         print(f"[{svc.name}] FAILED: executable not found: {svc.cmd[:1] or '(unset)'}", file=sys.stderr)
         return False
 
+    service_env = dict(env)
+    service_env.update(svc.env_extra)
+
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     log = open(svc.log_file, "ab", buffering=0)
     kwargs: Dict[str, object] = {
         "cwd": str(svc.cwd),
-        "env": env,
+        "env": service_env,
         "stdout": log,
         "stderr": subprocess.STDOUT,
         "stdin": subprocess.DEVNULL,
