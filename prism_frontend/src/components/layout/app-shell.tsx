@@ -18,9 +18,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Animated Background */}
       <div className="fixed inset-0 z-0">
         {/* Grid Pattern (softened) */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.5)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.5)_1px,transparent_1px)] bg-[size:24px_24px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.28)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.28)_1px,transparent_1px)] bg-[size:32px_32px]" />
         {/* Radial Gradient (White/Silver, softened) */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_-30%,hsl(var(--primary)/0.08),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_-30%,hsl(var(--primary)/0.06),transparent)]" />
       </div>
 
       {/* Desktop sidebar */}

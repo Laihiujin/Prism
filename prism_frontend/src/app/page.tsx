@@ -34,6 +34,7 @@ import {
 import { formatBeijingDateTime } from "@/lib/time"
 import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog"
 import { PageHeader } from "@/components/layout/page-scaffold"
+import CountUp from "@/components/CountUp"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -213,7 +214,7 @@ export default function DashboardPage() {
         // description="快手、抖音、视频号、小红书统一监控"
         actions={
           isRefreshing && (
-            <Badge className="rounded-2xl border-white/10 bg-white/10 text-xs text-white/80">
+            <Badge className="rounded-2xl border-border bg-primary/10 text-xs text-primary">
               数据刷新中...
             </Badge>
           )
@@ -226,16 +227,22 @@ export default function DashboardPage() {
           return (
             <Card
               key={stat.label}
-              className="group border-white/10 bg-black text-white cursor-pointer transition hover:bg-white/5"
+              className="group border-border bg-card text-card-foreground cursor-pointer transition hover:bg-card/70"
               onClick={() => handleNavigate(stat.href)}
             >
               <CardHeader className="pb-2">
-                <CardDescription className="text-white/60">{stat.label}</CardDescription>
-                <CardTitle className="text-3xl text-white">{stat.value}</CardTitle>
+                <CardDescription className="text-muted-foreground">{stat.label}</CardDescription>
+                <CardTitle className="text-3xl text-foreground">
+                  {/^-?\d+(\.\d+)?$/.test(stat.value) ? (
+                    <CountUp to={Number(stat.value)} separator="," duration={1.2} className="tabular-nums" />
+                  ) : (
+                    stat.value
+                  )}
+                </CardTitle>
               </CardHeader>
-              <CardFooter className="justify-between text-sm text-white/60">
+              <CardFooter className="justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Icon className="h-4 w-4 text-white/70" />
+                  <Icon className="h-4 w-4 text-foreground/70" />
                   {stat.delta}
                 </div>
               </CardFooter>
@@ -247,7 +254,7 @@ export default function DashboardPage() {
       <PublishOtpDialog />
 
       <section className="grid gap-6">
-        <Card className="border-white/10 bg-black text-white">
+        <Card className="border-border bg-card text-card-foreground">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>任务管理库</CardTitle>
@@ -310,7 +317,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
-        <Card className="space-y-5 border-white/10 bg-black text-white">
+        <Card className="space-y-5 border-border bg-card text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle>快捷入口</CardTitle>
             <CardDescription>常用矩阵工作流入口</CardDescription>
@@ -353,7 +360,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="space-y-4 border-white/10 bg-black text-white">
+        <Card className="space-y-4 border-border bg-card text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle>失败任务提醒</CardTitle>
             <CardDescription>仅展示最近失败的任务</CardDescription>
@@ -376,7 +383,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="space-y-4 border-white/10 bg-black text-white">
+        <Card className="space-y-4 border-border bg-card text-card-foreground">
           <CardHeader className="pb-2">
             <CardTitle>账号运行概况</CardTitle>
             <CardDescription>实时同步后端账号状态</CardDescription>
