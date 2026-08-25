@@ -75,9 +75,22 @@ _normalize_env_path("LOCAL_CHROME_HEADLESS_SHELL_PATH")
 _normalize_env_path("LOCAL_FIREFOX_PATH")
 
 def _find_preferred_local_chrome() -> str | None:
+    # 适配用户电脑端：优先使用系统已安装的 Chrome，其次才使用项目内置浏览器。
     for pattern in (
+        # macOS 系统 Chrome
         Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
         Path.home() / "Applications" / "Google Chrome.app" / "Contents" / "MacOS" / "Google Chrome",
+        # Windows 系统 Chrome
+        Path("C:/Program Files/Google/Chrome/Application/chrome.exe"),
+        Path("C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"),
+        Path.home() / "AppData" / "Local" / "Google" / "Chrome" / "Application" / "chrome.exe",
+        # Linux 系统 Chrome / Chromium
+        Path("/usr/bin/google-chrome"),
+        Path("/usr/bin/google-chrome-stable"),
+        Path("/usr/bin/chromium"),
+        Path("/usr/bin/chromium-browser"),
+        Path("/snap/bin/chromium"),
+        # 项目内置浏览器（最后兜底）
         APP_ROOT / "browsers" / "chromium" / "hibbiki-*" / "Chrome-bin" / "chrome.exe",
         APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win64" / "chrome.exe",
         APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win" / "chrome.exe",
