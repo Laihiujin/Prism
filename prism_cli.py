@@ -104,6 +104,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="prism", description="Prism multi-platform publishing CLI")
     roots = parser.add_subparsers(dest="platform", required=True)
 
+    # 跨平台进程管理：prism service start|stop|restart|status|logs|list
+    service_cmd = roots.add_parser("service", help="Manage Prism services (start/stop/status/logs)")
+    service_cmd.add_argument(
+        "service_args",
+        nargs=argparse.REMAINDER,
+        help="arguments forwarded to `prism service` (run `prism service -h`)",
+    )
+
     for name in ("douyin", "kuaishou", "xiaohongshu"):
         actions = roots.add_parser(name).add_subparsers(dest="action", required=True)
         add_login_check(actions, name, qr_probe=True)
@@ -311,8 +319,13 @@ async def dispatch(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    args = build_parser().parse_args()
+    if args.platform == "service":
+        from utils.process_manager import main as service_main
+
+        return service_main(args.service_args)
     try:
-        return asyncio.run(dispatch(build_parser().parse_args()))
+        return asyncio.run(dispatch(args))
     except (FileNotFoundError, RuntimeError, ValueError) as exc:
         print(f"prism: {exc}", file=sys.stderr)
         return 2
