@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).parent.parent
 """
 DEPRECATED:
 本文件属于旧的“同步发布封装”，历史上被批量发布服务调用。
-现在发布统一入口已收敛到 `syn_backend/platforms/*/upload.py`（通过 `platforms/registry.py`）。
+现在发布统一入口已收敛到 `prism_backend/platforms/*/upload.py`（通过 `platforms/registry.py`）。
 如需兼容旧脚本入口，建议改为调用 `platforms.registry.get_uploader_by_platform_code()`。
 """
 

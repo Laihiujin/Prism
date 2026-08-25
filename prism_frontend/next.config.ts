@@ -21,9 +21,9 @@ const publicBackendUrl = normalizeBackendUrl(
 )
 
 const internalBackendUrl = normalizeBackendUrl(
-  process.env.SYNAPSE_INTERNAL_BACKEND_URL ||
-    process.env.SYN_BACKEND_URL ||
-    process.env.NEXT_PUBLIC_SYN_BACKEND_URL ||
+  process.env.PRISM_INTERNAL_BACKEND_URL ||
+    process.env.PRISM_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_PRISM_BACKEND_URL ||
     publicBackendUrl
 )
 
@@ -59,7 +59,7 @@ const nextConfig: NextConfig = {
   webpack(config, { dev }) {
     if (
       !dev &&
-      process.env.SYNAPSE_DISABLE_CSS_MINIFY === "1" &&
+      process.env.PRISM_DISABLE_CSS_MINIFY === "1" &&
       Array.isArray(config.optimization?.minimizer)
     ) {
       config.optimization.minimize = false

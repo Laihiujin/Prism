@@ -30,9 +30,9 @@ $targets = @(
   (New-CleanupTarget "tmp" "safe" "scratch runtime files")
   (New-CleanupTarget "tmp-runtime-data" "safe" "temporary runtime data")
   (New-CleanupTarget "gcm-diagnose.log" "safe" "one-off Git Credential Manager diagnostics")
-  (New-CleanupTarget "syn_backend\\logs" "safe" "backend logs")
-  (New-CleanupTarget "syn_frontend_react\\.next" "safe" "Next.js build cache")
-  (New-CleanupTarget "syn_frontend_react\\out" "safe" "frontend export output")
+  (New-CleanupTarget "prism_backend\\logs" "safe" "backend logs")
+  (New-CleanupTarget "prism_frontend\\.next" "safe" "Next.js build cache")
+  (New-CleanupTarget "prism_frontend\\out" "safe" "frontend export output")
   (New-CleanupTarget "desktop-electron\\dist-build" "safe" "Electron build output")
   (New-CleanupTarget "desktop-electron\\out" "safe" "Electron packager output")
 )
@@ -43,11 +43,11 @@ if ($IncludePackagingCache) {
 
 if ($IncludeNodeModules) {
   $targets += New-CleanupTarget "node_modules" "optional" "root node modules"
-  $targets += New-CleanupTarget "syn_frontend_react\\node_modules" "optional" "frontend node modules"
+  $targets += New-CleanupTarget "prism_frontend\\node_modules" "optional" "frontend node modules"
 }
 
 if ($IncludeVirtualEnv) {
-  $targets += New-CleanupTarget "synenv" "optional" "shared Python environment"
+  $targets += New-CleanupTarget "prismenv" "optional" "shared Python environment"
 }
 
 if ($IncludeBrowserDownloads) {

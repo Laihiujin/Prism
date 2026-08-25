@@ -388,7 +388,7 @@ async def use_preset_to_publish(
     """
 )
 async def get_publish_history(
-    platform: Optional[int] = Query(None, ge=1, le=5, description="平台代码"),
+    platform: Optional[int] = Query(None, ge=1, le=7, description="平台代码"),
     status: Optional[str] = Query(None, description="任务状态"),
     limit: int = Query(100, ge=1, le=500, description="返回数量限制"),
     db=Depends(get_main_db),
@@ -642,4 +642,3 @@ async def selenium_debug_capture(req: SeleniumDebugCaptureRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"capture failed: {str(e)}")
-

@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).parent.parent.parent
 load_dotenv(Path(BASE_DIR / ".env"))
 
 # 配置路径
-db_rel_path = os.getenv("DB_PATH_REL", "syn_backend/db/database.db")
+db_rel_path = os.getenv("DB_PATH_REL", "prism_backend/db/database.db")
 DB_PATH = Path(BASE_DIR / db_rel_path)
 
 def add_columns():

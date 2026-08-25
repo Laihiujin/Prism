@@ -7,7 +7,7 @@ API_KEY = "sk-your-api-key-here"  # ⚠️ 替换为实际的 API Key
 BASE_URL = "https://api.siliconflow.cn/v1"
 MODEL_NAME = "deepseek-ai/DeepSeek-V3"
 
-conn = sqlite3.connect('syn_backend/db/database.db')
+conn = sqlite3.connect('prism_backend/db/database.db')
 cursor = conn.cursor()
 
 # 检查是否已存在配置

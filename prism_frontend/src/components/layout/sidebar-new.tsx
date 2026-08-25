@@ -154,8 +154,8 @@ export function SidebarNew({
                 transition={{ duration: 0.3 }}
                 className="flex items-center gap-3"
               >
-                <img src="/logo.png" alt="Synapse Logo" className="h-10 w-10 rounded-full object-cover" />
-                <span className="whitespace-nowrap text-base font-semibold tracking-tight">SynapseAutomation</span>
+                <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover" />
+                <span className="whitespace-nowrap text-base font-semibold tracking-tight">Prism</span>
               </motion.div>
             ) : (
               <motion.div
@@ -165,7 +165,7 @@ export function SidebarNew({
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.3 }}
               >
-                <img src="/logo.png" alt="Synapse Logo" className="h-10 w-10 rounded-full object-cover" />
+                <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover" />
               </motion.div>
             )}
           </AnimatePresence>

@@ -16,7 +16,7 @@ echo.
 echo [3/3] 启动新的 Celery Worker...
 echo 请手动运行以下命令启动 Celery：
 echo.
-echo   cd syn_backend
+echo   cd prism_backend
 echo   celery -A fastapi_app.celery_app worker --loglevel=info --pool=solo
 echo.
 echo =========================================

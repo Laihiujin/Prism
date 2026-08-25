@@ -10,7 +10,7 @@ from pathlib import Path
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 from automation.selenium_dom import new_chrome_driver, capture_debug_bundle
 from myUtils.cookie_manager import cookie_manager
 from utils.base_social_media import set_init_script, HEADLESS_FLAG

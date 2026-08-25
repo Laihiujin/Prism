@@ -17,7 +17,7 @@ function Get-PathSizeBytes([string]$Path) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Root)) {
-  $Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..\\syn_backend\\browser_profiles")).Path
+  $Root = (Resolve-Path (Join-Path $PSScriptRoot "..\\..\\prism_backend\\browser_profiles")).Path
 }
 
 if (-not (Test-Path -LiteralPath $Root)) {

@@ -8,7 +8,7 @@ import io
 # 修复Windows GBK编码问题
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 
 async def test_playwright():

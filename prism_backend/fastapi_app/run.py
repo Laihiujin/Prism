@@ -34,7 +34,7 @@ fastapi_app_path = str(Path(__file__).parent)
 if fastapi_app_path in sys.path:
     sys.path.remove(fastapi_app_path)
 
-# Add project root (syn_backend) to sys.path FIRST
+# Add project root (prism_backend) to sys.path FIRST
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     import uvicorn
     from fastapi_app.core.config import settings
-    from utils.playwright_bootstrap import ensure_playwright_chromium_installed
+    from utils.automation_bootstrap import ensure_playwright_chromium_installed
 
     print(f"[START] {settings.PROJECT_NAME} v{settings.VERSION}")
     print(f"[SERVER] http://{settings.HOST}:{settings.PORT}")

@@ -1,14 +1,14 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   测试打包后的 SynapseAutomation
+echo   测试打包后的 Prism
 echo ============================================
 echo.
 
 set "APP_DIR=%~dp0..\dist-build\win-unpacked"
 
-if not exist "%APP_DIR%\SynapseAutomation.exe" (
-    echo ❌ 打包程序未找到: %APP_DIR%\SynapseAutomation.exe
+if not exist "%APP_DIR%\Prism.exe" (
+    echo ❌ 打包程序未找到: %APP_DIR%\Prism.exe
     echo.
     echo 请先运行打包:
     echo   npm run build:dir
@@ -20,7 +20,7 @@ echo ✅ 找到打包程序
 echo.
 echo 📦 程序位置: %APP_DIR%
 echo 📊 程序大小:
-dir "%APP_DIR%\SynapseAutomation.exe" | findstr "SynapseAutomation.exe"
+dir "%APP_DIR%\Prism.exe" | findstr "Prism.exe"
 echo.
 echo 📁 资源清单:
 dir /B "%APP_DIR%\resources"
@@ -29,13 +29,13 @@ echo 🚀 启动程序...
 echo.
 echo 注意:
 echo   - 首次启动可能需要几分钟
-echo   - 查看日志: %%APPDATA%%\SynapseAutomation\logs\main.log
+echo   - 查看日志: %%APPDATA%%\Prism\logs\main.log
 echo   - 按 Ctrl+C 停止
 echo.
 pause
 
 cd /d "%APP_DIR%"
-start "" "SynapseAutomation.exe"
+start "" "Prism.exe"
 
 echo.
 echo ✅ 程序已启动

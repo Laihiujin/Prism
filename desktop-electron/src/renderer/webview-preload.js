@@ -18,7 +18,7 @@ const restartAllWithFallback = async () => {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   playwright: {
-    getBrowserPath: () => invoke('playwright:getBrowserPath')
+    getBrowserPath: () => invoke('automation:getBrowserPath')
   },
   browser: {
     createVisual: (url, options) => invoke('browser:createVisual', url, options),

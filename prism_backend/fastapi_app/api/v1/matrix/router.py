@@ -35,7 +35,10 @@ def _dispatch_matrix_task_sync(service, task: MatrixTask) -> dict:
         "channels": 2,
         "douyin": 3,
         "kuaishou": 4,
-        "bilibili": 5
+        "bilibili": 5,
+        "tiktok": 6,
+        "youtube": 7,
+        "baijiahao": 8,
     }
     platform_code = platform_code_map.get(task.platform)
     if not platform_code:

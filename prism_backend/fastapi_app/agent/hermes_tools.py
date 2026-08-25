@@ -20,6 +20,9 @@ _PLATFORM_CODE_MAP = {
     3: "douyin",
     4: "kuaishou",
     5: "bilibili",
+    6: "tiktok",
+    7: "youtube",
+    8: "baijiahao",
 }
 _PLACEHOLDER_ACCOUNT_RE = re.compile(r"^acc\d+$", re.IGNORECASE)
 
@@ -81,7 +84,7 @@ class ListAccountsTool(BaseTool):
         "properties": {
             "platform": {
                 "type": "string",
-                "description": "筛选平台（可选）：douyin, kuaishou, bilibili, xiaohongshu, channels"
+                "description": "筛选平台（可选）：douyin, kuaishou, bilibili, xiaohongshu, channels, baijiahao, tiktok, youtube"
             },
             "status": {
                 "type": "string",
@@ -353,7 +356,7 @@ class PublishBatchVideosTool(BaseTool):
         "- title: 标题字符串\n"
         "- topics: 必须恰好4个标签的数组，如 ['美食', '探店', '推荐', '种草']\n"
         "\n"
-        "平台代码（可选）：1=小红书, 2=视频号, 3=抖音, 4=快手, 5=B站\n"
+        "平台代码（可选）：1=小红书, 2=视频号, 3=抖音, 4=快手, 5=B站, 6=TikTok, 7=YouTube, 8=百家号\n"
     )
     parameters: dict = {
         "type": "object",
@@ -381,7 +384,7 @@ class PublishBatchVideosTool(BaseTool):
             },
             "platform": {
                 "type": "integer",
-                "description": "（可选）平台代码: 1=小红书, 2=视频号, 3=抖音, 4=快手, 5=B站。不填则自动根据账号分配"
+                "description": "（可选）平台代码: 1=小红书, 2=视频号, 3=抖音, 4=快手, 5=B站, 6=TikTok, 7=YouTube, 8=百家号。不填则自动根据账号分配"
             },
             "description": {
                 "type": "string",

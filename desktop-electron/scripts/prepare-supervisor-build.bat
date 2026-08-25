@@ -1,22 +1,22 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   SynapseAutomation Supervisor Build Prep
+echo   Prism Supervisor Build Prep
 echo ============================================
 echo.
 
 set "ROOT=%~dp0..\.."
 cd /d "%ROOT%"
-if exist "syn_backend\Redis\redis-server.exe" set "SYNAPSE_REDIS_PATH=%ROOT%\syn_backend\Redis\redis-server.exe"
+if exist "prism_backend\Redis\redis-server.exe" set "PRISM_REDIS_PATH=%ROOT%\prism_backend\Redis\redis-server.exe"
 
 echo [1/6] Checking required folders...
-if not exist "synenv" (
-    echo [ERROR] synenv not found.
-    echo Please run: python -m venv synenv
+if not exist "prismenv" (
+    echo [ERROR] prismenv not found.
+    echo Please run: python -m venv prismenv
     pause
     exit /b 1
 )
-echo OK synenv exists.
+echo OK prismenv exists.
 
 if not exist "browsers" (
     echo [ERROR] browsers folder not found.
@@ -26,12 +26,12 @@ if not exist "browsers" (
 )
 echo OK browsers exists.
 
-if not exist "syn_backend" (
-    echo [ERROR] syn_backend folder not found.
+if not exist "prism_backend" (
+    echo [ERROR] prism_backend folder not found.
     pause
     exit /b 1
 )
-echo OK syn_backend exists.
+echo OK prism_backend exists.
 
 echo.
 echo [2/6] Preparing Redis...
@@ -68,7 +68,7 @@ cd ..
 
 echo.
 echo [4/6] Building Supervisor EXE (PyInstaller)...
-call synenv\Scripts\activate.bat
+call prismenv\Scripts\activate.bat
 
 REM Check PyInstaller
 python -c "import PyInstaller" 2>nul
@@ -115,7 +115,7 @@ deactivate
 
 echo.
 echo [5/6] Cleaning Python cache...
-for /r "%ROOT%\syn_backend" %%d in (__pycache__) do (
+for /r "%ROOT%\prism_backend" %%d in (__pycache__) do (
     if exist "%%d" (
         echo Cleaning: %%d
         rd /s /q "%%d" 2>nul
@@ -123,7 +123,7 @@ for /r "%ROOT%\syn_backend" %%d in (__pycache__) do (
 )
 
 REM Delete .pyc files
-del /s /q "%ROOT%\syn_backend\*.pyc" 2>nul
+del /s /q "%ROOT%\prism_backend\*.pyc" 2>nul
 
 echo OK cleanup done.
 
@@ -131,8 +131,8 @@ echo.
 echo [6/6] Validating build prerequisites...
 set "CHECK_OK=1"
 
-if not exist "synenv\Scripts\python.exe" (
-    echo [ERROR] synenv Python missing.
+if not exist "prismenv\Scripts\python.exe" (
+    echo [ERROR] prismenv Python missing.
     set "CHECK_OK=0"
 )
 
@@ -141,7 +141,7 @@ if not exist "browsers\chromium" (
     set "CHECK_OK=0"
 )
 
-if not exist "syn_backend\fastapi_app\run.py" (
+if not exist "prism_backend\fastapi_app\run.py" (
     echo [ERROR] Backend entry not found.
     set "CHECK_OK=0"
 )

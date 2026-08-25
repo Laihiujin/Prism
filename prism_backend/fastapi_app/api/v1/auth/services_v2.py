@@ -12,6 +12,11 @@ if str(project_root) not in sys.path:
 from .schemas import PlatformType
 
 try:
+    from prism_backend.reverse_api.login import DouyinQrLoginAdapter, QrLoginChallenge, QrLoginState
+except ImportError:
+    from reverse_api.login import DouyinQrLoginAdapter, QrLoginChallenge, QrLoginState
+
+try:
     from config.conf import PLAYWRIGHT_HEADLESS
 except Exception:
     PLAYWRIGHT_HEADLESS = True
@@ -79,27 +84,36 @@ class BilibiliLoginServiceV2:
 
 
 class DouyinLoginServiceV2:
+    _adapter = DouyinQrLoginAdapter()
+
     @staticmethod
     async def get_qrcode() -> Tuple[str, str, str]:
-        adapter = _load_adapter(PlatformType.DOUYIN)(get_adapter_config())
-        qr_data = await adapter.get_qrcode()
-        return qr_data.session_id, qr_data.qr_url, qr_data.qr_image
+        challenge = await DouyinLoginServiceV2._adapter.create_challenge()
+        return (
+            challenge.challenge_id,
+            str(challenge.runtime_context.get("login_url", "https://creator.douyin.com/")),
+            challenge.qr_content,
+        )
 
     @staticmethod
     async def poll_status(session_id: str) -> Dict[str, Any]:
-        adapter = _load_adapter(PlatformType.DOUYIN)(get_adapter_config())
-        result = await adapter.poll_status(session_id)
-        response = {"status": result.status.value, "message": result.message}
-        if result.status == _confirmed_status():
+        challenge = QrLoginChallenge(
+            platform="douyin", challenge_id=session_id, qr_content=""
+        )
+        result = await DouyinLoginServiceV2._adapter.poll(challenge)
+        response = {"status": result.state.value, "message": result.message}
+        if result.state is QrLoginState.CONFIRMED:
+            payload = result.session_payload
+            user_info = payload.get("user_info")
             response["data"] = {
-                "cookies": result.cookies,
+                "cookies": payload.get("cookies", {}),
                 "user_info": {
-                    "user_id": result.user_info.user_id or "",
-                    "username": result.user_info.username or result.user_info.name or "",
-                    "name": result.user_info.name or "",
-                    "avatar": result.user_info.avatar or "",
+                    "user_id": getattr(user_info, "user_id", None) or "",
+                    "username": getattr(user_info, "username", None) or getattr(user_info, "name", None) or "",
+                    "name": getattr(user_info, "name", None) or "",
+                    "avatar": getattr(user_info, "avatar", None) or "",
                 },
-                "full_state": result.full_state,
+                "full_state": payload.get("storage_state"),
             }
         return response
 

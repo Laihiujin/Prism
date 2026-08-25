@@ -1,30 +1,30 @@
 @echo off
 chcp 65001 >nul
 echo ========================================
-echo   Playwright Worker Startup (synenv)
+echo   Automation Worker Startup (prismenv)
 echo ========================================
 echo.
 
 set "ROOT=%~dp0..\.."
-set "BACKEND_DIR=%ROOT%\syn_backend"
-set "VENV_PATH=%ROOT%\synenv"
+set "BACKEND_DIR=%ROOT%\prism_backend"
+set "VENV_PATH=%ROOT%\prismenv"
 set "PY=%VENV_PATH%\Scripts\python.exe"
 
-REM Activate synenv virtual environment
+REM Activate prismenv virtual environment
 if not exist "%PY%" (
-    echo [ERROR] Virtual environment "synenv" not found at: %VENV_PATH%
-    echo Please run: python -m venv synenv
+    echo [ERROR] Virtual environment "prismenv" not found at: %VENV_PATH%
+    echo Please run: python -m venv prismenv
     pause
     exit /b 1
 )
 
 call "%VENV_PATH%\Scripts\activate.bat"
 if errorlevel 1 (
-    echo [ERROR] Failed to activate virtual environment 'synenv'
+    echo [ERROR] Failed to activate virtual environment 'prismenv'
     pause
     exit /b 1
 )
-echo OK Activated virtual environment 'synenv'
+echo OK Activated virtual environment 'prismenv'
 set "PY=%VENV_PATH%\Scripts\python.exe"
 if not exist "%PY%" set "PY=python"
 echo.
@@ -44,12 +44,12 @@ timeout /t 2 /nobreak >nul
 
 pushd "%BACKEND_DIR%"
 
-echo Starting Playwright Worker...
+echo Starting Automation Worker...
 echo   - Port: 7001
 echo   - Health: http://localhost:7001/health
 echo.
 
-%PY% playwright_worker\worker.py
+%PY% automation_worker\worker.py
 popd
 
 pause

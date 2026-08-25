@@ -50,7 +50,7 @@ class ExecuteScriptResponse(BaseModel):
     estimated_time: str = Field(..., description="预计耗时")
 
 
-# SynapseAutomation DSL Schema
+# Prism DSL Schema
 class TaskStrategy(BaseModel):
     """任务策略"""
     avoid_duplicate: bool = Field(default=True, description="避免重复")

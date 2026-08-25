@@ -1,5 +1,5 @@
 /**
- * SynapseAutomation - Core Renderer
+ * Prism - Core Renderer
  * 精致化标签管理与自动化环境适配
  */
 
@@ -604,7 +604,7 @@ class TabManager {
         webview.setAttribute('preload', new URL('webview-preload.js', window.location.href).toString());
         if (!pinned) {
             const userAgent = options.userAgent || navigator.userAgent
-                .replace(/\sSynapseAutomation\/[^\s]+/g, '')
+                .replace(/\sPrism\/[^\s]+/g, '')
                 .replace(/\sElectron\/[^\s]+/g, '');
             webview.setAttribute('useragent', userAgent);
         }
@@ -852,7 +852,7 @@ class TabManager {
         }
 
         if (tab?.pinned) {
-            return 'SynapseAutomation';
+            return 'Prism';
         }
 
         return tab?.title || '无标题会话';
@@ -1082,7 +1082,7 @@ async function exportSystemLogs() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `synapse-logs-${new Date().toISOString().split('T')[0]}.zip`;
+            a.download = `prism-logs-${new Date().toISOString().split('T')[0]}.zip`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);

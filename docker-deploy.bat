@@ -8,7 +8,7 @@ if not exist "runtime-data\\app" mkdir "runtime-data\\app"
 if not exist "runtime-data\\app\\hermes-home" mkdir "runtime-data\\app\\hermes-home"
 if not exist "runtime-data\\redis" mkdir "runtime-data\\redis"
 
-echo [INFO] Building and starting SynapseAutomation Docker stack...
+echo [INFO] Building and starting Prism Docker stack...
 docker compose up -d --build --remove-orphans
 if errorlevel 1 exit /b %ERRORLEVEL%
 
@@ -43,7 +43,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [OK] SynapseAutomation Docker services are ready.
+echo [OK] Prism Docker services are ready.
 echo Frontend: http://localhost:3000
 echo Backend:  http://localhost:7000
 echo Docs:     http://localhost:7000/api/docs

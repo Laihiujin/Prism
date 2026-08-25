@@ -1,4 +1,4 @@
-cd /d E:\Siuyechu\SynapseAutomation\desktop-electron
+cd /d E:\Siuyechu\Prism\desktop-electron
 
 set APP_VERSION=1.1.0
 set APP_BUILD_NUM=1

@@ -5,11 +5,11 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
+from patchright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
-# 确保能找到仓库内的 myUtils（位于 syn_backend/myUtils）
+# 确保能找到仓库内的 myUtils（位于 prism_backend/myUtils）
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.extend([str(ROOT / "syn_backend"), str(ROOT)])
+sys.path.extend([str(ROOT / "prism_backend"), str(ROOT)])
 from myUtils.cookie_manager import cookie_manager
 
 # 平台配置
