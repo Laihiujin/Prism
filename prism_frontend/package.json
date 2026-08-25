@@ -90,7 +90,7 @@
     "eslint-config-next": "16.0.3",
     "msw": "^2.12.2",
     "postcss": "^8.4.38",
-    "shadcn": "^3.5.1",
+    "shadcn": "^4.19.0",
     "typescript": "5.9.3"
   },
   "msw": {
