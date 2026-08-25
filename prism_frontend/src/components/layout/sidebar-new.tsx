@@ -25,6 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { HermesLogoIcon } from "@/components/hermes-logo-icon"
+import GradientText from "@/components/GradientText"
 import { cn } from "@/lib/utils"
 
 const DouyinIcon = ({ className }: { className?: string }) => (
@@ -155,7 +156,11 @@ export function SidebarNew({
                 className="flex items-center gap-3"
               >
                 <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover" />
-                <span className="whitespace-nowrap text-base font-semibold tracking-tight">Prism</span>
+                <GradientText
+                  colors={["#3B82F6", "#22D3EE", "#60A5FA"]}
+                  animationSpeed={14}
+                  className="whitespace-nowrap text-base font-semibold tracking-tight !mx-0 !justify-start"
+                >Prism</GradientText>
               </motion.div>
             ) : (
               <motion.div
