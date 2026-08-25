@@ -1,7 +1,7 @@
-# Prism 棱镜/映射
+# Prism 映射
 > 创作一次，映射全平台。
 
-Prism一个 AI 驱动的多平台内容编排与自动化发布系统；
+Prism（中文名：映射）是一个 AI 驱动的多平台内容编排与自动化发布系统；
 面向多账号、多素材、多平台的内容分发场景，提供从计划生成、任务调度到执行监控与数据回收的全链路能力；
 
 ---
@@ -363,18 +363,12 @@ Content-Type: application/json
 
 ## 项目支持与采用
 
-Prism 的能力建设受益于开源生态；下列项目的代码、架构或实现思路被采用、移植或作为实现参考：
-
-- [social-auto-upload](https://github.com/dreammis/social-auto-upload)：上游 CLI 自动发布基础；MIT License。
-- [Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)：抖音 / TikTok 解析与数据能力参考；Apache License 2.0。
-- [HermesAgent](https://github.com/nousresearch/hermes-agent)：本地 AI Agent 运行时与集成参考；MIT License。
-
-对应第三方归属和许可证说明保留在 [NOTICE.txt](NOTICE.txt)。
+本项目在能力建设上受益于开源生态，感谢社区基础设施与研究成果。
 
 ---
 
 ## 许可
-Prism 自身代码基于 Apache License 2.0 开源。项目中保留的 MIT 与 Apache-2.0 上游组件继续分别适用其原始许可证；Apache-2.0 与 MIT 组件可共同分发，但必须保留上游版权、许可证和 NOTICE 归属。
+本项目基于 Apache License 2.0 开源；
 
 ## [BuymeaCoffee](https://buymeacoffee.com/laihiujin3)
 
