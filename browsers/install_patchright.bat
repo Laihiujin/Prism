@@ -7,7 +7,7 @@ set "BACKEND_DIR=%ROOT%\prism_backend"
 pushd "%ROOT%"
 
 echo ==========================================
-echo   Prism Playwright Browser Setup
+echo   Prism Patchright Browser Setup
 echo ==========================================
 echo.
 

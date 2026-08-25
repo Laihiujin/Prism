@@ -21,7 +21,7 @@ echo �?通过
 echo.
 
 echo [测试 2/5] 检查后端依�?..
-python -c "import fastapi, uvicorn, celery, playwright" 2>nul
+python -c "import fastapi, uvicorn, celery, patchright" 2>nul
 if errorlevel 1 (
     echo �?失败: 后端依赖不完�?
     echo 请运�? pip install -r ..\prism_backend\requirements.txt
