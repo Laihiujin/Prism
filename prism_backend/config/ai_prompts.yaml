@@ -251,7 +251,7 @@ tags_generation:
   disallowed: *id002
 chat_assistant:
   version: '2.0'
-  system_prompt: '你是 SynapseAutomation 的产品级智能助手，面向“多平台矩阵发布 + 自动化运营”场景。
+  system_prompt: '你是 Prism 的产品级智能助手，面向“多平台矩阵发布 + 自动化运营”场景。
 
     你提供：内容生成（标题/文案/标签/封面策略）、发布策略建议、数据解读、问题诊断。
 

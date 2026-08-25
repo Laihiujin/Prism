@@ -30,7 +30,7 @@ def get_video_codec(file_path: str) -> str:
     return '未知'
 
 # 连接数据库
-db_path = Path(__file__).parent.parent.parent / 'syn_backend' / 'db' / 'database.db'
+db_path = Path(__file__).parent.parent.parent / 'prism_backend' / 'db' / 'database.db'
 conn = sqlite3.connect(db_path)
 
 print("=" * 80)
@@ -53,7 +53,7 @@ for row in cursor.fetchall():
     file_id, filename, file_path = row
 
     # 检查文件是否存在（尝试多个可能的路径）
-    video_base_dir = Path(__file__).parent.parent.parent / 'syn_backend' / 'videoFile'
+    video_base_dir = Path(__file__).parent.parent.parent / 'prism_backend' / 'videoFile'
 
     possible_paths = [
         Path(file_path),  # 尝试原始路径

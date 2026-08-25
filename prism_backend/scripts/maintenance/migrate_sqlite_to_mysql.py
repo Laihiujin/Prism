@@ -5,9 +5,9 @@ This does NOT refactor the app to use MySQL at runtime yet; it only copies data.
 Runtime migration should be done incrementally using SQLAlchemy/Alembic.
 
 Usage (PowerShell):
-  cd syn_backend
-  $env:DATABASE_URL='mysql+pymysql://synapse:synapse@localhost:3306/synapse?charset=utf8mb4'
-  ..\\synenv\\Scripts\\python.exe scripts\\maintenance\\migrate_sqlite_to_mysql.py
+  cd prism_backend
+  $env:DATABASE_URL='mysql+pymysql://prism:prism@localhost:3306/prism?charset=utf8mb4'
+  ..\\prismenv\\Scripts\\python.exe scripts\\maintenance\\migrate_sqlite_to_mysql.py
 """
 
 from __future__ import annotations

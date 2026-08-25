@@ -1,14 +1,14 @@
 """
-Playwright Worker 客户端
-FastAPI 使用此客户端与 Playwright Worker 通信
+Automation Worker 客户端
+FastAPI 使用此客户端与 Automation Worker 通信
 """
 import httpx
 from typing import Dict, Any, Optional
 from loguru import logger
 
 
-class PlaywrightWorkerClient:
-    """Playwright Worker HTTP 客户端"""
+class AutomationWorkerClient:
+    """Automation Worker HTTP 客户端"""
 
     def __init__(self, worker_url: str = "http://127.0.0.1:7001"):
         self.worker_url = worker_url.rstrip("/")
@@ -49,7 +49,7 @@ class PlaywrightWorkerClient:
 
             if response.status_code >= 400:
                 worker_error = (data.get("error") if isinstance(data, dict) else None) or response.text
-                raise RuntimeError(f"Playwright Worker error ({response.status_code}): {worker_error}".strip())
+                raise RuntimeError(f"Automation Worker error ({response.status_code}): {worker_error}".strip())
 
             if not isinstance(data, dict) or not data.get("success"):
                 raise RuntimeError((data.get("error") if isinstance(data, dict) else None) or "Unknown error")
@@ -58,7 +58,7 @@ class PlaywrightWorkerClient:
 
         except httpx.HTTPError as e:
             logger.error(f"[WorkerClient] HTTP error: {e}")
-            raise Exception(f"Failed to communicate with Playwright Worker: {e}")
+            raise Exception(f"Failed to communicate with Automation Worker: {e}")
         except Exception as e:
             logger.error(f"[WorkerClient] Error: {e}")
             raise
@@ -84,7 +84,7 @@ class PlaywrightWorkerClient:
 
             if response.status_code >= 400:
                 worker_error = (data.get("error") if isinstance(data, dict) else None) or response.text
-                raise RuntimeError(f"Playwright Worker error ({response.status_code}): {worker_error}".strip())
+                raise RuntimeError(f"Automation Worker error ({response.status_code}): {worker_error}".strip())
 
             if not isinstance(data, dict) or not data.get("success"):
                 raise RuntimeError((data.get("error") if isinstance(data, dict) else None) or "Unknown error")
@@ -168,7 +168,7 @@ class PlaywrightWorkerClient:
             data = {}
         if response.status_code >= 400:
             worker_error = (data.get("error") if isinstance(data, dict) else None) or response.text
-            raise RuntimeError(f"Playwright Worker error ({response.status_code}): {worker_error}".strip())
+            raise RuntimeError(f"Automation Worker error ({response.status_code}): {worker_error}".strip())
         if not isinstance(data, dict) or not data.get("success"):
             raise RuntimeError((data.get("error") if isinstance(data, dict) else None) or "Unknown error")
         return data.get("data") or {}
@@ -199,7 +199,7 @@ class PlaywrightWorkerClient:
             data = {}
         if response.status_code >= 400:
             worker_error = (data.get("error") if isinstance(data, dict) else None) or response.text
-            raise RuntimeError(f"Playwright Worker error ({response.status_code}): {worker_error}".strip())
+            raise RuntimeError(f"Automation Worker error ({response.status_code}): {worker_error}".strip())
         if not isinstance(data, dict) or not data.get("success"):
             raise RuntimeError((data.get("error") if isinstance(data, dict) else None) or "Unknown error")
         return data.get("data") or {}
@@ -253,7 +253,7 @@ class PlaywrightWorkerClient:
             data = {}
         if response.status_code >= 400:
             worker_error = (data.get("error") if isinstance(data, dict) else None) or response.text
-            raise RuntimeError(f"Playwright Worker error ({response.status_code}): {worker_error}".strip())
+            raise RuntimeError(f"Automation Worker error ({response.status_code}): {worker_error}".strip())
         if not isinstance(data, dict) or not data.get("success"):
             raise RuntimeError((data.get("error") if isinstance(data, dict) else None) or "Unknown error")
         return data.get("data") or {}
@@ -264,12 +264,12 @@ class PlaywrightWorkerClient:
 
 
 # 全局单例
-_worker_client: Optional[PlaywrightWorkerClient] = None
+_worker_client: Optional[AutomationWorkerClient] = None
 
 
-def get_worker_client() -> PlaywrightWorkerClient:
+def get_worker_client() -> AutomationWorkerClient:
     """获取 Worker 客户端单例"""
     global _worker_client
     if _worker_client is None:
-        _worker_client = PlaywrightWorkerClient()
+        _worker_client = AutomationWorkerClient()
     return _worker_client

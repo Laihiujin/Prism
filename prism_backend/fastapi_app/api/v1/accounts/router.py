@@ -33,6 +33,8 @@ _PLATFORM_PROFILE_URLS = {
     "xiaohongshu": "https://creator.xiaohongshu.com/new/home",
     "tencent": "https://channels.weixin.qq.com/platform",
     "channels": "https://channels.weixin.qq.com/platform",
+    "tiktok": "https://www.tiktok.com/tiktokstudio/upload",
+    "youtube": "https://studio.youtube.com/",
 }
 
 
@@ -53,7 +55,7 @@ async def list_accounts(
     """
     获取账号列表
 
-    - **platform**: 平台过滤（xiaohongshu/channels/douyin/kuaishou/bilibili）
+    - **platform**: 平台过滤（xiaohongshu/channels/douyin/kuaishou/bilibili/tiktok/youtube）
     - **status**: 状态过滤（valid/expired/error/file_missing）
     - **skip**: 跳过数量
     - **limit**: 限制数量（最大1000）
@@ -163,7 +165,7 @@ async def open_creator_center(account_id: str):
         if platform == "bilibili" and isinstance(raw_state, dict) and "cookie_info" in raw_state:
             storage_state = _build_storage_state_from_biliup_cookie(raw_state)
 
-        from playwright_worker.client import get_worker_client
+        from automation_worker.client import get_worker_client
         client = get_worker_client()
         try:
             data = await client.open_creator_center(
@@ -216,7 +218,7 @@ async def fetch_account_sec_uid(account_id: str):
         raw_state = json.loads(p.read_text(encoding="utf-8"))
         storage_state = raw_state
 
-        from playwright_worker.client import get_worker_client
+        from automation_worker.client import get_worker_client
         client = get_worker_client()
         data = await client.fetch_creator_sec_uid(
             platform=platform,
@@ -303,7 +305,7 @@ async def _open_bilibili_creator_center_with_biliup(
     except Exception as e:
         logger.warning(f"更新 B站账号信息失败（忽略）: {e}")
 
-    from playwright_worker.client import get_worker_client
+    from automation_worker.client import get_worker_client
     client = get_worker_client()
     return await client.open_creator_center(
         platform="bilibili",

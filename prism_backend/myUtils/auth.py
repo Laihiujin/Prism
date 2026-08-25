@@ -4,9 +4,9 @@ import os
 import time
 import contextlib
 from pathlib import Path
-from utils.playwright_provider import async_playwright
+from utils.automation_provider import async_playwright
 from loguru import logger
-from myUtils.playwright_context_factory import create_context_with_policy
+from myUtils.automation_context_factory import create_context_with_policy
 from myUtils.cookie_manager import cookie_manager
 
 # 添加父目录到 Python 路径

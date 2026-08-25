@@ -25,6 +25,17 @@ def get_cli_action() -> List[str]:
 
 
 async def set_init_script(context):
+    """Optionally install the historical Puppeteer stealth bundle.
+
+    Patchright already applies its own browser evasion.  The bundled legacy script
+    mutates browser APIs again and, with the local Chrome 151 runtime, prevents
+    navigation before a platform page can load.  Keep it as an explicit fallback
+    for an adapter that has been verified to need it instead of enabling it for
+    every login and upload flow.
+    """
+    if os.getenv("PRISM_LEGACY_STEALTH", "").strip().lower() not in {"1", "true", "yes", "on"}:
+        return context
+
     # 兼容多路径，优先当前目录，其次 BASE_DIR/utils
     candidates = [
         Path(__file__).resolve().parent / "stealth.min.js",

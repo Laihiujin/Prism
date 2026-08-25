@@ -181,7 +181,7 @@ export function Chat() {
             <div className="flex items-center justify-between border-b border-white/5 bg-neutral-900/50 px-6 py-4 backdrop-blur-md">
                 <div className="flex items-center gap-4">
                     <div>
-                        <h2 className="text-base font-bold text-white">SynapseAutomation </h2>
+                        <h2 className="text-base font-bold text-white">Prism </h2>
                         <p className="text-xs font-medium text-white/50">Ai</p>
                     </div>
                 </div>

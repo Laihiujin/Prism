@@ -62,7 +62,7 @@ const statusLabels: Record<string, string> = {
   frontend: "前端",
   backend: "后端",
   supervisor: "调度器",
-  playwright_worker: "Playwright Worker",
+  automation_worker: "Automation Worker",
   celery_worker: "Celery Worker",
   hermes_gateway: "Hermes Gateway",
   hermes_dashboard: "Hermes Dashboard",
@@ -193,9 +193,7 @@ export default function SettingsPage() {
     setBrowserHeadless,
     setAutomationRuntime,
     installPatchright,
-    installPlaywright,
     uninstallPatchright,
-    uninstallPlaywright,
     installChromium,
     installFirefox,
     uninstallChromium,
@@ -280,7 +278,7 @@ export default function SettingsPage() {
         <StatCard label="模式" value={runtimeModeLabel} />
         <StatCard
           label="默认自动化运行时"
-          value={currentRuntime === "playwright" ? "Playwright" : "Patchright"}
+          value="Patchright"
           hint={browserRuntimeInfo?.activeRuntime ? `当前生效: ${browserRuntimeInfo.activeRuntime}` : "当前未就绪"}
         />
       </div>
@@ -300,7 +298,7 @@ export default function SettingsPage() {
             <div className="rounded-xl border border-white/10 bg-black p-4">
               <div className="text-sm text-white/50">浏览器缓存目录</div>
               <div className="mt-2 break-all font-mono text-xs text-white/80">
-                {browserRuntimeInfo?.browsersPath || appInfo?.playwrightBrowserPath || "-"}
+                {browserRuntimeInfo?.browsersPath || appInfo?.automationBrowserPath || "-"}
               </div>
             </div>
             <div className="rounded-xl border border-white/10 bg-black p-4">
@@ -445,7 +443,7 @@ export default function SettingsPage() {
             </div>
             <div className="mt-4 text-sm text-white/50">浏览器缓存目录</div>
             <div className="mt-2 break-all font-mono text-xs text-white/80">
-              {browserRuntimeInfo?.browsersPath || appInfo?.playwrightBrowserPath || "检测中..."}
+              {browserRuntimeInfo?.browsersPath || appInfo?.automationBrowserPath || "检测中..."}
             </div>
             {!isElectronApp ? (
               <div className="mt-4 text-xs text-white/60">
@@ -475,7 +473,7 @@ export default function SettingsPage() {
               <div>
                 <div className="text-sm text-white/50">默认自动化运行时</div>
                 <div className="mt-1 text-xs text-white/60">
-                  安装逻辑保留互斥策略：安装一个运行时时，会强制卸载另一个，避免冲突。
+                  Prism 统一使用 Patchright，确保登录、发布与队列任务采用同一自动化行为。
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -489,17 +487,6 @@ export default function SettingsPage() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
                   Patchright
-                </Button>
-                <Button
-                  variant={currentRuntime === "playwright" ? "default" : "secondary"}
-                  className={currentRuntime === "playwright" ? "border-white/20 bg-white/10 text-white" : "border-white/10 bg-black text-white hover:bg-white/5"}
-                  disabled={loading.setAutomationRuntime || !isElectronApp}
-                  onClick={() => void setAutomationRuntime("playwright")}
-                >
-                  {loading.setAutomationRuntime && currentRuntime === "playwright" ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Playwright
                 </Button>
               </div>
             </div>
@@ -558,7 +545,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-white">自动化运行时</CardTitle>
               <CardDescription className="text-white/60">
-                在 Patchright 和 Playwright 之间切换，使用现有的互斥安装策略。
+                Patchright 是 Prism 唯一支持的生产自动化运行时。
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3">
@@ -625,68 +612,6 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-black p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium text-white">Playwright</div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      browserRuntimeInfo?.runtimes?.playwright?.installed
-                        ? "border-white/30 bg-white/10 text-white"
-                        : "border-white/15 bg-black text-white/60"
-                    }
-                  >
-                    {browserRuntimeInfo?.runtimes?.playwright?.installed
-                      ? `已安装 ${browserRuntimeInfo?.runtimes?.playwright?.version || ""}`.trim()
-                      : "未安装"}
-                  </Badge>
-                </div>
-                <div className="mt-3 text-xs text-white/60">
-                  {browserRuntimeInfo?.activeRuntime === "playwright"
-                    ? "当前已启用"
-                    : browserRuntimeInfo?.runtimes?.playwright?.installed
-                      ? "可切换为默认自动化运行时"
-                      : "可作为兼容后备运行时"}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={() => void installPlaywright()}
-                    disabled={loading.installPlaywright}
-                    variant="secondary"
-                    className="flex-1 border-white/10 bg-black text-white hover:bg-white/5"
-                  >
-                    {loading.installPlaywright ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        安装中...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="mr-2 h-4 w-4" />
-                        {browserRuntimeInfo?.runtimes?.playwright?.installed ? "重装 Playwright" : "安装 Playwright"}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => void uninstallPlaywright()}
-                    disabled={loading.uninstallPlaywright || !browserRuntimeInfo?.runtimes?.playwright?.installed}
-                    variant="secondary"
-                    className="border border-white/10 bg-black text-white/70 hover:bg-white/5"
-                  >
-                    {loading.uninstallPlaywright ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        卸载中...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        卸载
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
 

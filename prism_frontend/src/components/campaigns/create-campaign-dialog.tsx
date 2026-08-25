@@ -47,6 +47,8 @@ const PLATFORMS = [
     { id: "xiaohongshu", name: "小红书", color: "bg-red-500" },
     { id: "bilibili", name: "B站", color: "bg-blue-400" },
     { id: "channels", name: "视频号", color: "bg-green-600" },
+    { id: "tiktok", name: "TikTok", color: "bg-slate-700" },
+    { id: "youtube", name: "YouTube", color: "bg-red-600" },
 ]
 
 export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCampaignDialogProps) {

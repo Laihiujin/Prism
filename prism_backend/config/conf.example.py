@@ -13,9 +13,9 @@ def _is_drive_root(path: Path) -> bool:
 
 
 def _looks_like_app_root(path: Path) -> bool:
-    if (path / "syn_backend").exists() or (path / "backend").exists():
+    if (path / "prism_backend").exists() or (path / "backend").exists():
         return True
-    if (path / "synenv").exists() and (path / "browsers").exists():
+    if (path / "prismenv").exists() and (path / "browsers").exists():
         return True
     return False
 
@@ -25,7 +25,7 @@ def _search_app_root(start: Path) -> Path | None:
         if _is_drive_root(candidate):
             continue
         name = candidate.name.lower()
-        if name in {"syn_backend", "backend"}:
+        if name in {"prism_backend", "backend"}:
             return candidate.parent
         if _looks_like_app_root(candidate):
             return candidate
@@ -34,7 +34,7 @@ def _search_app_root(start: Path) -> Path | None:
 
 # Prefer explicit app root from Electron or packagers, fall back to repo root.
 def _resolve_app_root() -> Path:
-    env_root = os.getenv("SYNAPSE_APP_ROOT") or os.getenv("SYNAPSE_RESOURCES_PATH")
+    env_root = os.getenv("PRISM_APP_ROOT") or os.getenv("PRISM_RESOURCES_PATH")
     if env_root:
         return Path(env_root).resolve()
     if getattr(sys, "frozen", False):
@@ -49,7 +49,7 @@ def _resolve_app_root() -> Path:
 APP_ROOT = _resolve_app_root()
 
 # 兼容两种启动方式：
-# - 在 `syn_backend/` 目录启动：读取 `syn_backend/.env`
+# - 在 `prism_backend/` 目录启动：读取 `prism_backend/.env`
 # - 在项目根目录启动：读取 `./.env`
 _root_env = APP_ROOT / ".env"
 if _root_env.exists():

@@ -16,7 +16,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 
 
 def _is_dev_repo(base_dir: Path) -> bool:
-    env = (os.getenv("SYNAPSE_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
+    env = (os.getenv("PRISM_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
     if env in ("dev", "development", "local"):
         return True
     try:
@@ -91,7 +91,7 @@ class DeviceFingerprint:
                 from fastapi_app.core.config import settings
                 storage_dir = Path(settings.FINGERPRINTS_DIR)
             except Exception:
-                env_dir = os.getenv("SYNAPSE_DATA_DIR")
+                env_dir = os.getenv("PRISM_DATA_DIR")
                 if not env_dir and _is_dev_repo(BASE_DIR):
                     env_dir = str(BASE_DIR)
                 if not env_dir:
@@ -99,9 +99,9 @@ class DeviceFingerprint:
                     appdata = os.getenv("APPDATA")
                     local_root = os.getenv("LOCALAPPDATA")
                     if appdata:
-                        candidates.append(Path(appdata) / "SynapseAutomation" / "data")
+                        candidates.append(Path(appdata) / "Prism" / "data")
                     if local_root and local_root != appdata:
-                        candidates.append(Path(local_root) / "SynapseAutomation" / "data")
+                        candidates.append(Path(local_root) / "Prism" / "data")
                     for candidate in candidates:
                         if (candidate / "fingerprints").exists():
                             env_dir = str(candidate)

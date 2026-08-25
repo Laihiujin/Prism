@@ -14,7 +14,7 @@ URL_GLOBAL = "https://exclusive.proxy.qg.net/replace?key=880E8B24&num=1&isp=0&fo
 
 # 本地配置
 API_URL = "http://127.0.0.1:8000/api/v1/ip-pool/add"
-JSON_FILE_PATH = "d:/SynapseAutomation/syn_backend/data/ip_pool.json"
+JSON_FILE_PATH = "d:/Prism/prism_backend/data/ip_pool.json"
 
 def fetch_ip():
     print(f"尝试提取 IP (优先广州)...")

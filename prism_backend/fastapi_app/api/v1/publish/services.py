@@ -39,7 +39,10 @@ class PublishService:
         2: "channels",
         3: "douyin",
         4: "kuaishou",
-        5: "bilibili"
+        5: "bilibili",
+        6: "tiktok",
+        7: "youtube",
+        8: "baijiahao",
     }
 
     def __init__(self, task_manager=None):
@@ -71,7 +74,7 @@ class PublishService:
             resolved = resolve_video_file(str(raw))
             if resolved and Path(resolved).exists():
                 return str(resolved)
-            # If absolute but missing, enqueue basename so resolver can find it under syn_backend/videoFile.
+            # If absolute but missing, enqueue basename so resolver can find it under prism_backend/videoFile.
             if p.is_absolute():
                 return p.name
         except Exception:

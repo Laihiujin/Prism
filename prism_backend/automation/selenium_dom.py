@@ -13,7 +13,7 @@ from selenium.common.exceptions import NoSuchElementException
 from loguru import logger
 
 from .ocr_client import ocr_image_bytes
-from utils.playwright_bootstrap import ensure_playwright_chromium_installed
+from utils.automation_bootstrap import ensure_playwright_chromium_installed
 
 
 @dataclass

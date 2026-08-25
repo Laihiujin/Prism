@@ -5,7 +5,7 @@
 set -e  # 遇到错误立即退出
 
 echo "======================================"
-echo "  SynapseAutomation 项目结构重组"
+echo "  Prism 项目结构重组"
 echo "======================================"
 echo ""
 
@@ -34,25 +34,25 @@ mkdir -p scripts/test
 mkdir -p scripts/dev
 mkdir -p scripts/deploy
 mkdir -p temp
-mkdir -p syn_backend/config
-mkdir -p syn_backend/logs
+mkdir -p prism_backend/config
+mkdir -p prism_backend/logs
 
 # 2. 移动配置文件到后端
 echo ""
 echo "⚙️  移动配置文件..."
-[ -f conf.py ] && mv -v conf.py syn_backend/config/ && echo "${GREEN}✓${NC} conf.py"
-[ -f conf.example.py ] && mv -v conf.example.py syn_backend/config/ && echo "${GREEN}✓${NC} conf.example.py"
-[ -f requirements.txt ] && mv -v requirements.txt syn_backend/ && echo "${GREEN}✓${NC} requirements.txt"
+[ -f conf.py ] && mv -v conf.py prism_backend/config/ && echo "${GREEN}✓${NC} conf.py"
+[ -f conf.example.py ] && mv -v conf.example.py prism_backend/config/ && echo "${GREEN}✓${NC} conf.example.py"
+[ -f requirements.txt ] && mv -v requirements.txt prism_backend/ && echo "${GREEN}✓${NC} requirements.txt"
 
 # 3. 移动后端脚本
 echo ""
 echo "🔧 移动后端脚本..."
-[ -f migrate_db.py ] && mv -v migrate_db.py syn_backend/scripts/ && echo "${GREEN}✓${NC} migrate_db.py"
+[ -f migrate_db.py ] && mv -v migrate_db.py prism_backend/scripts/ && echo "${GREEN}✓${NC} migrate_db.py"
 
 # 4. 移动日志文件
 echo ""
 echo "📝 移动日志文件..."
-[ -f backend.log ] && mv -v backend.log syn_backend/logs/ && echo "${GREEN}✓${NC} backend.log"
+[ -f backend.log ] && mv -v backend.log prism_backend/logs/ && echo "${GREEN}✓${NC} backend.log"
 
 # 5. 移动项目文档
 echo ""
@@ -96,16 +96,16 @@ echo "🗑️  移动临时文件..."
 echo ""
 echo "📄 创建根目录README..."
 cat > README.md << 'EOF'
-# SynapseAutomation
+# Prism
 
 多平台内容分发自动化系统
 
 ## 📁 项目结构
 
 ```
-SynapseAutomation/
-├── syn_backend/          # 后端服务（需同步到云）
-├── syn_frontend_react/   # 前端服务（需同步到云）
+Prism/
+├── prism_backend/          # 后端服务（需同步到云）
+├── prism_frontend/   # 前端服务（需同步到云）
 ├── docs/                 # 项目文档
 ├── scripts/              # 开发/测试/部署脚本
 └── temp/                 # 临时文件
@@ -115,14 +115,14 @@ SynapseAutomation/
 
 ### 后端
 ```bash
-cd syn_backend
+cd prism_backend
 pip install -r requirements.txt
 python app.py
 ```
 
 ### 前端
 ```bash
-cd syn_frontend_react
+cd prism_frontend
 npm install
 npm run dev
 ```
@@ -168,17 +168,17 @@ env/
 ENV/
 
 # 后端
-syn_backend/logs/*.log
-syn_backend/data.db
-syn_backend/cookiesFile/*.json
-syn_backend/cookiesFile/backups/
-syn_backend/config/conf.py
+prism_backend/logs/*.log
+prism_backend/data.db
+prism_backend/cookiesFile/*.json
+prism_backend/cookiesFile/backups/
+prism_backend/config/conf.py
 
 # 前端
-syn_frontend_react/node_modules/
-syn_frontend_react/.next/
-syn_frontend_react/out/
-syn_frontend_react/.env.local
+prism_frontend/node_modules/
+prism_frontend/.next/
+prism_frontend/out/
+prism_frontend/.env.local
 
 # IDE
 .vscode/
@@ -205,7 +205,7 @@ echo "======================================"
 echo ""
 echo "📋 下一步："
 echo "1. 检查文件是否正确移动"
-echo "2. 测试后端: cd syn_backend && python app.py"
-echo "3. 测试前端: cd syn_frontend_react && npm run dev"
+echo "2. 测试后端: cd prism_backend && python app.py"
+echo "3. 测试前端: cd prism_frontend && npm run dev"
 echo "4. 查看新的项目结构: tree -L 2"
 echo ""

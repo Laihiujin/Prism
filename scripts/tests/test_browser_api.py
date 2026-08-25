@@ -12,7 +12,7 @@ import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-sys.path.insert(0, str(Path(__file__).parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent / "prism_backend"))
 
 from myUtils.fast_cookie_validator import FAST_CHECK_URLS, PLATFORM_NAMES
 from myUtils.cookie_manager import cookie_manager
@@ -32,7 +32,7 @@ async def test_api_with_browser_cookie(platform_code: int, cookie_file: str):
     print(f"{'='*80}")
 
     # 读取Cookie文件
-    cookie_dir = Path(__file__).parent / "syn_backend" / "cookiesFile"
+    cookie_dir = Path(__file__).parent / "prism_backend" / "cookiesFile"
     cookie_path = cookie_dir / cookie_file
 
     if not cookie_path.exists():

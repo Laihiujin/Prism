@@ -116,6 +116,8 @@ class BatchPublishService:
                 category=data.get("category"),
                 category_id=data.get("category_id", 160),
                 description=description or "",
+                playlist=data.get("playlist"),
+                visibility=data.get("visibility", "public"),
             )
 
             # 检查结果中是否包含验证码标识

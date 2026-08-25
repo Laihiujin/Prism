@@ -1,16 +1,16 @@
 @echo off
 chcp 65001 >nul 2>&1
 echo ============================================
-echo   强制关闭所有 SynapseAutomation 进程
+echo   强制关闭所有 Prism 进程
 echo ============================================
 echo.
 
-echo [1/6] 关闭 SynapseAutomation.exe...
-taskkill /F /IM SynapseAutomation.exe >nul 2>&1
+echo [1/6] 关闭 Prism.exe...
+taskkill /F /IM Prism.exe >nul 2>&1
 if %errorlevel%==0 (
-    echo ✓ SynapseAutomation.exe 已关闭
+    echo ✓ Prism.exe 已关闭
 ) else (
-    echo - SynapseAutomation.exe 未运行
+    echo - Prism.exe 未运行
 )
 
 echo [2/6] 关闭 supervisor.exe...

@@ -11,16 +11,16 @@
 The following are local runtime data and must stay out of GitHub:
 
 - `.env`
-- `syn_backend/cookiesFile/`
+- `prism_backend/cookiesFile/`
 - `config/cookiesFile/`
-- `syn_backend/browser_profiles/`
+- `prism_backend/browser_profiles/`
 - `config/browser_profiles/`
-- `syn_backend/fingerprints/`
-- `syn_backend/data/ip_pool*.json`
-- `syn_backend/data/account_stats*.json`
-- `syn_backend/data/campaigns.json`
-- `syn_backend/data/published_works.json`
-- `syn_backend/logs/`
+- `prism_backend/fingerprints/`
+- `prism_backend/data/ip_pool*.json`
+- `prism_backend/data/account_stats*.json`
+- `prism_backend/data/campaigns.json`
+- `prism_backend/data/published_works.json`
+- `prism_backend/logs/`
 - `logs/`
 - `tmp-runtime-data/`
 - `data/analytics/`

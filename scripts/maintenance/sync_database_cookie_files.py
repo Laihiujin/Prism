@@ -8,7 +8,7 @@ from pathlib import Path
 import sqlite3
 
 # 添加项目路径
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "prism_backend"))
 
 from myUtils.cookie_manager import CookieManager
 from loguru import logger
@@ -49,7 +49,7 @@ def sync_database_cookie_files():
             continue
 
         # 检查新文件是否存在
-        cookie_dir = Path(__file__).parent.parent.parent / "syn_backend" / "cookiesFile"
+        cookie_dir = Path(__file__).parent.parent.parent / "prism_backend" / "cookiesFile"
         new_file_path = cookie_dir / new_cookie_file
         old_file_path = cookie_dir / old_cookie_file
 

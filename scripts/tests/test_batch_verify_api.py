@@ -67,7 +67,7 @@ async def test_batch_verify_api():
 
     except httpx.ConnectError:
         print("\n错误: 无法连接到后端服务器")
-        print("请确保后端服务正在运行: python syn_backend/fastapi_app/main.py")
+        print("请确保后端服务正在运行: python prism_backend/fastapi_app/main.py")
     except Exception as e:
         print(f"\n测试失败: {e}")
         import traceback

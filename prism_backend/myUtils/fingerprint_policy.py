@@ -94,7 +94,7 @@ def get_fingerprint_policy(account_id: Optional[str], platform: Optional[str]) -
         policy = _deep_merge(policy, (raw.get("accounts") or {}).get(account_id) or {})
 
     policy = _apply_env_overrides(policy)
-    data_root = os.getenv("SYNAPSE_DATA_DIR")
+    data_root = os.getenv("PRISM_DATA_DIR")
     if not data_root:
         try:
             from fastapi_app.core.config import settings

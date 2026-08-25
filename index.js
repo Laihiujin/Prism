@@ -15,13 +15,13 @@ try {
   // ignore log path setup errors, fallback to default
 }
 
-class SynapseApp {
+class PrismApp {
   constructor() {
     this.mainWindow = null;
     this.backendProcess = null;
     this.celeryProcess = null;
     this.redisProcess = null;
-    this.playwrightWorkerProcess = null;
+    this.automationWorkerProcess = null;
     this.frontendProcess = null;
     this.playwrightBrowserPath = null;
     this.visualBrowserWindows = new Map();
@@ -29,7 +29,7 @@ class SynapseApp {
   }
 
   async initialize() {
-    log.info('🚀 SynapseAutomation 启动..');
+    log.info('🚀 Prism 启动..');
 
     // 等待 Electron 准备就绪
     await app.whenReady();
@@ -39,8 +39,8 @@ class SynapseApp {
     // 1. 设置 Playwright 浏览器路
     this.setupPlaywrightPath();
 
-    // 2. 启动后端/前端服务（生产默认启动，开发可SYNAPSE_START_SERVICES=1 强制
-    const shouldStartServices = process.env.SYNAPSE_START_SERVICES === '1' || !this.isDev;
+    // 2. 启动后端/前端服务（生产默认启动，开发可PRISM_START_SERVICES=1 强制
+    const shouldStartServices = process.env.PRISM_START_SERVICES === '1' || !this.isDev;
     if (shouldStartServices) {
       await this.startServices();
     }
@@ -54,7 +54,7 @@ class SynapseApp {
     // 5. 设置应用事件
     this.setupAppEvents();
 
-    log.info('SynapseAutomation 启动完成');
+    log.info('Prism 启动完成');
   }
 
   setupPlaywrightPath() {
@@ -88,12 +88,12 @@ class SynapseApp {
 
   getBackendDir() {
     return this.isDev
-       path.join(this.repoRoot, 'syn_backend')
+       path.join(this.repoRoot, 'prism_backend')
       : path.join(process.resourcesPath, 'backend');
   }
 
   getPythonPath() {
-    const pythonPath = path.join(this.getResourcesRoot(), 'synenv', 'Scripts', 'python.exe');
+    const pythonPath = path.join(this.getResourcesRoot(), 'prismenv', 'Scripts', 'python.exe');
     if (fs.existsSync(pythonPath)) {
       return pythonPath;
     }
@@ -152,7 +152,7 @@ class SynapseApp {
     }
     const env = this.buildServiceEnv();
     this.startRedis(env);
-    this.startPlaywrightWorker(env);
+    this.startAutomationWorker(env);
     await this.startBackend(env);
     this.startCelery(env);
     this.startFrontend(env);
@@ -183,30 +183,30 @@ class SynapseApp {
     });
   }
 
-  startPlaywrightWorker(env) {
-    if (this.playwrightWorkerProcess) {
+  startAutomationWorker(env) {
+    if (this.automationWorkerProcess) {
       return;
     }
     const backendDir = this.getBackendDir();
-    const workerExe = this.getServiceExe('playwright-worker');
-    const workerScript = path.join(backendDir, 'playwright_worker', 'worker.py');
+    const workerExe = this.getServiceExe('automation-worker');
+    const workerScript = path.join(backendDir, 'automation_worker', 'worker.py');
     if (!workerExe && !fs.existsSync(workerScript)) {
-      log.warn(`⚠️ Playwright Worker 未找 ${workerScript}`);
+      log.warn(`⚠️ Automation Worker 未找 ${workerScript}`);
       return;
     }
     const pythonPath = this.getPythonPath();
-    log.info('🧩 启动 Playwright Worker...');
+    log.info('🧩 启动 Automation Worker...');
     const launchCmd = workerExe || pythonPath;
     const launchArgs = workerExe  [] : [workerScript];
-    this.playwrightWorkerProcess = spawn(launchCmd, launchArgs, {
+    this.automationWorkerProcess = spawn(launchCmd, launchArgs, {
       env: { ...env, PYTHONPATH: backendDir },
       cwd: backendDir,
       windowsHide: true
     });
-    this.playwrightWorkerProcess.stdout.on('data', (data) => log.info('[Worker]', data.toString()));
-    this.playwrightWorkerProcess.stderr.on('data', (data) => log.error('[Worker Error]', data.toString()));
-    this.playwrightWorkerProcess.on('exit', (code) => {
-      log.warn(`⚠️ Playwright Worker 退出，退出码: ${code}`);
+    this.automationWorkerProcess.stdout.on('data', (data) => log.info('[Worker]', data.toString()));
+    this.automationWorkerProcess.stderr.on('data', (data) => log.error('[Worker Error]', data.toString()));
+    this.automationWorkerProcess.on('exit', (code) => {
+      log.warn(`⚠️ Automation Worker 退出，退出码: ${code}`);
     });
   }
 
@@ -230,7 +230,7 @@ class SynapseApp {
           '--loglevel=info',
           '--pool=threads',
           '--concurrency=1000',
-          '--hostname=synapse-worker@electron'
+          '--hostname=prism-worker@electron'
         ];
     this.celeryProcess = spawn(launchCmd, launchArgs, {
       env: { ...env, PYTHONPATH: backendDir },
@@ -265,7 +265,7 @@ class SynapseApp {
       PORT: '3000',
       HOSTNAME: '127.0.0.1',
       NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:7000',
-      SYN_BACKEND_URL: 'http://127.0.0.1:7000',
+      PRISM_BACKEND_URL: 'http://127.0.0.1:7000',
       NEXT_TELEMETRY_DISABLED: '1'
     };
     this.frontendProcess = spawn(process.execPath, [serverJs], {
@@ -519,8 +519,8 @@ class SynapseApp {
     stopProcess(this.celeryProcess, 'Celery');
     this.celeryProcess = null;
 
-    stopProcess(this.playwrightWorkerProcess, 'Playwright Worker');
-    this.playwrightWorkerProcess = null;
+    stopProcess(this.automationWorkerProcess, 'Automation Worker');
+    this.automationWorkerProcess = null;
 
     stopProcess(this.backendProcess, '后端');
     this.backendProcess = null;
@@ -533,7 +533,7 @@ class SynapseApp {
 }
 
 // Log configuration
-const synapseApp = new SynapseApp();
+const prismApp = new PrismApp();
 
 // Log configuration
 process.on('uncaughtException', (error) => {
@@ -545,7 +545,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Initialize app
-synapseApp.initialize().catch((error) => {
+prismApp.initialize().catch((error) => {
   log.error('App initialization failed', error);
   app.quit();
 });

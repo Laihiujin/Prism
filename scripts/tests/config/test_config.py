@@ -4,8 +4,8 @@ import sys
 import os
 from pathlib import Path
 
-# 添加 syn_backend 到路径
-sys.path.insert(0, str(Path(__file__).parent / "syn_backend"))
+# 添加 prism_backend 到路径
+sys.path.insert(0, str(Path(__file__).parent / "prism_backend"))
 
 print("=" * 60)
 print("测试配置读取")

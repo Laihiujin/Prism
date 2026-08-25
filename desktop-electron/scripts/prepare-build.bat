@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   SynapseAutomation 打包准备脚本
+echo   Prism 打包准备脚本
 echo ============================================
 echo.
 
@@ -10,7 +10,7 @@ cd /d "%ROOT%"
 
 echo [步骤 1/3] 构建前端 (Next.js standalone)...
 echo.
-cd ..\syn_frontend_react
+cd ..\prism_frontend
 
 REM 检查 node_modules
 if not exist "node_modules" (

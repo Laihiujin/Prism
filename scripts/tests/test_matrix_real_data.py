@@ -182,7 +182,7 @@ def test_matrix_with_real_data():
             print(f"\n✅ 矩阵发布系统测试成功！")
             print(f"\n提示:")
             print(f"  - 任务已生成，可以启动执行器自动发布")
-            print(f"  - 执行器启动命令: python -m syn_backend.matrix_executor")
+            print(f"  - 执行器启动命令: python -m prism_backend.matrix_executor")
             print(f"  - 或手动调用: POST {BASE_URL}/api/v1/matrix/tasks/pop")
 
             return True

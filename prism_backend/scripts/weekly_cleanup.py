@@ -3,7 +3,7 @@
 功能：清理超过7天的Cookie备份文件
 
 建议配置为每周执行一次 (Crontab)
-0 3 * * 0 cd /path/to/syn_backend && python scripts/weekly_cleanup.py
+0 3 * * 0 cd /path/to/prism_backend && python scripts/weekly_cleanup.py
 """
 import os
 import sys

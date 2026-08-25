@@ -50,6 +50,8 @@ const platformTabs: { label: string; value: PlatformKey }[] = [
   { label: "视频号", value: "channels" },
   { label: "小红书", value: "xiaohongshu" },
   { label: "B站", value: "bilibili" },
+  { label: "TikTok", value: "tiktok" },
+  { label: "YouTube", value: "youtube" },
 ]
 
 const platformLabelMap: Record<PlatformKey, string> = {
@@ -59,6 +61,19 @@ const platformLabelMap: Record<PlatformKey, string> = {
   channels: "视频号",
   xiaohongshu: "小红书",
   bilibili: "B站",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+}
+
+function describeApiError(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value
+  if (value && typeof value === "object") {
+    const detail = value as { error?: unknown; message?: unknown; worker?: { error?: unknown } }
+    if (typeof detail.error === "string" && detail.error.trim()) return detail.error
+    if (typeof detail.message === "string" && detail.message.trim()) return detail.message
+    if (typeof detail.worker?.error === "string" && detail.worker.error.trim()) return detail.worker.error
+  }
+  return "二维码获取失败，请重试"
 }
 
 export default function AccountPage() {
@@ -80,6 +95,8 @@ const platformTypeMap: Record<PlatformKey, string> = {
   channels: "2",
   xiaohongshu: "1",
   bilibili: "5",
+  tiktok: "6",
+  youtube: "7",
 }
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -248,6 +265,13 @@ function AccountPageContent() {
   }
 
   const startBinding = async () => {
+    if (formState.platform === "tiktok" || formState.platform === "youtube") {
+      toast({
+        title: "请通过本机浏览器完成登录",
+        description: `运行 prism ${formState.platform} login --account ${formState.name || "my-account"}，完成登录后刷新账户列表。`,
+      })
+      return
+    }
     setBindingStatus("pending")
     setQrImage(null)
 
@@ -262,6 +286,8 @@ function AccountPageContent() {
         channels: "tencent",
         xiaohongshu: "xiaohongshu",
         bilibili: "bilibili",
+        tiktok: "tiktok",
+        youtube: "youtube",
       }
 
       const platform = platformMap[formState.platform]
@@ -292,10 +318,12 @@ function AccountPageContent() {
         channels: "tencent",
         xiaohongshu: "xiaohongshu",
         bilibili: "bilibili",
+        tiktok: "tiktok",
+        youtube: "youtube",
       }
 
       const platform = platformMap[formState.platform]
-      const qrRes = await fetch(`/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, {
+      const qrRes = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, {
         method: 'POST'
       })
 
@@ -309,13 +337,9 @@ function AccountPageContent() {
       }
 
       if (!qrRes.ok || !qrData?.success) {
-        const msg =
-          qrData?.detail ||
-          qrData?.error ||
-          qrData?.message ||
-          rawText ||
-          `Status ${qrRes.status}`
-        throw new Error(msg || 'Failed to generate QR code')
+        throw new Error(describeApiError(
+          qrData?.detail || qrData?.error || qrData?.message || rawText || `Status ${qrRes.status}`
+        ))
       }
 
       // Step 2: 显示二维码
@@ -329,7 +353,7 @@ function AccountPageContent() {
       pollIntervalRef.current = setInterval(async () => {
         try {
           if (activeSessionRef.current !== sessionId) return
-          const statusRes = await fetch(`/api/v1/auth/qrcode/poll?session_id=${sessionId}`)
+          const statusRes = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/poll?session_id=${sessionId}`)
           if (!statusRes.ok) {
             if (statusRes.status === 404) {
               stopPolling()
@@ -407,7 +431,7 @@ function AccountPageContent() {
       toast({
         variant: "destructive",
         title: "登录失败",
-        description: "请重试或联系管理员",
+        description: error instanceof Error ? error.message : "请重试或联系管理员",
       })
     }
   }

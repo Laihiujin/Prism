@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import httpx
-from utils.playwright_provider import Page, async_playwright, TimeoutError as PlaywrightTimeoutError
+from utils.automation_provider import Page, async_playwright, TimeoutError as PlaywrightTimeoutError
 from loguru import logger
 from contextlib import asynccontextmanager
 

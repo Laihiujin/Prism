@@ -14,9 +14,9 @@ def _is_drive_root(path: Path) -> bool:
 
 
 def _looks_like_app_root(path: Path) -> bool:
-    if (path / "syn_backend").exists() or (path / "backend").exists():
+    if (path / "prism_backend").exists() or (path / "backend").exists():
         return True
-    if (path / "synenv").exists() and (path / "browsers").exists():
+    if (path / "prismenv").exists() and (path / "browsers").exists():
         return True
     return False
 
@@ -26,7 +26,7 @@ def _search_app_root(start: Path) -> Path | None:
         if _is_drive_root(candidate):
             continue
         name = candidate.name.lower()
-        if name in {"syn_backend", "backend"}:
+        if name in {"prism_backend", "backend"}:
             return candidate.parent
         if _looks_like_app_root(candidate):
             return candidate
@@ -35,7 +35,7 @@ def _search_app_root(start: Path) -> Path | None:
 
 # Prefer explicit app root from Electron or packagers, fall back to repo root.
 def _resolve_app_root() -> Path:
-    env_root = os.getenv("SYNAPSE_APP_ROOT") or os.getenv("SYNAPSE_RESOURCES_PATH")
+    env_root = os.getenv("PRISM_APP_ROOT") or os.getenv("PRISM_RESOURCES_PATH")
     if env_root:
         return Path(env_root).resolve()
     if getattr(sys, "frozen", False):
@@ -50,7 +50,7 @@ def _resolve_app_root() -> Path:
 APP_ROOT = _resolve_app_root()
 
 # 兼容两种启动方式：
-# - 在 `syn_backend/` 目录启动：读取 `syn_backend/.env`
+# - 在 `prism_backend/` 目录启动：读取 `prism_backend/.env`
 # - 在项目根目录启动：读取 `./.env`
 _root_env = APP_ROOT / ".env"
 if _root_env.exists():
@@ -76,6 +76,8 @@ _normalize_env_path("LOCAL_FIREFOX_PATH")
 
 def _find_preferred_local_chrome() -> str | None:
     for pattern in (
+        Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+        Path.home() / "Applications" / "Google Chrome.app" / "Contents" / "MacOS" / "Google Chrome",
         APP_ROOT / "browsers" / "chromium" / "hibbiki-*" / "Chrome-bin" / "chrome.exe",
         APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win64" / "chrome.exe",
         APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win" / "chrome.exe",
@@ -150,3 +152,13 @@ def _env_bool(name: str, default: bool) -> bool:
 # Playwright Headless Mode
 # `PLAYWRIGHT_HEADLESS=true` => 无头；`false` => 显示浏览器窗口
 PLAYWRIGHT_HEADLESS = _env_bool("PLAYWRIGHT_HEADLESS", True)
+
+# Shared uploader defaults.  The upstream refactored CLI names these values
+# explicitly; keeping aliases here lets Prism expose the same platform-level
+# contract without every caller reading environment variables itself.
+LOCAL_CHROME_HEADLESS = PLAYWRIGHT_HEADLESS
+DEBUG_MODE = _env_bool("PRISM_DEBUG_MODE", False)
+
+# Browser-based YouTube Studio uploads do not inherit the OS proxy reliably.
+# Set YT_PROXY in the runtime environment when a local proxy is required.
+YT_PROXY = os.getenv("YT_PROXY") or None

@@ -4,7 +4,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "prism_backend"))
 
 import sqlite3
 from datetime import datetime
@@ -19,8 +19,8 @@ print("[1] 检查数据库文件")
 print("-" * 80)
 project_root = Path(__file__).parent.parent.parent
 db_files = {
-    "task_queue.db": project_root / "syn_backend/db/task_queue.db",
-    "database.db": project_root / "syn_backend/db/database.db",
+    "task_queue.db": project_root / "prism_backend/db/task_queue.db",
+    "database.db": project_root / "prism_backend/db/database.db",
 }
 
 for name, path in db_files.items():
@@ -37,7 +37,7 @@ print()
 print("[2] 检查 task_queue.db 任务记录")
 print("-" * 80)
 try:
-    conn = sqlite3.connect("syn_backend/db/task_queue.db")
+    conn = sqlite3.connect("prism_backend/db/task_queue.db")
 
     # 任务队列
     count = conn.execute("SELECT COUNT(*) FROM task_queue").fetchone()[0]
@@ -76,7 +76,7 @@ print()
 print("[3] 检查 database.db 状态表")
 print("-" * 80)
 try:
-    conn = sqlite3.connect("syn_backend/db/database.db")
+    conn = sqlite3.connect("prism_backend/db/database.db")
 
     # Celery 任务状态
     count = conn.execute("SELECT COUNT(*) FROM celery_task_states").fetchone()[0]

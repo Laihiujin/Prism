@@ -11,7 +11,7 @@ if str(_BASE_DIR) not in sys.path:
 from ai_service.model_manager import ModelManager
 from fastapi_app.api.v1.ai.router import get_ai_config
 
-DB_PATH = os.getenv("SYNAPSE_DATABASE_PATH") or str(_BASE_DIR / "db" / "database.db")
+DB_PATH = os.getenv("PRISM_DATABASE_PATH") or str(_BASE_DIR / "db" / "database.db")
 
 
 def setup_test_db():

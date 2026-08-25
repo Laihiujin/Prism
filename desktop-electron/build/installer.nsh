@@ -1,4 +1,4 @@
-!macro KillSynapseProcess imageName
+!macro KillPrismProcess imageName
   DetailPrint "Stopping ${imageName} if running..."
   nsExec::ExecToLog 'taskkill /IM ${imageName}'
   Sleep 800
@@ -7,19 +7,19 @@
 
 !macro customInit
   ; Stop the packaged app and all managed child processes before install.
-  !insertmacro KillSynapseProcess "SynapseAutomation.exe"
-  !insertmacro KillSynapseProcess "supervisor.exe"
-  !insertmacro KillSynapseProcess "backend.exe"
-  !insertmacro KillSynapseProcess "playwright-worker.exe"
-  !insertmacro KillSynapseProcess "celery-worker.exe"
-  !insertmacro KillSynapseProcess "redis-server.exe"
+  !insertmacro KillPrismProcess "Prism.exe"
+  !insertmacro KillPrismProcess "supervisor.exe"
+  !insertmacro KillPrismProcess "backend.exe"
+  !insertmacro KillPrismProcess "automation-worker.exe"
+  !insertmacro KillPrismProcess "celery-worker.exe"
+  !insertmacro KillPrismProcess "redis-server.exe"
   Sleep 1500
 !macroend
 
 !macro customInstall
-  CreateShortCut "$DESKTOP\SynapseAutomation.lnk" "$INSTDIR\SynapseAutomation.exe"
+  CreateShortCut "$DESKTOP\Prism.lnk" "$INSTDIR\Prism.exe"
 !macroend
 
 !macro customUnInstall
-  Delete "$DESKTOP\SynapseAutomation.lnk"
+  Delete "$DESKTOP\Prism.lnk"
 !macroend

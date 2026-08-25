@@ -11,7 +11,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # 添加父目录到路径
-sys.path.insert(0, str(Path(__file__).parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent / "prism_backend"))
 
 from myUtils.cookie_manager import cookie_manager
 
@@ -47,7 +47,7 @@ def backfill_user_ids():
             failed_count += 1
             continue
 
-        cookie_path = Path("syn_backend/cookiesFile") / cookie_file
+        cookie_path = Path("prism_backend/cookiesFile") / cookie_file
         if not cookie_path.exists():
             print(f"   ⚠️  Cookie文件不存在: {cookie_file}")
             failed_count += 1

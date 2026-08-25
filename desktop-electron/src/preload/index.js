@@ -18,9 +18,9 @@ const restartAllWithFallback = async () => {
 
 // 暴露安全的 API 给渲染进程
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Playwright 相关
-  playwright: {
-    getBrowserPath: () => invoke('playwright:getBrowserPath')
+  // 浏览器自动化运行时
+  automation: {
+    getBrowserPath: () => invoke('automation:getBrowserPath')
   },
 
   // 浏览器窗口管理
