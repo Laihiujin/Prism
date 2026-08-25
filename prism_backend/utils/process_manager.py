@@ -85,9 +85,11 @@ def _which_python() -> Optional[str]:
         ]
     else:
         candidates += [
-            REPO_ROOT / "prismenv" / "bin" / "python",
+            # Backend runtime first; prismenv is the Hermes-only runtime on
+            # macOS/Linux and lacks the Prism backend deps.
             REPO_ROOT / ".venv_test" / "bin" / "python",
             REPO_ROOT / ".venv" / "bin" / "python",
+            REPO_ROOT / "prismenv" / "bin" / "python",
         ]
     for candidate in candidates:
         if candidate.exists():
