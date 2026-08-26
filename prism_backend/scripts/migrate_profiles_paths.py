@@ -2,8 +2,8 @@
 持久化配置路径迁移脚本
 
 将旧的错误路径下的数据迁移到正确路径：
-- syn_backend/syn_backend/browser_profiles -> syn_backend/browser_profiles
-- syn_backend/syn_backend/fingerprints -> syn_backend/fingerprints
+- prism_backend/prism_backend/browser_profiles -> prism_backend/browser_profiles
+- prism_backend/prism_backend/fingerprints -> prism_backend/fingerprints
 
 同时确保每个账号只有一个持久化配置
 """
@@ -29,7 +29,7 @@ def migrate_browser_profiles():
     correct_path = base_dir / "browser_profiles"
 
     # 错误路径
-    wrong_path = base_dir / "syn_backend" / "browser_profiles"
+    wrong_path = base_dir / "prism_backend" / "browser_profiles"
 
     logger.info("=" * 60)
     logger.info("开始迁移 browser_profiles")
@@ -107,7 +107,7 @@ def migrate_fingerprints():
     correct_path = base_dir / "fingerprints"
 
     # 错误路径
-    wrong_path = base_dir / "syn_backend" / "fingerprints"
+    wrong_path = base_dir / "prism_backend" / "fingerprints"
 
     logger.info("=" * 60)
     logger.info("开始迁移 fingerprints")
@@ -181,7 +181,7 @@ def check_duplicates():
 
     # 检查 browser_profiles
     correct_profiles = base_dir / "browser_profiles"
-    wrong_profiles = base_dir / "syn_backend" / "browser_profiles"
+    wrong_profiles = base_dir / "prism_backend" / "browser_profiles"
 
     profiles_in_correct = set()
     profiles_in_wrong = set()
@@ -196,7 +196,7 @@ def check_duplicates():
 
     # 检查 fingerprints
     correct_fps = base_dir / "fingerprints"
-    wrong_fps = base_dir / "syn_backend" / "fingerprints"
+    wrong_fps = base_dir / "prism_backend" / "fingerprints"
 
     fps_in_correct = set()
     fps_in_wrong = set()
@@ -265,8 +265,8 @@ def main():
     logger.info("💡 说明:")
     logger.info("  - 所有持久化配置现在位于正确路径")
     logger.info("  - 每个账号只有一个配置，不会重复")
-    logger.info("  - browser_profiles: syn_backend/browser_profiles")
-    logger.info("  - fingerprints: syn_backend/fingerprints")
+    logger.info("  - browser_profiles: prism_backend/browser_profiles")
+    logger.info("  - fingerprints: prism_backend/fingerprints")
     logger.info("")
 
 

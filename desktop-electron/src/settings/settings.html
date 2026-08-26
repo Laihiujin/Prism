@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Synapse 系统设置</title>
+    <title>Prism 系统设置</title>
     <style>
         * {
             margin: 0;
@@ -917,7 +917,7 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `synapse-logs-${new Date().toISOString().split('T')[0]}.zip`;
+                    a.download = `prism-logs-${new Date().toISOString().split('T')[0]}.zip`;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);

@@ -74,8 +74,8 @@ jobs:
           $version = $desktopPackage.version
           $buildVersion = "$version.${{ github.run_number }}"
           $releaseTag = "v$buildVersion"
-          $releaseName = "SynapseAutomation $buildVersion"
-          $releaseFile = "SynapseAutomation-$buildVersion-setup.exe"
+          $releaseName = "Prism $buildVersion"
+          $releaseFile = "Prism-$buildVersion-setup.exe"
           "app_version=$version" >> $env:GITHUB_OUTPUT
           "build_version=$buildVersion" >> $env:GITHUB_OUTPUT
           "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT

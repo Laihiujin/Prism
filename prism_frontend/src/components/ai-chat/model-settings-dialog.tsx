@@ -223,9 +223,9 @@ export function ModelSettingsDialog({ open, onOpenChange }: ModelSettingsDialogP
                                     <SelectTrigger>
                                         <SelectValue placeholder="选择模型" />
                                     </SelectTrigger>
-                                    <SelectContent className="max-h-60 overflow-y-auto bg-neutral-900 border-white/10 text-white">
+                                    <SelectContent className="max-h-60 overflow-y-auto bg-neutral-900 border-border/70 text-foreground">
                                         {models.map((m) => (
-                                            <SelectItem key={m} value={m} className="text-white hover:bg-white/10 focus:bg-white/10 cursor-pointer">
+                                            <SelectItem key={m} value={m} className="text-foreground hover:bg-accent/50 focus:bg-foreground/10 cursor-pointer">
                                                 {m}
                                             </SelectItem>
                                         ))}

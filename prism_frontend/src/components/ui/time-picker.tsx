@@ -32,8 +32,8 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                 <Button
                     variant="outline"
                     className={cn(
-                        "justify-start gap-2 rounded-2xl border-white/10 /50 text-left font-normal text-white hover:bg-white/5",
-                        !value && "text-white/60",
+                        "justify-start gap-2 rounded-2xl border-border/70 /50 text-left font-normal text-foreground hover:bg-accent/40",
+                        !value && "text-muted-foreground",
                         className
                     )}
                 >
@@ -41,17 +41,17 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                     {displayValue}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto border-white/10 bg-neutral-950 text-white p-4 shadow-2xl" align="start">
+            <PopoverContent className="w-auto border-border/70 bg-neutral-950 text-foreground p-4 shadow-2xl" align="start">
                 <div className="space-y-4">
-                    <div className="text-sm font-medium text-white">选择时间</div>
+                    <div className="text-sm font-medium text-foreground">选择时间</div>
                     <div className="flex items-center gap-2">
                         {/* Hours */}
                         <div className="flex flex-col">
-                            <label className="text-xs text-white/60 mb-1">时</label>
+                            <label className="text-xs text-muted-foreground mb-1">时</label>
                             <select
                                 value={hours}
                                 onChange={(e) => setHours(e.target.value)}
-                                className="appearance-none bg-neutral-900 text-white border border-white/10 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                                className="appearance-none bg-neutral-900 text-foreground border border-border/70 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
                                 style={{ backgroundColor: "#0a0a0a", color: "#ffffff" }}
                             >
                                 {Array.from({ length: 24 }, (_, i) => (
@@ -65,14 +65,14 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                                 ))}
                             </select>
                         </div>
-                        <span className="text-white/60 mt-6">:</span>
+                        <span className="text-muted-foreground mt-6">:</span>
                         {/* Minutes */}
                         <div className="flex flex-col">
-                            <label className="text-xs text-white/60 mb-1">分</label>
+                            <label className="text-xs text-muted-foreground mb-1">分</label>
                             <select
                                 value={minutes}
                                 onChange={(e) => setMinutes(e.target.value)}
-                                className="appearance-none bg-neutral-900 text-white border border-white/10 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                                className="appearance-none bg-neutral-900 text-foreground border border-border/70 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
                                 style={{ backgroundColor: "#0a0a0a", color: "#ffffff" }}
                             >
                                 {Array.from({ length: 60 }, (_, i) => (
@@ -90,7 +90,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                     <div className="flex gap-2">
                         <Button
                             variant="ghost"
-                            className="flex-1 rounded-xl border border-white/10"
+                            className="flex-1 rounded-xl border border-border/70"
                             onClick={() => setOpen(false)}
                         >
                             取消

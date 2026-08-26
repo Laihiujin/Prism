@@ -695,7 +695,7 @@ class ScriptRunRequest(BaseModel):
 @router.get("/scripts/list", summary="列出可用脚本")
 async def list_scripts():
     """
-    列出 syn_backend/scripts/ 目录下的所有 Python 脚本
+    列出 prism_backend/scripts/ 目录下的所有 Python 脚本
     """
     try:
         from pathlib import Path

@@ -86,12 +86,12 @@ export function ThreadSidebar({
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-white/10 bg-neutral-900/30 backdrop-blur-sm">
+    <div className="flex h-full w-64 flex-col border-r border-border/70 bg-neutral-900/30 backdrop-blur-sm">
       {/* Header */}
-      <div className="border-b border-white/10 p-4">
+      <div className="border-b border-border/70 p-4">
         <Button
           onClick={onCreateThread}
-          className="w-full bg-white/10 hover:bg-white/20 text-white"
+          className="w-full bg-foreground/10 hover:bg-accent/60 text-foreground"
           size="sm"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -108,8 +108,8 @@ export function ThreadSidebar({
               className={cn(
                 "group relative rounded-lg p-3 transition-all cursor-pointer",
                 currentThreadId === thread.id
-                  ? "bg-white/15 text-white"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
+                  ? "bg-foreground/15 text-foreground"
+                  : "text-foreground/70 hover:bg-accent/50 hover:text-foreground"
               )}
               onClick={() => {
                 if (editingId !== thread.id) {
@@ -118,7 +118,7 @@ export function ThreadSidebar({
               }}
             >
               <div className="flex items-start gap-2">
-                <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-white/60" />
+                <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 
                 <div className="flex-1 min-w-0">
                   {editingId === thread.id ? (
@@ -133,7 +133,7 @@ export function ThreadSidebar({
                             handleCancelEdit()
                           }
                         }}
-                        className="h-7 bg-black/30 border-white/20 text-white text-sm"
+                        className="h-7 bg-card/30 border-border/80 text-foreground text-sm"
                         autoFocus
                       />
                       <Button
@@ -158,7 +158,7 @@ export function ThreadSidebar({
                       <div className="truncate text-sm font-medium">
                         {thread.title}
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-white/40">
+                      <div className="mt-1 flex items-center gap-2 text-xs text-foreground/40">
                         <span>{formatDate(thread.updated_at)}</span>
                         {thread.message_count > 0 && (
                           <>
@@ -205,8 +205,8 @@ export function ThreadSidebar({
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t border-white/10 p-3">
-        <div className="text-xs text-white/40 text-center">
+      <div className="border-t border-border/70 p-3">
+        <div className="text-xs text-foreground/40 text-center">
           共 {threads.length} 个对话
         </div>
       </div>

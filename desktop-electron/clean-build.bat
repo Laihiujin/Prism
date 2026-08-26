@@ -14,15 +14,15 @@ echo 正在清理打包临时文件...
 echo.
 
 :: 停止可能运行的进程
-tasklist /FI "IMAGENAME eq SynapseAutomation.exe" 2>NUL | find /I /N "SynapseAutomation.exe">NUL
+tasklist /FI "IMAGENAME eq Prism.exe" 2>NUL | find /I /N "Prism.exe">NUL
 if "%ERRORLEVEL%"=="0" (
-    echo 停止 SynapseAutomation.exe...
-    taskkill /F /IM SynapseAutomation.exe >nul 2>&1
+    echo 停止 Prism.exe...
+    taskkill /F /IM Prism.exe >nul 2>&1
     timeout /t 2 >nul
 )
 
 :: Stop packaged services that may lock dist-build/dist-out files
-powershell -Command "Get-Process | Where-Object { $_.Path -and ( $_.Path -like '*\dist-build\win-unpacked\resources\synenv\*' -or $_.Path -like '*\dist\win-unpacked\resources\synenv\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\synenv\*' -or $_.Path -like '*\dist-build\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist\win-unpacked\resources\syn_backend\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\syn_backend\*' ) } | Stop-Process -Force" >nul 2>&1
+powershell -Command "Get-Process | Where-Object { $_.Path -and ( $_.Path -like '*\dist-build\win-unpacked\resources\prismenv\*' -or $_.Path -like '*\dist\win-unpacked\resources\prismenv\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\prismenv\*' -or $_.Path -like '*\dist-build\win-unpacked\resources\prism_backend\*' -or $_.Path -like '*\dist\win-unpacked\resources\prism_backend\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\prism_backend\*' ) } | Stop-Process -Force" >nul 2>&1
 
 :: 清理 %ELECTRON_DIST% 目录
 if exist "%ELECTRON_DIST%" (

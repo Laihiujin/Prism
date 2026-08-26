@@ -34,6 +34,7 @@ import {
 import { formatBeijingDateTime } from "@/lib/time"
 import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog"
 import { PageHeader } from "@/components/layout/page-scaffold"
+import CountUp from "@/components/CountUp"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -213,7 +214,7 @@ export default function DashboardPage() {
         // description="快手、抖音、视频号、小红书统一监控"
         actions={
           isRefreshing && (
-            <Badge className="rounded-2xl border-white/10 bg-white/10 text-xs text-white/80">
+            <Badge className="rounded-2xl border-border bg-primary/10 text-xs text-primary">
               数据刷新中...
             </Badge>
           )
@@ -226,16 +227,25 @@ export default function DashboardPage() {
           return (
             <Card
               key={stat.label}
-              className="group border-white/10 bg-black text-white cursor-pointer transition hover:bg-white/5"
+              className="group card-glow hairline-top relative cursor-pointer overflow-hidden border-border/80 bg-card/70 backdrop-blur-sm transition hover:bg-card"
               onClick={() => handleNavigate(stat.href)}
             >
+              <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/10 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
               <CardHeader className="pb-2">
-                <CardDescription className="text-white/60">{stat.label}</CardDescription>
-                <CardTitle className="text-3xl text-white">{stat.value}</CardTitle>
+                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl border border-border/80 bg-accent/50">
+                  <Icon className="h-[18px] w-[18px] text-primary" />
+                </div>
+                <CardDescription className="text-sm text-muted-foreground">{stat.label}</CardDescription>
+                <CardTitle className="text-3xl text-foreground">
+                  {/^-?\d+(\.\d+)?$/.test(stat.value) ? (
+                    <CountUp to={Number(stat.value)} separator="," duration={1.2} className="tabular-nums" />
+                  ) : (
+                    stat.value
+                  )}
+                </CardTitle>
               </CardHeader>
-              <CardFooter className="justify-between text-sm text-white/60">
+              <CardFooter className="justify-between border-t border-border/50 pt-3 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Icon className="h-4 w-4 text-white/70" />
                   {stat.delta}
                 </div>
               </CardFooter>
@@ -247,49 +257,49 @@ export default function DashboardPage() {
       <PublishOtpDialog />
 
       <section className="grid gap-6">
-        <Card className="border-white/10 bg-black text-white">
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="hairline-top overflow-hidden border-border/80 bg-card/70 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border/50">
             <div>
-              <CardTitle>任务管理库</CardTitle>
+              <CardTitle className="text-lg">任务管理库</CardTitle>
               <CardDescription>自动化及手动触发任务状态</CardDescription>
             </div>
-            <Button variant="ghost" className="text-white/70 hover:text-white" onClick={() => router.push("/tasks")}>
+            <Button variant="ghost" className="gap-2 text-foreground/70 hover:text-foreground" onClick={() => router.push("/tasks")}>
               查看全部
               <ArrowRight className="h-4 w-4" />
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-white/10">
-                  <TableHead className="text-white/60">任务名称</TableHead>
-                  <TableHead className="text-white/60">平台</TableHead>
-                  <TableHead className="text-white/60">账号</TableHead>
-                  <TableHead className="text-white/60">时间</TableHead>
-                  <TableHead className="text-right text-white/60">状态</TableHead>
+                <TableRow className="border-border/50 hover:bg-transparent">
+                  <TableHead className="text-muted-foreground">任务名称</TableHead>
+                  <TableHead className="text-muted-foreground">平台</TableHead>
+                  <TableHead className="text-muted-foreground">账号</TableHead>
+                  <TableHead className="text-muted-foreground">时间</TableHead>
+                  <TableHead className="text-right text-muted-foreground">状态</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTasks.length === 0 && (
-                  <TableRow className="border-white/10">
-                    <TableCell colSpan={5} className="text-center text-sm text-white/60">
+                  <TableRow className="border-border/50 hover:bg-transparent">
+                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
                       {hasSearch ? "未匹配到相关任务" : "暂无任务，请前往发布中心创建"}
                     </TableCell>
                   </TableRow>
                 )}
                 {filteredTasks.slice(0, 5).map((task: any) => (
-                  <TableRow key={task.id} className="border-white/5">
-                    <TableCell className="font-medium">{task.title}</TableCell>
+                  <TableRow key={task.id} className="border-border/50 transition-colors hover:bg-accent/40">
+                    <TableCell className="font-medium text-foreground">{task.title}</TableCell>
                     <TableCell>
-                      <Badge className="border-white/10 bg-white/10">{task.platform}</Badge>
+                      <Badge className="border-border/80 bg-accent/60 text-foreground/80">{task.platform}</Badge>
                     </TableCell>
-                    <TableCell>{task.account}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-foreground/80">{task.account}</TableCell>
+                    <TableCell className="text-muted-foreground">
                       {task.scheduledAt
                         ? `定时 · ${task.scheduledAt}`
                         : formatBeijingDateTime(task.createdAt)}
                     </TableCell>
-                    <TableCell className="text-right text-sm text-white/70">
+                    <TableCell className="text-right text-sm text-foreground/70">
                       {task.status === "scheduled"
                         ? "待定时"
                         : task.status === "success"
@@ -303,39 +313,39 @@ export default function DashboardPage() {
               </TableBody>
             </Table>
             {tasksFetching && (
-              <p className="mt-3 text-right text-xs text-white/60">刷新任务中...</p>
+              <p className="mt-3 text-right text-xs text-muted-foreground">刷新任务中...</p>
             )}
           </CardContent>
         </Card>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
-        <Card className="space-y-5 border-white/10 bg-black text-white">
-          <CardHeader className="pb-2">
-            <CardTitle>快捷入口</CardTitle>
+        <Card className="hairline-top space-y-5 border-border/80 bg-card/70 backdrop-blur-sm">
+          <CardHeader className="border-b border-border/50 pb-4">
+            <CardTitle className="text-lg">快捷入口</CardTitle>
             <CardDescription>常用矩阵工作流入口</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading && (
-              <div className="rounded-2xl border border-white/10 bg-black p-4 text-sm text-white/60">
+              <div className="rounded-xl border border-border/60 bg-background/40 p-4 text-sm text-muted-foreground">
                 正在载入推荐操作...
               </div>
             )}
             {filteredQuickActions.map((action: any, idx: number) => (
               <div
                 key={action.id || idx}
-                className="group rounded-2xl border border-white/10 bg-black p-[1px]"
+                className="group rounded-xl border border-border/60 bg-background/40 p-[1px] transition-colors hover:border-primary/30"
               >
-                <div className="rounded-2xl bg-black/90 p-4 transition group-hover:bg-neutral-900/80">
+                <div className="rounded-xl bg-background/40 p-4 transition group-hover:bg-accent/30">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold">{action.title}</p>
-                      <p className="text-xs text-white/60">{action.description}</p>
+                      <p className="text-sm font-semibold text-foreground">{action.title}</p>
+                      <p className="text-xs text-muted-foreground">{action.description}</p>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="rounded-xl bg-white/10 text-white"
+                      className="rounded-lg border border-border/60 bg-accent/40 text-foreground/80 hover:bg-accent hover:text-foreground"
                       onClick={() => handleNavigate(action.href)}
                     >
                       进入
@@ -346,28 +356,28 @@ export default function DashboardPage() {
               </div>
             ))}
             {!isLoading && filteredQuickActions.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-black p-4 text-sm text-white/60">
+              <div className="rounded-xl border border-border/60 bg-background/40 p-4 text-sm text-muted-foreground">
                 {hasSearch ? "未匹配到相关操作" : "暂无可用操作"}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="space-y-4 border-white/10 bg-black text-white">
-          <CardHeader className="pb-2">
-            <CardTitle>失败任务提醒</CardTitle>
+        <Card className="hairline-top space-y-4 border-border/80 bg-card/70 backdrop-blur-sm">
+          <CardHeader className="border-b border-border/50 pb-4">
+            <CardTitle className="text-lg">失败任务提醒</CardTitle>
             <CardDescription>仅展示最近失败的任务</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {alertsToShow.length === 0 && (
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-muted-foreground">
                 {hasSearch ? "未匹配到相关异常" : "当前账号状态正常，无异常任务。"}
               </p>
             )}
             {alertsToShow.map((alert) => (
               <div
                 key={alert.id}
-                className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100"
+                className="rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-100"
               >
                 <p className="font-semibold">{alert.title}</p>
                 <p className="text-xs text-red-200">{alert.action}</p>
@@ -376,28 +386,28 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="space-y-4 border-white/10 bg-black text-white">
-          <CardHeader className="pb-2">
-            <CardTitle>账号运行概况</CardTitle>
+        <Card className="hairline-top space-y-4 border-border/80 bg-card/70 backdrop-blur-sm">
+          <CardHeader className="border-b border-border/50 pb-4">
+            <CardTitle className="text-lg">账号运行概况</CardTitle>
             <CardDescription>实时同步后端账号状态</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading && (
-              <div className="rounded-2xl border border-white/10 bg-black p-4 text-sm text-white/60">
+              <div className="rounded-xl border border-border/60 bg-background/40 p-4 text-sm text-muted-foreground">
                 正在同步账号数据...
               </div>
             )}
             {filteredAccounts.slice(0, 4).map((account) => (
               <div
                 key={account.id}
-                className="flex items-center justify-between rounded-2xl border border-white/10 bg-black p-4"
+                className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-4 transition-colors hover:border-primary/25"
               >
                 <div>
-                  <p className="text-sm font-semibold">{account.name}</p>
-                  <p className="text-xs text-white/60">{account.boundAt}</p>
+                  <p className="text-sm font-semibold text-foreground">{account.name}</p>
+                  <p className="text-xs text-muted-foreground">{account.boundAt}</p>
                 </div>
                 <Badge
-                  className="border-none bg-white/20 text-xs"
+                  className="border-none bg-accent/60 text-xs text-foreground/80"
                   variant={account.status === "正常" ? "secondary" : "destructive"}
                 >
                   {account.status}
@@ -405,13 +415,13 @@ export default function DashboardPage() {
               </div>
             ))}
             {!isLoading && filteredAccounts.length === 0 && (
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-muted-foreground">
                 {hasSearch ? "未匹配到相关账号" : "暂无绑定账号，请先完成扫码绑定。"}
               </p>
             )}
           </CardContent>
           <CardFooter>
-            <Button variant="link" className="gap-2 text-white" onClick={() => router.push("/account")}>
+            <Button variant="link" className="gap-2 text-primary" onClick={() => router.push("/account")}>
               前往账号管理
               <ArrowRight className="h-4 w-4" />
             </Button>

@@ -7,10 +7,10 @@ from typing import Dict, List, Optional, Tuple
 
 
 PROTECTED_FUNCTIONS: Dict[str, List[str]] = {
-    "syn_backend/app_new/platforms/douyin.py": ["_extract_user_info"],
-    "syn_backend/app_new/platforms/xiaohongshu.py": ["_extract_user_info"],
-    "syn_backend/app_new/platforms/kuaishou.py": ["_extract_user_info"],
-    "syn_backend/app_new/platforms/tencent.py": ["_extract_user_info"],
+    "prism_backend/app_new/platforms/douyin.py": ["_extract_user_info"],
+    "prism_backend/app_new/platforms/xiaohongshu.py": ["_extract_user_info"],
+    "prism_backend/app_new/platforms/kuaishou.py": ["_extract_user_info"],
+    "prism_backend/app_new/platforms/tencent.py": ["_extract_user_info"],
 }
 
 

@@ -1,0 +1,2 @@
+"""Baidu Baijiahao platform adapter."""
+

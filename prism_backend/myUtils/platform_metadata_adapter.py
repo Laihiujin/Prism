@@ -88,6 +88,28 @@ PLATFORM_CONFIGS: Dict[int, PlatformFieldConfig] = {
         layout=PlatformLayout.TITLE_COMBINED,
         description_enabled=True,
         description_supports_hashtags=True
+    ),
+
+    6: PlatformFieldConfig(
+        name="TikTok",
+        code=6,
+        layout=PlatformLayout.TITLE_COMBINED,
+        description_enabled=True,
+        description_max_length=2200,
+        description_supports_hashtags=True
+    ),
+
+    7: PlatformFieldConfig(
+        name="YouTube",
+        code=7,
+        layout=PlatformLayout.SEPARATE,
+        title_enabled=True,
+        title_max_length=100,
+        description_enabled=True,
+        description_max_length=5000,
+        description_supports_hashtags=True,
+        tags_enabled=True,
+        tags_max_count=15
     )
 }
 

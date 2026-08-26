@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 
-from utils.playwright_provider import Playwright, async_playwright
+from utils.automation_provider import Playwright, async_playwright
 import os
 import asyncio
 

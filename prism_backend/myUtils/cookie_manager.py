@@ -19,7 +19,7 @@ BASE_DIR = Path(__file__).parent.parent
 
 
 def _is_dev_repo(base_dir: Path) -> bool:
-    env = (os.getenv("SYNAPSE_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
+    env = (os.getenv("PRISM_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
     if env in ("dev", "development", "local"):
         return True
     try:
@@ -29,7 +29,7 @@ def _is_dev_repo(base_dir: Path) -> bool:
 
 
 def _resolve_data_dir() -> Path:
-    env_dir = os.getenv("SYNAPSE_DATA_DIR")
+    env_dir = os.getenv("PRISM_DATA_DIR")
     if env_dir:
         return Path(env_dir)
 
@@ -40,9 +40,9 @@ def _resolve_data_dir() -> Path:
     appdata = os.getenv("APPDATA")
     local_root = os.getenv("LOCALAPPDATA")
     if appdata:
-        candidates.append(Path(appdata) / "SynapseAutomation" / "data")
+        candidates.append(Path(appdata) / "Prism" / "data")
     if local_root and local_root != appdata:
-        candidates.append(Path(local_root) / "SynapseAutomation" / "data")
+        candidates.append(Path(local_root) / "Prism" / "data")
 
     for candidate in candidates:
         if (candidate / "cookiesFile").exists() or (candidate / "db").exists():
@@ -61,6 +61,9 @@ PLATFORM_CODES = {
     "douyin": 3,
     "kuaishou": 4,
     "bilibili": 5,
+    "tiktok": 6,
+    "youtube": 7,
+    "baijiahao": 8,
 }
 CODE_TO_PLATFORM = {value: key for key, value in PLATFORM_CODES.items()}
 
@@ -286,6 +289,10 @@ class CookieManager:
                 fp.write(data)
             else:
                 json.dump(data, fp, ensure_ascii=False, indent=2)
+        try:
+            target.chmod(0o600)
+        except OSError:
+            pass
 
     def _read_cookie_file(self, cookie_file: str) -> Dict[str, Any]:
         target = self.cookies_dir / cookie_file
@@ -507,7 +514,7 @@ class CookieManager:
 
             import httpx
 
-            worker_base_url = os.environ.get("PLAYWRIGHT_WORKER_URL", "http://127.0.0.1:7001").rstrip("/")
+            worker_base_url = os.environ.get("AUTOMATION_WORKER_URL", "http://127.0.0.1:7001").rstrip("/")
             try:
                 from config.conf import PLAYWRIGHT_HEADLESS
                 desired_headless = bool(PLAYWRIGHT_HEADLESS)

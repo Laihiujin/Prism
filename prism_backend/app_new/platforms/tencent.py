@@ -2,15 +2,15 @@
 Tencent (Weixin Channels) Platform Adapter - 视频号平台适配器
 
 Playwright扫码实现
-复制自: syn_backend/fastapi_app/api/v1/auth/services.py::TencentLoginService
+复制自: prism_backend/fastapi_app/api/v1/auth/services.py::TencentLoginService
 """
 import asyncio
 import uuid
 from typing import Dict, Any
 
 from loguru import logger
-from utils.playwright_provider import async_playwright, Page
-from myUtils.playwright_context_factory import create_context_with_policy
+from utils.automation_provider import async_playwright, Page
+from myUtils.automation_context_factory import create_context_with_policy
 
 from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus
 from ..session_manager import tencent_session_manager
@@ -60,60 +60,35 @@ class TencentAdapter(PlatformAdapter):
             await page.goto(login_url, timeout=60000, wait_until="domcontentloaded")
             await asyncio.sleep(2)
 
-            # 二维码在iframe中
+            # 二维码在微信 OAuth iframe 中。2026-08 实测当前页面为
+            # img.js_qrcode_img.web_qrcode_img，实际可见二维码为 160×160。
+            # 不使用整页截图，也不以不再成立的 180px 阈值判断。
             img = None
             for frame in page.frames:
                 try:
-                    if "login-for-iframe" in (frame.url or ""):
-                        qr = frame.locator("img.qrcode").first
-                        await qr.wait_for(state="visible", timeout=10000)
-                        img = qr
+                    if "open.weixin.qq.com/connect/qrconnect" not in (frame.url or ""):
+                        continue
+                    candidates = frame.locator("img.js_qrcode_img.web_qrcode_img")
+                    for index in range(await candidates.count()):
+                        candidate = candidates.nth(index)
+                        if await candidate.is_visible():
+                            img = candidate
+                            break
+                    if img is not None:
                         break
                 except Exception:
                     continue
 
             if img is None:
-                for frame in page.frames:
-                    candidates = frame.locator("img")
-                    count = await candidates.count()
-                    for index in range(count):
-                        candidate = candidates.nth(index)
-                        try:
-                            box = await candidate.bounding_box()
-                            src = await candidate.get_attribute("src")
-                            cls = await candidate.get_attribute("class")
-                            if not box or not src:
-                                continue
-                            is_large_square = box["width"] >= 180 and box["height"] >= 180
-                            is_logo = "logo" in (cls or "").lower() or "logo.png" in src
-                            if is_large_square and not is_logo:
-                                img = candidate
-                                break
-                        except Exception:
-                            continue
-                    if img is not None:
-                        break
-
-            if img is None:
                 raise RuntimeError("No WeChat Channels QR code image found")
 
-            src = await img.get_attribute("src")
-
-            if src and "logo.png" not in src:
-                logger.info(f"[Tencent] QR code extracted: session={session_id[:8]}")
-                return QRCodeData(
-                    session_id=session_id,
-                    qr_url=login_url,
-                    qr_image=src,
-                    expires_in=300
-                )
-
-            # 降级: 截图
+            # 将已精确定位的二维码元素转为 data URL。微信的 img src 是相对
+            # /connect/qrcode/... 路径；元素截图可避免前端跨域/相对路径问题。
             png = await img.screenshot(type="png")
             import base64
             b64 = base64.b64encode(png).decode("utf-8")
 
-            logger.warning(f"[Tencent] QR not found, using screenshot: session={session_id[:8]}")
+            logger.info(f"[Tencent] QR code extracted: session={session_id[:8]}")
             return QRCodeData(
                 session_id=session_id,
                 qr_url=login_url,

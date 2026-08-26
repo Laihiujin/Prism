@@ -60,9 +60,21 @@ const config = {
                     DEFAULT: "hsl(var(--card))",
                     foreground: "hsl(var(--card-foreground))",
                 },
+                terminal: {
+                    DEFAULT: "hsl(var(--terminal))",
+                    foreground: "hsl(var(--terminal-foreground))",
+                },
             },
             fontFamily: {
                 brand: ["Plus Jakarta Sans", "var(--font-geist-sans)", "sans-serif"],
+                terminal: [
+                    "var(--font-mono)",
+                    "ui-monospace",
+                    "SF Mono",
+                    "JetBrains Mono",
+                    "Menlo",
+                    "monospace",
+                ],
             },
             boxShadow: {
                 "soft": "var(--shadow-soft)",

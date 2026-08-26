@@ -135,7 +135,7 @@ if defined SUPERVISOR_EXE (
     echo.
     echo 解决方案:
     echo   - 检查文件: desktop-electron\resources\supervisor\supervisor.py
-    echo   - 安装依赖: pip install -r syn_backend\requirements.txt
+    echo   - 安装依赖: pip install -r prism_backend\requirements.txt
     echo.
     pause
     exit /b 1

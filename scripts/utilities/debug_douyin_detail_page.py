@@ -11,9 +11,9 @@ if sys.platform == "win32":
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "prism_backend"))
 
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 async def main():
     print("=" * 60)
@@ -36,7 +36,7 @@ async def main():
 
     test_account = douyin_accounts[0]
     cookie_file = test_account.get('cookie_file')
-    cookie_path = Path(__file__).parent.parent.parent / "syn_backend" / "cookiesFile" / cookie_file
+    cookie_path = Path(__file__).parent.parent.parent / "prism_backend" / "cookiesFile" / cookie_file
 
     print(f"\n使用账号: {test_account.get('name')}")
     print(f"Cookie文件: {cookie_path}")

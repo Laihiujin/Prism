@@ -10,12 +10,12 @@ export function Reasoning({
     children: React.ReactNode
     duration?: number
 }) {
-    return <div className="text-xs text-white/50 mb-2">{children}</div>
+    return <div className="text-xs text-muted-foreground mb-2">{children}</div>
 }
 
 export function ReasoningTrigger() {
     return (
-        <span className="text-xs text-white/50 hover:text-white/70">
+        <span className="text-xs text-muted-foreground hover:text-foreground/70">
             💭 思考过程
         </span>
     )
@@ -23,7 +23,7 @@ export function ReasoningTrigger() {
 
 export function ReasoningContent({ children }: { children: React.ReactNode }) {
     return (
-        <div className="mt-2 p-3 bg-black/30 rounded text-xs text-white/70">
+        <div className="mt-2 p-3 bg-card/30 rounded text-xs text-foreground/70">
             {children}
         </div>
     )

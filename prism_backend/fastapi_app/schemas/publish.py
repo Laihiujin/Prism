@@ -35,7 +35,7 @@ class BatchPublishRequest(BaseModel):
     """批量发布请求"""
     file_ids: List[int] = Field(..., min_length=1, description="文件ID列表")
     accounts: List[str] = Field(..., description="账号ID列表")
-    platform: Optional[int] = Field(None, ge=1, le=5, description="平台代码（可选，不指定则支持多平台）")
+    platform: Optional[int] = Field(None, ge=1, le=7, description="平台代码（可选，不指定则支持多平台）")
     title: str = Field(..., description="统一标题（可包含变量）")
     description: Optional[str] = Field(None, description="统一描述")
     topics: Optional[List[str]] = Field(
@@ -155,7 +155,7 @@ class BatchPublishRequest(BaseModel):
 class PublishPreset(BaseModel):
     """发布预设/计划"""
     name: str = Field(..., min_length=1, max_length=100, description="预设名称")
-    platform: int = Field(..., ge=1, le=5, description="平台代码")
+    platform: int = Field(..., ge=1, le=7, description="平台代码")
     accounts: List[str] = Field(..., description="默认账号列表")
     default_title_template: Optional[str] = Field(None, description="默认标题模板")
     default_description: Optional[str] = Field(None, description="默认描述")

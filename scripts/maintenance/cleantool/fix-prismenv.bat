@@ -2,16 +2,16 @@
 chcp 65001 >nul 2>&1
 echo.
 echo ============================================
-echo   修复 synenv 虚拟环境路径
+echo   修复 prismenv 虚拟环境路径
 echo ============================================
 echo.
 
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
-:: 检查 synenv 是否存在
-if not exist "synenv" (
-    echo ❌ synenv 虚拟环境不存在
+:: 检查 prismenv 是否存在
+if not exist "prismenv" (
+    echo ❌ prismenv 虚拟环境不存在
     echo.
     choice /C YN /M "是否创建新的虚拟环境"
     if errorlevel 2 (
@@ -22,7 +22,7 @@ if not exist "synenv" (
 
     echo.
     echo 正在创建虚拟环境...
-    python -m venv synenv
+    python -m venv prismenv
 
     if errorlevel 1 (
         echo ❌ 创建失败
@@ -33,8 +33,8 @@ if not exist "synenv" (
     echo ✅ 虚拟环境创建完成
     echo.
     echo 正在安装依赖...
-    call synenv\Scripts\activate.bat
-    pip install -r syn_backend\requirements.txt
+    call prismenv\Scripts\activate.bat
+    pip install -r prism_backend\requirements.txt
     pip install pyinstaller
 
     echo.
@@ -45,7 +45,7 @@ if not exist "synenv" (
 
 :: 检查路径是否正确
 echo [1/3] 检查虚拟环境路径...
-findstr /C:"D:\Siuyechu" synenv\pyvenv.cfg >nul 2>&1
+findstr /C:"D:\Siuyechu" prismenv\pyvenv.cfg >nul 2>&1
 if "%ERRORLEVEL%"=="0" (
     echo ⚠️  检测到路径错误（D:\ -> E:\）
     echo.
@@ -59,11 +59,11 @@ if "%ERRORLEVEL%"=="0" (
     if "!FIX_CHOICE!"=="1" (
         echo.
         echo [2/3] 删除旧的虚拟环境...
-        rd /s /q synenv 2>nul
+        rd /s /q prismenv 2>nul
         timeout /t 2 >nul
 
         echo [3/3] 创建新的虚拟环境...
-        python -m venv synenv
+        python -m venv prismenv
 
         if errorlevel 1 (
             echo ❌ 创建失败
@@ -74,9 +74,9 @@ if "%ERRORLEVEL%"=="0" (
         echo ✅ 虚拟环境已重建
         echo.
         echo 正在安装依赖...
-        call synenv\Scripts\activate.bat
+        call prismenv\Scripts\activate.bat
         python -m pip install --upgrade pip
-        pip install -r syn_backend\requirements.txt
+        pip install -r prism_backend\requirements.txt
         pip install pyinstaller
 
         echo.
@@ -94,7 +94,7 @@ if "%ERRORLEVEL%"=="0" (
     ) else if "!FIX_CHOICE!"=="2" (
         echo.
         echo ⚠️  手动修复步骤:
-        echo   1. 打开 synenv\pyvenv.cfg
+        echo   1. 打开 prismenv\pyvenv.cfg
         echo   2. 将 D:\Siuyechu 替换为 E:\Siuyechu
         echo   3. 保存文件
         echo.

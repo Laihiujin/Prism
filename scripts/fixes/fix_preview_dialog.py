@@ -6,7 +6,7 @@ Remove duplicate close button from materials preview dialog
 
 from pathlib import Path
 
-materials_file = Path(r"d:\SynapseAutomation\syn_frontend_react\src\app\materials\page.tsx")
+materials_file = Path(r"d:\Prism\prism_frontend\src\app\materials\page.tsx")
 
 # Read file
 content = materials_file.read_text(encoding='utf-8')

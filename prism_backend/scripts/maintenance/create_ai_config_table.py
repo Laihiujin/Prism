@@ -8,8 +8,8 @@ import os
 from pathlib import Path
 
 # 默认使用仓库内数据库；可通过环境变量覆盖
-_BASE_DIR = Path(__file__).resolve().parents[2]  # syn_backend
-DB_PATH = os.getenv("SYNAPSE_DATABASE_PATH") or str(_BASE_DIR / "db" / "database.db")
+_BASE_DIR = Path(__file__).resolve().parents[2]  # prism_backend
+DB_PATH = os.getenv("PRISM_DATABASE_PATH") or str(_BASE_DIR / "db" / "database.db")
 
 def create_ai_config_table():
     """创建AI配置表"""

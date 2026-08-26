@@ -11,7 +11,7 @@ import shutil
 import json
 
 # 添加项目路径
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "prism_backend"))
 
 from myUtils.cookie_manager import CookieManager
 from loguru import logger
@@ -70,7 +70,7 @@ def organize_all_cookies():
     logger.info("=" * 60)
 
     # 初始化
-    cookie_dir = Path(__file__).parent.parent.parent / "syn_backend" / "cookiesFile"
+    cookie_dir = Path(__file__).parent.parent.parent / "prism_backend" / "cookiesFile"
     backup_dir = cookie_dir / "backups" / datetime.now().strftime("%Y%m%d_%H%M%S") / "organize_full"
     backup_dir.mkdir(parents=True, exist_ok=True)
 

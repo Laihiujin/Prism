@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent / "syn_backend"
+BASE_DIR = Path(__file__).resolve().parent.parent / "prism_backend"
 
 _root_env = BASE_DIR.parent / ".env"
 _local_env = BASE_DIR / ".env"

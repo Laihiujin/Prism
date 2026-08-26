@@ -154,7 +154,7 @@ def test_matrix_demo():
                 print("✅ 矩阵发布系统测试成功！")
                 print("=" * 70)
                 print(f"\n💡 后续操作:")
-                print(f"   1. 启动执行器: python -m syn_backend.matrix_executor")
+                print(f"   1. 启动执行器: python -m prism_backend.matrix_executor")
                 print(f"   2. 手动弹出任务: POST {BASE_URL}/api/v1/matrix/tasks/pop")
                 print(f"   3. 查看任务列表: GET  {BASE_URL}/api/v1/matrix/tasks/list")
 

@@ -44,16 +44,16 @@ export function DateOnlyPicker({ value, onChange, placeholder = "选择日期", 
         <Button
           variant="outline"
           className={cn(
-            "justify-start gap-2 rounded-2xl border-white/20 bg-white/5 text-left font-normal",
-            !value && "text-white/60"
+            "justify-start gap-2 rounded-2xl border-border/80 bg-foreground/5 text-left font-normal",
+            !value && "text-muted-foreground"
           )}
         >
           <CalendarIcon className="h-4 w-4" />
           {displayValue}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-fit border-white/10 bg-background p-0">
-        <Card className="border-white/10 bg-background">
+      <PopoverContent align="start" className="w-fit border-border/70 bg-background p-0">
+        <Card className="border-border/70 bg-background">
           <CardHeader className="relative pb-2">
             <CardTitle>{label}</CardTitle>
             <CardDescription>选择定时日期</CardDescription>
@@ -80,7 +80,7 @@ export function DateOnlyPicker({ value, onChange, placeholder = "选择日期", 
               className="bg-transparent p-0"
             />
             <div className="mt-4 flex gap-2">
-              <Button variant="ghost" className="flex-1 rounded-2xl border border-white/10 bg-white/5" onClick={() => { onChange(undefined); setOpen(false) }}>
+              <Button variant="ghost" className="flex-1 rounded-2xl border border-border/70 bg-foreground/5" onClick={() => { onChange(undefined); setOpen(false) }}>
                 清除
               </Button>
               <Button className="flex-1 rounded-2xl" onClick={handleApply} disabled={!tempDate}>

@@ -59,11 +59,11 @@ def _find_chromium_executable(browsers_path: str | None) -> str | None:
 
 def _expected_chromium_executable_via_playwright() -> str | None:
     """
-    Ask the installed Playwright package what Chromium executable path it expects.
+    Ask the installed browser runtime (Patchright) what Chromium executable path it expects.
 
     This avoids a common pitfall: older Chromium revisions may exist in PLAYWRIGHT_BROWSERS_PATH,
-    but Playwright requires an exact, version-pinned revision (e.g. chromium-1200). In that case,
-    "any chromium exists" is not enough, and Playwright will still error and ask for `playwright install`.
+    but the runtime requires an exact, version-pinned revision (e.g. chromium-1200). In that case,
+    "any chromium exists" is not enough, and the runtime will still error and ask to install Chromium.
     """
     try:
         from utils.automation_provider import sync_playwright
@@ -112,12 +112,12 @@ def ensure_playwright_chromium_installed(
     timeout_s: int = 600,
 ) -> PlaywrightBootstrapResult:
     """
-    Make Playwright's Chromium available in a project-local directory.
+    Make the browser runtime's (Patchright) Chromium available in a project-local directory.
 
     Key goals:
-    - Do not rely on any external/system browser.
+    - Prefer the user's installed system Chrome (no browser download required).
     - Use a deterministic on-disk path that can be bundled into an exe distribution.
-    - Auto-run the active browser runtime installer on first run.
+    - Auto-run the active browser runtime installer on first run only as a fallback.
     """
     install_ran = False
     installed = False

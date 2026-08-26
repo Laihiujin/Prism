@@ -19,17 +19,17 @@ echo ✅ 打包目录存在
 echo.
 
 echo [2/5] 检查关键路径...
-echo 检查 synenv...
-if exist "%RESOURCES%\synenv\Scripts\python.exe" (
-    echo ✅ synenv\Scripts\python.exe 存在
+echo 检查 prismenv...
+if exist "%RESOURCES%\prismenv\Scripts\python.exe" (
+    echo ✅ prismenv\Scripts\python.exe 存在
 ) else (
-    echo ❌ synenv\Scripts\python.exe 不存在
+    echo ❌ prismenv\Scripts\python.exe 不存在
 )
 
 echo 检查 backend...
 if exist "%RESOURCES%\backend" (
     echo ✅ backend 目录存在
-    dir /B "%RESOURCES%\backend" | findstr "fastapi_app playwright_worker" && echo ✅ 后端模块存在 || echo ⚠️ 后端模块不完整
+    dir /B "%RESOURCES%\backend" | findstr "fastapi_app automation_worker" && echo ✅ 后端模块存在 || echo ⚠️ 后端模块不完整
 ) else (
     echo ❌ backend 目录不存在
 )
@@ -59,8 +59,8 @@ echo.
 
 echo [3/5] 测试 Python 环境...
 cd /d "%RESOURCES%"
-if exist "synenv\Scripts\python.exe" (
-    synenv\Scripts\python.exe --version
+if exist "prismenv\Scripts\python.exe" (
+    prismenv\Scripts\python.exe --version
     echo ✅ Python 可执行
 ) else (
     echo ❌ Python 不可执行
@@ -69,8 +69,8 @@ echo.
 
 echo [4/5] 查看目录结构...
 echo.
-echo synenv 大小:
-du -sh synenv 2>nul || echo "(未安装 du 命令)"
+echo prismenv 大小:
+du -sh prismenv 2>nul || echo "(未安装 du 命令)"
 echo backend 大小:
 du -sh backend 2>nul || echo "(未安装 du 命令)"
 echo.

@@ -32,7 +32,7 @@ def _ensure_cookie_file(platform: str) -> str:
 
 
 def _get_worker_client():
-    from playwright_worker.client import get_worker_client
+    from automation_worker.client import get_worker_client
 
     return get_worker_client()
 

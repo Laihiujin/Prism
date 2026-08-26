@@ -14,12 +14,12 @@ const LOG_DIR_CANDIDATES = [
       ? ENV_LOG_DIR
       : path.resolve(APP_ROOT, ENV_LOG_DIR)
     : null,
-  path.resolve(APP_ROOT, "syn_backend", "logs"),
+  path.resolve(APP_ROOT, "prism_backend", "logs"),
   path.resolve(APP_ROOT, "logs"),
 ].filter(Boolean) as string[]
 const LOG_DIR =
   LOG_DIR_CANDIDATES.find((candidate) => fsSync.existsSync(candidate)) ??
-  path.resolve(APP_ROOT, "syn_backend", "logs")
+  path.resolve(APP_ROOT, "prism_backend", "logs")
 
 const platforms = [
   { key: "kuaishou", label: "\u5feb\u624b", file: "kuaishou.log", account: "\u661f\u706b\u77e9\u9635" },

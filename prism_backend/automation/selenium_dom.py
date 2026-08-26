@@ -13,7 +13,7 @@ from selenium.common.exceptions import NoSuchElementException
 from loguru import logger
 
 from .ocr_client import ocr_image_bytes
-from utils.playwright_bootstrap import ensure_playwright_chromium_installed
+from utils.automation_bootstrap import ensure_playwright_chromium_installed
 
 
 @dataclass
@@ -32,7 +32,8 @@ def new_chrome_driver(headless: bool = False, user_data_dir: Optional[str] = Non
     opts.add_argument("--window-size=1280,900")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
-    # Prefer bundled Playwright Chromium so the project is self-contained.
+    # Prefer the resolved browser runtime Chromium (system Chrome first) so the
+    # project runs without downloading a bundled browser.
     try:
         r = ensure_playwright_chromium_installed(auto_install=False)
         if r.chromium_executable:

@@ -3,7 +3,7 @@ import glob
 import os
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent / "syn_backend"
+BASE_DIR = Path(__file__).resolve().parent.parent / "prism_backend"
 
 _root_env = BASE_DIR.parent / ".env"
 _local_env = BASE_DIR / ".env"
@@ -35,6 +35,8 @@ _local_chrome_raw = (
 
 def _find_preferred_local_chrome() -> str:
     for pattern in (
+        Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+        Path.home() / "Applications" / "Google Chrome.app" / "Contents" / "MacOS" / "Google Chrome",
         BASE_DIR.parent / "browsers" / "chromium" / "hibbiki-*" / "Chrome-bin" / "chrome.exe",
         BASE_DIR.parent / "browsers" / "chromium" / "chromium-*" / "chrome-win64" / "chrome.exe",
         BASE_DIR.parent / "browsers" / "chromium" / "chromium-*" / "chrome-win" / "chrome.exe",
@@ -78,3 +80,8 @@ else:
 
 # Playwright Headless Mode - Set to False to show browser for debugging
 PLAYWRIGHT_HEADLESS = _env_bool("PLAYWRIGHT_HEADLESS", True)  # true=无头, false=显示窗口
+
+# Shared defaults used by the refactored platform CLI modules.
+LOCAL_CHROME_HEADLESS = PLAYWRIGHT_HEADLESS
+DEBUG_MODE = _env_bool("PRISM_DEBUG_MODE", False)
+YT_PROXY = os.getenv("YT_PROXY") or None

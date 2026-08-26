@@ -42,7 +42,7 @@ export function NaturalDatePicker({ value, onChange, label = "过期时间", pla
 
     return (
         <div className="flex flex-col gap-2">
-            <Label htmlFor="date" className="text-xs text-white/60">
+            <Label htmlFor="date" className="text-xs text-muted-foreground">
                 {label}
             </Label>
             <div className="relative flex gap-2">
@@ -50,7 +50,7 @@ export function NaturalDatePicker({ value, onChange, label = "过期时间", pla
                     id="date"
                     value={value}
                     placeholder={placeholder}
-                    className="/50 border-white/10 text-white pr-10 rounded-2xl"
+                    className="/50 border-border/70 text-foreground pr-10 rounded-2xl"
                     onChange={(e) => {
                         onChange(e.target.value)
                         const parsedDate = parseDate(e.target.value)
@@ -77,7 +77,7 @@ export function NaturalDatePicker({ value, onChange, label = "过期时间", pla
                             <span className="sr-only">选择日期</span>
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto overflow-hidden p-0 border-white/10 bg-black" align="end">
+                    <PopoverContent className="w-auto overflow-hidden p-0 border-border/70 bg-card" align="end">
                         <Calendar
                             mode="single"
                             selected={date}
@@ -95,8 +95,8 @@ export function NaturalDatePicker({ value, onChange, label = "过期时间", pla
                 </Popover>
             </div>
             {date && (
-                <div className="text-white/50 px-1 text-xs">
-                    任务将在 <span className="font-medium text-white">{formatDate(date)}</span> 过期
+                <div className="text-muted-foreground px-1 text-xs">
+                    任务将在 <span className="font-medium text-foreground">{formatDate(date)}</span> 过期
                 </div>
             )}
         </div>

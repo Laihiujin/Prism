@@ -28,7 +28,7 @@ class ModelManager:
         return name
 
     def _resolve_db_path(self) -> str:
-        env_path = os.getenv("SYNAPSE_DATABASE_PATH")
+        env_path = os.getenv("PRISM_DATABASE_PATH")
         if env_path:
             return env_path
         try:
@@ -36,7 +36,7 @@ class ModelManager:
 
             return settings.DATABASE_PATH
         except Exception:
-            base_dir = Path(__file__).resolve().parent.parent  # syn_backend
+            base_dir = Path(__file__).resolve().parent.parent  # prism_backend
             return str(base_dir / "db" / "database.db")
 
     def _load_config(self):

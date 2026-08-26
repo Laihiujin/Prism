@@ -35,7 +35,7 @@ const files = diff
   .map((s) => s.trim())
   .filter(Boolean)
   .filter((p) => p.match(/\.(js|jsx|ts|tsx)$/i))
-  .map((p) => (p.startsWith("syn_frontend_react/") ? p.replace(/^syn_frontend_react\//, "") : p))
+  .map((p) => (p.startsWith("prism_frontend/") ? p.replace(/^prism_frontend\//, "") : p))
   .filter((p) => !p.startsWith("node_modules/"));
 
 if (files.length === 0) {

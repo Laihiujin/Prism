@@ -177,3 +177,21 @@ tools/hermes-home/
 tools/hermes-webui/
 
 LaunchScript/python-3.11.9-embed-amd64.zip
+
+# Hermes runtime venv (created by scripts/hermes/setup_local_hermes.py)
+/prismenv/
+
+# Patchright/Playwright downloaded browser & CLI runtime state
+/.playwright-cli/
+/browsers/chromium-*/
+
+# Runtime outputs & reverse-api artifacts
+/output/
+/prism_backend/reverse_api/artifacts/
+/prism_backend/reverse_api/signing/.baseline-run/
+
+# Python build metadata
+*.egg-info/
+
+# Local npm cache used when ~/.npm is unwritable
+.npm-cache-tmp/

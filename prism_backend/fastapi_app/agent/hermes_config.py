@@ -394,6 +394,22 @@ def _write_hermes_runtime_config(data: Dict[str, Any]) -> Path:
     return config_path
 
 
+def _build_prism_mcp_server_entry() -> Dict[str, Any]:
+    """Config entry exposing Prism's BaseTool catalog to Hermes as MCP tools."""
+    backend_root = get_backend_root()
+    # In dev the running interpreter already carries the backend deps; in a
+    # packaged build this falls back to the shared prismenv interpreter.
+    python = sys.executable if not getattr(sys, "frozen", False) else str(get_hermes_python_path())
+    return {
+        "command": python,
+        "args": ["-m", "fastapi_app.agent.mcp_server"],
+        "env": {
+            "PYTHONPATH": str(backend_root),
+            "PRISM_APP_ROOT": str(get_repo_root()),
+        },
+    }
+
+
 def _apply_runtime_ui_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
     display = data.get("display")
     if not isinstance(display, dict):
@@ -499,9 +515,17 @@ def sync_agent_config_to_runtime(config: Dict[str, Any]) -> Path:
     approvals_cfg["destructive_slash_confirm"] = False
     approvals_cfg["mcp_reload_confirm"] = False
 
+    # Expose Prism's publishing/account/data tools to Hermes as MCP tools
+    # ("Hermes AI 反补 Prism"): the agent can then call them as structured tools.
+    mcp_servers = existing.get("mcp_servers")
+    if not isinstance(mcp_servers, dict):
+        mcp_servers = {}
+    mcp_servers["prism"] = _build_prism_mcp_server_entry()
+
     existing["model"] = model_cfg
     existing["agent"] = agent_cfg
     existing["approvals"] = approvals_cfg
+    existing["mcp_servers"] = mcp_servers
     return _write_hermes_runtime_config(_apply_runtime_ui_defaults(existing))
 
 

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import shutil
 
 # Add project path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "prism_backend"))
 
 from loguru import logger
 
@@ -30,7 +30,7 @@ def cleanup_stuck_tasks(dry_run=False, max_age_hours=1):
     logger.info("")
 
     # Database path
-    db_path = Path(__file__).parent.parent.parent / "syn_backend" / "db" / "task_queue.db"
+    db_path = Path(__file__).parent.parent.parent / "prism_backend" / "db" / "task_queue.db"
 
     if not db_path.exists():
         logger.error(f"Database not found: {db_path}")

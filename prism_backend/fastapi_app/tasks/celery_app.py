@@ -5,9 +5,9 @@ import sys
 from pathlib import Path
 from celery import Celery
 
-# Add syn_backend to Python path for myUtils imports
+# Add prism_backend to Python path for myUtils imports
 # This ensures myUtils can be imported even when PYTHONPATH isn't set
-BACKEND_DIR = Path(__file__).resolve().parent.parent.parent  # Go up from fastapi_app/tasks/ to syn_backend/
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent  # Go up from fastapi_app/tasks/ to prism_backend/
 BACKEND_DIR_STR = str(BACKEND_DIR).replace('\\', '\\\\')  # Normalize Windows path
 
 # Print debug info
@@ -37,7 +37,7 @@ from fastapi_app.core.config import resolved_celery_broker_url, resolved_celery_
 os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
 celery_app = Celery(
-    "synapse",
+    "prism",
     broker=resolved_celery_broker_url(),
     backend=resolved_celery_result_backend(),
 )

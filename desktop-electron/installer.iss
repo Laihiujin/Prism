@@ -1,8 +1,8 @@
-; SynapseAutomation Inno Setup Script
-#define MyAppName "SynapseAutomation"
+; Prism Inno Setup Script
+#define MyAppName "Prism"
 #define MyAppPublisher "Laihiujin"
 #define MyAppURL ""
-#define MyAppExeName "SynapseAutomation.exe"
+#define MyAppExeName "Prism.exe"
 #define APP_VERSION "1.1.0"
 
 ; These will be replaced by the batch script
@@ -16,14 +16,14 @@
 #endif
 #define IconFile GetEnv("ICON_FILE")
 #define SkipOpt "dontcopy recursesubdirs skipifsourcedoesntexist"
-#define SynenvDir SourceDir + "\resources\synenv"
-#define SynenvPythonHome SynenvDir + "\_python"
-#define SynenvSite SynenvDir + "\Lib\site-packages"
-#define SynBackendDir SourceDir + "\resources\syn_backend"
-#define AppSynenv "{app}\resources\synenv"
-#define AppSynenvPythonHome "{app}\resources\synenv\_python"
-#define AppSynenvSite "{app}\resources\synenv\Lib\site-packages"
-#define AppSynBackend "{app}\resources\syn_backend"
+#define PrismenvDir SourceDir + "\resources\prismenv"
+#define PrismenvPythonHome PrismenvDir + "\_python"
+#define PrismenvSite PrismenvDir + "\Lib\site-packages"
+#define PrismBackendDir SourceDir + "\resources\prism_backend"
+#define AppPrismenv "{app}\resources\prismenv"
+#define AppPrismenvPythonHome "{app}\resources\prismenv\_python"
+#define AppPrismenvSite "{app}\resources\prismenv\Lib\site-packages"
+#define AppPrismBackend "{app}\resources\prism_backend"
 #define ExcludeTests "*\tests\*;*\test\*"
 
 [Setup]
@@ -41,7 +41,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=
 OutputDir={#OutputDir}
-OutputBaseFilename=SynapseAutomation-Setup-v{#MyAppVersionFull}
+OutputBaseFilename=Prism-Setup-v{#MyAppVersionFull}
 SetupIconFile={#IconFile}
 Compression=lzma2/max
 SolidCompression=yes
@@ -53,7 +53,7 @@ DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=yes
 RestartApplications=yes
-CloseApplicationsFilter=SynapseAutomation.exe
+CloseApplicationsFilter=Prism.exe
 
 [Languages]
 #ifexist "compiler:Languages\ChineseSimplified.isl"
@@ -65,36 +65,36 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Dirs]
-Name: "{app}\resources\syn_backend\data\cookies"
-Name: "{app}\resources\syn_backend\cookiesFile"
-Name: "{app}\resources\syn_backend\fingerprints"
-Name: "{app}\resources\syn_backend\browser_profiles"
-Name: "{app}\resources\syn_backend\videoFile"
-Name: "{app}\resources\syn_backend\logs"
-Name: "{app}\resources\syn_backend\backups"
-Name: "{app}\resources\syn_backend\db"
-Name: "{app}\resources\syn_backend\social-media-copilot-api\chrome-profile"
+Name: "{app}\resources\prism_backend\data\cookies"
+Name: "{app}\resources\prism_backend\cookiesFile"
+Name: "{app}\resources\prism_backend\fingerprints"
+Name: "{app}\resources\prism_backend\browser_profiles"
+Name: "{app}\resources\prism_backend\videoFile"
+Name: "{app}\resources\prism_backend\logs"
+Name: "{app}\resources\prism_backend\backups"
+Name: "{app}\resources\prism_backend\db"
+Name: "{app}\resources\prism_backend\social-media-copilot-api\chrome-profile"
 
 [Files]
-Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly; Excludes: "resources\syn_backend\*;resources\synenv\*"
-Source: "{#SynenvDir}\*"; DestDir: "{#AppSynenv}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist; Excludes: "Lib\site-packages\*"
-Source: "{#SynenvPythonHome}\*"; DestDir: "{#AppSynenvPythonHome}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist
-Source: "{#SynenvSite}\*"; DestDir: "{#AppSynenvSite}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist; Excludes: "{#ExcludeTests}"
-Source: "{#SynBackendDir}\*"; DestDir: "{#AppSynBackend}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly; Excludes: "browser_profiles\*;cookiesFile\*;fingerprints\*"
-Source: "{#SourceDir}\resources\syn_backend\social-media-copilot-api\chrome-profile\*"; DestDir: "{app}\resources\syn_backend\social-media-copilot-api\chrome-profile"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\data\cookies\*"; DestDir: "{app}\resources\syn_backend\data\cookies"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\cookiesFile\*"; DestDir: "{app}\resources\syn_backend\cookiesFile"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\fingerprints\*"; DestDir: "{app}\resources\syn_backend\fingerprints"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\browser_profiles\*"; DestDir: "{app}\resources\syn_backend\browser_profiles"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\videoFile\*"; DestDir: "{app}\resources\syn_backend\videoFile"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\logs\*"; DestDir: "{app}\resources\syn_backend\logs"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\backups\*"; DestDir: "{app}\resources\syn_backend\backups"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\__pycache__\*"; DestDir: "{app}\resources\syn_backend\__pycache__"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\*.pyc"; DestDir: "{app}\resources\syn_backend"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\*.pyo"; DestDir: "{app}\resources\syn_backend"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\db\*.db*"; DestDir: "{app}\resources\syn_backend\db"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\db\*.sqlite*"; DestDir: "{app}\resources\syn_backend\db"; Flags: {#SkipOpt}
-Source: "{#SourceDir}\resources\syn_backend\db\frontend_accounts_snapshot.json"; DestDir: "{app}\resources\syn_backend\db"; Flags: dontcopy skipifsourcedoesntexist
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly; Excludes: "resources\prism_backend\*;resources\prismenv\*"
+Source: "{#PrismenvDir}\*"; DestDir: "{#AppPrismenv}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist; Excludes: "Lib\site-packages\*"
+Source: "{#PrismenvPythonHome}\*"; DestDir: "{#AppPrismenvPythonHome}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist
+Source: "{#PrismenvSite}\*"; DestDir: "{#AppPrismenvSite}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly skipifsourcedoesntexist; Excludes: "{#ExcludeTests}"
+Source: "{#PrismBackendDir}\*"; DestDir: "{#AppPrismBackend}"; Flags: ignoreversion recursesubdirs createallsubdirs overwritereadonly; Excludes: "browser_profiles\*;cookiesFile\*;fingerprints\*"
+Source: "{#SourceDir}\resources\prism_backend\social-media-copilot-api\chrome-profile\*"; DestDir: "{app}\resources\prism_backend\social-media-copilot-api\chrome-profile"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\data\cookies\*"; DestDir: "{app}\resources\prism_backend\data\cookies"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\cookiesFile\*"; DestDir: "{app}\resources\prism_backend\cookiesFile"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\fingerprints\*"; DestDir: "{app}\resources\prism_backend\fingerprints"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\browser_profiles\*"; DestDir: "{app}\resources\prism_backend\browser_profiles"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\videoFile\*"; DestDir: "{app}\resources\prism_backend\videoFile"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\logs\*"; DestDir: "{app}\resources\prism_backend\logs"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\backups\*"; DestDir: "{app}\resources\prism_backend\backups"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\__pycache__\*"; DestDir: "{app}\resources\prism_backend\__pycache__"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\*.pyc"; DestDir: "{app}\resources\prism_backend"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\*.pyo"; DestDir: "{app}\resources\prism_backend"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\db\*.db*"; DestDir: "{app}\resources\prism_backend\db"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\db\*.sqlite*"; DestDir: "{app}\resources\prism_backend\db"; Flags: {#SkipOpt}
+Source: "{#SourceDir}\resources\prism_backend\db\frontend_accounts_snapshot.json"; DestDir: "{app}\resources\prism_backend\db"; Flags: dontcopy skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -106,8 +106,8 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
-Type: filesandordirs; Name: "{userappdata}\SynapseAutomation\data"; Check: ShouldDeleteUserData
-Type: filesandordirs; Name: "{localappdata}\SynapseAutomation\data"; Check: ShouldDeleteUserData
+Type: filesandordirs; Name: "{userappdata}\Prism\data"; Check: ShouldDeleteUserData
+Type: filesandordirs; Name: "{localappdata}\Prism\data"; Check: ShouldDeleteUserData
 
 [Code]
 var
@@ -117,7 +117,7 @@ var
 
 procedure ForceCloseRunningApp();
 begin
-  Exec('taskkill', '/F /IM SynapseAutomation.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Exec('taskkill', '/F /IM Prism.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
 function InitializeSetup(): Boolean;

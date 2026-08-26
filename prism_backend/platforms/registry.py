@@ -33,6 +33,9 @@ _UPLOADER_SPECS: Dict[int, tuple[str, str]] = {
     3: ("platforms.douyin.upload", "douyin_upload"),
     4: ("platforms.kuaishou.upload", "kuaishou_upload"),
     5: ("platforms.bilibili.upload", "bilibili_upload"),
+    6: ("platforms.tiktok.upload", "tiktok_upload"),
+    7: ("platforms.youtube.upload", "youtube_upload"),
+    8: ("platforms.baijiahao.upload", "baijiahao_upload"),
 }
 
 
@@ -75,6 +78,12 @@ def normalize_platform_code(value: Any) -> Optional[int]:
             "ks": 4,
             "bilibili": 5,
             "bili": 5,
+            "tiktok": 6,
+            "tk": 6,
+            "youtube": 7,
+            "yt": 7,
+            "baijiahao": 8,
+            "baijia": 8,
         }
         return mapping.get(s)
     return None

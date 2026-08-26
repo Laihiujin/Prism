@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SynapseAutomation 启动脚本清单检查工具
+Prism 启动脚本清单检查工具
 验证所有脚本和文档文件是否已创建
 """
 
@@ -39,7 +39,7 @@ REQUIRED_FILES = {
 def check_files():
     """检查所有文件是否存在"""
     print("\n" + "="*60)
-    print("SynapseAutomation 启动脚本清单检查")
+    print("Prism 启动脚本清单检查")
     print("="*60 + "\n")
     
     all_exist = True
@@ -86,7 +86,7 @@ def check_files():
 def show_help():
     """显示脚本使用方式"""
     print("\n" + "="*60)
-    print("SynapseAutomation 启动脚本使用指南")
+    print("Prism 启动脚本使用指南")
     print("="*60 + "\n")
     
     print("📋 可用的启动方式:\n")

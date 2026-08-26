@@ -19,7 +19,7 @@ export function AccountActivityLog({ logs }: AccountActivityLogProps) {
     return (
         <div className="space-y-0">
             {logs.length === 0 && (
-                <p className="text-sm text-white/60">暂无事件，等待新的自动化日志...</p>
+                <p className="text-sm text-muted-foreground">暂无事件，等待新的自动化日志...</p>
             )}
             {logs.map((item, index) => {
                 let Icon = Activity
@@ -44,7 +44,7 @@ export function AccountActivityLog({ logs }: AccountActivityLogProps) {
                     <div key={item.id || index} className="relative pl-8 pb-8 last:pb-0 group">
                         {/* Line */}
                         {index !== logs.length - 1 && (
-                            <div className="absolute left-[11px] top-8 bottom-0 w-px bg-white/10 group-hover:bg-white/20 transition-colors" />
+                            <div className="absolute left-[11px] top-8 bottom-0 w-px bg-foreground/10 group-hover:bg-accent/60 transition-colors" />
                         )}
 
                         {/* Dot */}
@@ -54,10 +54,10 @@ export function AccountActivityLog({ logs }: AccountActivityLogProps) {
 
                         <div className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium text-white group-hover:text-primary transition-colors">{item.title}</p>
-                                <span className="text-xs text-white/40 font-mono">{item.time}</span>
+                                <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{item.title}</p>
+                                <span className="text-xs text-foreground/40 font-mono">{item.time}</span>
                             </div>
-                            <p className="text-xs text-white/60 leading-relaxed">{item.description}</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
                         </div>
                     </div>
                 )

@@ -19,13 +19,13 @@ class LoginStatusCheckRequest(BaseModel):
 @router.post("/check-login-status")
 async def check_login_status(request: LoginStatusCheckRequest):
     """
-    检查账号登录状态 (代理到 Playwright Worker)
+    检查账号登录状态 (代理到 Automation Worker)
 
     - 如果提供 account_ids,则检查指定账号
     - 如果不提供,则使用轮询策略检查下一批账号
     """
     try:
-        # 调用 Playwright Worker API
+        # 调用 Automation Worker API
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 "http://127.0.0.1:7001/creator/check-login-status",
@@ -48,10 +48,10 @@ async def check_login_status(request: LoginStatusCheckRequest):
             return response.json()
 
     except httpx.ConnectError as e:
-        logger.error(f"[CreatorAPI] 无法连接到 Playwright Worker: {e}")
+        logger.error(f"[CreatorAPI] 无法连接到 Automation Worker: {e}")
         raise HTTPException(
             status_code=503,
-            detail="无法连接到 Playwright Worker,请确保 Worker 服务正在运行"
+            detail="无法连接到 Automation Worker,请确保 Worker 服务正在运行"
         )
     except Exception as e:
         logger.error(f"[CreatorAPI] 登录状态检查失败: {e}")

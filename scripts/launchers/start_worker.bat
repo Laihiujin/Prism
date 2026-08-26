@@ -2,15 +2,15 @@
 chcp 65001 >nul
 
 set ROOT=%~dp0..\..
-set BACKEND_DIR=%ROOT%\syn_backend
+set BACKEND_DIR=%ROOT%\prism_backend
 
-call conda activate syn
+call conda activate prism
 if errorlevel 1 (
-    echo ERROR: Failed to activate conda environment syn
+    echo ERROR: Failed to activate conda environment prism
     pause
     exit /b 1
 )
-echo OK: Activated conda environment syn
+echo OK: Activated conda environment prism
 set PY=python
 echo.
 
@@ -18,10 +18,10 @@ set PLAYWRIGHT_BROWSERS_PATH=%ROOT%\browsers
 
 pushd %BACKEND_DIR%
 
-echo Starting Playwright Worker on port 7001...
+echo Starting Automation Worker on port 7001...
 echo.
 
-%PY% playwright_worker\worker.py
+%PY% automation_worker\worker.py
 popd
 
 pause

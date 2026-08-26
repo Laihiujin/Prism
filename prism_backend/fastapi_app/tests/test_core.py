@@ -39,7 +39,7 @@ def test_openapi_spec(client):
     data = response.json()
     assert "openapi" in data
     assert "info" in data
-    assert data["info"]["title"] == "SynapseAutomation API"
+    assert data["info"]["title"] == "Prism API"
     assert data["info"]["version"] == "2.0.0"
     assert "paths" in data
     # Check that we have a reasonable number of endpoints

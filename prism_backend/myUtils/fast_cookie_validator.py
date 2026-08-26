@@ -25,6 +25,9 @@ PLATFORM_NAMES: Dict[int, str] = {
     3: "douyin",
     4: "kuaishou",
     5: "bilibili",
+    6: "tiktok",
+    7: "youtube",
+    8: "baijiahao",
 }
 PLATFORM_CODES: Dict[str, int] = {v: k for k, v in PLATFORM_NAMES.items()}
 PLATFORM_ALIASES: Dict[str, str] = {
@@ -516,7 +519,7 @@ class FastCookieValidator:
     ) -> Optional[Dict[str, Any]]:
         try:
             auth = importlib.import_module("myUtils.auth")
-            run_playwright_task = getattr(importlib.import_module("myUtils.playwright_helper"), "run_playwright_task")
+            run_playwright_task = getattr(importlib.import_module("myUtils.automation_helper"), "run_playwright_task")
         except Exception:
             return None
 

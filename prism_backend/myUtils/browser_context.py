@@ -58,7 +58,7 @@ def build_browser_args() -> Dict[str, Any]:
 
             # 如果是相对路径，从项目根目录解析（BASE_DIR.parent）
             if not chrome_path.is_absolute():
-                # BASE_DIR 是 syn_backend，需要上一级到项目根目录
+                # BASE_DIR 是 prism_backend，需要上一级到项目根目录
                 chrome_path = APP_ROOT / chrome_path
 
             if chrome_path.is_file():
@@ -102,7 +102,7 @@ def build_firefox_args() -> Dict[str, Any]:
 
             # 如果是相对路径，从项目根目录解析（BASE_DIR.parent）
             if not firefox_path.is_absolute():
-                # BASE_DIR 是 syn_backend，需要上一级到项目根目录
+                # BASE_DIR 是 prism_backend，需要上一级到项目根目录
                 firefox_path = APP_ROOT / firefox_path
 
             if firefox_path.is_file():

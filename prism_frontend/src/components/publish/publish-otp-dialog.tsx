@@ -63,25 +63,25 @@ export function PublishOtpDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className=" border-white/10 max-w-md">
+      <DialogContent className=" border-border/70 max-w-md">
         <DialogHeader>
           <DialogTitle>短信验证</DialogTitle>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-muted-foreground">
             {event?.message || "发布需要短信验证，请输入 6 位验证码"}
           </p>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-4">
           <InputOTP maxLength={6} value={code} onChange={setCode}>
             <InputOTPGroup>
-              <InputOTPSlot index={0} className="h-12 w-10 rounded-xl border-white/10 bg-neutral-900 text-white" />
-              <InputOTPSlot index={1} className="h-12 w-10 rounded-xl border-white/10 bg-neutral-900 text-white" />
-              <InputOTPSlot index={2} className="h-12 w-10 rounded-xl border-white/10 bg-neutral-900 text-white" />
+              <InputOTPSlot index={0} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
+              <InputOTPSlot index={1} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
+              <InputOTPSlot index={2} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
             </InputOTPGroup>
             <InputOTPSeparator />
             <InputOTPGroup>
-              <InputOTPSlot index={3} className="h-12 w-10 rounded-xl border-white/10 bg-neutral-900 text-white" />
-              <InputOTPSlot index={4} className="h-12 w-10 rounded-xl border-white/10 bg-neutral-900 text-white" />
-              <InputOTPSlot index={5} className="h-12 w-10 rounded-xl border-white/10 bg-neutral-900 text-white" />
+              <InputOTPSlot index={3} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
+              <InputOTPSlot index={4} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
+              <InputOTPSlot index={5} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
             </InputOTPGroup>
           </InputOTP>
         </div>

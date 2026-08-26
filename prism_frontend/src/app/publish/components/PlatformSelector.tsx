@@ -7,6 +7,8 @@ export const PLATFORMS = [
     { key: "channels", name: "视频号", code: 2, icon: "/shiPingHao.svg", desc: "视频号矩阵多元组合", disabled: false },
     { key: "xiaohongshu", name: "小红书", code: 1, icon: "/xiaoHongShu.svg", desc: "小红书矩阵多元组合", disabled: false },
     { key: "bilibili", name: "B站", code: 5, icon: "/bilibili.svg", desc: "B站矩阵多元组合", disabled: false },
+    { key: "tiktok", name: "TikTok", code: 6, icon: "/Tiktok.svg", desc: "TikTok Studio 发布", disabled: false },
+    { key: "youtube", name: "YouTube", code: 7, icon: "/youtube.svg", desc: "YouTube Studio 发布", disabled: false },
 ] as const
 
 export type PlatformKey = typeof PLATFORMS[number]["key"]
@@ -18,7 +20,7 @@ interface PlatformSelectorProps {
 
 export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) {
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {PLATFORMS.map((platform) => {
                 const isSelected = selected.includes(platform.key)
                 return (
@@ -30,7 +32,7 @@ export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) 
                             "relative flex items-center gap-3 p-4 rounded-xl border text-left transition-all group",
                             isSelected
                                 ? "border-primary bg-primary/10 ring-1 ring-primary"
-                                : "border-white/10 bg-black hover:bg-white/10 hover:border-white/20",
+                                : "border-border/70 bg-card hover:bg-accent/50 hover:border-border/80",
                             platform.disabled && "opacity-50 cursor-not-allowed"
                         )}
                     >
@@ -46,8 +48,8 @@ export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) 
                             />
                         </div>
                         <div className="min-w-0">
-                            <div className="font-medium text-sm text-white">{platform.name}</div>
-                            <div className="text-[10px] text-white/50 truncate">{platform.desc}</div>
+                            <div className="font-medium text-sm text-foreground">{platform.name}</div>
+                            <div className="text-[10px] text-muted-foreground truncate">{platform.desc}</div>
                         </div>
                     </button>
                 )

@@ -1,6 +1,6 @@
 """
 简单的账号登录状态监控模块
-- 通过调用 Playwright Worker 访问创作者中心判断登录状态
+- 通过调用 Automation Worker 访问创作者中心判断登录状态
 - 等待3-5秒，检测URL是否包含"login"
 - 仅更新 login_status 字段，不影响其他功能
 """
@@ -38,7 +38,7 @@ class LoginStatusChecker:
         # 轮询跟踪器：记录已检查的账号索引
         self.rotation_index = 0
 
-        # Playwright Worker URL
+        # Automation Worker URL
         self.worker_url = "http://127.0.0.1:7001"
 
     def _ensure_login_status_column(self):
@@ -127,7 +127,7 @@ class LoginStatusChecker:
             logger.error(f"[LoginStatusChecker] {account_id} 读取Cookie文件失败: {e}")
             return result
 
-        # 调用 Playwright Worker 的 /creator/open 接口
+        # 调用 Automation Worker 的 /creator/open 接口
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 payload = {
@@ -138,7 +138,7 @@ class LoginStatusChecker:
                     "keep_alive": False,  # 检查完立即关闭
                 }
 
-                logger.info(f"[LoginStatusChecker] 调用 Playwright Worker 检查 {platform} 账号: {account_id}")
+                logger.info(f"[LoginStatusChecker] 调用 Automation Worker 检查 {platform} 账号: {account_id}")
 
                 response = await client.post(
                     f"{self.worker_url}/creator/open",
@@ -194,8 +194,8 @@ class LoginStatusChecker:
             logger.error(f"[LoginStatusChecker] {account_id} 请求超时: {e}")
         except httpx.ConnectError as e:
             result["login_status"] = "error"
-            result["error"] = f"无法连接到 Playwright Worker: {str(e)}"
-            logger.error(f"[LoginStatusChecker] 无法连接到 Playwright Worker: {e}")
+            result["error"] = f"无法连接到 Automation Worker: {str(e)}"
+            logger.error(f"[LoginStatusChecker] 无法连接到 Automation Worker: {e}")
         except Exception as e:
             result["login_status"] = "error"
             result["error"] = f"请求异常: {str(e)}"
@@ -250,7 +250,7 @@ class LoginStatusChecker:
 
     async def check_batch_accounts_async(self, batch_size: int = 5) -> Dict[str, Any]:
         """
-        批量检查账号登录状态 (直接调用 Playwright Worker 的 /creator/check-login-status 端点)
+        批量检查账号登录状态 (直接调用 Automation Worker 的 /creator/check-login-status 端点)
 
         Args:
             batch_size: 每批检查的账号数量
@@ -258,7 +258,7 @@ class LoginStatusChecker:
         Returns:
             检查结果统计
         """
-        logger.info(f"[LoginStatusChecker] 调用 Playwright Worker 批量检查登录状态 (batch_size={batch_size})")
+        logger.info(f"[LoginStatusChecker] 调用 Automation Worker 批量检查登录状态 (batch_size={batch_size})")
 
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
@@ -296,7 +296,7 @@ class LoginStatusChecker:
                 return result
 
         except httpx.ConnectError as e:
-            logger.error(f"[LoginStatusChecker] 无法连接到 Playwright Worker: {e}")
+            logger.error(f"[LoginStatusChecker] 无法连接到 Automation Worker: {e}")
             return {
                 "checked": 0,
                 "logged_in": 0,

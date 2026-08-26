@@ -6,11 +6,11 @@ set "ROOT_DIR=%~dp0..\..\.."
 cd /d "%ROOT_DIR%"
 
 :: ============================================
-::   SynapseAutomation 项目清理脚本
+::   Prism 项目清理脚本
 :: ============================================
 echo.
 echo ============================================
-echo   SynapseAutomation 项目清理脚本
+echo   Prism 项目清理脚本
 echo ============================================
 echo.
 echo 此脚本将清理以下内容：
@@ -142,11 +142,11 @@ set "ARCHIVED=0"
 if not exist "scripts\archived" mkdir "scripts\archived" 2>nul
 
 for %%F in (
-    start_all_services_synenv.bat
+    start_all_services_prismenv.bat
     start_all_services.bat
-    start_celery_worker_synenv.bat
+    start_celery_worker_prismenv.bat
     start_celery_worker.bat
-    start_supervisor_synenv.bat
+    start_supervisor_prismenv.bat
 ) do (
     if exist "%%F" (
         move /y "%%F" "scripts\archived\" >nul 2>&1
@@ -189,17 +189,17 @@ if !ARCHIVED! equ 0 (
 )
 
 :: ============================================
-:: 6. 清理 syn_backend 日志
+:: 6. 清理 prism_backend 日志
 :: ============================================
 echo.
 echo [6/6] 清理后端日志 (可选)...
 
-if exist "syn_backend\logs\*.log" (
-    choice /C YN /M "是否清理 syn_backend/logs/*.log"
+if exist "prism_backend\logs\*.log" (
+    choice /C YN /M "是否清理 prism_backend/logs/*.log"
     if !errorlevel! equ 1 (
-        del /q syn_backend\logs\*.log 2>nul
+        del /q prism_backend\logs\*.log 2>nul
         if !errorlevel! equ 0 (
-            echo   - 已清理: syn_backend/logs/*.log
+            echo   - 已清理: prism_backend/logs/*.log
         )
     )
 ) else (
@@ -216,7 +216,7 @@ echo ============================================
 echo.
 echo 已清理的目录结构：
 echo.
-echo 根目录 (E:\Siuyechu\SynapseAutomation\)
+echo 根目录 (E:\Siuyechu\Prism\)
 echo   ├── docs\fixes\                  归档的修复文档
 echo   └── scripts\
 echo       ├── archived\                归档的旧脚本

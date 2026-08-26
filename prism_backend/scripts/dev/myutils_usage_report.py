@@ -1,9 +1,9 @@
 """
-Generate a quick report of which `syn_backend/myUtils/*.py` modules are imported
+Generate a quick report of which `prism_backend/myUtils/*.py` modules are imported
 by the backend/uploader code.
 
 Usage:
-  python syn_backend/scripts/dev/myutils_usage_report.py
+  python prism_backend/scripts/dev/myutils_usage_report.py
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from typing import Iterable, Set
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SYN_BACKEND = REPO_ROOT / "syn_backend"
-MYUTILS_DIR = SYN_BACKEND / "myUtils"
+PRISM_BACKEND = REPO_ROOT / "prism_backend"
+MYUTILS_DIR = PRISM_BACKEND / "myUtils"
 
 
 def iter_py_files(root: Path) -> Iterable[Path]:
@@ -24,7 +24,7 @@ def iter_py_files(root: Path) -> Iterable[Path]:
         parts = set(path.parts)
         if "__pycache__" in parts:
             continue
-        if "venv" in parts or ".venv" in parts or "synenv" in parts:
+        if "venv" in parts or ".venv" in parts or "prismenv" in parts:
             continue
         yield path
 
@@ -64,7 +64,7 @@ def main() -> int:
     }
 
     referenced: Set[str] = set()
-    for py in iter_py_files(SYN_BACKEND):
+    for py in iter_py_files(PRISM_BACKEND):
         if MYUTILS_DIR in py.parents:
             continue
         referenced |= imported_myutils_modules(py)

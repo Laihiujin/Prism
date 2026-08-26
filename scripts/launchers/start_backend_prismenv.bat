@@ -6,34 +6,34 @@ set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 
 set "ROOT=%~dp0..\.."
-set "BACKEND_DIR=%ROOT%\syn_backend"
-set "VENV_PATH=%ROOT%\synenv"
+set "BACKEND_DIR=%ROOT%\prism_backend"
+set "VENV_PATH=%ROOT%\prismenv"
 set "PY=%VENV_PATH%\Scripts\python.exe"
 if not defined BACKEND_PORT set "BACKEND_PORT=7000"
-if not defined SYN_BACKEND_PORT set "SYN_BACKEND_PORT=%BACKEND_PORT%"
-if not defined SYN_BACKEND_URL set "SYN_BACKEND_URL=http://127.0.0.1:%BACKEND_PORT%"
+if not defined PRISM_BACKEND_PORT set "PRISM_BACKEND_PORT=%BACKEND_PORT%"
+if not defined PRISM_BACKEND_URL set "PRISM_BACKEND_URL=http://127.0.0.1:%BACKEND_PORT%"
 if not defined PORT set "PORT=%BACKEND_PORT%"
 
 echo ========================================
-echo   Synapse Backend Startup (synenv)
+echo   Prism Backend Startup (prismenv)
 echo ========================================
 echo.
 
-REM Activate synenv virtual environment
+REM Activate prismenv virtual environment
 if not exist "%PY%" (
-    echo [ERROR] Virtual environment "synenv" not found at: %VENV_PATH%
-    echo Please run: python -m venv synenv
+    echo [ERROR] Virtual environment "prismenv" not found at: %VENV_PATH%
+    echo Please run: python -m venv prismenv
     pause
     exit /b 1
 )
 
 call "%VENV_PATH%\Scripts\activate.bat"
 if errorlevel 1 (
-    echo [ERROR] Failed to activate virtual environment 'synenv'
+    echo [ERROR] Failed to activate virtual environment 'prismenv'
     pause
     exit /b 1
 )
-echo OK Activated virtual environment 'synenv'
+echo OK Activated virtual environment 'prismenv'
 set "PY=%VENV_PATH%\Scripts\python.exe"
 echo.
 
@@ -48,13 +48,13 @@ if defined PORT_OWNER (
 REM Bundle Playwright browsers inside this repo (important for packaging to exe)
 REM Playwright 会自动在 browsers 目录下查找对应版本的浏览器
 set "PLAYWRIGHT_BROWSERS_PATH=%ROOT%\browsers"
-if not defined MANUS_API_BASE_URL set "MANUS_API_BASE_URL=%SYN_BACKEND_URL%/api/v1"
+if not defined MANUS_API_BASE_URL set "MANUS_API_BASE_URL=%PRISM_BACKEND_URL%/api/v1"
 if not defined AGENT_API_BASE_URL set "AGENT_API_BASE_URL=%MANUS_API_BASE_URL%"
 REM Enable OCR/Selenium helpers (can be overridden by existing env vars)
 if not defined ENABLE_OCR_RESCUE set "ENABLE_OCR_RESCUE=1"
 if not defined ENABLE_SELENIUM_RESCUE set "ENABLE_SELENIUM_RESCUE=1"
 if not defined ENABLE_SELENIUM_DEBUG set "ENABLE_SELENIUM_DEBUG=1"
-REM Disable Playwright auto-install in synenv to avoid startup hangs
+REM Disable Playwright auto-install in prismenv to avoid startup hangs
 if not defined PLAYWRIGHT_AUTO_INSTALL set "PLAYWRIGHT_AUTO_INSTALL=0"
 if not defined START_CELERY set "START_CELERY=1"
 if not defined FORCE_CELERY set "FORCE_CELERY=0"
@@ -76,8 +76,8 @@ echo OK Python environment normal
 echo.
 
 echo [2/7] Ensuring Playwright Chromium...
-REM Skip Playwright check in synenv mode to avoid startup failures
-echo [SKIP] Playwright check disabled for synenv environment
+REM Skip Playwright check in prismenv mode to avoid startup failures
+echo [SKIP] Playwright check disabled for prismenv environment
 echo.
 
 echo [3/7] Checking environment configuration...
@@ -124,7 +124,7 @@ echo.
 
 echo [6/7] Starting Celery Worker...
 if "%START_CELERY%"=="1" (
-    start "Celery Worker" %PY% -m celery -A fastapi_app.tasks.celery_app.celery_app worker -l info --hostname=synapse-worker@%%h-%RANDOM%
+    start "Celery Worker" %PY% -m celery -A fastapi_app.tasks.celery_app.celery_app worker -l info --hostname=prism-worker@%%h-%RANDOM%
     echo OK Celery worker launched
 ) else (
     echo [SKIP] START_CELERY=%START_CELERY%
@@ -136,10 +136,10 @@ echo   [7/7] Starting FastAPI Service (Port: %BACKEND_PORT%)
 echo ========================================
 echo.
 echo Access URLs:
-echo   - API: %SYN_BACKEND_URL%/api/v1
-echo   - API Docs: %SYN_BACKEND_URL%/api/docs
-echo   - ReDoc: %SYN_BACKEND_URL%/api/redoc
-echo   - Health Check: %SYN_BACKEND_URL%/health
+echo   - API: %PRISM_BACKEND_URL%/api/v1
+echo   - API Docs: %PRISM_BACKEND_URL%/api/docs
+echo   - ReDoc: %PRISM_BACKEND_URL%/api/redoc
+echo   - Health Check: %PRISM_BACKEND_URL%/health
 echo.
 echo Press Ctrl+C to stop service
 echo ========================================

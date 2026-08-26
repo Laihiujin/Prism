@@ -4,7 +4,7 @@ setlocal
 
 set "ROOT=%~dp0..\.."
 set "STOPPER=%ROOT%\scripts\launchers\stop_celery.bat"
-set "STARTER=%ROOT%\scripts\launchers\start_celery_synenv.bat"
+set "STARTER=%ROOT%\scripts\launchers\start_celery_prismenv.bat"
 
 if exist "%STOPPER%" (
     call "%STOPPER%"

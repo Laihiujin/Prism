@@ -1,7 +1,8 @@
 """
 Chrome/Chromium 可执行文件自动检测模块
 支持 Mac / Windows / Linux / Docker 全平台自动适配
-优先使用 Playwright 自带浏览器，确保版本兼容性
+优先适配用户电脑端已安装的 Chrome（无需下载浏览器），
+仅在找不到系统 Chrome 时才回退到 Playwright 自带浏览器。
 """
 import os
 import glob
@@ -14,11 +15,11 @@ def get_chrome_executable() -> str:
     """
     自动检测并返回 Chrome/Chromium 可执行文件路径
     
-    优先级:
-    1. Playwright 自带浏览器 (推荐，版本永远匹配)
-    2. Mac 系统 Chrome
-    3. Windows 系统 Chrome
-    4. Linux 系统级 Chromium
+    优先级（适配用户电脑端已安装的 Chrome，无需下载浏览器）:
+    1. Mac 系统 Chrome
+    2. Windows 系统 Chrome
+    3. Linux 系统级 Chromium / Google Chrome
+    4. Playwright 自带浏览器（仅作为最后兜底）
     
     Returns:
         str: Chrome 可执行文件的绝对路径
@@ -28,39 +29,37 @@ def get_chrome_executable() -> str:
     """
     env = load_runtime_env()
     
-    # 1. 优先使用 Playwright 浏览器（最稳定，推荐方案）
-    playwright_path = _find_playwright_chromium()
-    if playwright_path:
-        print(f"✓ 使用 Playwright Chromium: {playwright_path}")
-        return playwright_path
-    
-    # 2. Mac 系统 Chrome
+    # 1. Mac 系统 Chrome（用户电脑端）
     if env["is_mac"]:
         mac_path = _find_mac_chrome()
         if mac_path:
             print(f"✓ 使用 Mac Chrome: {mac_path}")
             return mac_path
     
-    # 3. Windows 系统 Chrome
+    # 2. Windows 系统 Chrome（用户电脑端）
     if env["is_windows"]:
         win_path = _find_windows_chrome()
         if win_path:
             print(f"✓ 使用 Windows Chrome: {win_path}")
             return win_path
     
-    # 4. Linux 系统级 Chromium
+    # 3. Linux 系统级 Chromium / Google Chrome（用户电脑端）
     if env["is_linux"]:
         linux_path = _find_linux_chromium()
         if linux_path:
             print(f"✓ 使用 Linux Chromium: {linux_path}")
             return linux_path
     
+    # 4. 最后兜底：Playwright 自带浏览器（无需手动下载时才会用到）
+    playwright_path = _find_playwright_chromium()
+    if playwright_path:
+        print(f"✓ 使用 Playwright Chromium: {playwright_path}")
+        return playwright_path
+    
     # 找不到任何浏览器
     raise FileNotFoundError(
         "找不到可用的 Chrome/Chromium 可执行文件！\n"
-        "请执行以下脚本安装项目内置浏览器:\n"
-        "  browsers\\install_playwright.bat\n"
-        "或者安装系统 Chrome 浏览器"
+        "请安装系统 Chrome 浏览器，或设置 LOCAL_CHROME_PATH 指向已安装的 Chrome。"
     )
 
 

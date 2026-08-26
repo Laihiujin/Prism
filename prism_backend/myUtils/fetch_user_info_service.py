@@ -62,7 +62,7 @@ PLATFORM_CONFIGS = {
 async def fetch_user_info(platform: str, cookie_file: Path):
     """访问页面抓取用户信息（通过 Worker 进行 DOM+cookie 补全，避免在 API 进程内跑 Playwright）"""
     # 过去为了避免 uvicorn reload 与 Playwright 冲突，默认关闭过“进程内 Playwright 抓取”。
-    # 现在已改为走独立 Playwright Worker，因此默认开启；仅当显式设置为 false/0/no 时才禁用。
+    # 现在已改为走独立 Automation Worker，因此默认开启；仅当显式设置为 false/0/no 时才禁用。
     raw_flag = os.environ.get("ENABLE_PLAYWRIGHT_USERINFO_SYNC")
     if raw_flag is not None and raw_flag.strip().lower() in {"0", "false", "no", "off"}:
         return None
@@ -100,7 +100,7 @@ async def fetch_user_info(platform: str, cookie_file: Path):
         if platform_code == "channels":
             platform_code = "tencent"
 
-        worker_base_url = os.environ.get("PLAYWRIGHT_WORKER_URL", "http://127.0.0.1:7001").rstrip("/")
+        worker_base_url = os.environ.get("AUTOMATION_WORKER_URL", "http://127.0.0.1:7001").rstrip("/")
 
         logger.info(
             f"[UserInfoFetch] Worker enrich: platform={platform_code} headless={bool(PLAYWRIGHT_HEADLESS)} url={worker_base_url}"

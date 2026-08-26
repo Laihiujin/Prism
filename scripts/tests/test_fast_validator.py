@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 # 添加项目路径
-sys.path.insert(0, str(Path(__file__).parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent / "prism_backend"))
 
 from myUtils.fast_cookie_validator import FastCookieValidator, get_fast_validator
 from myUtils.cookie_manager import cookie_manager

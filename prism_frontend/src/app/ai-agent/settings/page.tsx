@@ -172,7 +172,7 @@ export default function HermesSettingsPage() {
               variant="outline"
               size="sm"
               onClick={() => void loadRuntime()}
-              className="rounded-xl border border-white/10 text-white/80 hover:text-white"
+              className="rounded-xl border border-border/70 text-foreground/80 hover:text-foreground"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               刷新
@@ -182,17 +182,17 @@ export default function HermesSettingsPage() {
       />
 
       <div className="mx-auto max-w-5xl space-y-6">
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-border/70 bg-foreground/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-primary" />
               上游更新
             </CardTitle>
-            <CardDescription className="text-white/60">
+            <CardDescription className="text-muted-foreground">
               定时同步 NousResearch/hermes-agent。更新只替换程序代码，Hermes Home 中的模型、Gateway、MCP 与 WebUI 状态会保留。
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-white/80">
+          <CardContent className="space-y-4 text-sm text-foreground/80">
             <div className="flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2">
                 <input
@@ -206,7 +206,7 @@ export default function HermesSettingsPage() {
               <label className="flex items-center gap-2">
                 检查间隔
                 <select
-                  className="rounded-lg border border-white/10 bg-black/40 px-3 py-2"
+                  className="rounded-lg border border-border/70 bg-card/40 px-3 py-2"
                   value={updateStatus?.settings.interval_hours ?? 24}
                   disabled={updateBusy || !updateStatus}
                   onChange={(event) => updateStatus && void saveUpdateSettings({ ...updateStatus.settings, interval_hours: Number(event.target.value) })}
@@ -220,7 +220,7 @@ export default function HermesSettingsPage() {
               </label>
               <div>分支：{updateStatus?.settings.branch || "main"}</div>
             </div>
-            <div className="grid gap-2 text-xs text-white/60 md:grid-cols-2">
+            <div className="grid gap-2 text-xs text-muted-foreground md:grid-cols-2">
               <div>当前版本：{updateStatus?.local_revision?.slice(0, 10) || "未检测"}</div>
               <div>上游版本：{updateStatus?.remote_revision?.slice(0, 10) || "尚未检查"}</div>
               <div>上次检查：{updateStatus?.last_checked_at ? new Date(updateStatus.last_checked_at).toLocaleString() : "从未"}</div>
@@ -246,34 +246,34 @@ export default function HermesSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-border/70 bg-foreground/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5 text-primary" />
               入口
             </CardTitle>
-            <CardDescription className="text-white/60">
+            <CardDescription className="text-muted-foreground">
               Backend 以 Electron 运行时注入为准，不再依赖编译期的 7000 默认值。
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-white/80">
+          <CardContent className="space-y-3 text-sm text-foreground/80">
             <div>Runtime Backend：{backendBase}</div>
             <div>Dashboard：{dashboardUrl}</div>
             <div>WebUI：{webuiUrl}</div>
             <div className="flex flex-wrap gap-3 pt-2">
-              <Button asChild variant="outline" className="border-white/10 bg-white/5">
+              <Button asChild variant="outline" className="border-border/70 bg-foreground/5">
                 <a href="/settings">
                   <Settings2 className="mr-2 h-4 w-4" />
                   打开系统设置
                 </a>
               </Button>
-              <Button asChild variant="outline" className="border-white/10 bg-white/5">
+              <Button asChild variant="outline" className="border-border/70 bg-foreground/5">
                 <a href={dashboardUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-2 h-4 w-4" />
                   打开 Dashboard
                 </a>
               </Button>
-              <Button asChild variant="outline" className="border-white/10 bg-white/5">
+              <Button asChild variant="outline" className="border-border/70 bg-foreground/5">
                 <a href={webuiUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-2 h-4 w-4" />
                   打开 WebUI
@@ -283,17 +283,17 @@ export default function HermesSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-border/70 bg-foreground/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-primary" />
               本地运行时
             </CardTitle>
-            <CardDescription className="text-white/60">
+            <CardDescription className="text-muted-foreground">
               用于确认 Hermes CLI、Dashboard 和 WebUI 是否真的安装并跑在当前 Electron 使用的环境里。
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-white/80">
+          <CardContent className="space-y-3 text-sm text-foreground/80">
             <div>Agent 运行时：{runtime?.agent_installed ? "已安装" : "未安装"}</div>
             <div>官方 Dashboard：{runtime?.official_dashboard_installed ? "已安装" : "未安装"}</div>
             <div>兼容 WebUI：{runtime?.webui_installed ? "已安装" : "未安装"}</div>
@@ -307,9 +307,9 @@ export default function HermesSettingsPage() {
             <div>工作区目录：{runtime?.workspace_root || "未检测到"}</div>
             <div>Python 路径：{runtime?.python_path || "未检测到"}</div>
             <div>Git Bash：{runtime?.git_bash_path || "未检测到"}</div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-white/70">
+            <div className="rounded-xl border border-border/70 bg-card/40 p-3 text-xs text-foreground/70">
               CLI 命令
-              <div className="mt-2 break-all font-mono text-white">{cliCommand}</div>
+              <div className="mt-2 break-all font-mono text-foreground">{cliCommand}</div>
             </div>
           </CardContent>
         </Card>

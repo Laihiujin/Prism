@@ -1,6 +1,5 @@
 import asyncio
 import os
-import shutil
 import sys
 from pathlib import Path
 
@@ -49,35 +48,22 @@ def resolve_backend_dir() -> Path:
     backend_dir = _pick_existing(roots, "backend")
     if backend_dir:
         return backend_dir
-    syn_backend_dir = _pick_existing(roots, "syn_backend")
-    if syn_backend_dir:
-        return syn_backend_dir
-    return Path(__file__).resolve().parents[2] / "syn_backend"
+    prism_backend_dir = _pick_existing(roots, "prism_backend")
+    if prism_backend_dir:
+        return prism_backend_dir
+    return Path(__file__).resolve().parents[2] / "prism_backend"
 
 
 project_root = resolve_backend_dir()
 os.chdir(project_root)
 sys.path.insert(0, str(project_root))
 
-
-def ensure_playwright_driver_node() -> None:
-    internal_dir = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent / "_internal")).resolve()
-    patchright_node = internal_dir / "patchright" / "driver" / "node.exe"
-    playwright_node = internal_dir / "playwright" / "driver" / "node.exe"
-    if playwright_node.exists() or not patchright_node.exists():
-        return
-    playwright_node.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(patchright_node, playwright_node)
-
-
-ensure_playwright_driver_node()
-
-from playwright_worker.worker import app
+from automation_worker.worker import app
 
 
 def main() -> None:
-    host = os.getenv("PLAYWRIGHT_WORKER_HOST", "127.0.0.1")
-    port = int(os.getenv("PLAYWRIGHT_WORKER_PORT", "7001"))
+    host = os.getenv("AUTOMATION_WORKER_HOST", "127.0.0.1")
+    port = int(os.getenv("AUTOMATION_WORKER_PORT", "7001"))
 
     import uvicorn
 

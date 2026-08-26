@@ -6,7 +6,7 @@ from pathlib import Path
 import os
 
 # 数据库路径配置
-# 假设此文件位于 syn_backend/myUtils/
+# 假设此文件位于 prism_backend/myUtils/
 BASE_DIR = Path(__file__).parent.parent
 DB_PATH = BASE_DIR / "db" / "database.db"
 
