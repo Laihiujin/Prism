@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 import uuid
 
-FILE_PATH = "d:/SynapseAutomation/syn_backend/data/ip_pool.json"
+FILE_PATH = "d:/Prism/prism_backend/data/ip_pool.json"
 
 proxy_data = {
     "id": str(uuid.uuid4()),

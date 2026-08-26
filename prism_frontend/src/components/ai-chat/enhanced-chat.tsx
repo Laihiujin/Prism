@@ -967,7 +967,7 @@ export function EnhancedAIChat({
   }, [clearManusConfirmationTimer, mode, loadThreads, resetManusStream])
 
   return (
-    <div className="flex h-[88vh] w-full overflow-hidden rounded-[32px] border border-white/10 bg-black shadow-[0_40px_120px_-70px_rgba(0,0,0,0.95)]">
+    <div className="flex h-[88vh] w-full overflow-hidden rounded-[32px] border border-border/70 bg-card shadow-[0_40px_120px_-70px_rgba(0,0,0,0.95)]">
       {sidebarOpen && (
         <ThreadSidebar
           threads={threads}
@@ -980,13 +980,13 @@ export function EnhancedAIChat({
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="border-b border-white/8 bg-black px-6 py-4">
+        <div className="border-b border-border/50 bg-card px-6 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-4">
               <Button
                 variant="ghost"
                 size="icon"
-                className="mt-1 rounded-2xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                className="mt-1 rounded-2xl border border-border/70 bg-foreground/5 text-foreground/70 hover:bg-accent/50 hover:text-foreground"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
                 <Sidebar className="h-4 w-4" />
@@ -994,20 +994,20 @@ export function EnhancedAIChat({
 
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-foreground/5 text-foreground">
                     <HermesLogoIcon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold tracking-tight text-white">{title || "Hermes Agent"}</h2>
-                    <p className="text-sm text-white/55">{subtitle || "极简黑色会话窗口，直接执行当前项目任务"}</p>
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">{title || "Hermes Agent"}</h2>
+                    <p className="text-sm text-muted-foreground">{subtitle || "极简黑色会话窗口，直接执行当前项目任务"}</p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 text-xs text-white/50">
-                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">
                     模型：{mode === "chat" ? chatModelConfig?.model_name || "未配置" : openclawModelConfig?.model_name || "未配置"}
                   </div>
-                  <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                  <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">
                     会话：{threads.length}
                   </div>
                 </div>
@@ -1022,7 +1022,7 @@ export function EnhancedAIChat({
                     ? connectionError
                       ? "border-amber-500/35 bg-amber-500/10 text-amber-200"
                       : "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
-                    : "border-white/10 bg-white/5 text-white/55"
+                    : "border-border/70 bg-foreground/5 text-muted-foreground"
                 }`}
               >
                 {isConnected && !connectionError ? (
@@ -1037,7 +1037,7 @@ export function EnhancedAIChat({
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/ai-agent/settings")}
-                className="rounded-full border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
+                className="rounded-full border-border/70 bg-foreground/5 text-foreground/80 hover:bg-accent/50 hover:text-foreground"
               >
                 <Settings className="mr-2 h-4 w-4" />
                 运行时与入口
@@ -1047,13 +1047,13 @@ export function EnhancedAIChat({
         </div>
 
         {!lockedMode && (
-          <div className="border-b border-white/8 bg-black/20 px-6 py-3">
+          <div className="border-b border-border/50 bg-card/20 px-6 py-3">
             <div className="relative flex items-center justify-center">
               <Tabs value={mode === "agent" ? "chat" : mode} onValueChange={(v) => setMode(v as "chat" | "agent" | "openclaw")}>
-                <TabsList className="grid w-[520px] grid-cols-2 rounded-full border border-white/10 bg-white/5 p-1">
+                <TabsList className="grid w-[520px] grid-cols-2 rounded-full border border-border/70 bg-foreground/5 p-1">
                   <TabsTrigger
                     value="chat"
-                    className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-black"
+                    className="rounded-full text-xs data-[state=active]:bg-foreground data-[state=active]:text-background"
                     title={chatModelConfig ? `使用模型：${chatModelConfig.model_name}` : "对话模式"}
                   >
                     <MessageSquare className="mr-2 h-3 w-3" />
@@ -1061,7 +1061,7 @@ export function EnhancedAIChat({
                   </TabsTrigger>
                   <TabsTrigger
                     value="openclaw"
-                    className="rounded-full text-xs data-[state=active]:bg-white data-[state=active]:text-black"
+                    className="rounded-full text-xs data-[state=active]:bg-foreground data-[state=active]:text-background"
                     title={openclawModelConfig ? `使用模型：${openclawModelConfig.model_name}` : "Hermes Agent 模式"}
                   >
                     <HermesLogoIcon className="mr-2 h-3 w-3" />
@@ -1087,7 +1087,7 @@ export function EnhancedAIChat({
           </Conversation>
         </div>
 
-        <div className="border-t border-white/8 bg-black px-4 pb-4 pt-3">
+        <div className="border-t border-border/50 bg-card px-4 pb-4 pt-3">
           <div className="mx-auto w-full max-w-4xl">
             <PromptInput
               value={input}
@@ -1098,7 +1098,7 @@ export function EnhancedAIChat({
               }}
             >
               <PromptInputBody>
-                <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 shadow-[0_30px_80px_-60px_rgba(0,0,0,0.8)]">
+                <div className="rounded-[28px] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 shadow-[0_30px_80px_-60px_rgba(0,0,0,0.8)]">
                   <PromptInputTextarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -1124,13 +1124,13 @@ export function EnhancedAIChat({
                             ? "描述你的任务..."
                             : "告诉 Hermes 你的目标、脚本或文件路径"
                     }
-                    className="min-h-[112px] border-0 bg-transparent px-3 py-3 pr-3 text-base text-white placeholder:text-white/30 focus-visible:ring-0"
+                    className="min-h-[112px] border-0 bg-transparent px-3 py-3 pr-3 text-base text-foreground placeholder:text-foreground/30 focus-visible:ring-0"
                   />
 
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 px-2 pt-3">
-                    <div className="flex flex-wrap gap-2 text-xs text-white/50">
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Enter 发送</div>
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Shift + Enter 换行</div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 px-2 pt-3">
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">Enter 发送</div>
+                      <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">Shift + Enter 换行</div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1154,7 +1154,7 @@ export function EnhancedAIChat({
                         type="submit"
                         size="sm"
                         disabled={isLoading || (mode === "openclaw" && manusStream.isStreaming) || (mode === "agent" && isAgentThinking)}
-                        className="rounded-full bg-white text-black hover:bg-white/90"
+                        className="rounded-full bg-foreground text-background hover:bg-foreground/90"
                       >
                         发送给 Hermes
                       </Button>

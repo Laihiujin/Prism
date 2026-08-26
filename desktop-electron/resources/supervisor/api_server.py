@@ -35,7 +35,7 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
             status = {}
             for name in [
                 "backend",
-                "playwright-worker",
+                "automation-worker",
                 "celery-worker",
                 "hermes-gateway",
                 "hermes-dashboard",
@@ -95,7 +95,7 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
             service = self.path.split("/")[-1]
             valid_services = [
                 "backend",
-                "playwright-worker",
+                "automation-worker",
                 "celery-worker",
                 "hermes-gateway",
                 "hermes-dashboard",

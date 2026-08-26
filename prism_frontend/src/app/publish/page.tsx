@@ -13,7 +13,7 @@ export default function PublishPage() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <div className="text-white/60">正在跳转...</div>
+      <div className="text-muted-foreground">正在跳转...</div>
     </div>
   )
 }

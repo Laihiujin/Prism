@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def _is_dev_repo(base_dir: Path) -> bool:
-    env = (os.getenv("SYNAPSE_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
+    env = (os.getenv("PRISM_ENV") or os.getenv("NODE_ENV") or "").strip().lower()
     if env in ("dev", "development", "local"):
         return True
     try:
@@ -29,7 +29,7 @@ def _has_data_payload(root: Path) -> bool:
 
 
 def _resolve_default_data_dir(base_dir: Path) -> Path:
-    env_dir = os.getenv("SYNAPSE_DATA_DIR")
+    env_dir = os.getenv("PRISM_DATA_DIR")
     if env_dir:
         return Path(env_dir)
 
@@ -40,9 +40,9 @@ def _resolve_default_data_dir(base_dir: Path) -> Path:
     appdata = os.getenv("APPDATA")
     localappdata = os.getenv("LOCALAPPDATA")
     if appdata:
-        candidates.append(Path(appdata) / "SynapseAutomation" / "data")
+        candidates.append(Path(appdata) / "Prism" / "data")
     if localappdata and localappdata != appdata:
-        candidates.append(Path(localappdata) / "SynapseAutomation" / "data")
+        candidates.append(Path(localappdata) / "Prism" / "data")
 
     for candidate in candidates:
         if _has_data_payload(candidate):
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     """应用配置类"""
 
     # 项目信息
-    PROJECT_NAME: str = "SynapseAutomation"
+    PROJECT_NAME: str = "Prism"
     VERSION: str = "2.0.0"
     DESCRIPTION: str = "矩阵平台自动化发布系统"
     API_V1_PREFIX: str = "/api/v1"
@@ -90,7 +90,7 @@ class Settings(BaseSettings):
     COOKIE_DB_PATH: str = str(Path(DATA_DIR) / "db" / "cookie_store.db")
     AI_LOGS_DB_PATH: str = str(Path(DATA_DIR) / "db" / "ai_logs.db")
 
-    # Database URL (optional): enable MySQL by setting e.g. mysql+pymysql://user:pass@localhost:3306/synapse?charset=utf8mb4
+    # Database URL (optional): enable MySQL by setting e.g. mysql+pymysql://user:pass@localhost:3306/prism?charset=utf8mb4
     # When empty, the app uses SQLite files above.
     DATABASE_URL: str = ""
 

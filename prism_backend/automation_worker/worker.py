@@ -1,5 +1,5 @@
 """
-Playwright Worker 独立进程
+Automation Worker 独立进程
 专门处理浏览器自动化任务，与 FastAPI 解耦
 
 架构优势：
@@ -37,9 +37,9 @@ def _is_drive_root(path: Path) -> bool:
 
 
 def _looks_like_app_root(path: Path) -> bool:
-    if (path / "syn_backend").exists() or (path / "backend").exists():
+    if (path / "prism_backend").exists() or (path / "backend").exists():
         return True
-    if (path / "synenv").exists() and (path / "browsers").exists():
+    if (path / "prismenv").exists() and (path / "browsers").exists():
         return True
     return False
 
@@ -49,7 +49,7 @@ def _search_app_root(start: Path) -> Path | None:
         if _is_drive_root(candidate):
             continue
         name = candidate.name.lower()
-        if name in {"syn_backend", "backend"}:
+        if name in {"prism_backend", "backend"}:
             return candidate.parent
         if _looks_like_app_root(candidate):
             return candidate
@@ -57,7 +57,7 @@ def _search_app_root(start: Path) -> Path | None:
 
 
 def _resolve_app_root() -> Path:
-    env_root = os.getenv("SYNAPSE_APP_ROOT") or os.getenv("SYNAPSE_RESOURCES_PATH")
+    env_root = os.getenv("PRISM_APP_ROOT") or os.getenv("PRISM_RESOURCES_PATH")
     if env_root:
         return Path(env_root).resolve()
     if getattr(sys, "frozen", False):
@@ -175,8 +175,8 @@ if sys.platform == "win32":
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# 加载环境变量（根目录 `.env` 优先，`syn_backend/.env` 作为补充）
-_BASE_DIR = Path(__file__).resolve().parent.parent  # syn_backend
+# 加载环境变量（根目录 `.env` 优先，`prism_backend/.env` 作为补充）
+_BASE_DIR = Path(__file__).resolve().parent.parent  # prism_backend
 _ROOT_ENV = _APP_ROOT / ".env"
 if _ROOT_ENV.exists():
     # Keep supervisor/Electron-provided env values authoritative.
@@ -197,13 +197,14 @@ def _env_bool(name: str, default: bool) -> bool:
 # 导入平台适配器
 from app_new.platforms.tencent import TencentAdapter
 from app_new.platforms.douyin import DouyinAdapter
+from app_new.platforms.douyin_http import DouyinHttpAdapter
 from app_new.platforms.kuaishou import KuaishouAdapter
 from app_new.platforms.xiaohongshu import XiaohongshuAdapter
 from app_new.platforms.bilibili import BilibiliAdapter
 from app_new.platforms.base import LoginStatus
 
 # 创建 FastAPI 应用
-app = FastAPI(title="Playwright Worker", version="1.0.0")
+app = FastAPI(title="Automation Worker", version="1.0.0")
 
 # Ensure bundled Playwright Chromium exists on worker host.
 @app.on_event("startup")
@@ -216,7 +217,7 @@ async def _startup_bootstrap_playwright():
         return
 
     try:
-        from utils.playwright_bootstrap import ensure_playwright_chromium_installed
+        from utils.automation_bootstrap import ensure_playwright_chromium_installed
 
         auto_install = os.getenv("PLAYWRIGHT_AUTO_INSTALL", "1").strip().lower() not in {"0", "false", "no", "off"}
         r = await asyncio.to_thread(ensure_playwright_chromium_installed, auto_install=auto_install)
@@ -235,7 +236,7 @@ _cleanup_task: asyncio.Task | None = None
 PLATFORM_ADAPTERS = {
     "tencent": TencentAdapter,
     "channels": TencentAdapter,  # alias for WeChat Channels
-    "douyin": DouyinAdapter,
+    "douyin": DouyinHttpAdapter,
     "kuaishou": KuaishouAdapter,
     "xiaohongshu": XiaohongshuAdapter,
     "bilibili": BilibiliAdapter,
@@ -411,7 +412,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "service": "playwright-worker",
+        "service": "automation-worker",
         "pid": os.getpid(),
         "python": sys.version.split(" ")[0],
         "platform": platform.platform(),
@@ -428,7 +429,7 @@ async def debug_playwright(headless: bool | None = None):
     try:
         if headless is None:
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
-        from utils.playwright_provider import async_playwright
+        from utils.automation_provider import async_playwright
 
         pw = await async_playwright().start()
         launch_kwargs: Dict[str, Any] = {"headless": headless}
@@ -462,8 +463,8 @@ async def open_creator_center(req: OpenCreatorCenterRequest):
         if headless is None:
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
 
-        from utils.playwright_provider import async_playwright
-        from myUtils.playwright_context_factory import create_context_with_policy
+        from utils.automation_provider import async_playwright
+        from myUtils.automation_context_factory import create_context_with_policy
 
         # Creator center is more stable in a clean ephemeral context.
         # Reuse storage_state for login, but avoid the per-account persistent profile.
@@ -641,8 +642,8 @@ async def fetch_creator_sec_uid(req: CreatorSecUidRequest):
         if not profile_url:
             return JSONResponse(status_code=400, content={"success": False, "error": "Missing profile url"})
 
-        from utils.playwright_provider import async_playwright
-        from myUtils.playwright_context_factory import create_context_with_policy
+        from utils.automation_provider import async_playwright
+        from myUtils.automation_context_factory import create_context_with_policy
 
         headless = req.headless if req.headless is not None else _env_bool("PLAYWRIGHT_HEADLESS", True)
         _append_sec_uid_log(f"start account_id={req.account_id} headless={headless} url={profile_url}")
@@ -881,8 +882,8 @@ async def _check_single_account_login_worker(account_id: str, platform: str, coo
     page = None
     pw = None
     try:
-        from utils.playwright_provider import async_playwright
-        from myUtils.playwright_context_factory import create_context_with_policy
+        from utils.automation_provider import async_playwright
+        from myUtils.automation_context_factory import create_context_with_policy
 
         pw = await async_playwright().start()
         browser, context, _, _ = await create_context_with_policy(
@@ -1071,7 +1072,9 @@ async def enrich_account(req: EnrichAccountRequest):
     """
     try:
         platform_code = (req.platform or "").lower()
-        adapter_class = PLATFORM_ADAPTERS.get(platform_code)
+        # QR login uses the pure-HTTP Douyin adapter; enrichment still needs
+        # the legacy DOM extractor after loading the exported storage_state.
+        adapter_class = DouyinAdapter if platform_code == "douyin" else PLATFORM_ADAPTERS.get(platform_code)
         if not adapter_class:
             return JSONResponse(status_code=400, content={"success": False, "error": f"Unsupported platform: {req.platform}"})
 
@@ -1079,8 +1082,8 @@ async def enrich_account(req: EnrichAccountRequest):
         if not profile_url:
             return JSONResponse(status_code=400, content={"success": False, "error": f"No profile url for platform: {req.platform}"})
 
-        from utils.playwright_provider import async_playwright
-        from myUtils.playwright_context_factory import create_context_with_policy
+        from utils.automation_provider import async_playwright
+        from myUtils.automation_context_factory import create_context_with_policy
         import inspect
 
         headless = req.headless if req.headless is not None else _env_bool("PLAYWRIGHT_HEADLESS", True)
@@ -1160,6 +1163,27 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
     try:
         logger.info(f"[Worker] Generate QR: platform={platform} account={account_id}")
 
+        # One active login attempt per platform/account. Starting a new QR for
+        # the same account supersedes the old browser session, while different
+        # accounts continue to run independently.
+        stale_sessions = []
+        async with sessions_lock:
+            for stale_id, stale in list(sessions.items()):
+                if (
+                    stale.get("platform") == platform
+                    and stale.get("account_id") == account_id
+                    and stale.get("type") != "creator_center"
+                ):
+                    stale_sessions.append((stale_id, stale))
+                    sessions.pop(stale_id, None)
+        for stale_id, stale in stale_sessions:
+            with contextlib.suppress(Exception):
+                await _cleanup_session(stale_id, stale)
+            logger.info(
+                f"[Worker] Superseded stale QR session: platform={platform} "
+                f"account={account_id} session={stale_id[:8]}"
+            )
+
         # 获取平台适配器
         adapter_class = PLATFORM_ADAPTERS.get(platform)
         if not adapter_class:
@@ -1233,7 +1257,20 @@ async def poll_qrcode_status(session_id: str):
         adapter = session["adapter"]
 
         # 轮询状态
-        result = await adapter.poll_status(session_id)
+        try:
+            result = await asyncio.wait_for(adapter.poll_status(session_id), timeout=12.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"[Worker] QR poll timed out: session={session_id[:8]}")
+            return {
+                "success": True,
+                "data": {
+                    "status": LoginStatus.WAITING.value,
+                    "message": "Login status check timed out; retry polling",
+                    "cookies": None,
+                    "user_info": None,
+                    "full_state": None,
+                },
+            }
 
         # 如果登录成功或失败，清理会话
         if result.status in (LoginStatus.CONFIRMED, LoginStatus.FAILED, LoginStatus.EXPIRED):
@@ -1285,17 +1322,21 @@ async def cancel_qrcode(session_id: str):
     """
     try:
         async with sessions_lock:
-            session = sessions.get(session_id)
+            session = sessions.pop(session_id, None)
         if not session:
             return JSONResponse(status_code=404, content={"success": False, "error": "Session not found"})
 
-        await _cleanup_session(session_id, session)
-        async with sessions_lock:
-            sessions.pop(session_id, None)
+        # Remove ownership immediately so polling cannot race with cleanup.
+        # Browser shutdown may take many seconds; do it in the background so
+        # API cancellation stays responsive with many concurrent accounts.
+        cleanup_task = asyncio.create_task(_cleanup_session(session_id, session))
+        cleanup_task.add_done_callback(
+            lambda task: task.exception() if not task.cancelled() else None
+        )
 
-        logger.info(f"[Worker] Session cancelled: {session_id[:8]}")
+        logger.info(f"[Worker] Session cancellation accepted: {session_id[:8]}")
 
-        return {"success": True, "message": "Session cancelled"}
+        return {"success": True, "message": "Session cancelled; browser cleanup scheduled"}
 
     except Exception as e:
         err = str(e) or type(e).__name__
@@ -1316,7 +1357,7 @@ async def cancel_qrcode(session_id: str):
 async def startup_event():
     """启动事件"""
     logger.info("=" * 60)
-    logger.info("Playwright Worker Started")
+    logger.info("Automation Worker Started")
     logger.info("=" * 60)
     logger.info(f"Event Loop Policy: {asyncio.get_event_loop_policy().__class__.__name__}")
     logger.info(f"Supported Platforms: {list(PLATFORM_ADAPTERS.keys())}")
@@ -1382,8 +1423,8 @@ if __name__ == "__main__":
     HOST = "127.0.0.1"
     PORT = 7001  # 使用不同的端口，避免与 API 服务冲突
 
-    PORT = int(os.getenv("PLAYWRIGHT_WORKER_PORT", str(PORT)))
-    logger.info(f"Starting Playwright Worker on http://{HOST}:{PORT}")
+    PORT = int(os.getenv("AUTOMATION_WORKER_PORT", str(PORT)))
+    logger.info(f"Starting Automation Worker on http://{HOST}:{PORT}")
 
     # 启动服务（不使用 reload）
     uvicorn.run(

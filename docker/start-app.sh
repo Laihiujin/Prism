@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export PYTHONPATH="/app/syn_backend:${PYTHONPATH:-}"
+export PYTHONPATH="/app/prism_backend:${PYTHONPATH:-}"
 export FORKED_BY_MULTIPROCESSING="${FORKED_BY_MULTIPROCESSING:-1}"
 export HOST="${HOST:-0.0.0.0}"
 export PORT="${PORT:-7000}"
 export PLAYWRIGHT_HEADLESS="${PLAYWRIGHT_HEADLESS:-true}"
 export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/ms-playwright}"
-export SYNAPSE_APP_ROOT="${SYNAPSE_APP_ROOT:-/app}"
-export SYNAPSE_DATA_DIR="${SYNAPSE_DATA_DIR:-/app/runtime-data}"
+export PRISM_APP_ROOT="${PRISM_APP_ROOT:-/app}"
+export PRISM_DATA_DIR="${PRISM_DATA_DIR:-/app/runtime-data}"
 export CELERY_CONCURRENCY="${CELERY_CONCURRENCY:-8}"
 
-mkdir -p "${SYNAPSE_DATA_DIR}/logs" "${SYNAPSE_DATA_DIR}/db" "${SYNAPSE_DATA_DIR}/uploads"
+mkdir -p "${PRISM_DATA_DIR}/logs" "${PRISM_DATA_DIR}/db" "${PRISM_DATA_DIR}/uploads"
 
-cd /app/syn_backend
+cd /app/prism_backend
 
 cleanup() {
   local code=$?
@@ -32,10 +32,10 @@ python -u -m celery -A fastapi_app.tasks.celery_app.celery_app worker \
   --loglevel=info \
   --pool=threads \
   --concurrency="${CELERY_CONCURRENCY}" \
-  --hostname="synapse-worker@docker" &
+  --hostname="prism-worker@docker" &
 celery_pid=$!
 
-python -u playwright_worker/worker.py &
+python -u automation_worker/worker.py &
 worker_pid=$!
 
 python -u fastapi_app/run.py &

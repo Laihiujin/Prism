@@ -12,8 +12,8 @@ cd /d "%RES_DIR%"
 
 echo [测试 1/3] 检查关键文件...
 echo.
-if exist "synenv\Scripts\python.exe" (
-    echo ✅ Python: synenv\Scripts\python.exe
+if exist "prismenv\Scripts\python.exe" (
+    echo ✅ Python: prismenv\Scripts\python.exe
 ) else (
     echo ❌ Python 不存在
     pause
@@ -40,12 +40,12 @@ echo.
 
 echo [测试 2/3] 手动测试 Python 启动后端...
 echo.
-echo 测试命令: synenv\Scripts\python.exe backend\fastapi_app\run.py
+echo 测试命令: prismenv\Scripts\python.exe backend\fastapi_app\run.py
 echo.
 echo 将在 5 秒后启动,然后自动停止...
 timeout /t 2 /nobreak >nul
 
-start /B synenv\Scripts\python.exe backend\fastapi_app\run.py > test_backend.log 2>&1
+start /B prismenv\Scripts\python.exe backend\fastapi_app\run.py > test_backend.log 2>&1
 
 timeout /t 5 /nobreak >nul
 

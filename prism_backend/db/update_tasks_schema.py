@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_PATH = 'e:/SynapseAutomation/syn_backend/db/database.db'
+DB_PATH = 'e:/Prism/prism_backend/db/database.db'
 
 def update_schema():
     conn = sqlite3.connect(DB_PATH)

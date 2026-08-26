@@ -242,12 +242,12 @@ class PlatformTaskManager:
         # 更新进度
         self.update_task_progress(task.task_id, 10, "准备登录...")
         
-        # 登录统一通过 Playwright Worker，避免在 API 进程中运行浏览器（与 uvicorn --reload 冲突）
+        # 登录统一通过 Automation Worker，避免在 API 进程中运行浏览器（与 uvicorn --reload 冲突）
         supported = {"kuaishou", "xiaohongshu", "tencent", "douyin", "bilibili"}
         if platform not in supported:
             raise ValueError(f"不支持的平台: {platform}")
 
-        logger.info(f"[TaskManager] 使用 Playwright Worker 进行登录: {platform}")
+        logger.info(f"[TaskManager] 使用 Automation Worker 进行登录: {platform}")
         self.update_task_progress(task.task_id, 30, "生成二维码...")
 
         import httpx
@@ -404,6 +404,32 @@ class PlatformTaskManager:
                         publish_date=params.get("publish_date") or None,
                         category_id=params.get("category_id", 160),
                         description=params.get("description", "") or "",
+                    )
+                )
+            finally:
+                loop.close()
+
+            return result if isinstance(result, dict) else {"success": True, "message": "上传成功"}
+
+        elif platform in {"tiktok", "youtube"}:
+            module_name = f"platforms.{platform}.upload"
+            uploader = _load_platform_uploader(module_name, f"{platform}_upload")
+            self.update_task_progress(task.task_id, 30, "打开浏览器...")
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    uploader.upload(
+                        account_file=params["account_file"],
+                        title=params["title"],
+                        file_path=params["file_paths"][0] if params.get("file_paths") else params["file_path"],
+                        tags=params.get("tags", []),
+                        publish_date=params.get("publish_date") or None,
+                        thumbnail_path=params.get("thumbnail_path"),
+                        description=params.get("description", "") or "",
+                        playlist=params.get("playlist"),
+                        visibility=params.get("visibility", "public"),
                     )
                 )
             finally:

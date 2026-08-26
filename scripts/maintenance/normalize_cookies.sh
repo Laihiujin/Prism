@@ -2,7 +2,7 @@
 # Cookie 文件规范化脚本
 # 将所有账号文件重命名为清晰的格式
 
-COOKIE_DIR="E:/SynapseAutomation/syn_backend/cookiesFile"
+COOKIE_DIR="E:/Prism/prism_backend/cookiesFile"
 BACKUP_DIR="$COOKIE_DIR/backups/$(date +%Y%m%d_%H%M%S)_rename"
 
 echo "=========================================="

@@ -301,7 +301,7 @@ export default function AnalyticsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 border-white/10 bg-white/5 hover:bg-white/10"
+                            className="h-9 border-border/70 bg-foreground/5 hover:bg-accent/50"
                             onClick={() => setAccountDrawerOpen(true)}
                         >
                             <FilterIcon className="mr-2 h-4 w-4" />
@@ -315,7 +315,7 @@ export default function AnalyticsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 border-white/10 bg-white/5 hover:bg-white/10"
+                            className="h-9 border-border/70 bg-foreground/5 hover:bg-accent/50"
                             onClick={() => handleExport('csv')}
                         >
                             <Download className="mr-2 h-4 w-4" />
@@ -324,7 +324,7 @@ export default function AnalyticsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 border-white/10 bg-white/5 hover:bg-white/10"
+                            className="h-9 border-border/70 bg-foreground/5 hover:bg-accent/50"
                             onClick={() => handleExport('excel')}
                         >
                             <Download className="mr-2 h-4 w-4" />
@@ -335,10 +335,10 @@ export default function AnalyticsPage() {
             />
 
             {/* Time Range Filter */}
-            <div className="flex flex-col gap-4 p-5 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm">
+            <div className="flex flex-col gap-4 p-5 rounded-2xl border border-border/70 bg-card/40 backdrop-blur-sm">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <Label className="text-sm text-white/60 font-medium shrink-0">时间范围</Label>
-                    <div className="flex flex-wrap items-center gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5 w-full sm:w-auto">
+                    <Label className="text-sm text-muted-foreground font-medium shrink-0">时间范围</Label>
+                    <div className="flex flex-wrap items-center gap-2 bg-card/20 p-1.5 rounded-xl border border-border/40 w-full sm:w-auto">
                         {TIME_PRESETS.map(preset => (
                             <button
                                 key={preset.value}
@@ -351,7 +351,7 @@ export default function AnalyticsPage() {
                                 }}
                                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${timePreset === preset.value
                                     ? "bg-primary/20 text-primary border border-primary/30"
-                                    : "text-white/50 hover:text-white hover:bg-white/5"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
                                     }`}
                             >
                                 {preset.label}
@@ -362,7 +362,7 @@ export default function AnalyticsPage() {
 
                 {timePreset === "custom" && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 animate-in fade-in">
-                        <Label className="text-sm text-white/60 font-medium shrink-0">自定义日期</Label>
+                        <Label className="text-sm text-muted-foreground font-medium shrink-0">自定义日期</Label>
                         <div className="flex items-center gap-3">
                             <DatePicker
                                 value={startDate}
@@ -370,7 +370,7 @@ export default function AnalyticsPage() {
                                 placeholder="开始日期"
                                 className="w-40 h-10 text-sm"
                             />
-                            <span className="text-white/30">至</span>
+                            <span className="text-foreground/30">至</span>
                             <DatePicker
                                 value={endDate}
                                 onChange={setEndDate}
@@ -384,15 +384,15 @@ export default function AnalyticsPage() {
 
             {/* Empty State or Data */}
             {selectedAccounts.length === 0 ? (
-                <Card className="border-white/10 bg-black/40">
+                <Card className="border-border/70 bg-card/40">
                     <CardContent className="py-16">
                         <div className="text-center space-y-4">
                             <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                                 <FilterIcon className="w-10 h-10 text-primary/50" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-semibold text-white/80 mb-2">请选择账号查看数据</h3>
-                                <p className="text-sm text-white/50 mb-4">
+                                <h3 className="text-lg font-semibold text-foreground/80 mb-2">请选择账号查看数据</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
                                     点击右上角"筛选账号"按钮选择要分析的账号
                                 </p>
                                 <Button
@@ -452,19 +452,19 @@ export default function AnalyticsPage() {
                     </div>
 
                     {/* Trend Chart */}
-                    <Card className="border-white/10 bg-black/40">
+                    <Card className="border-border/70 bg-card/40">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle>{metricConfig[chartMetric].label}趋势</CardTitle>
                                     <CardDescription>近期{metricConfig[chartMetric].label}数据变化</CardDescription>
                                 </div>
-                                <div className="flex items-center bg-black/40 rounded-lg p-1 border border-white/10">
+                                <div className="flex items-center bg-card/40 rounded-lg p-1 border border-border/70">
                                     {Object.entries(metricConfig).map(([key, config]) => (
                                         <button
                                             key={key}
                                             onClick={() => setChartMetric(key as any)}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${chartMetric === key ? "bg-white/10 text-white shadow-sm" : "text-white/40 hover:text-white/80"}`}
+                                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${chartMetric === key ? "bg-foreground/10 text-foreground shadow-sm" : "text-foreground/40 hover:text-foreground/80"}`}
                                         >
                                             {config.label}
                                         </button>
@@ -483,7 +483,7 @@ export default function AnalyticsPage() {
                     </Card>
 
                     {/* Video Data Table */}
-                    <Card className="border-white/10 bg-black/40">
+                    <Card className="border-border/70 bg-card/40">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
@@ -503,11 +503,11 @@ export default function AnalyticsPage() {
             <Sheet open={accountDrawerOpen} onOpenChange={setAccountDrawerOpen}>
                 <SheetContent
                     side="right"
-                    className="w-[95vw] sm:w-[90vw] lg:w-[75vw] xl:w-[700px] sm:max-w-none bg-neutral-900 border-white/10 text-white overflow-w-auto"
+                    className="w-[95vw] sm:w-[90vw] lg:w-[75vw] xl:w-[700px] sm:max-w-none bg-neutral-900 border-border/70 text-foreground overflow-w-auto"
                 >
                     <SheetHeader>
-                        <SheetTitle className="text-white">选择账号</SheetTitle>
-                        <SheetDescription className="text-white/60">
+                        <SheetTitle className="text-foreground">选择账号</SheetTitle>
+                        <SheetDescription className="text-muted-foreground">
                             {selectedPlatforms.length === 0
                                 ? "请先选择平台"
                                 : `从 ${filteredAccounts.length} 个可用账号中选择`}
@@ -517,7 +517,7 @@ export default function AnalyticsPage() {
                     <div className="mt-6 space-y-4">
                         {/* Platform Filter */}
                         <div className="space-y-3">
-                            <Label className="text-sm text-white/70">平台筛选</Label>
+                            <Label className="text-sm text-foreground/70">平台筛选</Label>
                             <div className="flex flex-wrap gap-2">
                                 {PLATFORMS.map(platform => {
                                     const isSelected = selectedPlatforms.includes(platform.value)
@@ -528,8 +528,8 @@ export default function AnalyticsPage() {
                                             className={cn(
                                                 "flex items-center gap-2 px-4 py-2 rounded-lg border transition-all text-sm font-medium",
                                                 isSelected
-                                                    ? "bg-primary/15 border-primary/40 text-white"
-                                                    : "bg-black/30 border-white/10 text-white/50 hover:bg-white/5"
+                                                    ? "bg-primary/15 border-primary/40 text-foreground"
+                                                    : "bg-card/30 border-border/70 text-muted-foreground hover:bg-accent/40"
                                             )}
                                         >
                                             <Image
@@ -548,10 +548,10 @@ export default function AnalyticsPage() {
 
                         {/* Search */}
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
                             <Input
                                 placeholder="搜索账号名称或ID..."
-                                className="pl-9 bg-black/20 border-white/10"
+                                className="pl-9 bg-card/20 border-border/70"
                                 value={accountSearchKeyword}
                                 onChange={(e) => {
                                     setAccountSearchKeyword(e.target.value)
@@ -562,7 +562,7 @@ export default function AnalyticsPage() {
 
                         {/* Selected Count and Actions */}
                         <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
-                            <div className="text-sm text-white/80">
+                            <div className="text-sm text-foreground/80">
                                 已选择 <span className="font-semibold text-primary">{selectedAccounts.length}</span> / {drawerFilteredAccounts.length} 个账号
                             </div>
                             <div className="flex items-center gap-2">
@@ -591,9 +591,9 @@ export default function AnalyticsPage() {
                         </div>
 
                         {/* Account Table */}
-                        <div className="border border-white/10 rounded-lg overflow-hidden">
-                            <div className="bg-black/40">
-                                <div className="grid grid-cols-[40px_60px_1fr_150px_100px_60px] gap-3 px-4 py-3 text-xs font-medium text-white/60 border-b border-white/10">
+                        <div className="border border-border/70 rounded-lg overflow-hidden">
+                            <div className="bg-card/40">
+                                <div className="grid grid-cols-[40px_60px_1fr_150px_100px_60px] gap-3 px-4 py-3 text-xs font-medium text-muted-foreground border-b border-border/70">
                                     <div className="text-center">#</div>
                                     <div>头像</div>
                                     <div>账号名称</div>
@@ -604,7 +604,7 @@ export default function AnalyticsPage() {
                             </div>
 
                             {drawerPaginatedAccounts.length > 0 ? (
-                                <div className="divide-y divide-white/10">
+                                <div className="divide-y divide-border/70">
                                     {drawerPaginatedAccounts.map((account: any, index: number) => {
                                         const accountId = accountIdOf(account)
                                         const isSelected = selectedAccounts.includes(accountId)
@@ -615,14 +615,14 @@ export default function AnalyticsPage() {
                                             <div
                                                 key={accountId}
                                                 className={cn(
-                                                    "grid grid-cols-[40px_60px_1fr_150px_100px_60px] gap-3 px-4 py-3 items-center hover:bg-white/5 transition-colors cursor-pointer",
+                                                    "grid grid-cols-[40px_60px_1fr_150px_100px_60px] gap-3 px-4 py-3 items-center hover:bg-accent/40 transition-colors cursor-pointer",
                                                     isSelected && "bg-primary/10"
                                                 )}
                                                 onClick={() => toggleAccount(accountId)}
                                             >
-                                                <div className="text-center text-xs text-white/40">{globalIndex}</div>
+                                                <div className="text-center text-xs text-foreground/40">{globalIndex}</div>
                                                 <div className="relative w-10 h-10">
-                                                    <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-white/10 overflow-hidden">
+                                                    <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-border/70 overflow-hidden">
                                                         {account.avatar ? (
                                                             <img
                                                                 src={account.avatar}
@@ -634,7 +634,7 @@ export default function AnalyticsPage() {
                                                             <span className="text-sm font-medium">{displayName.slice(0, 1)}</span>
                                                         )}
                                                     </div>
-                                                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center p-0.5">
+                                                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-neutral-900 border border-border/70 flex items-center justify-center p-0.5">
                                                         <Image
                                                             src={PLATFORMS.find(p => p.value === account.platform)?.icon ?? "/Tiktok.svg"}
                                                             alt={account.platform}
@@ -644,21 +644,21 @@ export default function AnalyticsPage() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className={cn("text-sm font-medium truncate", isSelected ? "text-primary" : "text-white")}>
+                                                <div className={cn("text-sm font-medium truncate", isSelected ? "text-primary" : "text-foreground")}>
                                                     {displayName}
                                                 </div>
-                                                <div className="text-xs truncate text-white/50">{account.user_id || "未知"}</div>
-                                                <div className="text-xs truncate text-white/60">
+                                                <div className="text-xs truncate text-muted-foreground">{account.user_id || "未知"}</div>
+                                                <div className="text-xs truncate text-muted-foreground">
                                                     {PLATFORMS.find(p => p.value === account.platform)?.label || account.platform}
                                                 </div>
                                                 <div className="flex justify-center">
                                                     <div
                                                         className={cn(
                                                             "w-5 h-5 rounded border flex items-center justify-center transition-all",
-                                                            isSelected ? "bg-primary border-primary" : "border-white/30 hover:border-white/50"
+                                                            isSelected ? "bg-primary border-primary" : "border-border hover:border-border"
                                                         )}
                                                     >
-                                                        {isSelected && <Check className="w-3 h-3 text-black" />}
+                                                        {isSelected && <Check className="w-3 h-3 text-background" />}
                                                     </div>
                                                 </div>
                                             </div>
@@ -666,7 +666,7 @@ export default function AnalyticsPage() {
                                     })}
                                 </div>
                             ) : (
-                                <div className="py-12 text-center text-white/40 text-sm">
+                                <div className="py-12 text-center text-foreground/40 text-sm">
                                     {selectedPlatforms.length === 0
                                         ? "请先在上方选择平台"
                                         : accountSearchKeyword
@@ -679,7 +679,7 @@ export default function AnalyticsPage() {
                         {/* Pagination */}
                         {totalDrawerPages > 1 && (
                             <div className="flex items-center justify-between pt-2">
-                                <div className="text-xs text-white/50">
+                                <div className="text-xs text-muted-foreground">
                                     显示 {(accountDrawerPage - 1) * accountDrawerPerPage + 1} - {Math.min(accountDrawerPage * accountDrawerPerPage, drawerFilteredAccounts.length)} / 共 {drawerFilteredAccounts.length} 个账号
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -688,17 +688,17 @@ export default function AnalyticsPage() {
                                         size="sm"
                                         onClick={() => setAccountDrawerPage(p => Math.max(1, p - 1))}
                                         disabled={accountDrawerPage === 1}
-                                        className="h-7 text-xs border-white/10 bg-white/5"
+                                        className="h-7 text-xs border-border/70 bg-foreground/5"
                                     >
                                         上一页
                                     </Button>
-                                    <div className="text-xs text-white/60">{accountDrawerPage} / {totalDrawerPages}</div>
+                                    <div className="text-xs text-muted-foreground">{accountDrawerPage} / {totalDrawerPages}</div>
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => setAccountDrawerPage(p => Math.min(totalDrawerPages, p + 1))}
                                         disabled={accountDrawerPage === totalDrawerPages}
-                                        className="h-7 text-xs border-white/10 bg-white/5"
+                                        className="h-7 text-xs border-border/70 bg-foreground/5"
                                     >
                                         下一页
                                     </Button>
@@ -707,7 +707,7 @@ export default function AnalyticsPage() {
                         )}
 
                         {/* Footer Actions */}
-                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/70">
                             <Button
                                 variant="ghost"
                                 onClick={() => setAccountDrawerOpen(false)}
@@ -716,7 +716,7 @@ export default function AnalyticsPage() {
                             </Button>
                             <Button
                                 onClick={() => setAccountDrawerOpen(false)}
-                                className="bg-primary text-black"
+                                className="bg-primary text-primary-foreground"
                             >
                                 确定 ({selectedAccounts.length})
                             </Button>

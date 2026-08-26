@@ -101,7 +101,7 @@ export function Confirmation({
         <Icon className={`h-4 w-4 mt-0.5 ${config.iconColor}`} />
 
         <div className="flex-1 space-y-2">
-          <AlertDescription className="text-white/90">
+          <AlertDescription className="text-foreground/90">
             {children || message || (
               <>
                 {state === "request" && (
@@ -113,23 +113,23 @@ export function Confirmation({
                       <div className="space-y-3">
                         {taskSummary.goal && (
                           <div className="text-sm">
-                            <span className="text-white/60">目标：</span>
-                            <span className="text-white/90">{taskSummary.goal}</span>
+                            <span className="text-muted-foreground">目标：</span>
+                            <span className="text-foreground/90">{taskSummary.goal}</span>
                           </div>
                         )}
                         {taskSummary.tools && taskSummary.tools.length > 0 && (
                           <div className="space-y-2">
-                            <div className="text-sm text-white/60">
+                            <div className="text-sm text-muted-foreground">
                               计划执行 {taskSummary.tools.length} 个工具调用：
                             </div>
                             <div className="space-y-1 max-h-60 overflow-y-auto">
                               {taskSummary.tools.map((tool, idx) => (
-                                <div key={idx} className="text-xs bg-black/30 p-2 rounded">
-                                  <div className="font-mono text-white/80">
+                                <div key={idx} className="text-xs bg-card/30 p-2 rounded">
+                                  <div className="font-mono text-foreground/80">
                                     {idx + 1}. {tool.name}
                                   </div>
                                   {tool.arguments && Object.keys(tool.arguments).length > 0 && (
-                                    <div className="mt-1 text-white/50 text-[11px] font-mono">
+                                    <div className="mt-1 text-muted-foreground text-[11px] font-mono">
                                       {JSON.stringify(tool.arguments, null, 2).split('\n').slice(0, 3).join('\n')}
                                       {JSON.stringify(tool.arguments, null, 2).split('\n').length > 3 && '...'}
                                     </div>
@@ -146,12 +146,12 @@ export function Confirmation({
                     ) : (
                       <>
                         {toolName && (
-                          <div className="text-sm text-white/70 mb-2">
-                            工具: <code className="bg-black/30 px-1 py-0.5 rounded">{toolName}</code>
+                          <div className="text-sm text-foreground/70 mb-2">
+                            工具: <code className="bg-card/30 px-1 py-0.5 rounded">{toolName}</code>
                           </div>
                         )}
                         {args && Object.keys(args).length > 0 && (
-                          <div className="text-xs text-white/60 bg-black/20 p-2 rounded font-mono">
+                          <div className="text-xs text-muted-foreground bg-card/20 p-2 rounded font-mono">
                             {JSON.stringify(args, null, 2)}
                           </div>
                         )}
@@ -171,7 +171,7 @@ export function Confirmation({
                 <Button
                   size="sm"
                   onClick={onAccept}
-                  className="bg-green-600 hover:bg-green-700 text-white h-8 text-sm px-4"
+                  className="bg-green-600 hover:bg-green-700 text-foreground h-8 text-sm px-4"
                 >
                   ✓ 确认执行
                 </Button>
@@ -181,7 +181,7 @@ export function Confirmation({
                   size="sm"
                   variant="outline"
                   onClick={onReject}
-                  className="border-red-500/30 hover:bg-red-500/20 text-white/80 h-8 text-sm px-4"
+                  className="border-red-500/30 hover:bg-red-500/20 text-foreground/80 h-8 text-sm px-4"
                 >
                   ✗ 拒绝
                 </Button>

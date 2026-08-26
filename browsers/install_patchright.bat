@@ -3,30 +3,30 @@ setlocal
 chcp 65001 >nul
 
 set "ROOT=%~dp0.."
-set "BACKEND_DIR=%ROOT%\syn_backend"
+set "BACKEND_DIR=%ROOT%\prism_backend"
 pushd "%ROOT%"
 
 echo ==========================================
-echo   Synapse Playwright Browser Setup
+echo   Prism Patchright Browser Setup
 echo ==========================================
 echo.
 
-if not exist "synenv\Scripts\python.exe" (
-    echo [ERROR] Missing venv python: %ROOT%\synenv\Scripts\python.exe
+if not exist "prismenv\Scripts\python.exe" (
+    echo [ERROR] Missing venv python: %ROOT%\prismenv\Scripts\python.exe
     echo Please create the venv first:
-    echo   python -m venv synenv
-    echo   synenv\Scripts\activate
+    echo   python -m venv prismenv
+    echo   prismenv\Scripts\activate
     echo   pip install -r requirements.txt
     popd
-    if not defined SYNAPSE_NO_PAUSE pause
+    if not defined PRISM_NO_PAUSE pause
     exit /b 1
 )
 
-call synenv\Scripts\activate
+call prismenv\Scripts\activate
 if errorlevel 1 (
-    echo [ERROR] Failed to activate synenv
+    echo [ERROR] Failed to activate prismenv
     popd
-    if not defined SYNAPSE_NO_PAUSE pause
+    if not defined PRISM_NO_PAUSE pause
     exit /b 1
 )
 
@@ -38,7 +38,7 @@ if not errorlevel 1 (
     if errorlevel 1 (
         echo [ERROR] Failed to remove conflicting playwright runtime
         popd
-        if not defined SYNAPSE_NO_PAUSE pause
+        if not defined PRISM_NO_PAUSE pause
         exit /b 1
     )
 )
@@ -50,7 +50,7 @@ if errorlevel 1 (
     if errorlevel 1 (
         echo [ERROR] Failed to install patchright
         popd
-        if not defined SYNAPSE_NO_PAUSE pause
+        if not defined PRISM_NO_PAUSE pause
         exit /b 1
     )
 )
@@ -58,7 +58,7 @@ python -c "import importlib.metadata; version = importlib.metadata.version('patc
 if errorlevel 1 (
     echo [ERROR] Patchright runtime version check failed
     popd
-    if not defined SYNAPSE_NO_PAUSE pause
+    if not defined PRISM_NO_PAUSE pause
     exit /b 1
 )
 echo   OK
@@ -69,7 +69,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\packaging\install
 if errorlevel 1 (
     echo [ERROR] Failed to install Hibbiki Chromium
     popd
-    if not defined SYNAPSE_NO_PAUSE pause
+    if not defined PRISM_NO_PAUSE pause
     exit /b 1
 )
 echo.
@@ -80,11 +80,11 @@ set "VERIFY_EXIT=%ERRORLEVEL%"
 if not "%VERIFY_EXIT%"=="0" (
     echo [ERROR] Failed to resolve LOCAL_CHROME_PATH
     popd
-    if not defined SYNAPSE_NO_PAUSE pause
+    if not defined PRISM_NO_PAUSE pause
     exit /b 1
 )
 echo.
 
 echo Setup complete.
 popd
-if not defined SYNAPSE_NO_PAUSE pause
+if not defined PRISM_NO_PAUSE pause

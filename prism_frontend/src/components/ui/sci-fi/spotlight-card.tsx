@@ -56,7 +56,7 @@ export const SpotlightCard = ({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
-                "relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] text-white shadow-soft transition-all duration-300",
+                "relative overflow-hidden rounded-xl border border-border/70 bg-foreground/[0.02] text-foreground shadow-soft transition-all duration-300",
                 className
             )}
             {...props}

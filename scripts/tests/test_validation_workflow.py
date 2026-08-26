@@ -9,7 +9,7 @@ from pathlib import Path
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-sys.path.insert(0, str(Path(__file__).parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent / "prism_backend"))
 
 from myUtils.fast_cookie_validator import get_fast_validator
 from myUtils.cookie_manager import cookie_manager

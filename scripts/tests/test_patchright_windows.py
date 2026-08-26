@@ -8,7 +8,7 @@ import sys
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 
 async def test_playwright_windows():

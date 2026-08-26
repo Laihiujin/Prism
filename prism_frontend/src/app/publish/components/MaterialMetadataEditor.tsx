@@ -268,7 +268,7 @@ export function MaterialMetadataEditor({
 
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl bg-black border-black text-white max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl bg-card border-border text-foreground max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Video className="w-5 h-5" />
@@ -279,7 +279,7 @@ export function MaterialMetadataEditor({
                 <div className="grid grid-cols-2 gap-6">
                     {/* 左侧：预览 */}
                     <div className="space-y-4">
-                        <div className={cn("relative rounded-xl overflow-hidden border border-black bg-black", previewAspectClass)}>
+                        <div className={cn("relative rounded-xl overflow-hidden border border-border bg-card", previewAspectClass)}>
                             {videoSrc ? (
                                 <video
                                     src={videoSrc}
@@ -298,13 +298,13 @@ export function MaterialMetadataEditor({
                                 />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                    <Video className="w-16 h-16 text-white/20" />
+                                    <Video className="w-16 h-16 text-foreground/20" />
                                 </div>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <p className="text-xs text-white/60">文件名</p>
-                            <p className="text-sm text-white truncate">{material.filename}</p>
+                            <p className="text-xs text-muted-foreground">文件名</p>
+                            <p className="text-sm text-foreground truncate">{material.filename}</p>
                         </div>
                     </div>
 
@@ -316,7 +316,7 @@ export function MaterialMetadataEditor({
                                 <Button
                                     onClick={handleAIGenerate}
                                     disabled={isGenerating}
-                                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-foreground"
                                 >
                                     <Sparkles className={cn("w-4 h-4 mr-2", isGenerating && "animate-spin")} />
                                     {isGenerating ? "AI 生成中..." : "AI 智能生成"}
@@ -326,7 +326,7 @@ export function MaterialMetadataEditor({
 
                         {/* 标题 */}
                         <div className="space-y-2">
-                            <Label className="text-sm text-white/80">标题</Label>
+                            <Label className="text-sm text-foreground/80">标题</Label>
                             <Input
                                 value={localMetadata.title || ""}
                                 onChange={(e) => {
@@ -335,13 +335,13 @@ export function MaterialMetadataEditor({
                                 }}
                                 placeholder="请入视频标题（30字内）"
                                 maxLength={30}
-                                className="bg-black border-black text-white"
+                                className="bg-card border-border text-foreground"
                             />
                         </div>
 
                         {/* 标签 */}
                         <div className="space-y-2">
-                            <Label className="text-sm text-white/80">标签</Label>
+                            <Label className="text-sm text-foreground/80">标签</Label>
                             <div className="flex gap-2">
                                 <Input
                                     value={tagInput}
@@ -353,13 +353,13 @@ export function MaterialMetadataEditor({
                                         }
                                     }}
                                     placeholder="输入标签后按回车"
-                                    className="bg-black border-black text-white"
+                                    className="bg-card border-border text-foreground"
                                 />
                                 <Button
                                     onClick={() => addTag(tagInput)}
                                     size="sm"
                                     variant="outline"
-                                    className="border-black hover:bg-white/5"
+                                    className="border-border hover:bg-accent/40"
                                 >
                                     添加
                                 </Button>
@@ -370,7 +370,7 @@ export function MaterialMetadataEditor({
                                         <Badge
                                             key={index}
                                             variant="secondary"
-                                            className="bg-white/10 text-white hover:bg-white/20 flex items-center gap-1"
+                                            className="bg-foreground/10 text-foreground hover:bg-accent/60 flex items-center gap-1"
                                         >
                                             {tag}
                                             <button
@@ -386,8 +386,8 @@ export function MaterialMetadataEditor({
                         </div>
 
                         {/* AI 封面生成 (替换原平台预览) */}
-                        <div className="space-y-2 pt-4 border-t border-black">
-                            <Label className="text-sm text-white/80 flex items-center gap-2">
+                        <div className="space-y-2 pt-4 border-t border-border">
+                            <Label className="text-sm text-foreground/80 flex items-center gap-2">
                                 <ImageIcon className="w-3 h-3" />
                                 AI 生成封面
                             </Label>
@@ -403,7 +403,7 @@ export function MaterialMetadataEditor({
                                         }
                                     }}
                                     placeholder="描述你想要的封面画面..."
-                                    className="bg-black border-black text-white"
+                                    className="bg-card border-border text-foreground"
                                 />
                                 <Button
                                     onClick={handleGenerateCover}
@@ -421,7 +421,7 @@ export function MaterialMetadataEditor({
                             {coverSrc && (
                                 <div
                                     className={cn(
-                                        "relative w-full rounded-lg overflow-hidden border border-black mt-2",
+                                        "relative w-full rounded-lg overflow-hidden border border-border mt-2",
                                         aspectRatio === "4:3" ? "aspect-[4/3]" : "aspect-[3/4]"
                                     )}
                                 >
@@ -435,7 +435,7 @@ export function MaterialMetadataEditor({
                                     <Button
                                         size="icon"
                                         variant="ghost"
-                                        className="absolute top-2 right-2 h-6 w-6 bg-black/50 hover:bg-black/70"
+                                        className="absolute top-2 right-2 h-6 w-6 bg-card/50 hover:bg-card/70"
                                         onClick={() => {
                                             setDirty(true)
                                             setLocalMetadata(prev => ({ ...prev, cover_image: null, coverPath: null }))
@@ -451,7 +451,7 @@ export function MaterialMetadataEditor({
                         <div className="flex gap-3 pt-4">
                             <Button
                                 onClick={handleSave}
-                                className="flex-1 bg-white hover:bg-white/90 text-black"
+                                className="flex-1 bg-foreground hover:bg-foreground/90 text-background"
                             >
                                 <Save className="w-4 h-4 mr-2" />
                                 保存
@@ -459,7 +459,7 @@ export function MaterialMetadataEditor({
                             <Button
                                 onClick={onClose}
                                 variant="outline"
-                                className="flex-1 border-black hover:bg-white/5"
+                                className="flex-1 border-border hover:bg-accent/40"
                             >
                                 取消
                             </Button>

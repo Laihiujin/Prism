@@ -52,16 +52,16 @@ export function AIChatMessage({
           className={cn(
             "p-3 rounded-lg",
             isUser
-              ? "bg-blue-600 text-white border-blue-500/50"
-              : "bg-white/10 border-white/20 text-white backdrop-blur-sm"
+              ? "bg-blue-600 text-foreground border-blue-500/50"
+              : "bg-foreground/10 border-border/80 text-foreground backdrop-blur-sm"
           )}
         >
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
             {isLoading ? (
               <span className="flex items-center gap-2">
-                <span className="inline-block h-2 w-2 rounded-full bg-white/60 animate-bounce" />
-                <span className="inline-block h-2 w-2 rounded-full bg-white/60 animate-bounce delay-100" />
-                <span className="inline-block h-2 w-2 rounded-full bg-white/60 animate-bounce delay-200" />
+                <span className="inline-block h-2 w-2 rounded-full bg-foreground/60 animate-bounce" />
+                <span className="inline-block h-2 w-2 rounded-full bg-foreground/60 animate-bounce delay-100" />
+                <span className="inline-block h-2 w-2 rounded-full bg-foreground/60 animate-bounce delay-200" />
               </span>
             ) : (
               message.content
@@ -73,22 +73,22 @@ export function AIChatMessage({
         {!isUser && message.metadata && (
           <div className="flex flex-wrap gap-2 mt-2">
             {message.metadata.provider && (
-              <Badge variant="secondary" className="text-xs bg-white/5 text-white/60">
+              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
                 {message.metadata.provider}
               </Badge>
             )}
             {message.metadata.model && (
-              <Badge variant="secondary" className="text-xs bg-white/5 text-white/60">
+              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
                 {message.metadata.model}
               </Badge>
             )}
             {message.metadata.executionTime && (
-              <Badge variant="secondary" className="text-xs bg-white/5 text-white/60">
+              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
                 ⏱ {message.metadata.executionTime.toFixed(2)}s
               </Badge>
             )}
             {message.metadata.tokensUsed && (
-              <Badge variant="secondary" className="text-xs bg-white/5 text-white/60">
+              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
                 🔢 {message.metadata.tokensUsed} tokens
               </Badge>
             )}
@@ -101,7 +101,7 @@ export function AIChatMessage({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/50"
               onClick={handleCopy}
             >
               {copied ? (
@@ -114,7 +114,7 @@ export function AIChatMessage({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 onClick={onRetry}
               >
                 <RotateCcw className="h-3 w-3" />
@@ -123,7 +123,7 @@ export function AIChatMessage({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-white/60 hover:text-white hover:bg-white/10"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/50"
               onClick={() => {
                 const link = document.createElement("a")
                 link.href = `data:text/plain;charset=utf-8,${encodeURIComponent(message.content)}`
@@ -139,14 +139,14 @@ export function AIChatMessage({
 
       {/* 用户头像 */}
       {isUser && (
-        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-foreground text-sm font-semibold flex-shrink-0">
           U
         </div>
       )}
 
       {/* AI 头像 */}
       {!isUser && (
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-foreground text-sm font-semibold flex-shrink-0">
           AI
         </div>
       )}
@@ -182,7 +182,7 @@ export function AIChatMessageList({
   return (
     <div className="flex flex-col gap-2">
       {messages.length === 0 ? (
-        <div className="flex items-center justify-center h-64 text-white/50">
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
           {emptyMessage || (
             <div className="text-center">
               <p className="text-lg font-semibold mb-2">👋 开始对话</p>

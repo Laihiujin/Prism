@@ -117,20 +117,8 @@ def _get_browser_runtime_info() -> Dict[str, Any]:
     chromium_path = _resolve_chromium_path(browsers_root)
     firefox_path = _resolve_firefox_path(browsers_root)
     patchright_info = _get_python_package_info("patchright")
-    playwright_info = _get_python_package_info("playwright")
-    preferred_runtime = os.getenv("SYNAPSE_PLAYWRIGHT_RUNTIME", "patchright").strip().lower() or "patchright"
-    if preferred_runtime not in {"patchright", "playwright"}:
-        preferred_runtime = "patchright"
-
-    active_runtime = None
-    if preferred_runtime == "playwright" and playwright_info["installed"]:
-        active_runtime = "playwright"
-    elif preferred_runtime == "patchright" and patchright_info["installed"]:
-        active_runtime = "patchright"
-    elif patchright_info["installed"]:
-        active_runtime = "patchright"
-    elif playwright_info["installed"]:
-        active_runtime = "playwright"
+    preferred_runtime = "patchright"
+    active_runtime = "patchright" if patchright_info["installed"] else None
 
     return {
         "pythonPath": sys.executable,
@@ -139,7 +127,6 @@ def _get_browser_runtime_info() -> Dict[str, Any]:
         "activeRuntime": active_runtime,
         "runtimes": {
             "patchright": patchright_info,
-            "playwright": playwright_info,
         },
         "browsers": {
             "chromium": {
@@ -161,7 +148,7 @@ def _get_browser_runtime_info() -> Dict[str, Any]:
 def _run_runtime_command(args: list[str]) -> subprocess.CompletedProcess:
     env = os.environ.copy()
     env["PLAYWRIGHT_BROWSERS_PATH"] = str(_browsers_root())
-    env["SYNAPSE_PLAYWRIGHT_RUNTIME"] = _get_browser_runtime_info()["preferredRuntime"]
+    env["PRISM_AUTOMATION_RUNTIME"] = _get_browser_runtime_info()["preferredRuntime"]
     _browsers_root().mkdir(parents=True, exist_ok=True)
     return subprocess.run(
         [sys.executable, *args],
@@ -181,7 +168,7 @@ def _run_hibbiki_chromium_install() -> subprocess.CompletedProcess:
 
     env = os.environ.copy()
     env["PLAYWRIGHT_BROWSERS_PATH"] = str(_browsers_root())
-    env["SYNAPSE_PLAYWRIGHT_RUNTIME"] = _get_browser_runtime_info()["preferredRuntime"]
+    env["PRISM_AUTOMATION_RUNTIME"] = _get_browser_runtime_info()["preferredRuntime"]
     _browsers_root().mkdir(parents=True, exist_ok=True)
     return subprocess.run(
         [
@@ -258,7 +245,7 @@ class ConfigCheckResponse(BaseModel):
 async def sync_database(request: SyncDatabaseRequest, background_tasks: BackgroundTasks):
     """
     ?????????
-    ???: syn_backend/sync_db_files.py
+    ???: prism_backend/sync_db_files.py
     """
     try:
         from myUtils.db_sync import sync_databases
@@ -277,7 +264,7 @@ async def sync_database(request: SyncDatabaseRequest, background_tasks: Backgrou
 async def check_config():
     """
     ?????????
-    ???: syn_backend/check_config.py
+    ???: prism_backend/check_config.py
     """
     try:
         issues = []
@@ -314,9 +301,9 @@ async def check_config():
             browser_ok = False
 
         if not browser_ok:
-            issues.append("Playwright Worker ???????")
+            issues.append("Automation Worker ???????")
             recommendations.append(
-                "??: scripts/launchers/start_worker.bat (Windows) ? python syn_backend/playwright_worker/worker.py"
+                "??: scripts/launchers/start_worker.bat (Windows) ? python prism_backend/automation_worker/worker.py"
             )
 
         status = "healthy" if not issues else "warning"
@@ -343,25 +330,13 @@ async def browser_runtime_status():
 @router.post("/browser-runtime/install/{target}", summary="??????????")
 async def browser_runtime_install(target: str):
     target = (target or "").strip().lower()
-    allowed_targets = {"chromium", "firefox", "patchright", "playwright"}
+    allowed_targets = {"chromium", "firefox", "patchright"}
     if target not in allowed_targets:
         raise HTTPException(status_code=400, detail=f"????????: {target}")
 
     runtime_info = _get_browser_runtime_info()
 
-    if target in {"patchright", "playwright"}:
-        conflicting_runtime = "playwright" if target == "patchright" else "patchright"
-        conflicting_info = runtime_info["runtimes"][conflicting_runtime]
-        if conflicting_info["installed"]:
-            uninstall_result = _run_runtime_command(["-m", "pip", "uninstall", "-y", conflicting_runtime])
-            if uninstall_result.returncode != 0:
-                return {
-                    "success": False,
-                    "output": uninstall_result.stdout,
-                    "error": uninstall_result.stderr.strip() or uninstall_result.stdout.strip(),
-                    "browserRuntimeInfo": _get_browser_runtime_info(),
-                }
-
+    if target == "patchright":
         result = _run_runtime_command(["-m", "pip", "install", target])
         return {
             "success": result.returncode == 0,
@@ -386,10 +361,6 @@ async def browser_runtime_install(target: str):
                 }
 
         install_result = _run_runtime_command(["-m", "patchright", "install", target])
-        if install_result.returncode != 0 and runtime_info["runtimes"]["playwright"]["installed"]:
-            fallback_result = _run_runtime_command(["-m", "playwright", "install", target])
-            if fallback_result.returncode == 0:
-                install_result = fallback_result
 
     return {
         "success": install_result.returncode == 0,
@@ -402,11 +373,11 @@ async def browser_runtime_install(target: str):
 @router.post("/browser-runtime/uninstall/{target}", summary="????????????")
 async def browser_runtime_uninstall(target: str):
     target = (target or "").strip().lower()
-    allowed_targets = {"chromium", "firefox", "patchright", "playwright"}
+    allowed_targets = {"chromium", "firefox", "patchright"}
     if target not in allowed_targets:
         raise HTTPException(status_code=400, detail=f"????????: {target}")
 
-    if target in {"patchright", "playwright"}:
+    if target == "patchright":
         result = _run_runtime_command(["-m", "pip", "uninstall", "-y", target])
         return {
             "success": result.returncode == 0,
@@ -431,7 +402,7 @@ async def browser_runtime_uninstall(target: str):
 async def manual_sync(background_tasks: BackgroundTasks):
     """
     手动触发账号Cookie同步
-    原脚本: syn_backend/manual_sync.py
+    原脚本: prism_backend/manual_sync.py
     """
     try:
         from myUtils.cookie_manager import cookie_manager
@@ -473,7 +444,7 @@ async def manual_sync(background_tasks: BackgroundTasks):
 async def inspect_biliup():
     """
     检查 Biliup 上传工具配置
-    原脚本: syn_backend/inspect_biliup.py
+    原脚本: prism_backend/inspect_biliup.py
     """
     try:
         import importlib.util
@@ -559,7 +530,7 @@ async def system_health_check():
         except Exception:
             health_status["database"] = "unhealthy"
         
-        # 检查浏览器（通过 Playwright Worker）
+        # 检查浏览器（通过 Automation Worker）
         try:
             import httpx
             resp = httpx.get("http://127.0.0.1:7001/health", timeout=3.0)
@@ -599,8 +570,8 @@ async def system_health_check():
         raise HTTPException(status_code=500, detail=f"健康检查失败: {str(e)}")
 
 
-@router.get("/playwright-worker/health", summary="Playwright Worker 健康信息")
-async def playwright_worker_health():
+@router.get("/automation-worker/health", summary="Automation Worker 健康信息")
+async def automation_worker_health():
     """代理 Worker 的 /health（便于在 API Docs 里一键检查）。"""
     try:
         import httpx
@@ -613,8 +584,8 @@ async def playwright_worker_health():
         raise HTTPException(status_code=502, detail=f"Worker health failed: {str(e) or type(e).__name__}")
 
 
-@router.get("/playwright-worker/debug/playwright", summary="调试 Playwright 启动")
-async def playwright_worker_debug_playwright(headless: bool = True):
+@router.get("/automation-worker/debug/playwright", summary="调试 Playwright 启动")
+async def automation_worker_debug_playwright(headless: bool = True):
     """
     代理 Worker 的 /debug/playwright（用于定位 Playwright/浏览器环境问题）。
 
@@ -661,14 +632,14 @@ async def build_info():
                 return {"path": path}
 
         auth_router = importlib.import_module("fastapi_app.api.v1.auth.router")
-        worker_client = importlib.import_module("playwright_worker.client")
+        worker_client = importlib.import_module("automation_worker.client")
 
         return {
             "python": sys.version.split(" ")[0],
             "sys_path_0": sys.path[0] if sys.path else None,
             "system_router": file_meta(__file__),
             "auth_router": file_meta(getattr(auth_router, "__file__", "unknown")),
-            "playwright_worker_client": file_meta(getattr(worker_client, "__file__", "unknown")),
+            "automation_worker_client": file_meta(getattr(worker_client, "__file__", "unknown")),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"build info failed: {str(e) or type(e).__name__}")
@@ -822,14 +793,14 @@ async def run_self_check():
         except Exception as e:
             issues.append(f"数据库连接失败: {str(e)}")
 
-        # 检查 Playwright Worker
+        # 检查 Automation Worker
         try:
             import httpx
             resp = httpx.get("http://127.0.0.1:7001/health", timeout=3.0)
             if resp.status_code != 200:
-                issues.append("Playwright Worker 不可用")
+                issues.append("Automation Worker 不可用")
         except Exception:
-            issues.append("Playwright Worker 未运行")
+            issues.append("Automation Worker 未运行")
 
         # 检查必要目录
         from fastapi_app.core.config import settings
@@ -881,14 +852,14 @@ async def export_logs():
 
         # 创建临时 ZIP 文件
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        zip_path = Path(tempfile.gettempdir()) / f"synapse_logs_{timestamp}.zip"
+        zip_path = Path(tempfile.gettempdir()) / f"prism_logs_{timestamp}.zip"
 
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # 收集日志文件
             log_dirs = [
                 Path(settings.BASE_DIR) / "logs",
-                Path(settings.BASE_DIR) / "playwright_worker" / "logs",
-                Path(settings.BASE_DIR) / "syn_backend" / "logs"
+                Path(settings.BASE_DIR) / "automation_worker" / "logs",
+                Path(settings.BASE_DIR) / "prism_backend" / "logs"
             ]
 
             for log_dir in log_dirs:
@@ -900,7 +871,7 @@ async def export_logs():
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"synapse_logs_{timestamp}.zip"
+            filename=f"prism_logs_{timestamp}.zip"
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
@@ -1041,7 +1012,7 @@ async def restart_all_services():
 async def restart_service(service_name: str):
     """
     重启指定的服务
-    可用服务: backend, playwright-worker, celery-worker, hermes-gateway
+    可用服务: backend, automation-worker, celery-worker, hermes-gateway
     """
     result = await call_supervisor_api(f"/restart/{service_name}", method="POST")
     return result
@@ -1141,7 +1112,7 @@ async def diagnostic_paths():
 
     paths_info = {
         "environment": {
-            "SYNAPSE_DATA_DIR": os.getenv("SYNAPSE_DATA_DIR"),
+            "PRISM_DATA_DIR": os.getenv("PRISM_DATA_DIR"),
             "LOCALAPPDATA": os.getenv("LOCALAPPDATA"),
         },
         "settings_config": {
@@ -1189,5 +1160,4 @@ async def diagnostic_paths():
         "status": "success",
         "data": paths_info
     }
-
 

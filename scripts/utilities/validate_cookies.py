@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Dict, Optional
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
+from patchright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
 sys.path.insert(0, str(Path(__file__).parent))
 

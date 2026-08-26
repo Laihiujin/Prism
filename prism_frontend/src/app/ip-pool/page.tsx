@@ -116,15 +116,15 @@ interface Account {
 // Stats Card Component
 function StatsCard({ title, value, icon: Icon, description, trend }: any) {
     return (
-        <Card className="bg-black/40 border-white/10">
+        <Card className="bg-card/40 border-border/70">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-white/70">{title}</CardTitle>
-                <Icon className="h-4 w-4 text-white/50" />
+                <CardTitle className="text-sm font-medium text-foreground/70">{title}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{value}</div>
                 {description && (
-                    <p className="text-xs text-white/50 mt-1">{description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{description}</p>
                 )}
             </CardContent>
         </Card>
@@ -317,7 +317,7 @@ export default function IPPoolPage() {
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
-                            className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10"
+                            className="rounded-xl border-border/70 bg-foreground/5 hover:bg-accent/50"
                             onClick={() => checkAllHealthMutation.mutate()}
                             disabled={checkAllHealthMutation.isPending}
                         >
@@ -364,14 +364,14 @@ export default function IPPoolPage() {
             </div>
 
             {/* Main Table */}
-            <Card className="bg-black/40 border-white/10">
+            <Card className="bg-card/40 border-border/70">
                 <CardHeader>
                     <CardTitle>IP 列表</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
-                            <TableRow className="hover:bg-white/5 border-white/10">
+                            <TableRow className="hover:bg-accent/40 border-border/70">
                                 <TableHead>IP地址</TableHead>
                                 <TableHead>位置</TableHead>
                                 <TableHead>类型</TableHead>
@@ -384,7 +384,7 @@ export default function IPPoolPage() {
                         </TableHeader>
                         <TableBody>
                             {ips.map((ip) => (
-                                <TableRow key={ip.id} className="hover:bg-white/5 border-white/10">
+                                <TableRow key={ip.id} className="hover:bg-accent/40 border-border/70">
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-medium">{ip.ip}:{ip.port}</span>
@@ -421,7 +421,7 @@ export default function IPPoolPage() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                            <div className="w-16 h-1.5 rounded-full bg-foreground/10 overflow-hidden">
                                                 <div
                                                     className={cn(
                                                         "h-full rounded-full",
@@ -528,7 +528,7 @@ export default function IPPoolPage() {
                             <ShieldCheck className="h-5 w-5 text-emerald-400" />
                             <div className="text-sm">
                                 <span className="font-medium text-emerald-400 block">推荐方案：本机直连</span>
-                                <span className="text-white/50 text-xs">使用本地宽带，最安全稳定的防关联方案</span>
+                                <span className="text-muted-foreground text-xs">使用本地宽带，最安全稳定的防关联方案</span>
                             </div>
                         </div>
                         <Button
@@ -552,12 +552,12 @@ export default function IPPoolPage() {
                         </Button>
                     </div>
 
-                    <div className="flex gap-2 p-1 bg-white/5 rounded-lg mb-4">
+                    <div className="flex gap-2 p-1 bg-foreground/5 rounded-lg mb-4">
                         <button
                             onClick={() => setAddMode('qingguo')}
                             className={cn(
                                 "flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-                                addMode === 'qingguo' ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-white/5"
+                                addMode === 'qingguo' ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-accent/40"
                             )}
                         >
                             ⚡️ API 自动提取
@@ -566,7 +566,7 @@ export default function IPPoolPage() {
                             onClick={() => setAddMode('manual')}
                             className={cn(
                                 "flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all",
-                                addMode === 'manual' ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-white/5"
+                                addMode === 'manual' ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground hover:bg-accent/40"
                             )}
                         >
                             🖐 手动添加
@@ -786,7 +786,7 @@ function BindAccountSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-[50vw] w-[90vw] flex flex-col p-6 bg-black border-l border-white/10 text-zinc-100 dark">
+            <SheetContent className="sm:max-w-[50vw] w-[90vw] flex flex-col p-6 bg-card border-l border-border/70 text-zinc-100 dark">
                 <SheetHeader className="mb-4">
                     <SheetTitle className="text-zinc-100">绑定账号到 IP</SheetTitle>
                     <SheetDescription className="text-zinc-400">
@@ -801,7 +801,7 @@ function BindAccountSheet({
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
                             <Input
                                 placeholder="搜索账号名称或ID..."
-                                className="pl-9 h-9 bg-zinc-900 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-white/20"
+                                className="pl-9 h-9 bg-zinc-900 border-border/70 text-zinc-100 placeholder:text-zinc-600 focus-visible:ring-offset-0 focus-visible:ring-1 focus-visible:ring-border/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -818,15 +818,15 @@ function BindAccountSheet({
                         ) : (
                             Object.entries(accountsByPlatform).map(([platform, accounts]) => (
                                 <div key={platform} className="space-y-3">
-                                    <div className="flex items-center justify-between sticky top-0 bg-black/95 backdrop-blur p-2 z-10 border-b border-white/10 my-2">
+                                    <div className="flex items-center justify-between sticky top-0 bg-card backdrop-blur p-2 z-10 border-b border-border/70 my-2">
                                         <div className="flex items-center gap-2">
-                                            <Badge variant="outline" className="capitalize text-base px-3 py-1 border-white/10 text-zinc-300 bg-zinc-900/50">{platform}</Badge>
+                                            <Badge variant="outline" className="capitalize text-base px-3 py-1 border-border/70 text-zinc-300 bg-zinc-900/50">{platform}</Badge>
                                             <span className="text-sm text-zinc-500">{accounts.length}个账号</span>
                                         </div>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-8 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-white/5"
+                                            className="h-8 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-accent/40"
                                             onClick={() => togglePlatform(platform, accounts)}
                                         >
                                             {accounts.every(a => selectedIds.has(a.id)) ? "取消全选" : "全选本组"}
@@ -840,8 +840,8 @@ function BindAccountSheet({
                                                 className={cn(
                                                     "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 relative group",
                                                     selectedIds.has(account.id)
-                                                        ? "bg-white/10 ring-1 ring-white/20"
-                                                        : "bg-zinc-900/40 hover:bg-zinc-900 ring-1 ring-white/5 hover:ring-white/10"
+                                                        ? "bg-foreground/10 ring-1 ring-border/50"
+                                                        : "bg-zinc-900/40 hover:bg-zinc-900 ring-1 ring-border/5 hover:ring-border/40"
                                                 )}
                                                 onClick={() => toggleAccount(account.id)}
                                             >

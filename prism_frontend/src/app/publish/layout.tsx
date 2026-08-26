@@ -26,12 +26,12 @@ export default function PublishLayout({
     }
 
     return (
-        <div className="flex flex-col h-full bg-transparent text-white">
-            <div className="px-6 pt-6 pb-4 border-b border-white/10 space-y-6">
+        <div className="flex flex-col h-full bg-transparent text-foreground">
+            <div className="px-6 pt-6 pb-4 border-b border-border/70 space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
                         {/* <h1 className="text-2xl font-bold tracking-tight">发布中心</h1> */}
-                        {/* <p className="text-sm text-white/60 mt-1"> */}
+                        {/* <p className="text-sm text-muted-foreground mt-1"> */}
                         {/* 多平台矩阵发布管理 */}
                         {/* </p> */}
                     </div>

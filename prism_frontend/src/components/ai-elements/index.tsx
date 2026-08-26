@@ -69,20 +69,20 @@ export function ToolExecutionDisplay({
   const [isOpen, setIsOpen] = React.useState(true)
 
   return (
-    <div className="bg-black/40 rounded-lg border border-white/10 p-4 shadow-xl backdrop-blur-sm hover:border-white/20 transition-all">
+    <div className="bg-card/40 rounded-lg border border-border/70 p-4 shadow-xl backdrop-blur-sm hover:border-border/80 transition-all">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="w-full">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-1.5 h-1.5 rounded-full ${status === "completed" ? "bg-white/80" : status === "in-progress" ? "bg-white/50 animate-pulse" : "bg-white/30"}`} />
-              <span className="text-base font-semibold text-white/90">
+              <div className={`w-1.5 h-1.5 rounded-full ${status === "completed" ? "bg-foreground/80" : status === "in-progress" ? "bg-foreground/50 animate-pulse" : "bg-foreground/30"}`} />
+              <span className="text-base font-semibold text-foreground/90">
                 {name}
               </span>
-              <span className="text-xs text-white/40">
+              <span className="text-xs text-foreground/40">
                 {status === "completed" ? "✓" : status === "in-progress" ? "⏳" : "✗"}
               </span>
             </div>
-            <div className="text-white/40 hover:text-white/60 transition-colors">
+            <div className="text-foreground/40 hover:text-muted-foreground transition-colors">
               {isOpen ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
@@ -95,8 +95,8 @@ export function ToolExecutionDisplay({
         <CollapsibleContent className="space-y-3 mt-4">
           {args && Object.keys(args).length > 0 && (
             <div>
-              <div className="text-xs text-white/50 mb-2 font-medium uppercase tracking-wider">参数</div>
-              <pre className="text-sm bg-black/60 rounded p-3 overflow-x-auto text-white/80 border border-white/5 font-mono">
+              <div className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">参数</div>
+              <pre className="text-sm bg-card/60 rounded p-3 overflow-x-auto text-foreground/80 border border-border/40 font-mono">
 {JSON.stringify(args, null, 2)}
               </pre>
             </div>
@@ -104,9 +104,9 @@ export function ToolExecutionDisplay({
 
           {result && !error && (
             <div>
-              <div className="text-xs text-white/50 mb-2 font-medium uppercase tracking-wider">结果</div>
-              <div className="bg-black/60 rounded p-3 border border-white/5">
-                <pre className="text-sm text-white/80 font-mono overflow-x-auto">
+              <div className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">结果</div>
+              <div className="bg-card/60 rounded p-3 border border-border/40">
+                <pre className="text-sm text-foreground/80 font-mono overflow-x-auto">
 {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
                 </pre>
               </div>
@@ -115,8 +115,8 @@ export function ToolExecutionDisplay({
 
           {error && (
             <div>
-              <div className="text-xs text-white/50 mb-2 font-medium uppercase tracking-wider">错误</div>
-              <div className="text-sm bg-black/60 rounded p-3 text-white/70 font-mono border border-white/5">
+              <div className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">错误</div>
+              <div className="text-sm bg-card/60 rounded p-3 text-foreground/70 font-mono border border-border/40">
                 {error}
               </div>
             </div>

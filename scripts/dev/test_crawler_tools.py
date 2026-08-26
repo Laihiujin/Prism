@@ -86,7 +86,7 @@ async def test_old_api_tool():
     print()
 
     # 需要先提取视频ID
-    sys.path.insert(0, 'syn_backend/douyin_tiktok_api')
+    sys.path.insert(0, 'prism_backend/douyin_tiktok_api')
     from crawlers.douyin.web.web_crawler import DouyinWebCrawler
 
     douyin_crawler = DouyinWebCrawler()
@@ -154,7 +154,7 @@ async def test_direct_crawler():
     print("=" * 80)
     print()
 
-    sys.path.insert(0, 'syn_backend/douyin_tiktok_api')
+    sys.path.insert(0, 'prism_backend/douyin_tiktok_api')
     from crawlers.hybrid.hybrid_crawler import HybridCrawler
 
     hybrid_crawler = HybridCrawler()

@@ -43,7 +43,7 @@ export function PublishModeSelector({ selected, onSelect }: PublishModeSelectorP
                         </h3>
                         <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
                     </div>
-                    <p className="text-xs text-white/50 leading-relaxed">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                         {mode.description}
                     </p>
                 </div>

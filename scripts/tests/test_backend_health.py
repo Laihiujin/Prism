@@ -77,7 +77,7 @@ def test_publish_preset_fix():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("SynapseAutomation 后端连通性测试")
+    print("Prism 后端连通性测试")
     print("=" * 60)
     print()
 

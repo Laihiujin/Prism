@@ -5,7 +5,7 @@ echo Clean User Data from Packaged Output
 echo ============================================
 echo.
 
-set "TARGET_DIR=%~dp0dist-out\v1\win-unpacked\resources\syn_backend"
+set "TARGET_DIR=%~dp0dist-out\v1\win-unpacked\resources\prism_backend"
 
 if not exist "%TARGET_DIR%" (
     echo ERROR: Target directory not found: %TARGET_DIR%

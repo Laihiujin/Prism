@@ -6,7 +6,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 # 设置stdout编码为utf-8
 if sys.platform == 'win32':
@@ -18,7 +18,7 @@ async def analyze_xiaohongshu_dom():
     """分析小红书创作中心页面的DOM结构"""
 
     # 读取小红书账号的Cookie文件
-    cookie_file = Path("E:/SynapseAutomation/cookiesFile/xiaohongshu_68c517584902993541365760aurlhgiuqjwr0rj4.json")
+    cookie_file = Path("E:/Prism/cookiesFile/xiaohongshu_68c517584902993541365760aurlhgiuqjwr0rj4.json")
 
     if not cookie_file.exists():
         print(f"[ERROR] Cookie file not found: {cookie_file}")
@@ -55,7 +55,7 @@ async def analyze_xiaohongshu_dom():
             print(f"   ❌ 点击失败: {e}")
 
         # 2. 截图保存
-        screenshot_path = "E:/SynapseAutomation/xiaohongshu_dom_debug.png"
+        screenshot_path = "E:/Prism/xiaohongshu_dom_debug.png"
         await page.screenshot(path=screenshot_path, full_page=True)
         print(f"\n📸 页面截图已保存: {screenshot_path}")
 

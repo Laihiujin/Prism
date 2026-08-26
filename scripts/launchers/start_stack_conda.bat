@@ -7,10 +7,10 @@ set "SCRIPT_DIR=%~dp0"
 for %%I in ("%SCRIPT_DIR%..\..") do set "PROJECT_ROOT=%%~fI\"
 
 set "REDIS_CLI=redis-cli"
-if exist "%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe" set "REDIS_CLI=%PROJECT_ROOT%syn_backend\Redis\redis-cli.exe"
+if exist "%PROJECT_ROOT%prism_backend\Redis\redis-cli.exe" set "REDIS_CLI=%PROJECT_ROOT%prism_backend\Redis\redis-cli.exe"
 
 echo ============================================
-echo   SynapseAutomation Full Startup
+echo   Prism Full Startup
 echo ============================================
 echo.
 
@@ -38,8 +38,8 @@ start "Celery Worker" "%SCRIPT_DIR%start_celery.bat"
 timeout /t 2 /nobreak >nul
 
 echo.
-echo [3] Starting Playwright Worker...
-start "Playwright Worker" "%SCRIPT_DIR%start_worker.bat"
+echo [3] Starting Automation Worker...
+start "Automation Worker" "%SCRIPT_DIR%start_worker.bat"
 timeout /t 3 /nobreak >nul
 
 echo.
@@ -59,7 +59,7 @@ echo.
 echo Services:
 echo   - Redis Server      (localhost:6379)
 echo   - Celery Worker     (task queue)
-echo   - Playwright Worker (localhost:7001)
+echo   - Automation Worker (localhost:7001)
 echo   - FastAPI Backend   (http://localhost:7000)
 echo   - React Frontend    (http://localhost:3000)
 echo.

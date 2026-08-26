@@ -10,8 +10,8 @@ from datetime import datetime
 class AccountBase(BaseModel):
     """账号基础信息"""
     name: str = Field(..., min_length=1, max_length=100, description="账号名称")
-    platform: str = Field(..., description="平台名称（xiaohongshu/channels/douyin/kuaishou/bilibili）")
-    platform_code: int = Field(..., ge=1, le=5, description="平台编码(1-5)")
+    platform: str = Field(..., description="平台名称（xiaohongshu/channels/douyin/kuaishou/bilibili/tiktok/youtube/baijiahao）")
+    platform_code: int = Field(..., ge=1, le=8, description="平台编码(1-8)")
     note: Optional[str] = Field(None, max_length=500, description="账号备注")
 
 
@@ -20,7 +20,7 @@ class AccountCreate(BaseModel):
     account_id: str = Field(..., description="账号ID")
     name: str
     platform: str
-    platform_code: int = Field(..., ge=1, le=5)
+    platform_code: int = Field(..., ge=1, le=8)
     cookie: Dict[str, Any] = Field(..., description="Cookie数据(JSON)")
     user_id: Optional[str] = Field(None, description="平台用户ID")
     avatar: Optional[str] = None

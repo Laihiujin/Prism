@@ -176,13 +176,13 @@ export function Chat() {
     }
 
     return (
-        <div className="flex h-[85vh] w-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl">
+        <div className="flex h-[85vh] w-full flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/5 bg-neutral-900/50 px-6 py-4 backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-border/40 bg-neutral-900/50 px-6 py-4 backdrop-blur-md">
                 <div className="flex items-center gap-4">
                     <div>
-                        <h2 className="text-base font-bold text-white">SynapseAutomation </h2>
-                        <p className="text-xs font-medium text-white/50">Ai</p>
+                        <h2 className="text-base font-bold text-foreground">Prism </h2>
+                        <p className="text-xs font-medium text-muted-foreground">Ai</p>
                     </div>
                 </div>
 
@@ -191,7 +191,7 @@ export function Chat() {
                         variant="ghost"
                         size="sm"
                         onClick={() => router.push("/ai-agent/settings")}
-                        className="text-white/60 hover:text-white hover:bg-white/10"
+                        className="text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     >
                         <Settings className="h-4 w-4 mr-1" />
                         閰嶇疆
@@ -200,7 +200,7 @@ export function Chat() {
                         variant="outline"
                         className={`gap-1 text-xs font-normal ${isConnected
                             ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                            : "border-white/10 bg-white/5 text-white/40"
+                            : "border-border/70 bg-foreground/5 text-foreground/40"
                             }`}
                     >
                         <HermesLogoIcon className="h-3 w-3" />
@@ -210,14 +210,14 @@ export function Chat() {
             </div>
 
             {/* Mode Switch */}
-            <div className="border-b border-white/5 bg-neutral-900/40 px-6 py-3 flex justify-center">
+            <div className="border-b border-border/40 bg-neutral-900/40 px-6 py-3 flex justify-center">
                 <Tabs value={mode} onValueChange={handleModeChange}>
-                    <TabsList className="grid w-[200px] grid-cols-2 bg-white/5">
+                    <TabsList className="grid w-[200px] grid-cols-2 bg-foreground/5">
                         <TabsTrigger value="chat" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                             <MessageSquare className="mr-2 h-3 w-3" />
                             瀵硅瘽
                         </TabsTrigger>
-                        <TabsTrigger value="agent" className="text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+                        <TabsTrigger value="agent" className="text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-foreground">
                             <HermesLogoIcon className="mr-2 h-3 w-3" />
                             Agent
                         </TabsTrigger>
@@ -238,7 +238,7 @@ export function Chat() {
             </div>
 
             {/* Input Area */}
-            <div className="bg-black pb-4 pt-2">
+            <div className="bg-card pb-4 pt-2">
                 <ChatInput
                     isLoading={isLoading}
                     onSubmit={handleSubmit}

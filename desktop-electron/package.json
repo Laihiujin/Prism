@@ -1,13 +1,13 @@
 {
-  "name": "SynapseAutomation",
+  "name": "Prism",
   "version": "1.1.0",
-  "description": "SynapseAutomation",
+  "description": "Prism",
   "main": "src/main/index.js",
   "author": "Laihiujin",
   "license": "Apache-2.0",
   "scripts": {
     "start": "electron .",
-    "dev": "cross-env SYNAPSE_START_SERVICES=1 SYNAPSE_START_FRONTEND=1 electron .",
+    "dev": "cross-env PRISM_START_SERVICES=1 PRISM_START_FRONTEND=1 electron .",
     "build": "electron-builder --win --x64",
     "build:dir": "electron-builder --win --x64 --dir",
     "pack": "electron-builder --dir",
@@ -22,9 +22,9 @@
     "electron-builder": "^24.9.1"
   },
   "build": {
-    "appId": "com.synapse.automation",
-    "productName": "SynapseAutomation",
-    "artifactName": "SynapseAutomation-${version}-setup.${ext}",
+    "appId": "com.prism.automation",
+    "productName": "Prism",
+    "artifactName": "Prism-${version}-setup.${ext}",
     "asar": true,
     "asarUnpack": [
       "src/renderer/**",
@@ -56,8 +56,8 @@
         ]
       },
       {
-        "from": "../synenv",
-        "to": "synenv",
+        "from": "../prismenv",
+        "to": "prismenv",
         "filter": [
           "**/*",
           "!**/__pycache__/**",
@@ -130,8 +130,8 @@
         ]
       },
       {
-        "from": "../syn_backend",
-        "to": "syn_backend",
+        "from": "../prism_backend",
+        "to": "prism_backend",
         "filter": [
           "**/*",
           "!**/__pycache__",
@@ -156,21 +156,21 @@
         ]
       },
       {
-        "from": "../syn_frontend_react/.next/standalone",
+        "from": "../prism_frontend/.next/standalone",
         "to": "frontend/standalone",
         "filter": [
           "**/*"
         ]
       },
       {
-        "from": "../syn_frontend_react/.next/static",
+        "from": "../prism_frontend/.next/static",
         "to": "frontend/standalone/.next/static",
         "filter": [
           "**/*"
         ]
       },
       {
-        "from": "../syn_frontend_react/public",
+        "from": "../prism_frontend/public",
         "to": "frontend/standalone/public",
         "filter": [
           "**/*"
@@ -216,7 +216,7 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SynapseAutomation",
+      "shortcutName": "Prism",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",

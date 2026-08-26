@@ -311,7 +311,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
     return (
         <>
             <Drawer open={open} onOpenChange={onOpenChange}>
-                <DrawerContent className="bg-black border-white/10">
+                <DrawerContent className="bg-card border-border/70">
                     <DrawerHeader>
                         <DrawerTitle className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -333,7 +333,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                         {/* Task Info */}
                         <div className="space-y-4">
                             <div>
-                                <Label className="text-xs text-white/60">标签</Label>
+                                <Label className="text-xs text-muted-foreground">标签</Label>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                     {task.tags.map((tag, i) => (
                                         <Badge key={i} variant="secondary">{tag}</Badge>
@@ -343,13 +343,13 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
 
                             {task.poi && (
                                 <div>
-                                    <Label className="text-xs text-white/60">POI 位置</Label>
+                                    <Label className="text-xs text-muted-foreground">POI 位置</Label>
                                     <p className="text-sm mt-1">{task.poi}</p>
                                 </div>
                             )}
 
                             <div>
-                                <Label className="text-xs text-white/60">素材数量</Label>
+                                <Label className="text-xs text-muted-foreground">素材数量</Label>
                                 <p className="text-sm mt-1">{task.materials.length} 个视频</p>
                             </div>
                         </div>
@@ -362,10 +362,10 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                                 onValueChange={setSelectedPlatform}
                                 disabled={!!boundAccount}
                             >
-                                <SelectTrigger className="rounded-2xl /50 border-white/10">
+                                <SelectTrigger className="rounded-2xl /50 border-border/70">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-black border-white/10">
+                                <SelectContent className="bg-card border-border/70">
                                     <SelectItem value="douyin">抖音</SelectItem>
                                     <SelectItem value="kuaishou">快手</SelectItem>
                                     <SelectItem value="redbook">小红书</SelectItem>
@@ -392,7 +392,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                         )}
 
                         {/* Schedule Publish */}
-                        <div className="space-y-4 pt-4 border-t border-white/10">
+                        <div className="space-y-4 pt-4 border-t border-border/70">
                             <Label>定时发布 (可选)</Label>
                             <div className="grid grid-cols-2 gap-4">
                                 <DatePicker
@@ -408,7 +408,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                         </div>
                     </div>
 
-                    <DrawerFooter className="border-t border-white/10">
+                    <DrawerFooter className="border-t border-border/70">
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
@@ -432,7 +432,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
 
             {/* QR Login Drawer (Nested) */}
             <Drawer open={qrDrawerOpen} onOpenChange={setQrDrawerOpen}>
-                <DrawerContent className="bg-black border-white/10">
+                <DrawerContent className="bg-card border-border/70">
                     <DrawerHeader>
                         <DrawerTitle>QR视频任务派发</DrawerTitle>
                         <DrawerDescription className="text-center">
@@ -444,7 +444,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                         {/* QR Code & Verification stacked */}
                         <div className="flex flex-col items-center space-y-4">
                             {qrSession?.qrCode && (
-                                <div className="bg-white p-4 rounded-2xl">
+                                <div className="bg-foreground p-4 rounded-2xl">
                                     <img
                                         src={qrSession.qrCode}
                                         alt="QR Code"
@@ -455,7 +455,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
 
                             {/* Verification Code Input centered below QR */}
                             <div className="w-full max-w-xs space-y-2 text-center">
-                                <Label className="text-sm text-white/80">验证码</Label>
+                                <Label className="text-sm text-foreground/80">验证码</Label>
                                 <div className="w-full flex justify-center">
                                     <InputOTP
                                         maxLength={6}
@@ -464,12 +464,12 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                                         disabled={isLoggingIn}
                                     >
                                         <InputOTPGroup className="gap-2 justify-center w-full">
-                                            <InputOTPSlot index={0} className="rounded-xl border-white/10 /50 text-white h-12 w-10" />
-                                            <InputOTPSlot index={1} className="rounded-xl border-white/10 /50 text-white h-12 w-10" />
-                                            <InputOTPSlot index={2} className="rounded-xl border-white/10 /50 text-white h-12 w-10" />
-                                            <InputOTPSlot index={3} className="rounded-xl border-white/10 /50 text-white h-12 w-10" />
-                                            <InputOTPSlot index={4} className="rounded-xl border-white/10 /50 text-white h-12 w-10" />
-                                            <InputOTPSlot index={5} className="rounded-xl border-white/10 /50 text-white h-12 w-10" />
+                                            <InputOTPSlot index={0} className="rounded-xl border-border/70 /50 text-foreground h-12 w-10" />
+                                            <InputOTPSlot index={1} className="rounded-xl border-border/70 /50 text-foreground h-12 w-10" />
+                                            <InputOTPSlot index={2} className="rounded-xl border-border/70 /50 text-foreground h-12 w-10" />
+                                            <InputOTPSlot index={3} className="rounded-xl border-border/70 /50 text-foreground h-12 w-10" />
+                                            <InputOTPSlot index={4} className="rounded-xl border-border/70 /50 text-foreground h-12 w-10" />
+                                            <InputOTPSlot index={5} className="rounded-xl border-border/70 /50 text-foreground h-12 w-10" />
                                         </InputOTPGroup>
                                     </InputOTP>
                                 </div>
@@ -480,7 +480,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                                 {qrSession?.status === 'pending' && (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                                        <span className="text-white/60">等待扫码...</span>
+                                        <span className="text-muted-foreground">等待扫码...</span>
                                     </>
                                 )}
                                 {qrSession?.status === 'scanned' && (
@@ -507,11 +507,11 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                             {isLoggingIn && (
                                 <div className="w-full max-w-xs space-y-2">
                                     <div className="flex items-center justify-between text-sm">
-                                        <span className="text-white/60">登录进度</span>
-                                        <span className="text-white">{loginProgress}%</span>
+                                        <span className="text-muted-foreground">登录进度</span>
+                                        <span className="text-foreground">{loginProgress}%</span>
                                     </div>
                                     <Progress value={loginProgress} className="h-2" />
-                                    <p className="text-xs text-white/50 text-center">
+                                    <p className="text-xs text-muted-foreground text-center">
                                         {loginProgress < 30 && "正在验证..."}
                                         {loginProgress >= 30 && loginProgress < 60 && "正在获取账号信息..."}
                                         {loginProgress >= 60 && loginProgress < 90 && "正在绑定账号..."}
@@ -523,7 +523,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                         </div>
                     </div>
 
-                    <DrawerFooter className="border-t border-white/10">
+                    <DrawerFooter className="border-t border-border/70">
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"

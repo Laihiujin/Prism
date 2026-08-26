@@ -19,7 +19,7 @@ config = {
     'is_active': 1
 }
 
-conn = sqlite3.connect('syn_backend/db/database.db')
+conn = sqlite3.connect('prism_backend/db/database.db')
 cursor = conn.cursor()
 
 # 更新配置

@@ -91,15 +91,15 @@ export function AIProviderSetupDialog({ onProviderAdded }: AIProviderSetupDialog
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2 rounded-2xl border-white/20 text-white">
+        <Button variant="outline" className="gap-2 rounded-2xl border-border/80 text-foreground">
           <Plus className="h-4 w-4" />
           添加 AI 提供商
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-slate-900 to-slate-800 border-white/10">
+      <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-slate-900 to-slate-800 border-border/70">
         <DialogHeader>
-          <DialogTitle className="text-white">配置 AI 提供商</DialogTitle>
-          <DialogDescription className="text-white/60">
+          <DialogTitle className="text-foreground">配置 AI 提供商</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             选择并配置你想使用的 AI 服务提供商
           </DialogDescription>
         </DialogHeader>
@@ -107,14 +107,14 @@ export function AIProviderSetupDialog({ onProviderAdded }: AIProviderSetupDialog
         <div className="space-y-6 py-4">
           {/* 提供商选择 */}
           <div>
-            <label className="text-sm font-medium text-white mb-2 block">选择提供商</label>
+            <label className="text-sm font-medium text-foreground mb-2 block">选择提供商</label>
             <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger className="h-10 bg-white/10 border-white/20 text-white">
+              <SelectTrigger className="h-10 bg-foreground/10 border-border/80 text-foreground">
                 <SelectValue placeholder="选择 AI 提供商..." />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10">
+              <SelectContent className="bg-slate-900 border-border/70">
                 {Object.entries(providerInfo).map(([key, info]) => (
-                  <SelectItem key={key} value={key} className="text-white">
+                  <SelectItem key={key} value={key} className="text-foreground">
                     <span>{info.icon} {info.name}</span>
                   </SelectItem>
                 ))}
@@ -124,13 +124,13 @@ export function AIProviderSetupDialog({ onProviderAdded }: AIProviderSetupDialog
 
           {/* 提供商信息 */}
           {selectedInfo && (
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10 space-y-3">
+            <div className="bg-foreground/5 rounded-lg p-4 border border-border/70 space-y-3">
               <div>
-                <p className="text-sm text-white/80">{selectedInfo.description}</p>
+                <p className="text-sm text-foreground/80">{selectedInfo.description}</p>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">获取 API Key:</span>
+                <span className="text-sm text-muted-foreground">获取 API Key:</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -155,16 +155,16 @@ export function AIProviderSetupDialog({ onProviderAdded }: AIProviderSetupDialog
 
           {/* API Key 输入 */}
           <div>
-            <label className="text-sm font-medium text-white mb-2 block">API Key</label>
+            <label className="text-sm font-medium text-foreground mb-2 block">API Key</label>
             <Input
               placeholder={selectedInfo?.placeholder || "输入 API Key..."}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               type="password"
-              className="h-10 bg-white/10 border-white/20 text-white placeholder:text-white/40"
+              className="h-10 bg-foreground/10 border-border/80 text-foreground placeholder:text-foreground/40"
               disabled={!provider}
             />
-            <p className="text-xs text-white/50 mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               你的 API Key 将被安全保存，不会被上传到服务器
             </p>
           </div>
@@ -182,13 +182,13 @@ export function AIProviderSetupDialog({ onProviderAdded }: AIProviderSetupDialog
         <div className="flex gap-3 justify-end">
           <Button
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/10"
+            className="border-border/80 text-foreground hover:bg-accent/50"
             onClick={() => setOpen(false)}
           >
             取消
           </Button>
           <Button
-            className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-foreground gap-2"
             onClick={handleAddProvider}
             disabled={isLoading || !provider || !apiKey.trim()}
           >
