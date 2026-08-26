@@ -440,7 +440,7 @@ ${userInput}
     return (
         <div className={cn("flex flex-col h-full", className)}>
             {!hideFooter && (
-                <div className="px-6 py-4 border-b border-white/10 bg-[#0A0A0A] flex justify-end">
+                <div className="px-6 py-4 border-b border-border/70 bg-[#0A0A0A] flex justify-end">
                     <Button onClick={handleSave} disabled={isSaving} className="min-w-[100px]">
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (mode === 'create' ? "确认发布" : "保存更改")}
                     </Button>
@@ -453,7 +453,7 @@ ${userInput}
                     {/* Content Info - 内容设置 */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">内容设置</h3>
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">内容设置</h3>
                             <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/20">
                                 <Sparkles className="w-3 h-3 mr-1" /> AI Ready
                             </Badge>
@@ -469,9 +469,9 @@ ${userInput}
                                             id="update-disk-file"
                                             checked={updateDiskFile}
                                             onChange={(e) => setUpdateDiskFile(e.target.checked)}
-                                            className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
+                                            className="h-3.5 w-3.5 rounded border-border/80 bg-foreground/5 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
                                         />
-                                        <label htmlFor="update-disk-file" className="text-xs text-white/60 cursor-pointer">
+                                        <label htmlFor="update-disk-file" className="text-xs text-muted-foreground cursor-pointer">
                                             同步修改磁盘文件名
                                         </label>
                                     </div>
@@ -479,10 +479,10 @@ ${userInput}
                                 <Input
                                     value={editForm.filename}
                                     onChange={e => setEditForm(prev => ({ ...prev, filename: e.target.value }))}
-                                    className="bg-black border-white/10"
+                                    className="bg-card border-border/70"
                                     placeholder="输入文件名（含扩展名）"
                                 />
-                                {/* <p className="text-xs text-white/40">
+                                {/* <p className="text-xs text-foreground/40">
                                     {updateDiskFile
                                         ? "✓ 将同时修改数据库和磁盘文件名"
                                         : "仅修改显示名称，不改变磁盘文件"}
@@ -506,7 +506,7 @@ ${userInput}
                                 <Input
                                     value={editForm.title}
                                     onChange={e => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                                    className="bg-black border-white/10 font-medium"
+                                    className="bg-card border-border/70 font-medium"
                                     placeholder="输入想要的标题"
                                 />
                             </div>
@@ -528,7 +528,7 @@ ${userInput}
                                 <Textarea
                                     value={editForm.description}
                                     onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                                    className="bg-white/5 border-white/10 min-h-[100px]"
+                                    className="bg-foreground/5 border-border/70 min-h-[100px]"
                                     placeholder="输入视频描述或脚本..."
                                 />
                             </div> */}
@@ -550,7 +550,7 @@ ${userInput}
                                 <Input
                                     value={editForm.tags}
                                     onChange={e => setEditForm(prev => ({ ...prev, tags: e.target.value }))}
-                                    className="bg-black border-white/10"
+                                    className="bg-card border-border/70"
                                     placeholder="输入想要的标签"
                                 />
                             </div>
@@ -563,10 +563,10 @@ ${userInput}
                                         value={editForm.group}
                                         onValueChange={value => setEditForm(prev => ({ ...prev, group: value }))}
                                     >
-                                        <SelectTrigger className="bg-black border-white/10">
+                                        <SelectTrigger className="bg-card border-border/70">
                                             <SelectValue placeholder="选择分组" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-[#1A1A1A] border-white/10 text-white">
+                                        <SelectContent className="bg-[#1A1A1A] border-border/70 text-foreground">
                                             <SelectItem value="none">无分组</SelectItem>
                                             {groupOptions.map(group => (
                                                 <SelectItem key={group} value={group}>{group}</SelectItem>
@@ -581,12 +581,12 @@ ${userInput}
                     {/* Reference image uploader */}
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs text-white/60">上传/拖拽参考图（可选）</Label>
+                            <Label className="text-xs text-muted-foreground">上传/拖拽参考图（可选）</Label>
                             {referenceImage && (
                                 <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-6 text-xs text-white/60 hover:text-white hover:bg-black/10"
+                                    className="h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-card/10"
                                     onClick={() => setReferenceImage(null)}
                                 >
                                     移除
@@ -615,7 +615,7 @@ ${userInput}
                                 input?.click()
                             }}
                         >
-                            <div className="relative group-hover/file:shadow-2xl z-40 bg-black dark:bg-neutral-900 flex items-center justify-center h-32 mt-1 w-full mx-auto rounded-md shadow-[0px_10px_50px_rgba(0,0,0,0.1)]">
+                            <div className="relative group-hover/file:shadow-2xl z-40 bg-card dark:bg-neutral-900 flex items-center justify-center h-32 mt-1 w-full mx-auto rounded-md shadow-[0px_10px_50px_rgba(0,0,0,0.1)]">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="tabler-icon tabler-icon-upload h-4 w-4 text-neutral-600 dark:text-neutral-300">
                                     <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
                                     <path d="M7 9l5 -5l5 5"></path>
@@ -640,7 +640,7 @@ ${userInput}
                     {/* Cover Generator - AI 封面工坊 */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">封面工坊</h3>
+                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">封面工坊</h3>
                             {(coverJobStatus === "pending" || coverJobStatus === "running") && (
                                 <Badge variant="secondary" className="bg-purple-500/10 text-purple-300 border-purple-500/20">
                                     <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 生成中
@@ -651,22 +651,22 @@ ${userInput}
                             {/* Left: AI cover preview */}
                             <div className="space-y-2">
                                 <div
-                                    className="w-full rounded-lg border border-white/10 bg-black overflow-hidden relative group"
+                                    className="w-full rounded-lg border border-border/70 bg-card overflow-hidden relative group"
                                     style={coverAspectStyle}
                                 >
                                     {coverSrc ? (
                                         <Image src={coverSrc} alt="Cover" fill className="object-cover" unoptimized />
                                     ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center text-white/20">
+                                        <div className="absolute inset-0 flex items-center justify-center text-foreground/20">
                                             <ImageIcon className="w-8 h-8" />
                                         </div>
                                     )}
                                     {!!coverSrc && (
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <div className="absolute inset-0 bg-card/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="text-white hover:text-white"
+                                                className="text-foreground hover:text-foreground"
                                                 onClick={() => setEditForm(prev => ({ ...prev, cover_image: "" }))}
                                             >
                                                 清除
@@ -674,24 +674,24 @@ ${userInput}
                                         </div>
                                     )}
                                 </div>
-                                <div className="text-center text-xs text-white/40">{inferredCoverAspect} 预览</div>
+                                <div className="text-center text-xs text-foreground/40">{inferredCoverAspect} 预览</div>
                             </div>
 
                             {/* Right: prompt box (same height as preview) */}
                             <div className="space-y-2">
                                 <div
-                                    className="flex flex-col rounded-lg border border-white/10 bg-black p-3"
+                                    className="flex flex-col rounded-lg border border-border/70 bg-card p-3"
                                     style={coverAspectStyle}
                                 >
-                                    <Label className="text-xs text-white/60">AI 封面 Prompt</Label>
+                                    <Label className="text-xs text-muted-foreground">AI 封面 Prompt</Label>
                                     <Textarea
                                         value={coverPrompt}
                                         onChange={e => setCoverPrompt(e.target.value)}
-                                        className="mt-2 flex-1 bg-transparent border-white/10 text-sm resize-none"
+                                        className="mt-2 flex-1 bg-transparent border-border/70 text-sm resize-none"
                                         placeholder="描述想要的封面画面..."
                                     />
                                     <div className="mt-3 flex items-center justify-between gap-2">
-                                        <div className="text-xs text-white/40 truncate">
+                                        <div className="text-xs text-foreground/40 truncate">
                                             {referenceImage ? `参考图：${referenceImage.name}` : "参考图：未选择（可选）"}
                                         </div>
                                         <Button
@@ -735,8 +735,8 @@ export function MaterialEditorSheet({
 }: MaterialEditorSheetProps) {
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-full sm:max-w-[770px] border-l border-white/10 bg-[#0A0A0A] p-0 flex flex-col shadow-2xl">
-                <SheetHeader className="px-6 py-4 border-b border-white/10">
+            <SheetContent side="right" className="w-full sm:max-w-[770px] border-l border-border/70 bg-[#0A0A0A] p-0 flex flex-col shadow-2xl">
+                <SheetHeader className="px-6 py-4 border-b border-border/70">
                     <SheetTitle>{mode === 'batch' ? '批量编辑素材' : '编辑素材详情'}</SheetTitle>
                     <SheetDescription>配置标题、描述与封面，支持 AI 一键生成。</SheetDescription>
                 </SheetHeader>

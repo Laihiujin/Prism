@@ -109,7 +109,7 @@ const ToolExecution = ({ content }: { content: string }) => {
                 <Terminal className="h-3 w-3" />
                 <span>工具调用</span>
             </div>
-            <div className="px-3 py-2 text-xs text-blue-200/70 font-mono bg-black/20">
+            <div className="px-3 py-2 text-xs text-blue-200/70 font-mono bg-card/20">
                 {cleanContent}
             </div>
         </div>
@@ -227,14 +227,14 @@ export function AgentChat() {
                 <motion.div
                     initial={{ width: 280 }}
                     animate={{ width: isSidebarOpen ? 280 : 0 }}
-                    className="border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col overflow-hidden relative z-20"
+                    className="border-r border-border/40 bg-card/40 backdrop-blur-xl flex flex-col overflow-hidden relative z-20"
                 >
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                    <div className="p-4 border-b border-border/40 flex items-center justify-between">
                         <div className="flex items-center gap-2 text-purple-400 font-semibold">
                             <Bot className="h-5 w-5" />
                             <span>OpenClaw</span>
                         </div>
-                        <Button onClick={createNewThread} size="icon" variant="ghost" className="h-8 w-8 hover:bg-white/10 text-white/70">
+                        <Button onClick={createNewThread} size="icon" variant="ghost" className="h-8 w-8 hover:bg-accent/50 text-foreground/70">
                             <Plus className="h-4 w-4" />
                         </Button>
                     </div>
@@ -248,8 +248,8 @@ export function AgentChat() {
                                     className={cn(
                                         "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200",
                                         currentThreadId === thread.id
-                                            ? "bg-white/10 text-white shadow-sm border border-white/5"
-                                            : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                                            ? "bg-foreground/10 text-foreground shadow-sm border border-border/40"
+                                            : "text-muted-foreground hover:bg-accent/40 hover:text-foreground/80"
                                     )}
                                 >
                                     <MessageSquare className="h-4 w-4 opacity-70" />
@@ -280,18 +280,18 @@ export function AgentChat() {
                 <div className="flex-1 flex flex-col h-full relative bg-gradient-to-b from-[#0c0c0e] to-[#000000]">
 
                     {/* Header */}
-                    <div className="h-14 border-b border-white/5 bg-black/20 backdrop-blur-md flex items-center justify-between px-6 z-10">
+                    <div className="h-14 border-b border-border/40 bg-card/20 backdrop-blur-md flex items-center justify-between px-6 z-10">
                         <div className="flex items-center gap-3">
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="md:hidden text-white/50"
+                                className="md:hidden text-muted-foreground"
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                             >
                                 <ChevronRight className="h-5 w-5" />
                             </Button>
                             <div>
-                                <h2 className="text-sm font-semibold text-white/90">Agent 执行任务</h2>
+                                <h2 className="text-sm font-semibold text-foreground/90">Agent 执行任务</h2>
                                 <div className="flex items-center gap-1.5">
                                     <span className="relative flex h-2 w-2">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -316,12 +316,12 @@ export function AgentChat() {
                                         <div className="relative">
                                             <div className="absolute -inset-4 bg-purple-500/20 rounded-full blur-xl animate-pulse"></div>
                                             <div className="relative h-20 w-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-2xl shadow-purple-500/20">
-                                                <Bot className="h-10 w-10 text-white" />
+                                                <Bot className="h-10 w-10 text-foreground" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <h3 className="text-2xl font-bold text-white tracking-tight">OpenClaw Agent</h3>
-                                            <p className="text-white/40 max-w-md text-sm">
+                                            <h3 className="text-2xl font-bold text-foreground tracking-tight">OpenClaw Agent</h3>
+                                            <p className="text-foreground/40 max-w-md text-sm">
                                                 全能型 AI 助手，可以执行复杂的网页操作、数据分析和自动化任务。
                                             </p>
                                         </div>
@@ -335,7 +335,7 @@ export function AgentChat() {
                                                 <Button
                                                     key={i}
                                                     variant="outline"
-                                                    className="bg-white/5 border-white/10 hover:bg-white/10 text-white/60 hover:text-white text-xs h-auto py-3 justify-start"
+                                                    className="bg-foreground/5 border-border/70 hover:bg-accent/50 text-muted-foreground hover:text-foreground text-xs h-auto py-3 justify-start"
                                                 >
                                                     <Sparkles className="h-3 w-3 mr-2 text-purple-400" />
                                                     {suggestion}
@@ -354,7 +354,7 @@ export function AgentChat() {
                                                 className="flex gap-4 mb-8 justify-end group"
                                             >
                                                 <div className="flex-1 max-w-2xl">
-                                                    <div className="bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded-2xl rounded-tr-sm px-6 py-4 shadow-lg shadow-blue-900/20">
+                                                    <div className="bg-gradient-to-br from-indigo-600 to-blue-600 text-foreground rounded-2xl rounded-tr-sm px-6 py-4 shadow-lg shadow-blue-900/20">
                                                         <MessagePrimitive.Content />
                                                     </div>
                                                 </div>
@@ -377,7 +377,7 @@ export function AgentChat() {
                                                     </div>
                                                 </div>
                                                 <div className="flex-1 max-w-3xl space-y-2">
-                                                    <div className="bg-[#1a1a1c] border border-white/5 rounded-2xl rounded-tl-sm px-6 py-5 text-white/90 shadow-xl">
+                                                    <div className="bg-[#1a1a1c] border border-border/40 rounded-2xl rounded-tl-sm px-6 py-5 text-foreground/90 shadow-xl">
                                                         <MessageContent />
                                                     </div>
                                                 </div>
@@ -393,14 +393,14 @@ export function AgentChat() {
                             <ComposerPrimitive.Root className="mx-auto max-w-3xl relative">
                                 <div className="relative group">
                                     <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
-                                    <div className="relative flex gap-3 items-end bg-[#121214] border border-white/10 rounded-2xl p-3 shadow-2xl">
+                                    <div className="relative flex gap-3 items-end bg-[#121214] border border-border/70 rounded-2xl p-3 shadow-2xl">
                                         <ComposerPrimitive.Input
                                             asChild
                                             autoFocus
                                             placeholder="描述你的任务..."
                                         >
                                             <Textarea
-                                                className="flex-1 bg-transparent border-0 text-white placeholder:text-white/30 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[50px] max-h-[200px] py-3 px-2 text-base"
+                                                className="flex-1 bg-transparent border-0 text-foreground placeholder:text-foreground/30 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[50px] max-h-[200px] py-3 px-2 text-base"
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter' && !e.shiftKey) {
                                                         e.preventDefault();
@@ -413,7 +413,7 @@ export function AgentChat() {
                                         <ComposerPrimitive.Send asChild>
                                             <Button
                                                 size="icon"
-                                                className="h-10 w-10 rounded-xl bg-white text-black hover:bg-white/90 transition-all shadow-lg hover:shadow-white/20 mb-1"
+                                                className="h-10 w-10 rounded-xl bg-foreground text-background hover:bg-foreground/90 transition-all shadow-lg hover:shadow-foreground/20 mb-1"
                                             >
                                                 <Send className="h-4 w-4" />
                                             </Button>
@@ -421,7 +421,7 @@ export function AgentChat() {
                                     </div>
                                 </div>
                                 <div className="text-center mt-3">
-                                    <p className="text-[10px] text-white/30 font-medium tracking-wide uppercase">
+                                    <p className="text-[10px] text-foreground/30 font-medium tracking-wide uppercase">
                                         Powered by OpenClaw & Prism AI
                                     </p>
                                 </div>

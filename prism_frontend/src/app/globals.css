@@ -7,43 +7,43 @@
 
 @layer base {
   :root {
-    /* Apple-minimal dark neutrals: near-black with a blue hint, softer than pure black */
-    --background: 240 6% 4%;
-    --foreground: 240 4% 96%;
+    /* SaaS dark: near-black with a cool blue hint, layered surfaces */
+    --background: 222 20% 4%;
+    --foreground: 210 20% 96%;
 
-    --card: 240 5% 6%;
-    --card-foreground: 240 4% 96%;
+    --card: 222 18% 6%;
+    --card-foreground: 210 20% 96%;
 
-    --popover: 240 6% 5%;
-    --popover-foreground: 240 4% 96%;
+    --popover: 222 20% 5%;
+    --popover-foreground: 210 20% 96%;
 
-    /* Corporate-trust blue primary */
-    --primary: 217 89% 61%;
+    /* SaaS primary: refined indigo-blue */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 9%;
-    --secondary-foreground: 240 4% 96%;
+    --secondary: 222 16% 10%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: 240 5% 9%;
-    --muted-foreground: 240 4% 58%;
+    --muted: 222 16% 10%;
+    --muted-foreground: 215 12% 60%;
 
-    --accent: 240 5% 13%;
-    --accent-foreground: 240 4% 96%;
+    --accent: 222 16% 14%;
+    --accent-foreground: 210 20% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 13%;
-    --input: 240 5% 10%;
-    --ring: 217 89% 61%;
+    --border: 222 14% 14%;
+    --input: 222 14% 12%;
+    --ring: 217 91% 60%;
 
     /* Terminal-dark accent (green) for technical / data / status surfaces */
     --terminal: 158 64% 52%;
     --terminal-foreground: 240 10% 4%;
 
-    --radius: 1rem;
+    --radius: 0.875rem;
 
-    --chart-1: 217 89% 61%;
+    --chart-1: 217 91% 60%;
     --chart-2: 158 64% 52%;
     --chart-3: 45 93% 60%;
     --chart-4: 280 65% 60%;
@@ -51,38 +51,38 @@
   }
 
   .dark {
-    --background: 240 6% 4%;
-    --foreground: 240 4% 96%;
+    --background: 222 20% 4%;
+    --foreground: 210 20% 96%;
 
-    --card: 240 5% 6%;
-    --card-foreground: 240 4% 96%;
+    --card: 222 18% 6%;
+    --card-foreground: 210 20% 96%;
 
-    --popover: 240 6% 5%;
-    --popover-foreground: 240 4% 96%;
+    --popover: 222 20% 5%;
+    --popover-foreground: 210 20% 96%;
 
-    --primary: 217 89% 61%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 9%;
-    --secondary-foreground: 240 4% 96%;
+    --secondary: 222 16% 10%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: 240 5% 9%;
-    --muted-foreground: 240 4% 58%;
+    --muted: 222 16% 10%;
+    --muted-foreground: 215 12% 60%;
 
-    --accent: 240 5% 13%;
-    --accent-foreground: 240 4% 96%;
+    --accent: 222 16% 14%;
+    --accent-foreground: 210 20% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 13%;
-    --input: 240 5% 10%;
-    --ring: 217 89% 61%;
+    --border: 222 14% 14%;
+    --input: 222 14% 12%;
+    --ring: 217 91% 60%;
 
     --terminal: 158 64% 52%;
     --terminal-foreground: 240 10% 4%;
 
-    --chart-1: 217 89% 61%;
+    --chart-1: 217 91% 60%;
     --chart-2: 158 64% 52%;
     --chart-3: 45 93% 60%;
     --chart-4: 280 65% 60%;
@@ -100,11 +100,43 @@
     color: hsl(var(--terminal));
   }
 
-  /* Apple-minimal frosted surface */
+  /* SaaS frosted surface */
   .bg-glass {
     background-color: hsl(var(--background) / 0.72);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  /* SaaS elevated glass panel */
+  .bg-glass-strong {
+    background-color: hsl(var(--background) / 0.85);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+
+  /* SaaS hairline top highlight for cards */
+  .hairline-top {
+    box-shadow: inset 0 1px 0 0 hsl(var(--border) / 0.6);
+  }
+
+  /* SaaS ambient card glow on hover */
+  .card-glow {
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+  }
+  .card-glow:hover {
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.12),
+      0 8px 32px -12px hsl(var(--primary) / 0.25);
+  }
+
+  /* Soft inner fade for Aurora ambient background */
+  .bg-ambient-fade {
+    background: radial-gradient(
+      120% 80% at 50% 0%,
+      hsl(var(--primary) / 0.06),
+      transparent 60%
+    );
   }
 }
 

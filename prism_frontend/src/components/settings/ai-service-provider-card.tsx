@@ -293,27 +293,27 @@ export function AIServiceProviderCard({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="border-white/10 bg-black">
+      <Card className="border-border/70 bg-card">
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="flex w-full items-start justify-between gap-4 rounded-2xl px-5 py-4 text-left transition-colors hover:bg-white/5"
+            className="flex w-full items-start justify-between gap-4 rounded-2xl px-5 py-4 text-left transition-colors hover:bg-accent/40"
           >
             <div className="min-w-0 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="text-sm font-medium text-white">{title}</div>
+                <div className="text-sm font-medium text-foreground">{title}</div>
                 <Badge
                   variant="outline"
-                  className={savedConfig ? "border-white/20 bg-white/10 text-white" : "border-white/10 bg-black text-white/55"}
+                  className={savedConfig ? "border-border/80 bg-foreground/10 text-foreground" : "border-border/70 bg-card text-muted-foreground"}
                 >
                   {savedConfig ? "已配置" : "未配置"}
                 </Badge>
               </div>
-              <p className="text-xs leading-5 text-white/60">{description}</p>
+              <p className="text-xs leading-5 text-muted-foreground">{description}</p>
             </div>
             <ChevronDown
               className={cn(
-                "mt-0.5 h-4 w-4 shrink-0 text-white/55 transition-transform",
+                "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
                 open && "rotate-180"
               )}
             />
@@ -321,7 +321,7 @@ export function AIServiceProviderCard({
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="space-y-5 border-t border-white/10 pt-5">
+          <CardContent className="space-y-5 border-t border-border/70 pt-5">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor={`${serviceType}-provider`}>提供商</Label>
@@ -372,22 +372,22 @@ export function AIServiceProviderCard({
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-white/10 bg-black p-4">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-white/40">当前提供商</div>
-                <div className="mt-2 text-sm font-medium text-white">{savedConfig?.provider || form.provider || "-"}</div>
+              <div className="rounded-xl border border-border/70 bg-card p-4">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-foreground/40">当前提供商</div>
+                <div className="mt-2 text-sm font-medium text-foreground">{savedConfig?.provider || form.provider || "-"}</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black p-4">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-white/40">当前模型</div>
-                <div className="mt-2 break-all text-sm text-white/80">{savedConfig?.model_name || form.modelName || "-"}</div>
+              <div className="rounded-xl border border-border/70 bg-card p-4">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-foreground/40">当前模型</div>
+                <div className="mt-2 break-all text-sm text-foreground/80">{savedConfig?.model_name || form.modelName || "-"}</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black p-4">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-white/40">测试地址</div>
-                <div className="mt-2 break-all text-sm text-white/80">{resolvedBaseUrl || "未填写"}</div>
+              <div className="rounded-xl border border-border/70 bg-card p-4">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-foreground/40">测试地址</div>
+                <div className="mt-2 break-all text-sm text-foreground/80">{resolvedBaseUrl || "未填写"}</div>
               </div>
             </div>
 
             {note ? (
-              <div className="rounded-xl border border-dashed border-white/10 bg-black px-4 py-3 text-xs leading-5 text-white/55">
+              <div className="rounded-xl border border-dashed border-border/70 bg-card px-4 py-3 text-xs leading-5 text-muted-foreground">
                 {note}
               </div>
             ) : null}
@@ -396,14 +396,14 @@ export function AIServiceProviderCard({
               <Button
                 onClick={() => void saveConfig()}
                 disabled={loading.save}
-                className="border-white/20 bg-white/10 text-white hover:bg-white/15"
+                className="border-border/80 bg-foreground/10 text-foreground hover:bg-accent/50"
               >
                 {loading.save ? <Loader2 className="animate-spin" /> : <Save />}
                 保存配置
               </Button>
               <Button
                 variant="secondary"
-                className="border-white/10 bg-black text-white hover:bg-white/5"
+                className="border-border/70 bg-card text-foreground hover:bg-accent/40"
                 onClick={() => void testConfig()}
                 disabled={loading.test}
               >
@@ -412,7 +412,7 @@ export function AIServiceProviderCard({
               </Button>
               <Button
                 variant="secondary"
-                className="border-white/10 bg-black text-white hover:bg-white/5"
+                className="border-border/70 bg-card text-foreground hover:bg-accent/40"
                 onClick={() => void hydrate()}
                 disabled={loading.hydrate}
               >
@@ -421,7 +421,7 @@ export function AIServiceProviderCard({
               </Button>
               <Button
                 variant="secondary"
-                className="border-white/10 bg-black text-white/70 hover:bg-white/5"
+                className="border-border/70 bg-card text-foreground/70 hover:bg-accent/40"
                 onClick={() => void clearConfig()}
                 disabled={loading.clear || !savedConfig}
               >

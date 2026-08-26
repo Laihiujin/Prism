@@ -385,7 +385,7 @@ function MaterialsPageContent() {
             type="checkbox"
             checked={isAllSelected}
             onChange={handleToggleSelectAll}
-            className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
+            className="h-4 w-4 rounded border-border/80 bg-foreground/5 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
           />
         </div>
       ),
@@ -395,7 +395,7 @@ function MaterialsPageContent() {
             type="checkbox"
             checked={selectedIds.has(row.original.id)}
             onChange={() => handleToggleSelect(row.original.id)}
-            className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
+            className="h-4 w-4 rounded border-border/80 bg-foreground/5 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
           />
         </div>
       ),
@@ -410,7 +410,7 @@ function MaterialsPageContent() {
             {row.original.title || row.original.filename}
           </div>
           {!!row.original.title && row.original.title !== row.original.filename && (
-            <div className="text-xs text-white/60 truncate" title={row.original.filename}>
+            <div className="text-xs text-muted-foreground truncate" title={row.original.filename}>
               {row.original.filename}
             </div>
           )}
@@ -421,25 +421,25 @@ function MaterialsPageContent() {
       accessorKey: "filesize",
       header: "大小",
       size: 110,
-      cell: ({ row }) => <span className="text-white/60">{(row.original.filesize || 0).toFixed(2)} MB</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{(row.original.filesize || 0).toFixed(2)} MB</span>,
     },
     {
       accessorKey: "duration",
       header: "时长",
       size: 90,
-      cell: ({ row }) => <span className="text-white/60">{formatDuration(row.original.duration)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{formatDuration(row.original.duration)}</span>,
     },
     {
       id: "resolution",
       header: "分辨率",
       size: 140,
-      cell: ({ row }) => <span className="text-white/60">{formatResolution(row.original)}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{formatResolution(row.original)}</span>,
     },
     {
       accessorKey: "uploadTime",
       header: "上传时间",
       size: 140,
-      cell: ({ row }) => <span className="text-white/60 text-xs">{row.original.uploadTime?.split('T')[0]}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.uploadTime?.split('T')[0]}</span>,
     },
     {
       accessorKey: "status",
@@ -460,10 +460,10 @@ function MaterialsPageContent() {
       size: 140,
       cell: ({ row }) => (
         row.original.group ? (
-          <Badge variant="outline" className="rounded-md text-xs border-white/10 text-white/70">
+          <Badge variant="outline" className="rounded-md text-xs border-border/70 text-foreground/70">
             {row.original.group}
           </Badge>
-        ) : <span className="text-xs text-white/30">-</span>
+        ) : <span className="text-xs text-foreground/30">-</span>
       ),
     },
     {
@@ -472,13 +472,13 @@ function MaterialsPageContent() {
       size: 200,
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
-          <Button size="sm" variant="ghost" className="h-8 px-2 text-white/70 hover:text-white" onClick={() => setPreviewMaterial(row.original)}>
+          <Button size="sm" variant="ghost" className="h-8 px-2 text-foreground/70 hover:text-foreground" onClick={() => setPreviewMaterial(row.original)}>
             预览
           </Button>
           <Button
             size="sm"
             variant="secondary"
-            className="h-8 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/5"
+            className="h-8 px-3 rounded-lg bg-foreground/10 hover:bg-accent/60 text-foreground border border-border/40"
             onClick={() => setSelectedMaterial(row.original)}
           >
             <FileText className="h-3.5 w-3.5 mr-1.5" />
@@ -486,7 +486,7 @@ function MaterialsPageContent() {
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-white/40 hover:text-red-400 hover:bg-red-500/10">
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-foreground/40 hover:text-red-400 hover:bg-red-500/10">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -514,7 +514,7 @@ function MaterialsPageContent() {
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10"
+              className="rounded-xl border-border/70 bg-foreground/5 hover:bg-accent/50"
               onClick={handleSync}
               disabled={isSyncing}
             >
@@ -530,7 +530,7 @@ function MaterialsPageContent() {
                   上传素材
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] border-white/10 bg-black text-white flex flex-col">
+              <DialogContent className="max-w-2xl max-h-[80vh] border-border/70 bg-card text-foreground flex flex-col">
                 <DialogHeader>
                   <DialogTitle>上传素材</DialogTitle>
                   <DialogDescription>支持批量上传视频文件，自动提取元数据。</DialogDescription>
@@ -540,13 +540,13 @@ function MaterialsPageContent() {
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-white/90">分组设置</Label>
+                      <Label className="text-sm font-medium text-foreground/90">分组设置</Label>
                       {!showGroupManager && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs text-white/50 hover:text-white"
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
                           onClick={() => setShowGroupManager(true)}
                         >
                           管理分组
@@ -554,11 +554,11 @@ function MaterialsPageContent() {
                       )}
                     </div>
 
-                    <div className="rounded-xl border border-white/10 bg-black p-4 space-y-4">
+                    <div className="rounded-xl border border-border/70 bg-card p-4 space-y-4">
                       <div className="flex gap-3">
                         <div className="flex-1 min-w-0">
                           <Select value={uploadGroup} onValueChange={(v) => setUploadGroup(v)}>
-                            <SelectTrigger className="h-10 bg-black border-white/10 text-sm focus:ring-0 focus:border-primary/50 transition-colors">
+                            <SelectTrigger className="h-10 bg-card border-border/70 text-sm focus:ring-0 focus:border-primary/50 transition-colors">
                               <SelectValue placeholder="选择分组..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -572,7 +572,7 @@ function MaterialsPageContent() {
                         <Button
                           type="button"
                           variant="secondary"
-                          className="h-10 px-3 bg-white/10 hover:bg-white/15 text-white border border-white/5"
+                          className="h-10 px-3 bg-foreground/10 hover:bg-accent/50 text-foreground border border-border/40"
                           onClick={() => setShowNewGroup(v => !v)}
                         >
                           <Plus className={cn("h-4 w-4 transition-transform", showNewGroup ? "rotate-45" : "")} />
@@ -586,7 +586,7 @@ function MaterialsPageContent() {
                             placeholder="输入新分组名称"
                             value={newGroupName}
                             onChange={(e) => setNewGroupName(e.target.value)}
-                            className="h-10 bg-black border-white/10 text-sm"
+                            className="h-10 bg-card border-border/70 text-sm"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 const name = newGroupName.trim()
@@ -616,14 +616,14 @@ function MaterialsPageContent() {
                       )}
 
                       {showGroupManager && (
-                        <div className="pt-2 border-t border-white/5 space-y-3 animate-in fade-in duration-300">
+                        <div className="pt-2 border-t border-border/40 space-y-3 animate-in fade-in duration-300">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-white/40">已创建 {uploadGroupOptions.length} 个分组</span>
+                            <span className="text-xs text-foreground/40">已创建 {uploadGroupOptions.length} 个分组</span>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => setShowGroupManager(false)}
-                              className="h-6 px-2 text-xs text-white/40 hover:text-white"
+                              className="h-6 px-2 text-xs text-foreground/40 hover:text-foreground"
                             >
                               收起
                             </Button>
@@ -632,7 +632,7 @@ function MaterialsPageContent() {
                           <ScrollArea className="h-[240px] pr-3">
                             <div className="space-y-2">
                               {uploadGroupOptions.length === 0 ? (
-                                <div className="text-center py-8 text-white/20 text-sm border border-dashed border-white/10 rounded-lg">暂无分组</div>
+                                <div className="text-center py-8 text-foreground/20 text-sm border border-dashed border-border/70 rounded-lg">暂无分组</div>
                               ) : (
                                 uploadGroupOptions.map((g) => {
                                   const backendGroup = groupOptions.includes(g)
@@ -640,14 +640,14 @@ function MaterialsPageContent() {
                                   return (
                                     <div
                                       key={g}
-                                      className="group flex items-center justify-between p-2 rounded-lg bg-black/20 hover:bg-black/40 border border-white/5 hover:border-white/10 transition-all"
+                                      className="group flex items-center justify-between p-2 rounded-lg bg-card/20 hover:bg-card/40 border border-border/40 hover:border-border/70 transition-all"
                                     >
                                       {isEditing ? (
                                         <div className="flex items-center gap-2 flex-1 w-full">
                                           <Input
                                             value={editingGroupName}
                                             onChange={(e) => setEditingGroupName(e.target.value)}
-                                            className="h-8 text-sm bg-black/40 border-primary/50 focus:border-primary"
+                                            className="h-8 text-sm bg-card/40 border-primary/50 focus:border-primary"
                                             autoFocus
                                           />
                                           <Button
@@ -692,7 +692,7 @@ function MaterialsPageContent() {
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-8 w-8 p-0 shrink-0 text-white/50 hover:text-white"
+                                            className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
                                             onClick={() => {
                                               setEditingGroup(null)
                                               setEditingGroupName("")
@@ -704,9 +704,9 @@ function MaterialsPageContent() {
                                       ) : (
                                         <>
                                           <div className="flex items-center gap-2 min-w-0 flex-1">
-                                            <span className="text-sm text-white/80 truncate font-medium">{g}</span>
+                                            <span className="text-sm text-foreground/80 truncate font-medium">{g}</span>
                                             {!backendGroup && (
-                                              <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-white/30 border border-white/5">
+                                              <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-foreground/5 text-foreground/30 border border-border/40">
                                                 本地
                                               </span>
                                             )}
@@ -716,7 +716,7 @@ function MaterialsPageContent() {
                                               type="button"
                                               variant="ghost"
                                               size="icon"
-                                              className="h-7 w-7 text-white/40 hover:text-white hover:bg-white/10"
+                                              className="h-7 w-7 text-foreground/40 hover:text-foreground hover:bg-accent/50"
                                               onClick={() => {
                                                 setEditingGroup(g)
                                                 setEditingGroupName(g)
@@ -728,7 +728,7 @@ function MaterialsPageContent() {
                                               type="button"
                                               variant="ghost"
                                               size="icon"
-                                              className="h-7 w-7 text-white/40 hover:text-red-400 hover:bg-red-500/10"
+                                              className="h-7 w-7 text-foreground/40 hover:text-red-400 hover:bg-red-500/10"
                                               disabled={groupActionBusy}
                                               onClick={async () => {
                                                 if (!confirm(`确认删除分组：${g} ？`)) return
@@ -780,29 +780,29 @@ function MaterialsPageContent() {
       />
 
       {/* Filter Toolbar */}
-      <Card className="flex-1 border-white/10 bg-black flex flex-col min-h-0 shadow-none">
+      <Card className="flex-1 border-border/70 bg-card flex flex-col min-h-0 shadow-none">
         <CardHeader className="flex-shrink-0 pb-4">
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-            <div className="flex items-center gap-2 bg-black p-1 rounded-xl border border-white/10">
+            <div className="flex items-center gap-2 bg-card p-1 rounded-xl border border-border/70">
               <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="w-full">
-                <TabsList className="h-9 rounded-xl bg-black border border-white/10 backdrop-blur-sm">
-                  <TabsTrigger value="all" className="rounded-lg text-xs text-white/70 data-[state=active]:bg-white/90 data-[state=active]:text-black transition-colors">
+                <TabsList className="h-9 rounded-xl bg-card border border-border/70 backdrop-blur-sm">
+                  <TabsTrigger value="all" className="rounded-lg text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
                     全部
                   </TabsTrigger>
-                  <TabsTrigger value="pending" className="rounded-lg text-xs text-white/70 data-[state=active]:bg-white/90 data-[state=active]:text-black transition-colors">
+                  <TabsTrigger value="pending" className="rounded-lg text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
                     待发布
                   </TabsTrigger>
-                  <TabsTrigger value="published" className="rounded-lg text-xs text-white/70 data-[state=active]:bg-white/90 data-[state=active]:text-black transition-colors">
+                  <TabsTrigger value="published" className="rounded-lg text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
                     已发布
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
             <div className="flex gap-3 w-full md:w-auto items-center">
-              <div className="flex items-center gap-2 bg-black border border-white/10 rounded-xl px-3 h-10">
-                <span className="text-xs text-white/50">分组</span>
+              <div className="flex items-center gap-2 bg-card border border-border/70 rounded-xl px-3 h-10">
+                <span className="text-xs text-muted-foreground">分组</span>
                 <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v)}>
-                  <SelectTrigger className="bg-transparent border-0 h-8 px-2 text-white/80">
+                  <SelectTrigger className="bg-transparent border-0 h-8 px-2 text-foreground/80">
                     <SelectValue placeholder="全部分组" />
                   </SelectTrigger>
                   <SelectContent>
@@ -818,7 +818,7 @@ function MaterialsPageContent() {
                   placeholder="搜索素材..."
                   value={keyword}
                   onChange={e => setKeyword(e.target.value)}
-                  className="h-10 rounded-xl bg-black border-white/10 min-w-[200px]"
+                  className="h-10 rounded-xl bg-card border-border/70 min-w-[200px]"
                 />
               </div>
             </div>
@@ -829,7 +829,7 @@ function MaterialsPageContent() {
             <div className="p-6 pt-0">
               {selectedIds.size > 0 && (
                 <div className="mb-4 flex items-center gap-3 p-3 bg-primary/10 border border-primary/20 rounded-xl">
-                  <span className="text-sm text-white/80">
+                  <span className="text-sm text-foreground/80">
                     已选择 {selectedIds.size} 个素材
                   </span>
                   <AlertDialog>
@@ -921,12 +921,12 @@ function MaterialsPageContent() {
 
       {/* Preview Dialog */}
       <Dialog open={!!previewMaterial} onOpenChange={(open) => !open && setPreviewMaterial(null)}>
-        <DialogContent className="max-w-[820px] w-[820px] h-auto bg-black border-black p-0 overflow-hidden gap-0">
+        <DialogContent className="max-w-[820px] w-[820px] h-auto bg-card border-border p-0 overflow-hidden gap-0">
           <DialogHeader className="sr-only">
             <DialogTitle>素材预览</DialogTitle>
           </DialogHeader>
           {previewMaterial && (
-            <div className="relative w-full h-full flex items-center justify-center bg-black">
+            <div className="relative w-full h-full flex items-center justify-center bg-card">
               {(() => {
                 const previewSrc = getPreviewUrl(previewMaterial)
                 return (
@@ -934,7 +934,7 @@ function MaterialsPageContent() {
                     key={previewSrc}
                     src={previewSrc}
                     controls
-                    className="w-full max-h-[80vh] object-contain bg-black block shadow-2xl"
+                    className="w-full max-h-[80vh] object-contain bg-card block shadow-2xl"
                     autoPlay
                   />
                 )
@@ -949,7 +949,7 @@ function MaterialsPageContent() {
 
 export default function MaterialsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-white/50">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-muted-foreground">Loading...</div>}>
       <MaterialsPageContent />
     </Suspense>
   )

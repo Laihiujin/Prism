@@ -32,7 +32,7 @@ export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) 
                             "relative flex items-center gap-3 p-4 rounded-xl border text-left transition-all group",
                             isSelected
                                 ? "border-primary bg-primary/10 ring-1 ring-primary"
-                                : "border-white/10 bg-black hover:bg-white/10 hover:border-white/20",
+                                : "border-border/70 bg-card hover:bg-accent/50 hover:border-border/80",
                             platform.disabled && "opacity-50 cursor-not-allowed"
                         )}
                     >
@@ -48,8 +48,8 @@ export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) 
                             />
                         </div>
                         <div className="min-w-0">
-                            <div className="font-medium text-sm text-white">{platform.name}</div>
-                            <div className="text-[10px] text-white/50 truncate">{platform.desc}</div>
+                            <div className="font-medium text-sm text-foreground">{platform.name}</div>
+                            <div className="text-[10px] text-muted-foreground truncate">{platform.desc}</div>
                         </div>
                     </button>
                 )

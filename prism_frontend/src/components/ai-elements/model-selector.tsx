@@ -34,7 +34,7 @@ export function ModelSelectorTrigger({
 
 export function ModelSelectorContent({ children }: { children: React.ReactNode }) {
     return (
-        <div className="absolute bottom-full mb-2 w-64 bg-black/95 border border-white/10 rounded-lg p-2">
+        <div className="absolute bottom-full mb-2 w-64 bg-card border border-border/70 rounded-lg p-2">
             {children}
         </div>
     )
@@ -45,7 +45,7 @@ export function ModelSelectorInput({ placeholder }: { placeholder?: string }) {
         <input
             type="text"
             placeholder={placeholder}
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm mb-2"
+            className="w-full px-3 py-2 bg-foreground/5 border border-border/70 rounded text-foreground text-sm mb-2"
         />
     )
 }
@@ -55,7 +55,7 @@ export function ModelSelectorList({ children }: { children: React.ReactNode }) {
 }
 
 export function ModelSelectorEmpty({ children }: { children: React.ReactNode }) {
-    return <div className="text-white/50 text-sm p-2">{children}</div>
+    return <div className="text-muted-foreground text-sm p-2">{children}</div>
 }
 
 export function ModelSelectorGroup({
@@ -67,7 +67,7 @@ export function ModelSelectorGroup({
 }) {
     return (
         <div className="space-y-1">
-            {heading && <div className="text-white/70 text-xs font-medium px-2 py-1">{heading}</div>}
+            {heading && <div className="text-foreground/70 text-xs font-medium px-2 py-1">{heading}</div>}
             {children}
         </div>
     )
@@ -85,7 +85,7 @@ export function ModelSelectorItem({
     return (
         <button
             onClick={onSelect}
-            className="w-full flex items-center gap-2 px-2 py-2 hover:bg-white/10 rounded text-sm text-white text-left"
+            className="w-full flex items-center gap-2 px-2 py-2 hover:bg-accent/50 rounded text-sm text-foreground text-left"
         >
             {children}
         </button>

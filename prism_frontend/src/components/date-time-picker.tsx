@@ -62,8 +62,8 @@ export function DateTimePicker({
         <Button
           variant="outline"
           className={cn(
-            "justify-start gap-2 rounded-2xl border-white/20 bg-white/5 text-left font-normal",
-            !value && "text-white/60",
+            "justify-start gap-2 rounded-2xl border-border/80 bg-foreground/5 text-left font-normal",
+            !value && "text-muted-foreground",
             className
           )}
         >
@@ -71,8 +71,8 @@ export function DateTimePicker({
           {displayValue}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-fit border-white/10 bg-background p-0" align="start">
-        <Card className="w-fit border-white/10 bg-background">
+      <PopoverContent className="w-fit border-border/70 bg-background p-0" align="start">
+        <Card className="w-fit border-border/70 bg-background">
           <CardContent className="px-4 pt-4">
             <Calendar
               mode="single"
@@ -81,13 +81,13 @@ export function DateTimePicker({
               className="bg-transparent p-0"
             />
           </CardContent>
-          <CardFooter className="flex flex-col gap-3 border-t border-white/10 px-4 py-4">
+          <CardFooter className="flex flex-col gap-3 border-t border-border/70 px-4 py-4">
             <div className="flex w-full flex-col gap-2">
-              <Label htmlFor={`${label}-time`} className="text-sm text-white/70">
+              <Label htmlFor={`${label}-time`} className="text-sm text-foreground/70">
                 {label}时间
               </Label>
               <div className="relative">
-                <Clock2Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                <Clock2Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id={`${label}-time`}
                   type="time"
@@ -101,7 +101,7 @@ export function DateTimePicker({
               <Button
                 type="button"
                 variant="ghost"
-                className="flex-1 rounded-2xl border border-white/10 bg-white/5"
+                className="flex-1 rounded-2xl border border-border/70 bg-foreground/5"
                 onClick={() => {
                   onChange(undefined)
                   setOpen(false)

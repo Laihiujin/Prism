@@ -82,7 +82,7 @@ export function Queue({
     <ScrollArea className={cn("w-full", maxHeight && `max-h-[${maxHeight}]`)}>
       <div className="space-y-1 p-2">
         {items.length === 0 ? (
-          <div className="text-center text-xs text-white/40 py-4">
+          <div className="text-center text-xs text-foreground/40 py-4">
             暂无任务
           </div>
         ) : (
@@ -92,7 +92,7 @@ export function Queue({
               onClick={() => onItemClick?.(item)}
               className={cn(
                 "flex items-start gap-2 rounded p-2 text-xs transition-colors",
-                "hover:bg-white/5",
+                "hover:bg-accent/40",
                 onItemClick && "cursor-pointer",
                 item.status === "completed" && "opacity-60"
               )}
@@ -103,14 +103,14 @@ export function Queue({
 
               <div className="flex-1 space-y-1">
                 <div className={cn(
-                  "text-white/80",
+                  "text-foreground/80",
                   item.status === "completed" && "line-through"
                 )}>
                   {index + 1}. {item.content}
                 </div>
 
                 {item.metadata && Object.keys(item.metadata).length > 0 && (
-                  <div className="text-[10px] text-white/40 font-mono">
+                  <div className="text-[10px] text-foreground/40 font-mono">
                     {JSON.stringify(item.metadata, null, 2)}
                   </div>
                 )}
@@ -124,9 +124,9 @@ export function Queue({
 
   if (collapsible) {
     return (
-      <Card className={cn("bg-black/40 border-white/10", className)}>
+      <Card className={cn("bg-card/40 border-border/70", className)}>
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleTrigger className="flex w-full items-center justify-between p-3 text-sm font-medium text-white/90 hover:bg-white/5 transition-colors">
+          <CollapsibleTrigger className="flex w-full items-center justify-between p-3 text-sm font-medium text-foreground/90 hover:bg-accent/40 transition-colors">
             <div className="flex items-center gap-2">
               {isOpen ? (
                 <ChevronDown className="h-4 w-4" />
@@ -134,7 +134,7 @@ export function Queue({
                 <ChevronRight className="h-4 w-4" />
               )}
               <span>{title}</span>
-              <span className="text-xs text-white/50">({items.length})</span>
+              <span className="text-xs text-muted-foreground">({items.length})</span>
             </div>
           </CollapsibleTrigger>
 
@@ -147,11 +147,11 @@ export function Queue({
   }
 
   return (
-    <Card className={cn("bg-black/40 border-white/10", className)}>
-      <div className="p-3 border-b border-white/10">
+    <Card className={cn("bg-card/40 border-border/70", className)}>
+      <div className="p-3 border-b border-border/70">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-white/90">{title}</span>
-          <span className="text-xs text-white/50">{items.length} 项</span>
+          <span className="text-sm font-medium text-foreground/90">{title}</span>
+          <span className="text-xs text-muted-foreground">{items.length} 项</span>
         </div>
       </div>
       {content}
@@ -174,14 +174,14 @@ export function QueueItemComponent({ item, onClick }: { item: QueueItem; onClick
     <div
       onClick={onClick}
       className={cn(
-        "flex items-start gap-2 rounded p-2 text-xs hover:bg-white/5 transition-colors",
+        "flex items-start gap-2 rounded p-2 text-xs hover:bg-accent/40 transition-colors",
         onClick && "cursor-pointer"
       )}
     >
       <div className="mt-0.5">
         {item.status ? statusIcons[item.status] : statusIcons.pending}
       </div>
-      <div className="flex-1 text-white/80">{item.content}</div>
+      <div className="flex-1 text-foreground/80">{item.content}</div>
     </div>
   )
 }

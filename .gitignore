@@ -192,3 +192,6 @@ LaunchScript/python-3.11.9-embed-amd64.zip
 
 # Python build metadata
 *.egg-info/
+
+# Local npm cache used when ~/.npm is unwritable
+.npm-cache-tmp/
