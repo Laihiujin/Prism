@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   修复 synenv 虚拟环境路径问题
+echo   修复 prismenv 虚拟环境路径问题
 echo ============================================
 echo.
 echo 说明：当项目目录从一个盘符移动到另一个盘符时
@@ -9,7 +9,7 @@ echo       虚拟环境内的可执行文件路径会失效
 echo       此脚本会重新安装 pip 和常用工具
 echo.
 
-set "PYTHON_EXE=%~dp0synenv\Scripts\python.exe"
+set "PYTHON_EXE=%~dp0prismenv\Scripts\python.exe"
 
 if not exist "%PYTHON_EXE%" (
     echo ❌ 找不到 Python: %PYTHON_EXE%
@@ -47,9 +47,9 @@ echo.
 
 echo [4] 验证工具...
 echo    - pip 版本:
-"%~dp0synenv\Scripts\pip.exe" --version
+"%~dp0prismenv\Scripts\pip.exe" --version
 echo    - pyinstaller 版本:
-"%~dp0synenv\Scripts\pyinstaller.exe" --version
+"%~dp0prismenv\Scripts\pyinstaller.exe" --version
 echo.
 
 echo ============================================

@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'syn_backend'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'prism_backend'))
 from config.conf import LOCAL_CHROME_PATH, BASE_DIR
 
 print(f"LOCAL_CHROME_PATH: {LOCAL_CHROME_PATH}")

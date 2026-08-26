@@ -8,11 +8,11 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from config.conf import BASE_DIR
 
-db_path = Path(BASE_DIR) / "syn_backend" / "db" / "cookie_store.db"
+db_path = Path(BASE_DIR) / "prism_backend" / "db" / "cookie_store.db"
 print(f"DB Path: {db_path}")
 
 if not db_path.exists():
-    # Try without syn_backend if it's relative
+    # Try without prism_backend if it's relative
     db_path = Path(BASE_DIR) / "db" / "cookie_store.db"
     print(f"Trying DB Path: {db_path}")
 

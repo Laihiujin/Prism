@@ -80,9 +80,9 @@ def main():
 
     # 4. 检查路径问题
     logger.info("[4] 检查路径问题")
-    wrong_paths = [p for p in profiles if "syn_backend\\syn_backend" in p['path'] or "syn_backend/syn_backend" in p['path']]
+    wrong_paths = [p for p in profiles if "prism_backend\\prism_backend" in p['path'] or "prism_backend/prism_backend" in p['path']]
     if wrong_paths:
-        logger.warning(f"⚠️  发现 {len(wrong_paths)} 个错误路径配置 (syn_backend/syn_backend):")
+        logger.warning(f"⚠️  发现 {len(wrong_paths)} 个错误路径配置 (prism_backend/prism_backend):")
         for profile in wrong_paths[:5]:
             logger.warning(f"  - {profile['platform']}_{profile['account_id']}")
             logger.warning(f"    {profile['path']}")
@@ -143,7 +143,7 @@ def main():
 
     if duplicates:
         logger.info("1. 清理重复配置:")
-        logger.info("   - 删除 syn_backend/syn_backend/browser_profiles 目录下的重复配置")
+        logger.info("   - 删除 prism_backend/prism_backend/browser_profiles 目录下的重复配置")
         logger.info("")
 
     if size_info['total_gb'] > 5:
@@ -154,8 +154,8 @@ def main():
 
     if wrong_paths:
         logger.info("3. 修复错误路径:")
-        logger.info("   - 删除 syn_backend/syn_backend/browser_profiles 目录")
-        logger.info("   - 只保留 syn_backend/browser_profiles")
+        logger.info("   - 删除 prism_backend/prism_backend/browser_profiles 目录")
+        logger.info("   - 只保留 prism_backend/browser_profiles")
         logger.info("")
 
     logger.info("📚 API 端点:")

@@ -107,10 +107,10 @@ export function ToolCallDisplay({
             {getStatusIcon()}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-white truncate">
+                <span className="text-sm font-medium text-foreground truncate">
                   {toolCall.name}
                 </span>
-                <span className="text-xs text-white/50">
+                <span className="text-xs text-muted-foreground">
                   {getStatusText()}
                 </span>
               </div>
@@ -133,8 +133,8 @@ export function ToolCallDisplay({
           <div className="px-3 pb-3 space-y-2">
             {/* Arguments */}
             <div>
-              <div className="text-xs font-medium text-white/60 mb-1">参数:</div>
-              <pre className="text-xs bg-black/30 rounded p-2 overflow-x-auto text-white/80 border border-white/10">
+              <div className="text-xs font-medium text-muted-foreground mb-1">参数:</div>
+              <pre className="text-xs bg-card/30 rounded p-2 overflow-x-auto text-foreground/80 border border-border/70">
                 {JSON.stringify(toolCall.args, null, 2)}
               </pre>
             </div>
@@ -142,8 +142,8 @@ export function ToolCallDisplay({
             {/* Result */}
             {toolCall.result && (
               <div>
-                <div className="text-xs font-medium text-white/60 mb-1">结果:</div>
-                <pre className="text-xs bg-black/30 rounded p-2 overflow-x-auto text-white/80 border border-white/10 max-h-40">
+                <div className="text-xs font-medium text-muted-foreground mb-1">结果:</div>
+                <pre className="text-xs bg-card/30 rounded p-2 overflow-x-auto text-foreground/80 border border-border/70 max-h-40">
                   {toolCall.result}
                 </pre>
               </div>
@@ -165,7 +165,7 @@ export function ToolCallDisplay({
                 <Button
                   size="sm"
                   onClick={() => onApprove(toolCall)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-foreground"
                 >
                   <Check className="mr-1 h-3 w-3" />
                   允许执行
@@ -217,7 +217,7 @@ export function ThinkingProcess({
           {isThinking ? "思考中" : "思考过程"}
         </span>
       </div>
-      <div className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">
+      <div className="text-sm text-foreground/70 whitespace-pre-wrap leading-relaxed">
         {content}
       </div>
     </div>

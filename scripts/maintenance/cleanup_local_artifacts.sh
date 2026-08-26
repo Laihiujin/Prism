@@ -17,17 +17,17 @@ for arg in "$@"; do
 done
 
 targets=(
-  "syn_frontend_react/.next"
-  "syn_frontend_react/out"
-  "syn_frontend_react/node_modules"
+  "prism_frontend/.next"
+  "prism_frontend/out"
+  "prism_frontend/node_modules"
   "node_modules"
   "temp"
   "logs"
-  "syn_backend/logs"
-  "syn_backend/venv"
-  "synenv"
-  "syn_backend/syn_backend"
-  "syn_backend/config/syn_backend"
+  "prism_backend/logs"
+  "prism_backend/venv"
+  "prismenv"
+  "prism_backend/prism_backend"
+  "prism_backend/config/prism_backend"
 )
 
 echo "[cleanup] root: ${ROOT_DIR}"

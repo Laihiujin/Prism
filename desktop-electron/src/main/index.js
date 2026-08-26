@@ -14,8 +14,8 @@ log.transports.console.level = 'debug';
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  console.log('Another SynapseAutomation instance is already running. Exiting.');
-  log.info('Another SynapseAutomation instance is already running. Exiting.');
+  console.log('Another Prism instance is already running. Exiting.');
+  log.info('Another Prism instance is already running. Exiting.');
   app.quit();
   process.exit(0);
 }
@@ -24,7 +24,7 @@ if (!gotTheLock) {
 console.log('=== Electron Main Process Starting ===');
 console.log('Log file path:', log.transports.file.getFile().path);
 
-class SynapseApp {
+class PrismApp {
   constructor() {
     this.mainWindow = null;
     this.launcherWindow = null;
@@ -32,10 +32,10 @@ class SynapseApp {
     this.backendProcess = null;
     this.celeryProcess = null;
     this.redisProcess = null;
-    this.playwrightWorkerProcess = null;
+    this.automationWorkerProcess = null;
     this.frontendProcess = null;
     this.supervisorProcess = null;
-    this.playwrightBrowserPath = null;
+    this.automationBrowserPath = null;
     this.visualBrowserWindows = new Map();
     this.servicesStarted = false;
     this.appIconPath = null;
@@ -45,7 +45,7 @@ class SynapseApp {
     this.isPackagedRuntime = false;
     this.frontendPort = 3000;
     this.backendPort = null;
-    this.playwrightWorkerPort = null;
+    this.automationWorkerPort = null;
     this.runtimeSettings = {
       browserHeadless: true,
       automationRuntime: 'patchright'
@@ -53,12 +53,12 @@ class SynapseApp {
   }
 
   useExternalStack() {
-    return process.env.SYNAPSE_USE_EXTERNAL_STACK === '1';
+    return process.env.PRISM_USE_EXTERNAL_STACK === '1';
   }
 
   async initialize() {
-    console.log('SynapseAutomation is starting...');
-    log.info('SynapseAutomation is starting...');
+    console.log('Prism is starting...');
+    log.info('Prism is starting...');
 
     // 绛夊緟 Electron 鍑嗗灏辩华
     await app.whenReady();
@@ -73,7 +73,7 @@ class SynapseApp {
     this.appIconPath = this.getAppIconPath();
     this.runtimeSettings = this.loadRuntimeSettings();
     process.env.PLAYWRIGHT_HEADLESS = this.runtimeSettings.browserHeadless ? 'true' : 'false';
-    process.env.SYNAPSE_PLAYWRIGHT_RUNTIME = this.runtimeSettings.automationRuntime;
+    process.env.PRISM_AUTOMATION_RUNTIME = this.runtimeSettings.automationRuntime;
     this.applyPlatformBrowserPreferenceEnv(process.env, this.runtimeSettings.platformBrowserPreferences || {});
     this.setupTray();
 
@@ -85,12 +85,12 @@ class SynapseApp {
     log.info('supervisor paths:', supervisorPaths);
 
     // 1. 璁剧疆 Playwright 娴忚鍣ㄨ矾寰?
-    this.setupPlaywrightPath();
+    this.setupAutomationPath();
 
-    // 2. 鍚姩鍚庣/鍓嶇鏈嶅姟锛堢敓浜ч粯璁ゅ惎鍔紝寮€鍙戝彲鐢?SYNAPSE_START_SERVICES=1 寮哄埗锛?
+    // 2. 鍚姩鍚庣/鍓嶇鏈嶅姟锛堢敓浜ч粯璁ゅ惎鍔紝寮€鍙戝彲鐢?PRISM_START_SERVICES=1 寮哄埗锛?
     const useExternalStack = this.useExternalStack();
-    const shouldStartServices = !useExternalStack && (process.env.SYNAPSE_START_SERVICES === '1' || !this.isDev);
-    const showLauncher = process.env.SYNAPSE_SHOW_LAUNCHER === '1'; // 鏄惁鏄剧ず鍚姩绠＄悊鍣?
+    const shouldStartServices = !useExternalStack && (process.env.PRISM_START_SERVICES === '1' || !this.isDev);
+    const showLauncher = process.env.PRISM_SHOW_LAUNCHER === '1'; // 鏄惁鏄剧ず鍚姩绠＄悊鍣?
     console.log('Use external stack:', useExternalStack);
     console.log('Should start services:', shouldStartServices, '(isDev:', this.isDev, ')');
     console.log('Show launcher:', showLauncher);
@@ -119,28 +119,28 @@ class SynapseApp {
     // 5. 璁剧疆搴旂敤浜嬩欢
     this.setupAppEvents();
 
-    log.info('SynapseAutomation startup complete');
+    log.info('Prism startup complete');
   }
 
-  setupPlaywrightPath() {
+  setupAutomationPath() {
     // 鑾峰彇鎵撳寘鍚庣殑璧勬簮璺緞
     const isDev = this.isDev;
 
     if (isDev) {
       // 寮€鍙戠幆澧冿細浣跨敤椤圭洰鏍圭洰褰曠殑娴忚鍣?
-      this.playwrightBrowserPath = path.join(__dirname, '../../../browsers');
-      log.info('Dev mode Playwright browser path:', this.playwrightBrowserPath);
+      this.automationBrowserPath = path.join(__dirname, '../../../browsers');
+      log.info('Dev mode Playwright browser path:', this.automationBrowserPath);
     } else {
       // 鐢熶骇鐜锛氫娇鐢ㄦ墦鍖呭悗鐨勬祻瑙堝櫒
-      this.playwrightBrowserPath = path.join(process.resourcesPath, 'browsers');
-      log.info('Packaged mode Playwright browser path:', this.playwrightBrowserPath);
+      this.automationBrowserPath = path.join(process.resourcesPath, 'browsers');
+      log.info('Packaged mode Playwright browser path:', this.automationBrowserPath);
     }
 
     // 璁剧疆鐜鍙橀噺锛岃 Playwright 浣跨敤鎸囧畾鐨勬祻瑙堝櫒
-    process.env.PLAYWRIGHT_BROWSERS_PATH = this.playwrightBrowserPath;
+    process.env.PLAYWRIGHT_BROWSERS_PATH = this.automationBrowserPath;
 
     // 楠岃瘉娴忚鍣ㄦ槸鍚﹀瓨鍦?
-    if (fs.existsSync(this.playwrightBrowserPath)) {
+    if (fs.existsSync(this.automationBrowserPath)) {
       log.info('Playwright browser path is ready');
     } else {
       log.warn('Playwright browser path does not exist; automation features may be unavailable.');
@@ -219,7 +219,7 @@ class SynapseApp {
 
   getConfiguredBackendPort(rawUrl) {
     const envPort = [
-      process.env.SYN_BACKEND_PORT,
+      process.env.PRISM_BACKEND_PORT,
       process.env.BACKEND_PORT
     ].find((value) => String(value || '').trim());
 
@@ -254,8 +254,8 @@ class SynapseApp {
 
   getBackendBaseUrl() {
     const rawUrl = [
-      process.env.SYN_BACKEND_URL,
-      process.env.NEXT_PUBLIC_SYN_BACKEND_URL,
+      process.env.PRISM_BACKEND_URL,
+      process.env.NEXT_PUBLIC_PRISM_BACKEND_URL,
       process.env.NEXT_PUBLIC_BACKEND_URL
     ].find((value) => String(value || '').trim());
 
@@ -266,10 +266,10 @@ class SynapseApp {
     return this.resolveBackendPort(this.getBackendBaseUrl());
   }
 
-  getConfiguredPlaywrightWorkerPort() {
+  getConfiguredAutomationWorkerPort() {
     const envPort = [
-      process.env.PLAYWRIGHT_WORKER_PORT,
-      process.env.SYN_PLAYWRIGHT_WORKER_PORT
+      process.env.AUTOMATION_WORKER_PORT,
+      process.env.PRISM_AUTOMATION_WORKER_PORT
     ].find((value) => String(value || '').trim());
 
     const parsedEnvPort = Number.parseInt(envPort, 10);
@@ -280,12 +280,12 @@ class SynapseApp {
     return 7001;
   }
 
-  getPlaywrightWorkerPort() {
-    const selectedPort = Number.parseInt(String(this.playwrightWorkerPort || ''), 10);
+  getAutomationWorkerPort() {
+    const selectedPort = Number.parseInt(String(this.automationWorkerPort || ''), 10);
     if (Number.isInteger(selectedPort) && selectedPort > 0) {
       return selectedPort;
     }
-    return this.getConfiguredPlaywrightWorkerPort();
+    return this.getConfiguredAutomationWorkerPort();
   }
 
   getBackendApiBaseUrl() {
@@ -298,7 +298,7 @@ class SynapseApp {
 
   getPreferredFrontendPort() {
     const envPort = [
-      process.env.SYN_FRONTEND_PORT,
+      process.env.PRISM_FRONTEND_PORT,
       process.env.FRONTEND_PORT,
       process.env.PORT
     ].find((value) => String(value || '').trim());
@@ -427,18 +427,18 @@ class SynapseApp {
   normalizeRuntimeSettings(raw = {}) {
     return {
       browserHeadless: this.normalizeBooleanSetting(raw.browserHeadless, true),
-      automationRuntime: raw.automationRuntime === 'playwright' ? 'playwright' : 'patchright',
+      automationRuntime: 'patchright',
       platformBrowserPreferences: this.normalizePlatformBrowserPreferences(raw.platformBrowserPreferences)
     };
   }
 
   applyPlatformBrowserPreferenceEnv(targetEnv, rawPreferences = {}) {
     const preferences = this.normalizePlatformBrowserPreferences(rawPreferences);
-    targetEnv.SYNAPSE_PLATFORM_BROWSER_PREFERENCES = JSON.stringify(preferences);
+    targetEnv.PRISM_PLATFORM_BROWSER_PREFERENCES = JSON.stringify(preferences);
     for (const [platform, choice] of Object.entries(preferences)) {
-      targetEnv[`SYNAPSE_PLATFORM_BROWSER_${platform.toUpperCase()}`] = choice;
+      targetEnv[`PRISM_PLATFORM_BROWSER_${platform.toUpperCase()}`] = choice;
     }
-    targetEnv.SYNAPSE_PLATFORM_BROWSER_TENCENT = preferences.channels;
+    targetEnv.PRISM_PLATFORM_BROWSER_TENCENT = preferences.channels;
     return preferences;
   }
 
@@ -465,31 +465,31 @@ class SynapseApp {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
     this.runtimeSettings = settings;
     process.env.PLAYWRIGHT_HEADLESS = settings.browserHeadless ? 'true' : 'false';
-    process.env.SYNAPSE_PLAYWRIGHT_RUNTIME = settings.automationRuntime;
+    process.env.PRISM_AUTOMATION_RUNTIME = settings.automationRuntime;
     this.applyPlatformBrowserPreferenceEnv(process.env, settings.platformBrowserPreferences || {});
     return settings;
   }
 
   getBackendDir() {
     return this.isDev
-      ? path.join(this.repoRoot, 'syn_backend')
-      : path.join(process.resourcesPath, 'syn_backend');
+      ? path.join(this.repoRoot, 'prism_backend')
+      : path.join(process.resourcesPath, 'prism_backend');
   }
 
   getPythonPath() {
     return this.getPythonRuntime().path;
   }
 
-  getSynenvSitePackagesPath() {
+  getPrismenvSitePackagesPath() {
     const candidates = [
-      path.join(this.getResourcesRoot(), 'synenv', 'Lib', 'site-packages'),
-      path.join(this.getResourcesRoot(), 'synenv', 'lib', 'site-packages')
+      path.join(this.getResourcesRoot(), 'prismenv', 'Lib', 'site-packages'),
+      path.join(this.getResourcesRoot(), 'prismenv', 'lib', 'site-packages')
     ];
     return this.resolveFirstPath(candidates) || null;
   }
 
   buildPythonEnv(baseEnv = process.env) {
-    const sitePackagesPath = this.getSynenvSitePackagesPath();
+    const sitePackagesPath = this.getPrismenvSitePackagesPath();
     if (!sitePackagesPath) {
       return baseEnv;
     }
@@ -533,7 +533,7 @@ class SynapseApp {
       return false;
     }
 
-    if (this.pythonRuntimeCache.source !== 'synenv') {
+    if (this.pythonRuntimeCache.source !== 'prismenv') {
       return false;
     }
 
@@ -545,10 +545,10 @@ class SynapseApp {
       return this.pythonRuntimeCache;
     }
 
-    const packagedPython = path.join(this.getResourcesRoot(), 'synenv', 'Scripts', 'python.exe');
+    const packagedPython = path.join(this.getResourcesRoot(), 'prismenv', 'Scripts', 'python.exe');
     const candidates = [];
     if (fs.existsSync(packagedPython)) {
-      candidates.push({ path: packagedPython, args: [], source: 'synenv' });
+      candidates.push({ path: packagedPython, args: [], source: 'prismenv' });
     }
     candidates.push({ path: 'python', args: [], source: 'system' });
 
@@ -561,11 +561,11 @@ class SynapseApp {
           args: candidate.args,
           source: candidate.source,
           version: probe.version,
-          sitePackagesPath: this.getSynenvSitePackagesPath(),
+          sitePackagesPath: this.getPrismenvSitePackagesPath(),
           error: null
         };
-        if (candidate.source !== 'synenv') {
-          log.warn('Packaged synenv Python is unavailable; using fallback Python:', candidate.path);
+        if (candidate.source !== 'prismenv') {
+          log.warn('Packaged prismenv Python is unavailable; using fallback Python:', candidate.path);
         }
         return this.pythonRuntimeCache;
       }
@@ -577,7 +577,7 @@ class SynapseApp {
       args: [],
       source: 'missing',
       version: null,
-      sitePackagesPath: this.getSynenvSitePackagesPath(),
+      sitePackagesPath: this.getPrismenvSitePackagesPath(),
       error: failures.join(' | ')
     };
     return this.pythonRuntimeCache;
@@ -605,7 +605,7 @@ class SynapseApp {
     ]) || 'node.exe';
   }
 
-  ensureSynenvConfig() {
+  ensurePrismenvConfig() {
     if (this.isDev) {
       return;
     }
@@ -771,7 +771,7 @@ class SynapseApp {
     const packageRoot = path.join(
       this.getResourcesRoot(),
       'services',
-      'playwright-worker',
+      'automation-worker',
       '_internal',
       packageName
     );
@@ -823,23 +823,12 @@ class SynapseApp {
       this.getPythonPackageInfo('patchright'),
       this.getPackagedWorkerRuntimeInfo('patchright')
     );
-    const playwrightInfo = this.mergeRuntimeInfo(
-      this.getPythonPackageInfo('playwright'),
-      this.getPackagedWorkerRuntimeInfo('playwright')
-    );
-    const preferredRuntime = this.runtimeSettings.automationRuntime;
+    const preferredRuntime = 'patchright';
 
     let activeRuntime = null;
     const patchrightReady = patchrightInfo.installed && patchrightInfo.driverInstalled !== false;
-    const playwrightReady = playwrightInfo.installed && playwrightInfo.driverInstalled !== false;
-    if (preferredRuntime === 'playwright' && playwrightReady) {
-      activeRuntime = 'playwright';
-    } else if (preferredRuntime === 'patchright' && patchrightReady) {
+    if (patchrightReady) {
       activeRuntime = 'patchright';
-    } else if (patchrightReady) {
-      activeRuntime = 'patchright';
-    } else if (playwrightReady) {
-      activeRuntime = 'playwright';
     }
 
     return {
@@ -850,8 +839,7 @@ class SynapseApp {
       activeRuntime,
       platformBrowserPreferences: this.runtimeSettings.platformBrowserPreferences,
       runtimes: {
-        patchright: patchrightInfo,
-        playwright: playwrightInfo
+        patchright: patchrightInfo
       },
       browsers: {
         chromium: {
@@ -891,7 +879,7 @@ class SynapseApp {
     const env = this.buildPythonEnv({
       ...process.env,
       PLAYWRIGHT_BROWSERS_PATH: this.getBrowsersRoot(),
-      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+      PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime
     });
 
     return this.runManagedCommand(
@@ -930,14 +918,14 @@ class SynapseApp {
   }
 
   async uninstallBrowserComponent(target) {
-    const allowedTargets = new Set(['chromium', 'firefox', 'patchright', 'playwright']);
+    const allowedTargets = new Set(['chromium', 'firefox', 'patchright']);
     if (!allowedTargets.has(target)) {
       return { success: false, error: `unsupported_uninstall_target:${target}` };
     }
 
-    if (target === 'patchright' || target === 'playwright') {
+    if (target === 'patchright') {
       const runtime = this.getPythonRuntime();
-      if (runtime.source !== 'synenv') {
+      if (runtime.source !== 'prismenv') {
         return {
           success: false,
           output: '',
@@ -949,7 +937,7 @@ class SynapseApp {
       const env = this.buildPythonEnv({
         ...process.env,
         PLAYWRIGHT_BROWSERS_PATH: this.getBrowsersRoot(),
-        SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+        PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime
       });
 
       const result = await this.runManagedCommand(
@@ -957,17 +945,6 @@ class SynapseApp {
         ['-m', 'pip', 'uninstall', '-y', target],
         { env, logPrefix: `pip:remove:${target}` }
       );
-
-      if (result.success && this.runtimeSettings.automationRuntime === target) {
-        const fallbackRuntime = target === 'patchright' ? 'playwright' : 'patchright';
-        const fallbackInfo = this.mergeRuntimeInfo(
-          this.getPythonPackageInfo(fallbackRuntime),
-          this.getPackagedWorkerRuntimeInfo(fallbackRuntime)
-        );
-        if (fallbackInfo.installed && fallbackInfo.driverInstalled !== false) {
-          this.saveRuntimeSettings({ automationRuntime: fallbackRuntime });
-        }
-      }
 
       return {
         success: result.success,
@@ -1072,7 +1049,7 @@ class SynapseApp {
   }
 
   async installBrowserComponent(target) {
-    const allowedTargets = new Set(['chromium', 'firefox', 'patchright', 'playwright']);
+    const allowedTargets = new Set(['chromium', 'firefox', 'patchright']);
     if (!allowedTargets.has(target)) {
       return { success: false, error: `unsupported_target:${target}` };
     }
@@ -1084,40 +1061,18 @@ class SynapseApp {
     const env = this.buildPythonEnv({
       ...process.env,
       PLAYWRIGHT_BROWSERS_PATH: browsersRoot,
-      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+      PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime
     });
 
-    if (target === 'patchright' || target === 'playwright') {
+    if (target === 'patchright') {
       const runtime = this.getPythonRuntime();
-      if (runtime.source !== 'synenv') {
+      if (runtime.source !== 'prismenv') {
         return {
           success: false,
           output: '',
           error: `packaged_python_unavailable:${runtime.error || runtime.source}`,
           browserRuntimeInfo: this.getBrowserRuntimeInfo()
         };
-      }
-
-      const conflictingRuntime = target === 'patchright' ? 'playwright' : 'patchright';
-      const conflictingInfo = this.mergeRuntimeInfo(
-        this.getPythonPackageInfo(conflictingRuntime),
-        this.getPackagedWorkerRuntimeInfo(conflictingRuntime)
-      );
-      if (conflictingInfo.installed) {
-        const uninstallResult = await this.runManagedCommand(
-          pythonPath,
-          ['-m', 'pip', 'uninstall', '-y', conflictingRuntime],
-          { env, logPrefix: `pip:remove:${conflictingRuntime}` }
-        );
-
-        if (!uninstallResult.success) {
-          return {
-            success: false,
-            output: uninstallResult.stdout,
-            error: uninstallResult.error,
-            browserRuntimeInfo: this.getBrowserRuntimeInfo()
-          };
-        }
       }
 
       const result = await this.runManagedCommand(
@@ -1162,10 +1117,8 @@ class SynapseApp {
       }
     }
 
-    const preferredRuntime = (this.runtimeSettings.automationRuntime === 'playwright') ? 'playwright' : 'patchright';
-    const installCommand = preferredRuntime === 'playwright'
-      ? ['-m', 'playwright', 'install', target]
-      : ['-m', 'patchright', 'install', target];
+    const preferredRuntime = 'patchright';
+    const installCommand = ['-m', 'patchright', 'install', target];
 
     const installResult = await this.runManagedCommand(
       pythonPath,
@@ -1195,7 +1148,7 @@ class SynapseApp {
     }
 
     this.tray = new Tray(this.appIconPath);
-    this.tray.setToolTip('SynapseAutomation');
+    this.tray.setToolTip('Prism');
     this.refreshTrayMenu();
 
     this.tray.on('click', () => {
@@ -1288,7 +1241,7 @@ class SynapseApp {
   syncManagedServicePortsFromStatus(statusPayload) {
     const status = statusPayload?.data || statusPayload || {};
     const backendStatus = status.backend || {};
-    const workerStatus = status.playwright_worker || status.worker || {};
+    const workerStatus = status.automation_worker || status.worker || {};
     const parsePort = (value) => {
       const parsed = Number.parseInt(String(value || ''), 10);
       return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -1302,18 +1255,18 @@ class SynapseApp {
       this.backendPort = nextBackendPort;
     }
 
-    if (nextWorkerPort && nextWorkerPort !== this.playwrightWorkerPort) {
-      log.info(`Syncing playwright-worker port from supervisor status: ${this.playwrightWorkerPort || 'unset'} -> ${nextWorkerPort}`);
-      this.playwrightWorkerPort = nextWorkerPort;
+    if (nextWorkerPort && nextWorkerPort !== this.automationWorkerPort) {
+      log.info(`Syncing automation-worker port from supervisor status: ${this.automationWorkerPort || 'unset'} -> ${nextWorkerPort}`);
+      this.automationWorkerPort = nextWorkerPort;
     }
 
     if (nextBackendPort) {
       const backendUrl = this.getBackendBaseUrl();
       const backendApiBaseUrl = this.getBackendApiBaseUrl();
       process.env.BACKEND_PORT = String(this.getBackendPort());
-      process.env.SYN_BACKEND_PORT = process.env.BACKEND_PORT;
-      process.env.SYN_BACKEND_URL = backendUrl;
-      process.env.NEXT_PUBLIC_SYN_BACKEND_URL = backendUrl;
+      process.env.PRISM_BACKEND_PORT = process.env.BACKEND_PORT;
+      process.env.PRISM_BACKEND_URL = backendUrl;
+      process.env.NEXT_PUBLIC_PRISM_BACKEND_URL = backendUrl;
       process.env.NEXT_PUBLIC_BACKEND_URL = backendUrl;
       process.env.NEXT_PUBLIC_API_URL = backendUrl;
       process.env.MANUS_API_BASE_URL = backendApiBaseUrl;
@@ -1321,8 +1274,8 @@ class SynapseApp {
     }
 
     if (nextWorkerPort) {
-      process.env.PLAYWRIGHT_WORKER_PORT = String(this.getPlaywrightWorkerPort());
-      process.env.SYN_PLAYWRIGHT_WORKER_PORT = process.env.PLAYWRIGHT_WORKER_PORT;
+      process.env.AUTOMATION_WORKER_PORT = String(this.getAutomationWorkerPort());
+      process.env.PRISM_AUTOMATION_WORKER_PORT = process.env.AUTOMATION_WORKER_PORT;
     }
 
     return status;
@@ -1391,7 +1344,7 @@ class SynapseApp {
         };
 
         const backendReady = isServiceReady(status.backend);
-        const workerReady = isServiceReady(status.playwright_worker || status.worker);
+        const workerReady = isServiceReady(status.automation_worker || status.worker);
         const celeryReady = isServiceReady(status.celery_worker || status.celery);
         const restartInProgress = Boolean(restartState?.data?.restart_in_progress);
 
@@ -1466,13 +1419,13 @@ class SynapseApp {
     const relaunchEnv = {
       ...process.env,
       PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false',
-      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime
+      PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime
     };
     this.applyPlatformBrowserPreferenceEnv(relaunchEnv, this.runtimeSettings.platformBrowserPreferences || {});
 
     if (this.isDev) {
-      relaunchEnv.SYNAPSE_START_SERVICES = process.env.SYNAPSE_START_SERVICES || '1';
-      relaunchEnv.SYNAPSE_START_FRONTEND = process.env.SYNAPSE_START_FRONTEND || '1';
+      relaunchEnv.PRISM_START_SERVICES = process.env.PRISM_START_SERVICES || '1';
+      relaunchEnv.PRISM_START_FRONTEND = process.env.PRISM_START_FRONTEND || '1';
 
       const appPath = app.getAppPath();
       const child = spawn(process.execPath, [appPath], {
@@ -1536,7 +1489,7 @@ class SynapseApp {
     const backendUrl = this.getBackendBaseUrl();
     const backendApiBaseUrl = this.getBackendApiBaseUrl();
     const backendPort = String(this.getBackendPort());
-    const playwrightWorkerPort = String(this.getPlaywrightWorkerPort());
+    const automationWorkerPort = String(this.getAutomationWorkerPort());
     const pythonPath = this.getPythonPath();
     log.info('Preparing service environment...');
     log.info('  - Browsers Root:', browsersRoot);
@@ -1547,19 +1500,19 @@ class SynapseApp {
       ...process.env,
       PYTHONUTF8: '1',
       PYTHONIOENCODING: 'utf-8',
-      SYNAPSE_APP_ROOT: appRoot,
-      SYNAPSE_RESOURCES_PATH: appRoot,
-      SYNAPSE_HERMES_PYTHON: pythonPath,
-      SYNAPSE_RUNTIME_SETTINGS_PATH: this.getRuntimeSettingsPath(),
+      PRISM_APP_ROOT: appRoot,
+      PRISM_RESOURCES_PATH: appRoot,
+      PRISM_HERMES_PYTHON: pythonPath,
+      PRISM_RUNTIME_SETTINGS_PATH: this.getRuntimeSettingsPath(),
       PLAYWRIGHT_BROWSERS_PATH: browsersRoot,
       PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false',
-      SYNAPSE_PLAYWRIGHT_RUNTIME: this.runtimeSettings.automationRuntime,
+      PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime,
       BACKEND_PORT: backendPort,
-      SYN_BACKEND_PORT: backendPort,
-      PLAYWRIGHT_WORKER_PORT: playwrightWorkerPort,
-      SYN_PLAYWRIGHT_WORKER_PORT: playwrightWorkerPort,
-      SYN_BACKEND_URL: backendUrl,
-      NEXT_PUBLIC_SYN_BACKEND_URL: backendUrl,
+      PRISM_BACKEND_PORT: backendPort,
+      AUTOMATION_WORKER_PORT: automationWorkerPort,
+      PRISM_AUTOMATION_WORKER_PORT: automationWorkerPort,
+      PRISM_BACKEND_URL: backendUrl,
+      NEXT_PUBLIC_PRISM_BACKEND_URL: backendUrl,
       NEXT_PUBLIC_BACKEND_URL: backendUrl,
       NEXT_PUBLIC_API_URL: backendUrl,
       MANUS_API_BASE_URL: backendApiBaseUrl,
@@ -1568,18 +1521,18 @@ class SynapseApp {
     const pythonEnv = this.buildPythonEnv(env);
     Object.assign(env, pythonEnv);
     this.applyPlatformBrowserPreferenceEnv(env, this.runtimeSettings.platformBrowserPreferences || {});
-    if (!env.SYNAPSE_DATA_DIR) {
+    if (!env.PRISM_DATA_DIR) {
       if (this.isDev) {
-        const devDataDir = path.join(this.repoRoot, 'syn_backend');
-        env.SYNAPSE_DATA_DIR = devDataDir;
-        log.info('  - SYNAPSE_DATA_DIR (dev):', devDataDir);
+        const devDataDir = path.join(this.repoRoot, 'prism_backend');
+        env.PRISM_DATA_DIR = devDataDir;
+        log.info('  - PRISM_DATA_DIR (dev):', devDataDir);
       } else {
         const userDataDir = app.getPath('userData');
         const dataDir = path.join(userDataDir, 'data');
         if (!fs.existsSync(dataDir)) {
           fs.mkdirSync(dataDir, { recursive: true });
         }
-        env.SYNAPSE_DATA_DIR = dataDir;
+        env.PRISM_DATA_DIR = dataDir;
         const hermesRoot = path.join(userDataDir, 'hermes');
         const hermesHome = path.join(hermesRoot, 'home');
         const hermesWebUiState = path.join(hermesRoot, 'webui');
@@ -1590,11 +1543,11 @@ class SynapseApp {
             fs.mkdirSync(dirPath, { recursive: true });
           }
         });
-        env.SYNAPSE_HERMES_HOME = hermesHome;
-        env.SYNAPSE_HERMES_WEBUI_STATE_DIR = hermesWebUiState;
-        env.SYNAPSE_HERMES_WORKSPACE = hermesWorkspace;
-        env.SYNAPSE_HERMES_CONFIG_ROOT = hermesConfigRoot;
-        log.info('  - SYNAPSE_DATA_DIR:', dataDir);
+        env.PRISM_HERMES_HOME = hermesHome;
+        env.PRISM_HERMES_WEBUI_STATE_DIR = hermesWebUiState;
+        env.PRISM_HERMES_WORKSPACE = hermesWorkspace;
+        env.PRISM_HERMES_CONFIG_ROOT = hermesConfigRoot;
+        log.info('  - PRISM_DATA_DIR:', dataDir);
       }
     }
     if (!env.PLAYWRIGHT_AUTO_INSTALL) {
@@ -1713,7 +1666,7 @@ class SynapseApp {
     });
   }
 
-  async isSynapseBackendOnPort(port) {
+  async isPrismBackendOnPort(port) {
     if (!(await this.isPortInUse(port))) {
       return false;
     }
@@ -1726,40 +1679,40 @@ class SynapseApp {
     }
   }
 
-  async isPlaywrightWorkerOnPort(port) {
+  async isAutomationWorkerOnPort(port) {
     if (!(await this.isPortInUse(port))) {
       return false;
     }
 
     try {
       const payload = await this.requestLocalJson(port, '/health', 2000);
-      return String(payload?.status || '').toLowerCase() === 'ok' && payload?.service === 'playwright-worker';
+      return String(payload?.status || '').toLowerCase() === 'ok' && payload?.service === 'automation-worker';
     } catch (error) {
       return false;
     }
   }
 
   async prepareManagedServicePorts() {
-    const configuredWorkerPort = this.getConfiguredPlaywrightWorkerPort();
+    const configuredWorkerPort = this.getConfiguredAutomationWorkerPort();
     const configuredBackendPort = this.getConfiguredBackendPort();
     const reservedPorts = new Set();
 
     this.backendPort = await this.resolveManagedPort(
       configuredBackendPort,
-      this.isSynapseBackendOnPort.bind(this),
+      this.isPrismBackendOnPort.bind(this),
       reservedPorts
     );
     reservedPorts.add(this.backendPort);
 
-    this.playwrightWorkerPort = await this.resolveManagedPort(
+    this.automationWorkerPort = await this.resolveManagedPort(
       configuredWorkerPort,
-      this.isPlaywrightWorkerOnPort.bind(this),
+      this.isAutomationWorkerOnPort.bind(this),
       reservedPorts
     );
 
     log.info('Managed service ports prepared:', {
       backendPort: this.backendPort,
-      playwrightWorkerPort: this.playwrightWorkerPort
+      automationWorkerPort: this.automationWorkerPort
     });
   }
 
@@ -1815,10 +1768,10 @@ class SynapseApp {
   getManagedServiceResourceMarkers() {
     const candidates = [
       this.repoRoot,
-      path.join(this.repoRoot, 'syn_backend'),
+      path.join(this.repoRoot, 'prism_backend'),
       path.join(this.repoRoot, 'tools', 'hermes-agent'),
       path.join(this.repoRoot, 'tools', 'hermes-webui'),
-      path.join(process.resourcesPath, 'syn_backend'),
+      path.join(process.resourcesPath, 'prism_backend'),
       path.join(process.resourcesPath, 'tools', 'hermes-agent'),
       path.join(process.resourcesPath, 'tools', 'hermes-webui'),
       path.join(process.resourcesPath, 'services', 'backend'),
@@ -1847,7 +1800,7 @@ class SynapseApp {
         `$markers = @(${markers})`,
         '$keywords = @(',
         "  'fastapi_app\\\\run.py',",
-        "  'playwright_worker\\\\worker.py',",
+        "  'automation_worker\\\\worker.py',",
         "  'tools\\\\hermes-webui\\\\server.py',",
         "  'hermes_cli.main',",
         "  'celery_app',",
@@ -2074,7 +2027,7 @@ class SynapseApp {
       return;
     }
 
-    this.ensureSynenvConfig();
+    this.ensurePrismenvConfig();
     this.cleanupStaleSupervisorOnPort(7002);
     const supervisorPaths = this.getSupervisorPaths();
     const supervisorExe = supervisorPaths.exePath;
@@ -2140,7 +2093,7 @@ class SynapseApp {
       return;
     }
     const redisPath = this.isDev
-      ? (process.env.SYNAPSE_REDIS_PATH || 'redis-server')
+      ? (process.env.PRISM_REDIS_PATH || 'redis-server')
       : path.join(process.resourcesPath, 'redis', 'redis-server.exe');
 
     log.info('Starting Redis...');
@@ -2173,21 +2126,21 @@ class SynapseApp {
     });
   }
 
-  async startPlaywrightWorker(env) {
-    if (this.playwrightWorkerProcess) {
+  async startAutomationWorker(env) {
+    if (this.automationWorkerProcess) {
       return;
     }
-    if (!this.playwrightWorkerPort) {
+    if (!this.automationWorkerPort) {
       await this.prepareManagedServicePorts();
     }
-    const workerPort = this.getPlaywrightWorkerPort();
-    if (await this.isPlaywrightWorkerOnPort(workerPort)) {
-      log.warn(`Playwright Worker already running on port ${workerPort}; skipping start.`);
+    const workerPort = this.getAutomationWorkerPort();
+    if (await this.isAutomationWorkerOnPort(workerPort)) {
+      log.warn(`Automation Worker already running on port ${workerPort}; skipping start.`);
       return;
     }
     const backendDir = this.getBackendDir();
-    const workerExe = this.getServiceExe('playwright-worker');
-    const workerScript = path.join(backendDir, 'playwright_worker', 'worker.py');
+    const workerExe = this.getServiceExe('automation-worker');
+    const workerScript = path.join(backendDir, 'automation_worker', 'worker.py');
 
     log.info('Starting Playwright worker...');
     log.info('  - Backend Dir:', backendDir);
@@ -2206,14 +2159,14 @@ class SynapseApp {
     log.info('  - Launch Command:', launchCmd);
     log.info('  - Launch Args:', launchArgs.join(' '));
 
-    this.playwrightWorkerProcess = spawn(launchCmd, launchArgs, {
-      env: { ...env, PYTHONPATH: backendDir, PLAYWRIGHT_WORKER_PORT: String(workerPort) },
+    this.automationWorkerProcess = spawn(launchCmd, launchArgs, {
+      env: { ...env, PYTHONPATH: backendDir, AUTOMATION_WORKER_PORT: String(workerPort) },
       cwd: backendDir,
       windowsHide: true
     });
-    this.playwrightWorkerProcess.stdout?.on('data', (data) => log.info('[Worker]', data.toString()));
-    this.playwrightWorkerProcess.stderr?.on('data', (data) => log.error('[Worker Error]', data.toString()));
-    this.playwrightWorkerProcess.on('exit', (code) => {
+    this.automationWorkerProcess.stdout?.on('data', (data) => log.info('[Worker]', data.toString()));
+    this.automationWorkerProcess.stderr?.on('data', (data) => log.error('[Worker Error]', data.toString()));
+    this.automationWorkerProcess.on('exit', (code) => {
       log.warn(`Playwright worker exited with code: ${code}`);
     });
   }
@@ -2236,7 +2189,7 @@ class SynapseApp {
         const powershellPath = this.resolveFirstPath([
           path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
         ]) || 'powershell.exe';
-        const killCmd = "Get-CimInstance Win32_Process | Where-Object { ($_.Name -match 'python|celery-worker') -and ($_.CommandLine -match 'fastapi_app.tasks.celery_app' -or $_.CommandLine -match 'synapse-worker') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
+        const killCmd = "Get-CimInstance Win32_Process | Where-Object { ($_.Name -match 'python|celery-worker') -and ($_.CommandLine -match 'fastapi_app.tasks.celery_app' -or $_.CommandLine -match 'prism-worker') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
         execSync(`"${powershellPath}" -NoProfile -Command "${killCmd}"`, { stdio: 'ignore' });
         log.info('Existing Celery workers stopped (if any).');
       } catch (error) {
@@ -2257,7 +2210,7 @@ class SynapseApp {
           '--loglevel=info',
           '--pool=threads',
           '--concurrency=1000',
-          '--hostname=synapse-worker@electron'
+          '--hostname=prism-worker@electron'
         ];
 
     log.info('  - Launch Command:', launchCmd);
@@ -2305,8 +2258,8 @@ class SynapseApp {
 
     if (this.isDev) {
       const shouldStartDevFrontend =
-        process.env.SYNAPSE_START_FRONTEND === '1' ||
-        process.env.SYNAPSE_START_SERVICES === '1';
+        process.env.PRISM_START_FRONTEND === '1' ||
+        process.env.PRISM_START_SERVICES === '1';
       if (!shouldStartDevFrontend) {
         log.info('Dev frontend auto-start is disabled; skipping start.');
         return;
@@ -2314,7 +2267,7 @@ class SynapseApp {
 
       this.frontendPort = await this.findAvailablePort(preferredFrontendPort);
 
-      const frontendDir = path.join(this.repoRoot, 'syn_frontend_react');
+      const frontendDir = path.join(this.repoRoot, 'prism_frontend');
       log.info(`  - frontendDir: ${frontendDir}`);
       log.info(`  - frontendPort: ${this.frontendPort}`);
 
@@ -2329,8 +2282,8 @@ class SynapseApp {
         HOSTNAME: '127.0.0.1',
         NEXT_PUBLIC_BACKEND_URL: backendUrl,
         NEXT_PUBLIC_API_URL: backendUrl,
-        NEXT_PUBLIC_SYN_BACKEND_URL: backendUrl,
-        SYN_BACKEND_URL: backendUrl
+        NEXT_PUBLIC_PRISM_BACKEND_URL: backendUrl,
+        PRISM_BACKEND_URL: backendUrl
       };
 
       log.info('Launching development frontend...');
@@ -2370,8 +2323,8 @@ class SynapseApp {
       HOSTNAME: '127.0.0.1',
       NEXT_PUBLIC_BACKEND_URL: backendUrl,
       NEXT_PUBLIC_API_URL: backendUrl,
-      NEXT_PUBLIC_SYN_BACKEND_URL: backendUrl,
-      SYN_BACKEND_URL: backendUrl,
+      NEXT_PUBLIC_PRISM_BACKEND_URL: backendUrl,
+      PRISM_BACKEND_URL: backendUrl,
       NEXT_TELEMETRY_DISABLED: '1'
     };
     this.frontendProcess = spawn(process.execPath, [serverJs], {
@@ -2395,7 +2348,7 @@ class SynapseApp {
       await this.prepareManagedServicePorts();
     }
     const backendPort = this.getBackendPort();
-    if (await this.isSynapseBackendOnPort(backendPort)) {
+    if (await this.isPrismBackendOnPort(backendPort)) {
       log.warn(`Backend already running on port ${backendPort}; skipping start.`);
       return;
     }
@@ -2591,8 +2544,8 @@ class SynapseApp {
     log.info('Setting up IPC handlers...');
 
     // 鑾峰彇 Playwright 娴忚鍣ㄨ矾寰?
-    ipcMain.handle('playwright:getBrowserPath', () => {
-      return this.playwrightBrowserPath;
+    ipcMain.handle('automation:getBrowserPath', () => {
+      return this.automationBrowserPath;
     });
 
     // 鍒涘缓鍙鍖栨祻瑙堝櫒绐楀彛锛堢敤浜庤皟璇曞拰棰勮锛?
@@ -2643,7 +2596,7 @@ class SynapseApp {
         isPackaged: this.isPackagedRuntime,
         runtimeMode: this.isPackagedRuntime ? 'packaged' : 'development',
         resourcesPath: process.resourcesPath,
-        playwrightBrowserPath: this.playwrightBrowserPath,
+        automationBrowserPath: this.automationBrowserPath,
         runtimeSettings: this.runtimeSettings,
         browserRuntimeInfo: this.getBrowserRuntimeInfo(),
         backendUrl: this.getBackendBaseUrl(),
@@ -2660,7 +2613,7 @@ class SynapseApp {
 
     ipcMain.handle('settings:update', (event, settings = {}) => {
       try {
-        if (settings.automationRuntime === 'patchright' || settings.automationRuntime === 'playwright') {
+        if (settings.automationRuntime === 'patchright') {
           const runtimeInfo = this.getBrowserRuntimeInfo();
           const selectedRuntime = runtimeInfo.runtimes[settings.automationRuntime];
           if (!selectedRuntime?.installed || selectedRuntime.driverInstalled === false) {
@@ -2857,9 +2810,9 @@ class SynapseApp {
           running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
           pid: this.supervisorProcess?.pid
         },
-        playwright_worker: {
-          running: this.playwrightWorkerProcess !== null && !this.playwrightWorkerProcess.killed,
-          pid: this.playwrightWorkerProcess?.pid
+        automation_worker: {
+          running: this.automationWorkerProcess !== null && !this.automationWorkerProcess.killed,
+          pid: this.automationWorkerProcess?.pid
         },
         celery_worker: {
           running: this.celeryProcess !== null && !this.celeryProcess.killed,
@@ -2899,9 +2852,9 @@ class SynapseApp {
               running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
               pid: this.supervisorProcess?.pid
             },
-            playwright_worker: {
-              running: this.playwrightWorkerProcess !== null && !this.playwrightWorkerProcess.killed,
-              pid: this.playwrightWorkerProcess?.pid
+            automation_worker: {
+              running: this.automationWorkerProcess !== null && !this.automationWorkerProcess.killed,
+              pid: this.automationWorkerProcess?.pid
             },
             celery_worker: {
               running: this.celeryProcess !== null && !this.celeryProcess.killed,
@@ -2928,14 +2881,14 @@ class SynapseApp {
           running: this.frontendProcess !== null && !this.frontendProcess.killed,
           pid: this.frontendProcess?.pid
         };
-        const workerStatus = payload.playwright_worker || payload.worker || { running: false, pid: null, external: false };
+        const workerStatus = payload.automation_worker || payload.worker || { running: false, pid: null, external: false };
         const celeryStatus = payload.celery_worker || payload.celery || { running: false, pid: null, external: false };
         const gatewayStatus = payload.hermes_gateway || payload.gateway || { running: false, pid: null, external: false };
         const hermesDashboardStatus = payload.hermes_dashboard || payload.dashboard || { running: false, pid: null, external: false };
         const hermesWebuiStatus = payload.hermes_webui || payload.webui || { running: false, pid: null, external: false };
         return {
           backend: payload.backend || { running: false, pid: null, external: false },
-          playwright_worker: workerStatus,
+          automation_worker: workerStatus,
           celery_worker: celeryStatus,
           hermes_gateway: gatewayStatus,
           hermes_dashboard: hermesDashboardStatus,
@@ -3195,8 +3148,8 @@ class SynapseApp {
     stopProcess(this.celeryProcess, 'celery');
     this.celeryProcess = null;
 
-    stopProcess(this.playwrightWorkerProcess, 'playwright worker');
-    this.playwrightWorkerProcess = null;
+    stopProcess(this.automationWorkerProcess, 'automation worker');
+    this.automationWorkerProcess = null;
 
     stopProcess(this.backendProcess, 'backend');
     this.backendProcess = null;
@@ -3213,7 +3166,7 @@ class SynapseApp {
 }
 
 // 鍚姩搴旂敤
-const synapseApp = new SynapseApp();
+const prismApp = new PrismApp();
 
 // 鎹曡幏鏈鐞嗙殑閿欒
 process.on('uncaughtException', (error) => {
@@ -3225,7 +3178,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // 鍒濆鍖栧簲鐢?
-synapseApp.initialize().catch((error) => {
+prismApp.initialize().catch((error) => {
   log.error('Application initialization failed:', error);
   if (app && app.quit) {
     app.quit();

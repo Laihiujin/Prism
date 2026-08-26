@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 import httpx
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 
 def _media_root() -> Path:

@@ -24,7 +24,7 @@ export default function DashboardDemoPage() {
         <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-white/50">
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/50">
                         Sci-Fi Dashboard
                     </h2>
                     <p className="text-muted-foreground">
@@ -33,11 +33,11 @@ export default function DashboardDemoPage() {
                 </div>
                 <div className="flex items-center gap-4">
                     <ButtonMovingBorder>
-                        <Sparkles className="mr-2 h-4 w-4 text-white" />
+                        <Sparkles className="mr-2 h-4 w-4 text-foreground" />
                         AI Analysis
                     </ButtonMovingBorder>
                     <ShimmerButton className="shadow-2xl">
-                        <span className="whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 lg:text-lg">
+                        <span className="whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-foreground dark:from-foreground dark:to-slate-900/10 lg:text-lg">
                             Generate Report
                         </span>
                     </ShimmerButton>
@@ -54,7 +54,7 @@ export default function DashboardDemoPage() {
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white">$45,231.89</div>
+                        <div className="text-2xl font-bold text-foreground">$45,231.89</div>
                         <p className="text-xs text-muted-foreground">
                             <span className="text-emerald-500 flex items-center gap-1 inline-flex">
                                 +20.1% <ArrowUpRight className="h-3 w-3" />
@@ -71,7 +71,7 @@ export default function DashboardDemoPage() {
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white">+2350</div>
+                        <div className="text-2xl font-bold text-foreground">+2350</div>
                         <p className="text-xs text-muted-foreground">
                             <span className="text-emerald-500 flex items-center gap-1 inline-flex">
                                 +180.1% <ArrowUpRight className="h-3 w-3" />
@@ -88,7 +88,7 @@ export default function DashboardDemoPage() {
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white">+12,234</div>
+                        <div className="text-2xl font-bold text-foreground">+12,234</div>
                         <p className="text-xs text-muted-foreground">
                             <span className="text-emerald-500 flex items-center gap-1 inline-flex">
                                 +19% <ArrowUpRight className="h-3 w-3" />
@@ -105,7 +105,7 @@ export default function DashboardDemoPage() {
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white">+573</div>
+                        <div className="text-2xl font-bold text-foreground">+573</div>
                         <p className="text-xs text-muted-foreground">
                             <span className="text-emerald-500 flex items-center gap-1 inline-flex">
                                 +201 <ArrowUpRight className="h-3 w-3" />
@@ -126,7 +126,7 @@ export default function DashboardDemoPage() {
                 </TabsList>
                 <TabsContent value="overview" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                        <div className="col-span-4 relative rounded-xl border border-white/10 bg-black/40 backdrop-blur-xl">
+                        <div className="col-span-4 relative rounded-xl border border-border/70 bg-card/40 backdrop-blur-xl">
                             <BorderBeam size={250} duration={12} delay={9} />
                             <CardHeader>
                                 <CardTitle>Recent Sales</CardTitle>
@@ -137,7 +137,7 @@ export default function DashboardDemoPage() {
                             <CardContent>
                                 <div className="space-y-8">
                                     {/* Mock Chart Placeholder */}
-                                    <div className="h-[200px] w-full rounded-md bg-white/5 flex items-center justify-center text-muted-foreground text-sm border border-white/5">
+                                    <div className="h-[200px] w-full rounded-md bg-foreground/5 flex items-center justify-center text-muted-foreground text-sm border border-border/40">
                                         [Chart Component Placeholder]
                                     </div>
                                 </div>
@@ -154,11 +154,11 @@ export default function DashboardDemoPage() {
                                 <div className="space-y-8">
                                     {[1, 2, 3, 4, 5].map((i) => (
                                         <div key={i} className="flex items-center">
-                                            <div className="h-9 w-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white shadow-glow-white">
+                                            <div className="h-9 w-9 rounded-full bg-foreground/10 border border-border/70 flex items-center justify-center text-foreground shadow-glow-white">
                                                 <Activity className="h-4 w-4" />
                                             </div>
                                             <div className="ml-4 space-y-1">
-                                                <p className="text-sm font-medium leading-none text-white">
+                                                <p className="text-sm font-medium leading-none text-foreground">
                                                     New user registered
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
@@ -210,14 +210,14 @@ export default function DashboardDemoPage() {
                                         { id: "INV005", status: "Paid", method: "PayPal", amount: "$550.00" },
                                     ].map((invoice) => (
                                         <TableRow key={invoice.id}>
-                                            <TableCell className="font-medium text-white">{invoice.id}</TableCell>
+                                            <TableCell className="font-medium text-foreground">{invoice.id}</TableCell>
                                             <TableCell>
                                                 <Badge variant={invoice.status === "Paid" ? "default" : invoice.status === "Pending" ? "secondary" : "destructive"}>
                                                     {invoice.status}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>{invoice.method}</TableCell>
-                                            <TableCell className="text-right text-white">{invoice.amount}</TableCell>
+                                            <TableCell className="text-right text-foreground">{invoice.amount}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>

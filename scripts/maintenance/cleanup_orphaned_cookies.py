@@ -10,7 +10,7 @@ from datetime import datetime
 import shutil
 
 # 添加项目路径
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "prism_backend"))
 
 from myUtils.cookie_manager import CookieManager
 from loguru import logger
@@ -23,7 +23,7 @@ def cleanup_orphaned_cookies(dry_run=True):
     logger.info("=" * 60)
 
     # 初始化
-    cookie_dir = Path(__file__).parent.parent.parent / "syn_backend" / "cookiesFile"
+    cookie_dir = Path(__file__).parent.parent.parent / "prism_backend" / "cookiesFile"
     orphaned_dir = cookie_dir / "backups" / datetime.now().strftime("%Y%m%d_%H%M%S") / "orphaned"
 
     manager = CookieManager()

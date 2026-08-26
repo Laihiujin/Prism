@@ -16,7 +16,7 @@ export function Tool({
     className?: string
 }) {
     return (
-        <Card className={cn("bg-black/40 border-primary/20 p-3 space-y-2", className)}>
+        <Card className={cn("bg-card/40 border-primary/20 p-3 space-y-2", className)}>
             {children}
         </Card>
     )
@@ -27,7 +27,7 @@ export function ToolHeader({ children }: { children: React.ReactNode }) {
 }
 
 export function ToolName({ children }: { children: React.ReactNode }) {
-    return <span className="text-white/90 font-medium text-xs">{children}</span>
+    return <span className="text-foreground/90 font-medium text-xs">{children}</span>
 }
 
 export function ToolStatus({ status }: { status: string }) {
@@ -41,7 +41,7 @@ export function ToolStatus({ status }: { status: string }) {
 
 export function ToolResult({ children }: { children: React.ReactNode }) {
     return (
-        <div className="text-green-400/80 text-xs font-mono bg-black/30 rounded p-2 max-h-32 overflow-y-auto">
+        <div className="text-green-400/80 text-xs font-mono bg-card/30 rounded p-2 max-h-32 overflow-y-auto">
             {children}
         </div>
     )

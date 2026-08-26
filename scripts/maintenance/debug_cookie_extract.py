@@ -11,7 +11,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # 测试Cookie提取
-cookie_file = Path("syn_backend/cookiesFile/ffe0d3a1-cba7-11f0-87f6-00a747280720.json")
+cookie_file = Path("prism_backend/cookiesFile/ffe0d3a1-cba7-11f0-87f6-00a747280720.json")
 
 with open(cookie_file, 'r', encoding='utf-8') as f:
     cookie_data = json.load(f)

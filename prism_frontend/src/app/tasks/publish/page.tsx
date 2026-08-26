@@ -134,7 +134,7 @@ export default function PublishTasksPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-semibold">发布任务管理</h1>
-                    <p className="text-sm text-white/60 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                         监控发布任务状态和日志
                     </p>
                 </div>
@@ -163,7 +163,7 @@ export default function PublishTasksPage() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/60">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                             总任务
                         </CardTitle>
                     </CardHeader>
@@ -173,7 +173,7 @@ export default function PublishTasksPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/60">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                             等待中
                         </CardTitle>
                     </CardHeader>
@@ -183,7 +183,7 @@ export default function PublishTasksPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/60">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                             执行中
                         </CardTitle>
                     </CardHeader>
@@ -193,7 +193,7 @@ export default function PublishTasksPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/60">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                             已完成
                         </CardTitle>
                     </CardHeader>
@@ -203,7 +203,7 @@ export default function PublishTasksPage() {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-white/60">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                             失败
                         </CardTitle>
                     </CardHeader>
@@ -221,10 +221,10 @@ export default function PublishTasksPage() {
                 <CardContent>
                     {isLoading ? (
                         <div className="flex justify-center items-center py-8">
-                            <Loader2 className="h-8 w-8 animate-spin text-white/60" />
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
                     ) : tasks.length === 0 ? (
-                        <div className="text-center py-8 text-white/60">
+                        <div className="text-center py-8 text-muted-foreground">
                             暂无任务
                         </div>
                     ) : (
@@ -284,7 +284,7 @@ export default function PublishTasksPage() {
                                                     </Badge>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-xs text-white/60">
+                                            <TableCell className="text-xs text-muted-foreground">
                                                 {new Date(task.created_at).toLocaleString('zh-CN', {
                                                     month: '2-digit',
                                                     day: '2-digit',

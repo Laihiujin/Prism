@@ -12,7 +12,7 @@ echo ============================================
 echo.
 
 set "ROOT_DIR=%~dp0..\.."
-set "FRONTEND_DIR=%ROOT_DIR%\syn_frontend_react"
+set "FRONTEND_DIR=%ROOT_DIR%\prism_frontend"
 
 echo [1/4] 停止可能占用文件的进程...
 echo.
