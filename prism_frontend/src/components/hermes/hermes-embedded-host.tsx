@@ -171,8 +171,8 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
     <div
       className={
         active
-          ? "absolute inset-0 z-10 bg-black"
-          : "pointer-events-none absolute inset-0 -z-10 bg-black opacity-0"
+          ? "absolute inset-0 z-10 bg-card"
+          : "pointer-events-none absolute inset-0 -z-10 bg-card opacity-0"
       }
       data-backend-base={backendBase}
     >
@@ -180,13 +180,13 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
         <iframe
           src={iframeSrc}
           title="Hermes WebUI"
-          className="block h-full w-full border-0 bg-black"
+          className="block h-full w-full border-0 bg-card"
         />
       ) : (
-        <div className="grid h-full place-items-center bg-black px-6 text-white">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-8 text-center shadow-2xl">
+        <div className="grid h-full place-items-center bg-card px-6 text-foreground">
+          <div className="w-full max-w-lg rounded-2xl border border-border/70 bg-foreground/5 p-8 text-center shadow-2xl">
             <div className="text-lg font-semibold">{booting ? "正在启动 Hermes Agent…" : "Hermes Agent 暂不可用"}</div>
-            <p className="mt-3 text-sm leading-6 text-white/60">
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {startupError || "正在读取本地 Hermes 运行时状态。"}
             </p>
             <div className="mt-6 flex justify-center gap-3">
@@ -194,11 +194,11 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
                 type="button"
                 onClick={() => setRetryToken((current) => current + 1)}
                 disabled={booting}
-                className="rounded-xl border border-white/15 px-4 py-2 text-sm disabled:opacity-50"
+                className="rounded-xl border border-border/70 px-4 py-2 text-sm disabled:opacity-50"
               >
                 重试启动
               </button>
-              <a href="/ai-agent/settings" className="rounded-xl bg-white px-4 py-2 text-sm text-black">
+              <a href="/ai-agent/settings" className="rounded-xl bg-foreground px-4 py-2 text-sm text-background">
                 打开运行时设置
               </a>
             </div>

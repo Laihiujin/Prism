@@ -57,9 +57,9 @@ export function Task({
   const statusConfig = {
     pending: {
       icon: Circle,
-      color: "text-white/40",
-      bgColor: "bg-white/5",
-      borderColor: "border-white/10"
+      color: "text-foreground/40",
+      bgColor: "bg-foreground/5",
+      borderColor: "border-border/70"
     },
     "in-progress": {
       icon: Clock,
@@ -89,19 +89,19 @@ export function Task({
       <div className="flex items-start gap-3">
         <Icon className={cn("h-5 w-5 mt-0.5", config.color, task.status === "in-progress" && "animate-spin")} />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-white/90">{task.title}</div>
+          <div className="text-sm font-medium text-foreground/90">{task.title}</div>
           {task.description && (
-            <div className="text-xs text-white/60 mt-1">{task.description}</div>
+            <div className="text-xs text-muted-foreground mt-1">{task.description}</div>
           )}
           {task.progress !== undefined && (
             <div className="mt-2">
-              <div className="flex items-center justify-between text-xs text-white/50 mb-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                 <span>进度</span>
                 <span>{task.progress}%</span>
               </div>
-              <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-card/40 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-white/60 rounded-full transition-all duration-300"
+                  className="h-full bg-foreground/60 rounded-full transition-all duration-300"
                   style={{ width: `${task.progress}%` }}
                 />
               </div>
@@ -112,12 +112,12 @@ export function Task({
 
       {task.metadata && Object.keys(task.metadata).length > 0 && collapsible && (
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleTrigger className="flex items-center gap-1 text-xs text-white/40 hover:text-white/60 transition-colors">
+          <CollapsibleTrigger className="flex items-center gap-1 text-xs text-foreground/40 hover:text-muted-foreground transition-colors">
             {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             <span>详细信息</span>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-2">
-            <pre className="text-xs bg-black/40 rounded p-2 text-white/60 font-mono overflow-x-auto">
+            <pre className="text-xs bg-card/40 rounded p-2 text-muted-foreground font-mono overflow-x-auto">
               {JSON.stringify(task.metadata, null, 2)}
             </pre>
           </CollapsibleContent>
@@ -132,7 +132,7 @@ export function Task({
         "p-3 transition-all",
         config.bgColor,
         config.borderColor,
-        onClick && "cursor-pointer hover:border-white/30",
+        onClick && "cursor-pointer hover:border-border",
         className
       )}
       onClick={onClick}
@@ -158,11 +158,11 @@ export function TaskList({ tasks, title = "任务列表", className, onTaskClick
   const completedCount = tasks.filter(t => t.status === "completed").length
 
   return (
-    <Card className={cn("bg-black/40 border-white/10", className)}>
-      <div className="p-3 border-b border-white/10">
+    <Card className={cn("bg-card/40 border-border/70", className)}>
+      <div className="p-3 border-b border-border/70">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-white/90">{title}</span>
-          <div className="flex items-center gap-2 text-xs text-white/50">
+          <span className="text-sm font-medium text-foreground/90">{title}</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {inProgressCount > 0 && (
               <span className="text-blue-400">{inProgressCount} 进行中</span>
             )}
@@ -178,7 +178,7 @@ export function TaskList({ tasks, title = "任务列表", className, onTaskClick
 
       <div className="p-2 space-y-2">
         {tasks.length === 0 ? (
-          <div className="text-center text-xs text-white/40 py-4">暂无任务</div>
+          <div className="text-center text-xs text-foreground/40 py-4">暂无任务</div>
         ) : (
           tasks.map((task) => (
             <Task

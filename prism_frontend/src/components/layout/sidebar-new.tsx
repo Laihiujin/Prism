@@ -142,9 +142,9 @@ export function SidebarNew({
         initial={false}
         animate={{ width: collapsed ? 80 : 280 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className={cn("relative flex h-screen flex-col border-r border-border bg-background text-foreground", className)}
+        className={cn("relative flex h-screen flex-col border-r border-border/80 bg-glass-strong text-foreground", className)}
       >
-        <div className="flex h-16 items-center justify-between border-b border-border px-6">
+        <div className="flex h-16 items-center justify-between border-b border-border/80 px-6">
           <AnimatePresence mode="wait">
             {!collapsed ? (
               <motion.div
@@ -155,7 +155,10 @@ export function SidebarNew({
                 transition={{ duration: 0.3 }}
                 className="flex items-center gap-3"
               >
-                <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover" />
+                <div className="relative">
+                  <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover ring-1 ring-border/80" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-[#22C55E]" />
+                </div>
                 <GradientText
                   colors={["#3B82F6", "#22D3EE", "#60A5FA"]}
                   animationSpeed={14}
@@ -170,7 +173,10 @@ export function SidebarNew({
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.3 }}
               >
-                <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover" />
+                <div className="relative">
+                  <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover ring-1 ring-border/80" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-[#22C55E]" />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -191,8 +197,7 @@ export function SidebarNew({
                     >
                       <h3 className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-foreground/40">
                         {section.label}
-                      </h3>
-                    </motion.div>
+                      </h3>                    </motion.div>
                   )}
                 </AnimatePresence>
 
@@ -257,10 +262,18 @@ export function SidebarNew({
                                   onClick={() => onNavigate?.()}
                                   className={cn(
                                     "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
-                                    childActive ? "bg-primary/15 text-primary-foreground" : "text-foreground/60 hover:bg-accent hover:text-accent-foreground",
+                                    childActive
+                                      ? "bg-gradient-to-r from-primary/20 to-primary/5 text-foreground"
+                                      : "text-foreground/60 hover:bg-accent hover:text-accent-foreground",
                                   )}
                                 >
-                                  <ChildIcon className="h-4 w-4 shrink-0" suppressHydrationWarning />
+                                  <ChildIcon
+                                    className={cn(
+                                      "h-4 w-4 shrink-0 transition-colors",
+                                      childActive ? "text-primary" : "text-foreground/50 group-hover:text-foreground"
+                                    )}
+                                    suppressHydrationWarning
+                                  />
                                   <span className="truncate">{child.label}</span>
                                 </Link>
                               )
@@ -276,10 +289,21 @@ export function SidebarNew({
                         onClick={() => onNavigate?.()}
                         className={cn(
                           "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                          isActive ? "bg-primary/15 text-primary-foreground" : "text-foreground/70 hover:bg-accent hover:text-accent-foreground",
+                          isActive
+                            ? "bg-gradient-to-r from-primary/20 to-primary/5 text-foreground shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.15)]"
+                            : "text-foreground/70 hover:bg-accent hover:text-accent-foreground",
                         )}
                       >
-                        <Icon className="relative h-5 w-5 shrink-0" suppressHydrationWarning />
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.6)]" />
+                        )}
+                        <Icon
+                          className={cn(
+                            "relative h-5 w-5 shrink-0 transition-colors",
+                            isActive ? "text-primary" : "text-foreground/60 group-hover:text-foreground"
+                          )}
+                          suppressHydrationWarning
+                        />
                         <AnimatePresence mode="wait">
                           {!collapsed && (
                             <motion.span
@@ -319,7 +343,7 @@ export function SidebarNew({
         </ScrollArea>
 
         {showCollapseToggle && (
-          <div className="border-t border-white/10 p-3">
+          <div className="border-t border-border/80 p-3">
             <Button
               variant="ghost"
               size="icon"

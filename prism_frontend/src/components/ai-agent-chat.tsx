@@ -322,9 +322,9 @@ export function AIAgentChat() {
     if (message instanceof HumanMessage) {
       return (
         <div key={index} className="flex justify-end">
-          <div className={clsx(base, "bg-blue-600 text-white max-w-[80%]")}>
+          <div className={clsx(base, "bg-blue-600 text-foreground max-w-[80%]")}>
             <div>{message.content as string}</div>
-            <div className="mt-1 text-[10px] text-white/80 text-right">{formatTime(timestamp)}</div>
+            <div className="mt-1 text-[10px] text-foreground/80 text-right">{formatTime(timestamp)}</div>
           </div>
         </div>
       )
@@ -336,38 +336,38 @@ export function AIAgentChat() {
       const toolCall = (message as any).tool_calls?.[0]
       return (
         <div key={index} className="flex justify-start">
-          <div className={clsx(base, "bg-white/90 text-slate-900 border border-slate-200 max-w-[80%]")}>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-1">
+          <div className={clsx(base, "bg-foreground/90 text-background border border-border/70 max-w-[80%]")}>
+            <div className="flex items-center gap-2 text-xs font-semibold text-background/70 mb-1">
               <Sparkles className="h-4 w-4 text-blue-500" />
               小轴
-              {timestamp && <span className="text-[10px] text-slate-500">{formatTime(timestamp)}</span>}
+              {timestamp && <span className="text-[10px] text-background/60">{formatTime(timestamp)}</span>}
             </div>
             <div className="prose prose-sm max-w-none whitespace-pre-wrap leading-relaxed">{message.content as string}</div>
             {hasToolCall && (
-              <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+              <div className="mt-3 rounded-xl border border-dashed border-border/70 bg-card p-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-background/70">
                   <PlayCircle className="h-4 w-4 text-emerald-600" />
                   准备调用工具: {toolCall?.name}
                 </div>
-                <pre className="mt-2 text-[11px] bg-white rounded-lg p-2 border border-slate-200 overflow-auto">
+                <pre className="mt-2 text-[11px] bg-foreground rounded-lg p-2 border border-border/70 overflow-auto">
                   {JSON.stringify(toolCall?.args || {}, null, 2)}
                 </pre>
                 <div className="mt-2 flex gap-2">
                   <button
                     onClick={() => handleToolCallConfirm(toolCall)}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs hover:bg-emerald-600 disabled:opacity-60"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500 text-foreground text-xs hover:bg-emerald-600 disabled:opacity-60"
                     disabled={toolCallState === "confirmed" || isProcessing}
                   >
                     允许执行
                   </button>
                   <button
                     onClick={() => handleToolCallReject(toolCall)}
-                    className="px-3 py-1.5 rounded-lg bg-rose-500 text-white text-xs hover:bg-rose-600 disabled:opacity-60"
+                    className="px-3 py-1.5 rounded-lg bg-rose-500 text-foreground text-xs hover:bg-rose-600 disabled:opacity-60"
                     disabled={toolCallState !== "none" || isProcessing}
                   >
                     拒绝
                   </button>
-                  <span className="text-[11px] text-slate-500 flex items-center">
+                  <span className="text-[11px] text-background/60 flex items-center">
                     状态: {toolCallState === "none" ? "待确认" : toolCallState === "confirmed" ? "已执行" : "已拒绝"}
                   </span>
                 </div>
@@ -398,20 +398,20 @@ export function AIAgentChat() {
     <div className="h-full w-full flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">AI 脚本助手</h1>
-          <p className="text-sm text-slate-500">使用 LangGraph + 工具调用自动化脚本</p>
+          <h1 className="text-2xl font-semibold text-background">AI 脚本助手</h1>
+          <p className="text-sm text-background/60">使用 LangGraph + 工具调用自动化脚本</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowSettings(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-card text-foreground text-sm hover:bg-card/80"
           >
             <Settings className="h-4 w-4" />
             模型设置
           </button>
           <button
             onClick={clearConversation}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-sm hover:bg-slate-50"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/70 text-sm hover:bg-card"
           >
             清空对话
           </button>
@@ -419,11 +419,11 @@ export function AIAgentChat() {
       </div>
 
       {!hasAgent && (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
-          <p className="text-slate-700 text-sm">请先配置 OpenAI 兼容的 Endpoint / Key 才能使用 AI 工具。</p>
+        <div className="rounded-2xl border border-dashed border-border/70 bg-foreground p-6 text-center">
+          <p className="text-background/80 text-sm">请先配置 OpenAI 兼容的 Endpoint / Key 才能使用 AI 工具。</p>
           <button
             onClick={() => setShowSettings(true)}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-foreground text-sm hover:bg-blue-700"
           >
             <Settings className="h-4 w-4" />
             打开设置
@@ -432,21 +432,21 @@ export function AIAgentChat() {
       )}
 
       {hasAgent && messages.length === 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="rounded-2xl border border-border/70 bg-foreground p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {presetPrompts.map((p) => (
               <button
                 key={p.prompt}
                 onClick={() => sendMessage(p.prompt)}
-                className="group text-left p-4 rounded-xl border border-slate-200 hover:border-blue-200 hover:shadow-md transition bg-slate-50 hover:bg-white"
+                className="group text-left p-4 rounded-xl border border-border/70 hover:border-primary/50 hover:shadow-md transition bg-card hover:bg-accent"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-foreground flex items-center justify-center shadow">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-900 group-hover:text-blue-600">{p.title}</p>
-                    <p className="text-xs text-slate-500 mt-1">{p.description}</p>
+                    <p className="text-sm font-semibold text-background group-hover:text-blue-600">{p.title}</p>
+                    <p className="text-xs text-background/60 mt-1">{p.description}</p>
                   </div>
                 </div>
               </button>
@@ -457,13 +457,13 @@ export function AIAgentChat() {
 
       <div
         ref={messageContainerRef}
-        className="flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 space-y-4"
+        className="flex-1 overflow-y-auto rounded-2xl border border-border/70 bg-gradient-to-b from-card to-card p-4 space-y-4"
       >
         {messages.map((m, idx) => renderMessage(m, idx))}
         {isProcessing && (
           <div className="flex justify-start">
-            <div className="rounded-2xl px-4 py-3 text-sm bg-white border border-slate-200 shadow max-w-[70%]">
-              <div className="flex items-center gap-2 text-slate-500">
+            <div className="rounded-2xl px-4 py-3 text-sm bg-foreground border border-border/70 shadow max-w-[70%]">
+              <div className="flex items-center gap-2 text-background/60">
                 <RefreshCcw className="h-4 w-4 animate-spin" />
                 正在思考/执行...
               </div>
@@ -472,7 +472,7 @@ export function AIAgentChat() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="rounded-2xl border border-border/70 bg-foreground p-3">
         <div className="flex items-center gap-3">
           <textarea
             value={inputMessage}
@@ -485,14 +485,14 @@ export function AIAgentChat() {
               }
             }}
             placeholder={hasAgent ? "输入问题或脚本需求..." : "请先配置模型"}
-            className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+            className="flex-1 rounded-xl border border-border/70 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-card"
             rows={2}
             disabled={!hasAgent || isProcessing}
           />
           <button
             onClick={() => sendMessage()}
             disabled={!inputMessage.trim() || !hasAgent || isProcessing}
-            className="h-11 px-4 rounded-xl bg-blue-600 text-white text-sm inline-flex items-center gap-2 disabled:opacity-60"
+            className="h-11 px-4 rounded-xl bg-blue-600 text-foreground text-sm inline-flex items-center gap-2 disabled:opacity-60"
           >
             <Send className="h-4 w-4" />
             发送
@@ -501,44 +501,44 @@ export function AIAgentChat() {
       </div>
 
       {showSettings && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200">
+        <div className="fixed inset-0 bg-card/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-foreground rounded-2xl shadow-2xl w-full max-w-lg border border-border/70">
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">模型设置</h3>
-                  <p className="text-xs text-slate-500 mt-1">配置 OpenAI 兼容接口，信息仅保存在浏览器</p>
+                  <h3 className="text-lg font-semibold text-background">模型设置</h3>
+                  <p className="text-xs text-background/60 mt-1">配置 OpenAI 兼容接口，信息仅保存在浏览器</p>
                 </div>
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="rounded-full p-2 hover:bg-slate-100 text-slate-500"
+                  className="rounded-full p-2 hover:bg-card text-background/60"
                 >
                   ✕
                 </button>
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm text-slate-700">
+                <label className="text-sm text-background/80">
                   Endpoint
                   <input
                     type="text"
                     value={settings.endpoint}
                     onChange={(e) => setSettings((prev) => ({ ...prev, endpoint: e.target.value }))}
                     placeholder="https://api.openai.com/v1"
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-border/70 px-3 py-2 text-sm"
                   />
                 </label>
-                <label className="text-sm text-slate-700">
+                <label className="text-sm text-background/80">
                   API Key
                   <input
                     type="password"
                     value={settings.api_key}
                     onChange={(e) => setSettings((prev) => ({ ...prev, api_key: e.target.value }))}
                     placeholder="sk-..."
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-border/70 px-3 py-2 text-sm"
                   />
                 </label>
-                <label className="text-sm text-slate-700">
+                <label className="text-sm text-background/80">
                   模型
                   <div className="flex gap-2 mt-1">
                     <input
@@ -547,12 +547,12 @@ export function AIAgentChat() {
                       value={settings.model}
                       onChange={(e) => setSettings((prev) => ({ ...prev, model: e.target.value }))}
                       placeholder="gpt-4o-mini / deepseek..."
-                      className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      className="flex-1 rounded-lg border border-border/70 px-3 py-2 text-sm"
                     />
                     <button
                       onClick={() => loadModels(settings.endpoint, settings.api_key)}
                       disabled={!settings.endpoint || !settings.api_key || isLoadingModels}
-                      className="px-3 py-2 rounded-lg border border-slate-200 text-sm hover:bg-slate-50 disabled:opacity-60"
+                      className="px-3 py-2 rounded-lg border border-border/70 text-sm hover:bg-card disabled:opacity-60"
                       type="button"
                     >
                       {isLoadingModels ? "加载..." : "刷新模型"}
@@ -571,13 +571,13 @@ export function AIAgentChat() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="px-4 py-2 rounded-lg border border-slate-200 text-sm hover:bg-slate-50"
+                  className="px-4 py-2 rounded-lg border border-border/70 text-sm hover:bg-card"
                 >
                   取消
                 </button>
                 <button
                   onClick={saveSettings}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-foreground text-sm hover:bg-blue-700"
                 >
                   保存
                 </button>

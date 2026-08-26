@@ -106,7 +106,7 @@ export default function GradientText({
           style={{ ...gradientStyle, backgroundPosition }}
         >
           <div
-            className="absolute bg-black rounded-[1.25rem] z-[-1]"
+            className="absolute bg-card rounded-[1.25rem] z-[-1]"
             style={{
               width: 'calc(100% - 2px)',
               height: 'calc(100% - 2px)',

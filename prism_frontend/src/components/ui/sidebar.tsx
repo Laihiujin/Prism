@@ -43,7 +43,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "hidden border-r border-white/10 bg-white/[0.02] backdrop-blur md:block",
+        "hidden border-r border-border/70 bg-foreground/[0.02] backdrop-blur md:block",
         collapsed ? "w-16" : "w-64",
         className
       )}
@@ -76,7 +76,7 @@ export function SidebarTrigger({
       type="button"
       onClick={toggle}
       className={cn(
-        "inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/5 text-sm text-white transition hover:bg-white/10",
+        "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/80 bg-foreground/5 text-sm text-foreground transition hover:bg-accent/50",
         className
       )}
       aria-label="切换侧边栏"
