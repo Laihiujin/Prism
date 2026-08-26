@@ -11,7 +11,7 @@ import json
 import re
 from pathlib import Path
 from datetime import datetime
-from utils.playwright_provider import async_playwright, Page, BrowserContext
+from utils.automation_provider import async_playwright, Page, BrowserContext
 
 # 导入配置
 from config.conf import BASE_DIR, PLAYWRIGHT_HEADLESS

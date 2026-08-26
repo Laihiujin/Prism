@@ -1,5 +1,5 @@
 #!/bin/bash
-# SynapseAutomation Nginx 配置检查脚本
+# Prism Nginx 配置检查脚本
 
 set -e
 

@@ -4,9 +4,9 @@ import time
 from pathlib import Path
 from typing import List, Dict, Any
 
-# Base directory: .../SynapseAutomation
+# Base directory: .../Prism
 BASE_DIR = Path(__file__).resolve().parents[2]
-SCRIPTS_DIR = BASE_DIR / "syn_backend" / "scripts"
+SCRIPTS_DIR = BASE_DIR / "prism_backend" / "scripts"
 
 
 def _safe_path(script_name: str) -> Path:

@@ -40,11 +40,11 @@ Write-Host "[prepare-release] Project root: $resolvedRoot"
 
 $targetsToReset = @(
     @{ Path = (Join-Path $resolvedRoot "logs"); Recreate = $true },
-    @{ Path = (Join-Path $resolvedRoot "syn_backend\logs"); Recreate = $true },
-    @{ Path = (Join-Path $resolvedRoot "syn_backend\data\cookies"); Recreate = $false },
-    @{ Path = (Join-Path $resolvedRoot "syn_backend\cookiesFile"); Recreate = $false },
-    @{ Path = (Join-Path $resolvedRoot "syn_backend\fingerprints"); Recreate = $false },
-    @{ Path = (Join-Path $resolvedRoot "syn_backend\browser_profiles"); Recreate = $false },
+    @{ Path = (Join-Path $resolvedRoot "prism_backend\logs"); Recreate = $true },
+    @{ Path = (Join-Path $resolvedRoot "prism_backend\data\cookies"); Recreate = $false },
+    @{ Path = (Join-Path $resolvedRoot "prism_backend\cookiesFile"); Recreate = $false },
+    @{ Path = (Join-Path $resolvedRoot "prism_backend\fingerprints"); Recreate = $false },
+    @{ Path = (Join-Path $resolvedRoot "prism_backend\browser_profiles"); Recreate = $false },
     @{ Path = (Join-Path $resolvedRoot "config\cookiesFile"); Recreate = $false },
     @{ Path = (Join-Path $resolvedRoot "config\browser_profiles"); Recreate = $false },
     @{ Path = (Join-Path $resolvedRoot "desktop-electron\dist-build"); Recreate = $false },
@@ -57,7 +57,7 @@ foreach ($target in $targetsToReset) {
     Remove-IfExists -Path $target.Path -RecreateDirectory:$target.Recreate
 }
 
-Remove-Files -Directory (Join-Path $resolvedRoot "syn_backend\db") -Patterns @("*.db", "*.db-*", "*.sqlite", "*.sqlite-*", "frontend_accounts_snapshot.json")
+Remove-Files -Directory (Join-Path $resolvedRoot "prism_backend\db") -Patterns @("*.db", "*.db-*", "*.sqlite", "*.sqlite-*", "frontend_accounts_snapshot.json")
 Remove-Files -Directory (Join-Path $resolvedRoot "desktop-electron") -Patterns @("*.rdb", "*.log")
 
 Write-Host "[prepare-release] Release workspace sanitized."

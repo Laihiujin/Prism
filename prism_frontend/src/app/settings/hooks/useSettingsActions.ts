@@ -23,9 +23,7 @@ interface LoadingState {
   setAutomationRuntime: boolean
   setPlatformBrowser: boolean
   installPatchright: boolean
-  installPlaywright: boolean
   uninstallPatchright: boolean
-  uninstallPlaywright: boolean
   installChromium: boolean
   installFirefox: boolean
   uninstallChromium: boolean
@@ -42,7 +40,7 @@ interface RuntimeStatus {
   frontend?: ServiceStatus
   backend?: ServiceStatus
   supervisor?: ServiceStatus
-  playwright_worker?: ServiceStatus
+  automation_worker?: ServiceStatus
   celery_worker?: ServiceStatus
   hermes_gateway?: ServiceStatus
   hermes_dashboard?: ServiceStatus
@@ -67,11 +65,10 @@ interface BrowserAssetInfo {
 interface BrowserRuntimeInfo {
   pythonPath?: string
   browsersPath?: string
-  preferredRuntime?: "patchright" | "playwright"
+  preferredRuntime?: "patchright"
   activeRuntime?: string | null
   runtimes?: {
     patchright?: RuntimePackageInfo
-    playwright?: RuntimePackageInfo
   }
   browsers?: {
     chromium?: BrowserAssetInfo
@@ -81,7 +78,7 @@ interface BrowserRuntimeInfo {
 
 interface RuntimeSettings {
   browserHeadless: boolean
-  automationRuntime?: "patchright" | "playwright"
+  automationRuntime?: "patchright"
   platformBrowserPreferences?: Partial<Record<PlatformBrowserKey, PlatformBrowserChoice>>
 }
 
@@ -90,7 +87,7 @@ interface AppInfo {
   name?: string
   isPackaged?: boolean
   resourcesPath?: string
-  playwrightBrowserPath?: string
+  automationBrowserPath?: string
   runtimeSettings?: RuntimeSettings
   browserRuntimeInfo?: BrowserRuntimeInfo
 }
@@ -130,9 +127,7 @@ export function useSettingsActions() {
     setAutomationRuntime: false,
     setPlatformBrowser: false,
     installPatchright: false,
-    installPlaywright: false,
     uninstallPatchright: false,
-    uninstallPlaywright: false,
     installChromium: false,
     installFirefox: false,
     uninstallChromium: false,
@@ -181,7 +176,7 @@ export function useSettingsActions() {
     }
 
     updateAppInfo({
-      playwrightBrowserPath: browserRuntimeInfo.browsersPath,
+      automationBrowserPath: browserRuntimeInfo.browsersPath,
       browserRuntimeInfo,
     })
   }, [updateAppInfo])
@@ -214,7 +209,7 @@ export function useSettingsActions() {
   }, [apiBase])
 
   const installBrowserRuntimeTarget = async (
-    target: "patchright" | "playwright" | "chromium" | "firefox"
+    target: "patchright" | "chromium" | "firefox"
   ) => {
     if (isElectron) {
       const electron = (window as any).electronAPI
@@ -234,7 +229,7 @@ export function useSettingsActions() {
   }
 
   const uninstallBrowserRuntimeTarget = async (
-    target: "patchright" | "playwright" | "chromium" | "firefox"
+    target: "patchright" | "chromium" | "firefox"
   ) => {
     if (isElectron) {
       const electron = (window as any).electronAPI
@@ -432,7 +427,7 @@ export function useSettingsActions() {
     }, browserHeadless ? "已启用无头模式" : "已关闭无头模式")
   }
 
-  const setAutomationRuntime = async (automationRuntime: "patchright" | "playwright") => {
+  const setAutomationRuntime = async (automationRuntime: "patchright") => {
     await handleAction("setAutomationRuntime", async () => {
       if (!isElectron) {
         throw new Error("\u9996\u9009\u8fd0\u884c\u65f6\u5207\u6362\u4ec5\u684c\u9762\u7248\u53ef\u7528")
@@ -464,7 +459,7 @@ export function useSettingsActions() {
       }
 
       await refreshStatus({ silent: true })
-    }, automationRuntime === "patchright" ? "\u5df2\u5207\u6362\u5230 Patchright" : "\u5df2\u5207\u6362\u5230 Playwright")
+    }, "\u5df2\u542f\u7528 Patchright")
   }
 
   const setPlatformBrowserPreference = async (
@@ -547,8 +542,8 @@ export function useSettingsActions() {
   }
 
   const installBrowserAsset = async (
-    key: "installPatchright" | "installPlaywright" | "installChromium" | "installFirefox",
-    target: "patchright" | "playwright" | "chromium" | "firefox",
+    key: "installPatchright" | "installChromium" | "installFirefox",
+    target: "patchright" | "chromium" | "firefox",
     label: string
   ) => {
     await handleAction(key, async () => {
@@ -560,7 +555,7 @@ export function useSettingsActions() {
       syncBrowserRuntimeInfo(result.browserRuntimeInfo)
 
       let restartSucceeded = true
-      if (target === "patchright" || target === "playwright" || isElectron) {
+      if (target === "patchright" || isElectron) {
         restartSucceeded = await restartServicesAfterBrowserAssetChange()
       }
 
@@ -580,10 +575,6 @@ export function useSettingsActions() {
     await installBrowserAsset("installPatchright", "patchright", "Patchright")
   }
 
-  const installPlaywright = async () => {
-    await installBrowserAsset("installPlaywright", "playwright", "Playwright")
-  }
-
   const installChromium = async () => {
     await installBrowserAsset("installChromium", "chromium", "Hibbiki Chromium")
   }
@@ -593,8 +584,8 @@ export function useSettingsActions() {
   }
 
   const uninstallBrowserAsset = async (
-    key: "uninstallPatchright" | "uninstallPlaywright" | "uninstallChromium" | "uninstallFirefox",
-    target: "patchright" | "playwright" | "chromium" | "firefox",
+    key: "uninstallPatchright" | "uninstallChromium" | "uninstallFirefox",
+    target: "patchright" | "chromium" | "firefox",
     label: string
   ) => {
     await handleAction(key, async () => {
@@ -605,7 +596,7 @@ export function useSettingsActions() {
 
       syncBrowserRuntimeInfo(result.browserRuntimeInfo)
 
-      const restartSucceeded = (target === "patchright" || target === "playwright" || isElectron)
+      const restartSucceeded = (target === "patchright" || isElectron)
         ? await restartServicesAfterBrowserAssetChange()
         : true
 
@@ -631,10 +622,6 @@ export function useSettingsActions() {
 
   const uninstallPatchright = async () => {
     await uninstallBrowserAsset("uninstallPatchright", "patchright", "Patchright")
-  }
-
-  const uninstallPlaywright = async () => {
-    await uninstallBrowserAsset("uninstallPlaywright", "playwright", "Playwright")
   }
 
   const quitApp = async () => {
@@ -755,7 +742,7 @@ export function useSettingsActions() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `synapse-logs-${new Date().toISOString().split("T")[0]}.zip`
+      a.download = `prism-logs-${new Date().toISOString().split("T")[0]}.zip`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -777,9 +764,7 @@ export function useSettingsActions() {
     setAutomationRuntime,
     setPlatformBrowserPreference,
     installPatchright,
-    installPlaywright,
     uninstallPatchright,
-    uninstallPlaywright,
     installChromium,
     installFirefox,
     uninstallChromium,

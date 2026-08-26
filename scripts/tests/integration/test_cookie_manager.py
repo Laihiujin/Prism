@@ -9,13 +9,13 @@ from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-sys.path.insert(0, str(Path(__file__).parent / "syn_backend"))
+sys.path.insert(0, str(Path(__file__).parent / "prism_backend"))
 
 from myUtils.cookie_manager import cookie_manager
 
 # 测试提取
 cookie_file = "ffe0d3a1-cba7-11f0-87f6-00a747280720.json"
-cookie_path = Path("syn_backend/cookiesFile") / cookie_file
+cookie_path = Path("prism_backend/cookiesFile") / cookie_file
 
 print(f"测试文件: {cookie_file}")
 print(f"文件路径: {cookie_path}")

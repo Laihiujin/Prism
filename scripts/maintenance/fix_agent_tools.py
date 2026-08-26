@@ -7,7 +7,7 @@ from pathlib import Path
 
 def fix_get_file_detail_tool():
     """修复 GetFileDetailTool 的代码"""
-    file_path = Path(__file__).parent / "syn_backend" / "fastapi_app" / "agent" / "manus_tools.py"
+    file_path = Path(__file__).parent / "prism_backend" / "fastapi_app" / "agent" / "manus_tools.py"
 
     # 读取文件
     content = file_path.read_text(encoding='utf-8')

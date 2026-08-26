@@ -7,13 +7,13 @@ import asyncio
 
 # 添加项目根目录到 Python 路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "syn_backend"))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "prism_backend"))
 
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from syn_backend.myUtils.cookie_manager import cookie_manager
-from syn_backend.myUtils.auth import check_cookie
+from prism_backend.myUtils.cookie_manager import cookie_manager
+from prism_backend.myUtils.auth import check_cookie
 from datetime import datetime
 
 def test_deduplication():

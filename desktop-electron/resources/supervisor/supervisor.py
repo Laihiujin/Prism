@@ -214,7 +214,7 @@ class ProcessManager:
             "hermes-dashboard",
             "celery-worker",
             "backend",
-            "playwright-worker",
+            "automation-worker",
             "redis",
         ]
         for name in stop_order:
@@ -228,16 +228,16 @@ class Supervisor:
     def __init__(self) -> None:
         self.manager = ProcessManager()
         self.service_ports = {
-            "backend": self._read_env_port(("BACKEND_PORT", "SYN_BACKEND_PORT"), 7000),
-            "playwright-worker": self._read_env_port(("PLAYWRIGHT_WORKER_PORT", "SYN_PLAYWRIGHT_WORKER_PORT"), 7001),
-            "hermes-dashboard": self._read_env_port(("SYNAPSE_HERMES_DASHBOARD_PORT",), 9119),
-            "hermes-webui": self._read_env_port(("SYNAPSE_HERMES_WEBUI_PORT",), 9131),
+            "backend": self._read_env_port(("BACKEND_PORT", "PRISM_BACKEND_PORT"), 7000),
+            "automation-worker": self._read_env_port(("AUTOMATION_WORKER_PORT", "PRISM_AUTOMATION_WORKER_PORT"), 7001),
+            "hermes-dashboard": self._read_env_port(("PRISM_HERMES_DASHBOARD_PORT",), 9119),
+            "hermes-webui": self._read_env_port(("PRISM_HERMES_WEBUI_PORT",), 9131),
         }
         self.preferred_service_ports = dict(self.service_ports)
         self.external_services: Dict[str, bool] = {}
         self.kill_port_conflict = os.environ.get("SUPERVISOR_KILL_PORT_CONFLICT", "1") != "0"
 
-        env_resources_path = os.environ.get("SYNAPSE_RESOURCES_PATH") or os.environ.get("SYNAPSE_APP_ROOT")
+        env_resources_path = os.environ.get("PRISM_RESOURCES_PATH") or os.environ.get("PRISM_APP_ROOT")
         if env_resources_path:
             self.resources_path = Path(env_resources_path)
             self.is_packaged = True
@@ -249,32 +249,32 @@ class Supervisor:
             self.is_packaged = False
             self.resources_path = Path(__file__).parent.parent.parent.parent
 
-        if not (self.resources_path / "syn_backend").exists():
+        if not (self.resources_path / "prism_backend").exists():
             for candidate in (self.resources_path.parent, self.resources_path.parent.parent):
-                if len(candidate.parts) > 1 and (candidate / "syn_backend").exists():
+                if len(candidate.parts) > 1 and (candidate / "prism_backend").exists():
                     self.resources_path = candidate
                     break
 
-        self.backend_dir = self.resources_path / "syn_backend"
+        self.backend_dir = self.resources_path / "prism_backend"
         self.hermes_dir = self.resources_path / "tools" / "hermes-agent"
         self.hermes_home_dir = Path(
-            os.environ.get("SYNAPSE_HERMES_HOME")
+            os.environ.get("PRISM_HERMES_HOME")
             or str(self.resources_path / "tools" / "hermes-home")
         )
-        self.synenv_dir = self.resources_path / "synenv"
-        self.synenv_site_packages = self._resolve_synenv_site_packages()
+        self.prismenv_dir = self.resources_path / "prismenv"
+        self.prismenv_site_packages = self._resolve_prismenv_site_packages()
         self.browsers_dir = self.resources_path / "browsers"
         self.services_dir = self.resources_path / "services"
-        self.python_exe = self._resolve_synenv_python()
+        self.python_exe = self._resolve_prismenv_python()
 
         self.service_executables = {
             "backend": (
                 self.services_dir / "backend" / "backend.exe",
                 self.services_dir / "backend.exe",
             ),
-            "playwright-worker": (
-                self.services_dir / "playwright-worker" / "playwright-worker.exe",
-                self.services_dir / "playwright-worker.exe",
+            "automation-worker": (
+                self.services_dir / "automation-worker" / "automation-worker.exe",
+                self.services_dir / "automation-worker.exe",
             ),
             "celery-worker": (
                 self.services_dir / "celery-worker" / "celery-worker.exe",
@@ -288,8 +288,8 @@ class Supervisor:
         logger.info("Services dir: %s (exists: %s)", self.services_dir, self.services_dir.exists())
         logger.info("Browsers dir: %s (exists: %s)", self.browsers_dir, self.browsers_dir.exists())
         logger.info("Shared Python runtime: %s", self.python_exe or "not available")
-        if self.synenv_site_packages:
-            logger.info("Packaged site-packages: %s", self.synenv_site_packages)
+        if self.prismenv_site_packages:
+            logger.info("Packaged site-packages: %s", self.prismenv_site_packages)
 
     @staticmethod
     def _read_env_port(keys: Tuple[str, ...], default: int) -> int:
@@ -351,7 +351,7 @@ class Supervisor:
                 env = os.environ.copy()
                 env["HERMES_HOME"] = str(self.hermes_home_dir)
                 env["HERMES_CONFIG_PATH"] = str(self.hermes_home_dir / "config.yaml")
-                env["SYNAPSE_HERMES_HOME"] = str(self.hermes_home_dir)
+                env["PRISM_HERMES_HOME"] = str(self.hermes_home_dir)
                 result = subprocess.run(
                     [
                         str(self.python_exe),
@@ -444,10 +444,10 @@ class Supervisor:
                 return Path(matches[-1])
         return None
 
-    def _resolve_synenv_python(self) -> Optional[Path]:
+    def _resolve_prismenv_python(self) -> Optional[Path]:
         candidates = (
-            self.synenv_dir / "Scripts" / "python.exe",
-            self.synenv_dir / "bin" / "python",
+            self.prismenv_dir / "Scripts" / "python.exe",
+            self.prismenv_dir / "bin" / "python",
         )
         for candidate in candidates:
             if candidate.exists() and self._python_is_usable(candidate):
@@ -494,10 +494,10 @@ class Supervisor:
         except Exception:
             return False
 
-    def _resolve_synenv_site_packages(self) -> Optional[Path]:
+    def _resolve_prismenv_site_packages(self) -> Optional[Path]:
         candidates = (
-            self.synenv_dir / "Lib" / "site-packages",
-            self.synenv_dir / "lib" / "site-packages",
+            self.prismenv_dir / "Lib" / "site-packages",
+            self.prismenv_dir / "lib" / "site-packages",
         )
         for candidate in candidates:
             if candidate.exists():
@@ -593,12 +593,12 @@ class Supervisor:
 
     def _refresh_dynamic_service_ports(self) -> None:
         reserved_ports: set[int] = set()
-        for service_name in ("backend", "playwright-worker", "hermes-dashboard", "hermes-webui"):
+        for service_name in ("backend", "automation-worker", "hermes-dashboard", "hermes-webui"):
             reserved_ports.add(self._resolve_dynamic_service_port(service_name, reserved_ports))
 
     def _get_reserved_dynamic_ports(self, current_name: str) -> set[int]:
         reserved_ports: set[int] = set()
-        for service_name in ("backend", "playwright-worker", "hermes-dashboard", "hermes-webui"):
+        for service_name in ("backend", "automation-worker", "hermes-dashboard", "hermes-webui"):
             if service_name == current_name:
                 continue
             port = self.service_ports.get(service_name)
@@ -631,7 +631,7 @@ class Supervisor:
         return [str(self.python_exe), "-c", bootstrap]
 
     def _load_runtime_settings(self) -> Dict[str, object]:
-        settings_path_raw = os.environ.get("SYNAPSE_RUNTIME_SETTINGS_PATH")
+        settings_path_raw = os.environ.get("PRISM_RUNTIME_SETTINGS_PATH")
         if not settings_path_raw:
             return {}
 
@@ -674,13 +674,13 @@ class Supervisor:
         platform_browser_preferences = self._normalize_platform_browser_preferences(
             runtime_settings.get("platformBrowserPreferences")
         )
-        settings_path_raw = os.environ.get("SYNAPSE_RUNTIME_SETTINGS_PATH")
+        settings_path_raw = os.environ.get("PRISM_RUNTIME_SETTINGS_PATH")
 
         env["PYTHONUTF8"] = "1"
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONPATH"] = self._build_pythonpath(
             self.backend_dir,
-            self.synenv_site_packages,
+            self.prismenv_site_packages,
             base=env.get("PYTHONPATH"),
         )
         env["PLAYWRIGHT_BROWSERS_PATH"] = str(self.browsers_dir)
@@ -690,32 +690,28 @@ class Supervisor:
             "false" if isinstance(browser_headless, bool) else
             os.getenv("PLAYWRIGHT_HEADLESS", "true")
         )
-        env["SYNAPSE_PLAYWRIGHT_RUNTIME"] = (
-            str(automation_runtime)
-            if automation_runtime in {"patchright", "playwright"}
-            else os.getenv("SYNAPSE_PLAYWRIGHT_RUNTIME", "patchright")
-        )
+        env["PRISM_AUTOMATION_RUNTIME"] = "patchright"
         if settings_path_raw:
-            env["SYNAPSE_RUNTIME_SETTINGS_PATH"] = settings_path_raw
-        env["SYNAPSE_PLATFORM_BROWSER_PREFERENCES"] = json.dumps(platform_browser_preferences)
+            env["PRISM_RUNTIME_SETTINGS_PATH"] = settings_path_raw
+        env["PRISM_PLATFORM_BROWSER_PREFERENCES"] = json.dumps(platform_browser_preferences)
         for platform, choice in platform_browser_preferences.items():
-            env[f"SYNAPSE_PLATFORM_BROWSER_{platform.upper()}"] = choice
-        env["SYNAPSE_PLATFORM_BROWSER_TENCENT"] = platform_browser_preferences.get("channels", "chromium")
+            env[f"PRISM_PLATFORM_BROWSER_{platform.upper()}"] = choice
+        env["PRISM_PLATFORM_BROWSER_TENCENT"] = platform_browser_preferences.get("channels", "chromium")
         env["BACKEND_PORT"] = str(self.service_ports["backend"])
-        env["SYN_BACKEND_PORT"] = str(self.service_ports["backend"])
-        env["PLAYWRIGHT_WORKER_PORT"] = str(self.service_ports["playwright-worker"])
+        env["PRISM_BACKEND_PORT"] = str(self.service_ports["backend"])
+        env["AUTOMATION_WORKER_PORT"] = str(self.service_ports["automation-worker"])
         env["ENABLE_OCR_RESCUE"] = "1"
         env["ENABLE_SELENIUM_RESCUE"] = "1"
         env["ENABLE_SELENIUM_DEBUG"] = "1"
         env["FORKED_BY_MULTIPROCESSING"] = "1"
         env["HERMES_HOME"] = str(self.hermes_home_dir)
         env["HERMES_CONFIG_PATH"] = str(self.hermes_home_dir / "config.yaml")
-        env["SYNAPSE_HERMES_HOME"] = str(self.hermes_home_dir)
-        env["SYNAPSE_SUPERVISOR_MANAGES_HERMES_UI"] = "1"
-        env["SYNAPSE_HERMES_DASHBOARD_PORT"] = str(self.service_ports["hermes-dashboard"])
-        env["SYNAPSE_HERMES_WEBUI_PORT"] = str(self.service_ports["hermes-webui"])
+        env["PRISM_HERMES_HOME"] = str(self.hermes_home_dir)
+        env["PRISM_SUPERVISOR_MANAGES_HERMES_UI"] = "1"
+        env["PRISM_HERMES_DASHBOARD_PORT"] = str(self.service_ports["hermes-dashboard"])
+        env["PRISM_HERMES_WEBUI_PORT"] = str(self.service_ports["hermes-webui"])
         if self.python_exe:
-            env["SYNAPSE_HERMES_PYTHON"] = str(self.python_exe)
+            env["PRISM_HERMES_PYTHON"] = str(self.python_exe)
 
         git_bash = self._find_git_bash()
         if git_bash:
@@ -750,10 +746,10 @@ class Supervisor:
             env["LOCAL_FIREFOX_PATH"] = str(firefox_path)
 
         logger.info(
-            "Runtime settings applied: PLAYWRIGHT_HEADLESS=%s SYNAPSE_PLAYWRIGHT_RUNTIME=%s SYNAPSE_PLATFORM_BROWSER_PREFERENCES=%s",
+            "Runtime settings applied: PLAYWRIGHT_HEADLESS=%s PRISM_AUTOMATION_RUNTIME=%s PRISM_PLATFORM_BROWSER_PREFERENCES=%s",
             env["PLAYWRIGHT_HEADLESS"],
-            env["SYNAPSE_PLAYWRIGHT_RUNTIME"],
-            env.get("SYNAPSE_PLATFORM_BROWSER_PREFERENCES", ""),
+            env["PRISM_AUTOMATION_RUNTIME"],
+            env.get("PRISM_PLATFORM_BROWSER_PREFERENCES", ""),
         )
 
         return env
@@ -779,8 +775,8 @@ class Supervisor:
                 raise FileNotFoundError(f"Backend script not found: {script}")
             return [str(self.python_exe), str(script)], str(self.backend_dir)
 
-        if name == "playwright-worker":
-            script = self.backend_dir / "playwright_worker" / "worker.py"
+        if name == "automation-worker":
+            script = self.backend_dir / "automation_worker" / "worker.py"
             if not script.exists():
                 raise FileNotFoundError(f"Worker script not found: {script}")
             return [str(self.python_exe), str(script)], str(self.backend_dir)
@@ -796,7 +792,7 @@ class Supervisor:
                 "--loglevel=info",
                 "--pool=threads",
                 "--concurrency=1000",
-                "--hostname=synapse-worker@supervisor",
+                "--hostname=prism-worker@supervisor",
             ], str(self.backend_dir)
 
         if name == "hermes-gateway":
@@ -849,7 +845,7 @@ class Supervisor:
         if name in {"hermes-gateway", "hermes-dashboard", "hermes-webui"}:
             env["PYTHONPATH"] = self._build_pythonpath(
                 self.hermes_dir,
-                self.synenv_site_packages,
+                self.prismenv_site_packages,
                 base=env.get("PYTHONPATH"),
                 exclude=(self.backend_dir,),
             )
@@ -890,16 +886,16 @@ class Supervisor:
             if not self.is_port_in_use(port):
                 return False
             return (
-                self._http_ok(f"http://127.0.0.1:{port}/?syn_shell_health=1")
-                and self._http_ok(f"http://127.0.0.1:{port}/static/boot.js?syn_shell_health=1")
+                self._http_ok(f"http://127.0.0.1:{port}/?prism_shell_health=1")
+                and self._http_ok(f"http://127.0.0.1:{port}/static/boot.js?prism_shell_health=1")
             )
 
         if name == "backend":
             port = self.service_ports["backend"]
             return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/health")
 
-        if name == "playwright-worker":
-            port = self.service_ports["playwright-worker"]
+        if name == "automation-worker":
+            port = self.service_ports["automation-worker"]
             return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/health")
 
         return True
@@ -923,7 +919,7 @@ class Supervisor:
             started = self.manager.start_process(name, launch_cmd, cwd, self.get_service_env(name, env))
             if not started:
                 return False
-            if name in {"backend", "playwright-worker", "hermes-dashboard", "hermes-webui"} and not self.wait_for_service_ready(name):
+            if name in {"backend", "automation-worker", "hermes-dashboard", "hermes-webui"} and not self.wait_for_service_ready(name):
                 logger.warning("%s failed readiness after startup", name)
                 self.manager.stop_process(name)
                 return False
@@ -1027,9 +1023,9 @@ class Supervisor:
         if name == "backend":
             payload["port"] = self.service_ports["backend"]
             payload["url"] = f"http://127.0.0.1:{self.service_ports['backend']}"
-        elif name == "playwright-worker":
-            payload["port"] = self.service_ports["playwright-worker"]
-            payload["url"] = f"http://127.0.0.1:{self.service_ports['playwright-worker']}"
+        elif name == "automation-worker":
+            payload["port"] = self.service_ports["automation-worker"]
+            payload["url"] = f"http://127.0.0.1:{self.service_ports['automation-worker']}"
         elif name == "hermes-dashboard":
             payload["port"] = self.service_ports["hermes-dashboard"]
             payload["url"] = f"http://127.0.0.1:{self.service_ports['hermes-dashboard']}"
@@ -1069,7 +1065,7 @@ class Supervisor:
             self.mark_external_service(name, False)
             return True
 
-        if name in {"backend", "playwright-worker", "hermes-dashboard", "hermes-webui"}:
+        if name in {"backend", "automation-worker", "hermes-dashboard", "hermes-webui"}:
             self._resolve_dynamic_service_port(name, self._get_reserved_dynamic_ports(name))
             self.mark_external_service(name, False)
             return True
@@ -1095,7 +1091,7 @@ class Supervisor:
 
     def start_redis(self, env: Dict[str, str]) -> None:
         redis_candidates = (
-            self.resources_path / "syn_backend" / "Redis",
+            self.resources_path / "prism_backend" / "Redis",
             self.resources_path / "Redis",
             self.resources_path / "redis",
         )
@@ -1131,7 +1127,7 @@ class Supervisor:
 
     def start_services(self) -> None:
         logger.info("=" * 60)
-        logger.info("   SynapseAutomation Supervisor Start")
+        logger.info("   Prism Supervisor Start")
         logger.info("=" * 60)
 
         self._kill_conflicting_processes()
@@ -1141,7 +1137,7 @@ class Supervisor:
 
         self.start_redis(env)
 
-        if self.start_named_service("playwright-worker", env):
+        if self.start_named_service("automation-worker", env):
             time.sleep(2)
         if self.start_named_service("backend", env):
             time.sleep(3)

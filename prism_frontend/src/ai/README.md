@@ -1,6 +1,6 @@
 # AI 模块
 
-这个目录包含了 SynapseAutomation 项目的 AI 助手功能。
+这个目录包含了 Prism 项目的 AI 助手功能。
 
 ## 📁 目录结构
 

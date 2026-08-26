@@ -195,7 +195,7 @@ def publish_single_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
 
     Args:
         task_data: 发布任务数据
-            - platform: 平台ID (1=抖音, 2=小红书, 3=快手, 4=视频号, 5=B站)
+            - platform: 平台ID (1=小红书, 2=视频号, 3=抖音, 4=快手, 5=B站, 6=TikTok, 7=YouTube)
             - account_id: 账号ID
             - file_id: 素材ID
             - title: 标题
@@ -225,7 +225,10 @@ def publish_single_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
         2: "channels",
         3: "douyin",
         4: "kuaishou",
-        5: "bilibili"
+        5: "bilibili",
+        6: "tiktok",
+        7: "youtube",
+        8: "baijiahao",
     }
     platform_name = PLATFORM_MAP.get(int(platform_id)) if platform_id else None
 

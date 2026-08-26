@@ -165,47 +165,47 @@ export function AIQuickCommandPalette({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-start gap-2 bg-white/5 border-white/20 text-white/60 hover:bg-white/10 hover:text-white"
+          className="w-full justify-start gap-2 bg-foreground/5 border-border/80 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
           disabled={isLoading}
         >
           <Zap className="h-4 w-4" />
           <span>快速命令...</span>
-          <kbd className="ml-auto hidden h-5 select-none items-center gap-1 rounded border border-white/20 bg-white/5 px-1.5 font-mono text-xs text-white/40 sm:flex">
+          <kbd className="ml-auto hidden h-5 select-none items-center gap-1 rounded border border-border/80 bg-foreground/5 px-1.5 font-mono text-xs text-foreground/40 sm:flex">
             <span>⌘</span>K
           </kbd>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0 bg-gradient-to-b from-slate-900 to-slate-800 border-white/10">
+      <PopoverContent className="w-80 p-0 bg-gradient-to-b from-slate-900 to-slate-800 border-border/70">
         <Command className="bg-transparent">
           <CommandInput
             placeholder="搜索命令..."
-            className="border-white/10 text-white placeholder:text-white/40"
+            className="border-border/70 text-foreground placeholder:text-foreground/40"
           />
-          <CommandEmpty className="text-white/50 p-4">未找到匹配的命令</CommandEmpty>
+          <CommandEmpty className="text-muted-foreground p-4">未找到匹配的命令</CommandEmpty>
           <CommandList className="max-h-96">
             {Object.entries(groupedCommands).map(([categoryKey, cmds]) => (
               <CommandGroup
                 key={categoryKey}
                 heading={
-                  <span className="text-white/60">
+                  <span className="text-muted-foreground">
                     {categories[categoryKey as keyof typeof categories]}
                   </span>
                 }
-                className="text-white/60 [&_[cmdk-group-heading]]:text-white/40"
+                className="text-muted-foreground [&_[cmdk-group-heading]]:text-foreground/40"
               >
                 {cmds.map((cmd) => (
                   <CommandItem
                     key={cmd.id}
                     value={cmd.id}
                     onSelect={() => handleCommandSelect(cmd)}
-                    className="aria-selected:bg-blue-600/30 aria-selected:text-white text-white/70 cursor-pointer hover:bg-white/10"
+                    className="aria-selected:bg-blue-600/30 aria-selected:text-foreground text-foreground/70 cursor-pointer hover:bg-accent/50"
                   >
                     <div className="flex items-center justify-between w-full gap-2">
                       <div className="flex items-center gap-2 flex-1">
                         <span className="text-blue-400">{cmd.icon}</span>
                         <div className="flex-1">
-                          <div className="font-medium text-white">{cmd.label}</div>
-                          <div className="text-xs text-white/40">{cmd.description}</div>
+                          <div className="font-medium text-foreground">{cmd.label}</div>
+                          <div className="text-xs text-foreground/40">{cmd.description}</div>
                         </div>
                       </div>
                     </div>

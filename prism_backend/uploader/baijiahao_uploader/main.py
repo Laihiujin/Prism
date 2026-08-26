@@ -2,7 +2,7 @@
 import random
 from datetime import datetime
 
-from utils.playwright_provider import Playwright, async_playwright, Page
+from utils.automation_provider import Playwright, async_playwright, Page
 import os
 import time
 import asyncio
@@ -21,6 +21,8 @@ async def baijiahao_cookie_gen(account_file):
             ],
             'headless': HEADLESS_FLAG,  # Set headless option here
         }
+        if LOCAL_CHROME_PATH:
+            options["executable_path"] = LOCAL_CHROME_PATH
         # Make sure to run headed.
         browser = await playwright.chromium.launch(**options)
         # Setup context however you like.
@@ -37,7 +39,10 @@ async def baijiahao_cookie_gen(account_file):
 
 async def cookie_auth(account_file):
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=HEADLESS_FLAG)
+        launch_options = {"headless": HEADLESS_FLAG}
+        if LOCAL_CHROME_PATH:
+            launch_options["executable_path"] = LOCAL_CHROME_PATH
+        browser = await playwright.chromium.launch(**launch_options)
         context = await browser.new_context(storage_state=account_file)
         context = await set_init_script(context)
         # 创建一个新的页面

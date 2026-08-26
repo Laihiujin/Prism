@@ -36,7 +36,7 @@ async def main():
         
     print("\n" + "="*60)
     print("✅ 所有探索任务完成！")
-    print("请查看 syn_backend/config/ 目录下的 platform_features_*.json 文件")
+    print("请查看 prism_backend/config/ 目录下的 platform_features_*.json 文件")
     print("="*60)
 
 if __name__ == "__main__":

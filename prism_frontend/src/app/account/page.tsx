@@ -50,6 +50,8 @@ const platformTabs: { label: string; value: PlatformKey }[] = [
   { label: "视频号", value: "channels" },
   { label: "小红书", value: "xiaohongshu" },
   { label: "B站", value: "bilibili" },
+  { label: "TikTok", value: "tiktok" },
+  { label: "YouTube", value: "youtube" },
 ]
 
 const platformLabelMap: Record<PlatformKey, string> = {
@@ -59,13 +61,26 @@ const platformLabelMap: Record<PlatformKey, string> = {
   channels: "视频号",
   xiaohongshu: "小红书",
   bilibili: "B站",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+}
+
+function describeApiError(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value
+  if (value && typeof value === "object") {
+    const detail = value as { error?: unknown; message?: unknown; worker?: { error?: unknown } }
+    if (typeof detail.error === "string" && detail.error.trim()) return detail.error
+    if (typeof detail.message === "string" && detail.message.trim()) return detail.message
+    if (typeof detail.worker?.error === "string" && detail.worker.error.trim()) return detail.worker.error
+  }
+  return "二维码获取失败，请重试"
 }
 
 export default function AccountPage() {
   return (
     <Suspense
       fallback={
-        <div className="rounded-2xl border border-white/10 bg-black p-6 text-sm text-white/60">加载账户页...</div>
+        <div className="rounded-2xl border border-border/70 bg-card p-6 text-sm text-muted-foreground">加载账户页...</div>
       }
     >
       <AccountPageContent />
@@ -80,6 +95,8 @@ const platformTypeMap: Record<PlatformKey, string> = {
   channels: "2",
   xiaohongshu: "1",
   bilibili: "5",
+  tiktok: "6",
+  youtube: "7",
 }
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -248,6 +265,13 @@ function AccountPageContent() {
   }
 
   const startBinding = async () => {
+    if (formState.platform === "tiktok" || formState.platform === "youtube") {
+      toast({
+        title: "请通过本机浏览器完成登录",
+        description: `运行 prism ${formState.platform} login --account ${formState.name || "my-account"}，完成登录后刷新账户列表。`,
+      })
+      return
+    }
     setBindingStatus("pending")
     setQrImage(null)
 
@@ -262,6 +286,8 @@ function AccountPageContent() {
         channels: "tencent",
         xiaohongshu: "xiaohongshu",
         bilibili: "bilibili",
+        tiktok: "tiktok",
+        youtube: "youtube",
       }
 
       const platform = platformMap[formState.platform]
@@ -292,10 +318,12 @@ function AccountPageContent() {
         channels: "tencent",
         xiaohongshu: "xiaohongshu",
         bilibili: "bilibili",
+        tiktok: "tiktok",
+        youtube: "youtube",
       }
 
       const platform = platformMap[formState.platform]
-      const qrRes = await fetch(`/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, {
+      const qrRes = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, {
         method: 'POST'
       })
 
@@ -309,13 +337,9 @@ function AccountPageContent() {
       }
 
       if (!qrRes.ok || !qrData?.success) {
-        const msg =
-          qrData?.detail ||
-          qrData?.error ||
-          qrData?.message ||
-          rawText ||
-          `Status ${qrRes.status}`
-        throw new Error(msg || 'Failed to generate QR code')
+        throw new Error(describeApiError(
+          qrData?.detail || qrData?.error || qrData?.message || rawText || `Status ${qrRes.status}`
+        ))
       }
 
       // Step 2: 显示二维码
@@ -329,7 +353,7 @@ function AccountPageContent() {
       pollIntervalRef.current = setInterval(async () => {
         try {
           if (activeSessionRef.current !== sessionId) return
-          const statusRes = await fetch(`/api/v1/auth/qrcode/poll?session_id=${sessionId}`)
+          const statusRes = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/poll?session_id=${sessionId}`)
           if (!statusRes.ok) {
             if (statusRes.status === 404) {
               stopPolling()
@@ -407,7 +431,7 @@ function AccountPageContent() {
       toast({
         variant: "destructive",
         title: "登录失败",
-        description: "请重试或联系管理员",
+        description: error instanceof Error ? error.message : "请重试或联系管理员",
       })
     }
   }
@@ -529,7 +553,7 @@ function AccountPageContent() {
               src={row.original.avatar || `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(row.original.name)}`}
               alt={row.original.name}
               referrerPolicy="no-referrer"
-              className="h-10 w-10 shrink-0 rounded-full border border-white/10 bg-black object-cover p-0.5"
+              className="h-10 w-10 shrink-0 rounded-full border border-border/70 bg-card object-cover p-0.5"
             />
             <div className="flex flex-col">
               <TooltipProvider delayDuration={150}>
@@ -541,10 +565,10 @@ function AccountPageContent() {
                       onClick={() => handleOpenCreatorCenter(row.original)}
                     >
                       <span>{displayName}</span>
-                      <ExternalLink className="h-3.5 w-3.5 text-white/50" />
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="border-white/10 bg-black text-white">
+                  <TooltipContent side="top" className="border-border/70 bg-card text-foreground">
                     跳转创作中心
                   </TooltipContent>
                 </Tooltip>
@@ -581,23 +605,23 @@ function AccountPageContent() {
         return (
           <div className="flex flex-col items-start gap-1.5">
             <div
-              className="flex items-center gap-1.5 cursor-pointer hover:bg-white/5 px-1.5 py-0.5 rounded transition-colors group"
+              className="flex items-center gap-1.5 cursor-pointer hover:bg-accent/40 px-1.5 py-0.5 rounded transition-colors group"
               onClick={() => copyToClipboard(displayAccountId, "账号ID")}
               title="点击复制"
             >
-              <span className="text-[10px] text-white/40">账号ID:</span>
-              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-white/20 text-white/50 font-mono group-hover:border-primary/50 group-hover:text-primary/70 transition-colors">
+              <span className="text-[10px] text-foreground/40">账号ID:</span>
+              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-border/80 text-muted-foreground font-mono group-hover:border-primary/50 group-hover:text-primary/70 transition-colors">
                 {displayAccountId}
               </Badge>
             </div>
             {/* {displayUid && (
               <div
-                className="flex items-center gap-1.5 cursor-pointer hover:bg-white/5 px-1.5 py-0.5 rounded transition-colors group"
+                className="flex items-center gap-1.5 cursor-pointer hover:bg-accent/40 px-1.5 py-0.5 rounded transition-colors group"
                 onClick={() => copyToClipboard(displayUid, "UID")}
                 title="点击复制"
               >
-                <span className="text-[10px] text-white/40">UID:</span>
-                <span className="text-xs text-white/70 font-mono group-hover:text-primary/70 transition-colors">{displayUid}</span>
+                <span className="text-[10px] text-foreground/40">UID:</span>
+                <span className="text-xs text-foreground/70 font-mono group-hover:text-primary/70 transition-colors">{displayUid}</span>
               </div>
             )} */}
           </div>
@@ -609,7 +633,7 @@ function AccountPageContent() {
       header: "平台",
       cell: ({ row }) => (
         <div className="flex justify-start">
-          <Badge className="border-none bg-white/10 text-xs hover:bg-white/20">
+          <Badge className="border-none bg-foreground/10 text-xs hover:bg-accent/60">
             {platformLabelMap[row.original.platform] ?? row.original.platform}
           </Badge>
         </div>
@@ -640,7 +664,7 @@ function AccountPageContent() {
             >
               <Badge
                 variant={loginConfig.variant as any}
-                className="border-none text-xs cursor-pointer group-hover:ring-2 group-hover:ring-white/20 group-hover:scale-105 transition-all"
+                className="border-none text-xs cursor-pointer group-hover:ring-2 group-hover:ring-border/50 group-hover:scale-105 transition-all"
               >
                 {loginConfig.label}
               </Badge>
@@ -654,13 +678,13 @@ function AccountPageContent() {
       header: "绑定时间",
       cell: ({ row }) => {
         const dateStr = row.original.boundAt
-        if (!dateStr) return <span className="text-sm text-white/40">-</span>
+        if (!dateStr) return <span className="text-sm text-foreground/40">-</span>
         try {
           const date = new Date(dateStr)
           const formatted = `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-          return <span className="text-sm text-white/70 font-mono">{formatted}</span>
+          return <span className="text-sm text-foreground/70 font-mono">{formatted}</span>
         } catch (e) {
-          return <span className="text-sm text-white/70">{dateStr}</span>
+          return <span className="text-sm text-foreground/70">{dateStr}</span>
         }
       },
     },
@@ -669,8 +693,8 @@ function AccountPageContent() {
       header: "备注",
       cell: ({ row }) => {
         const note = (row.original as any).note
-        if (!note || note.startsWith("account_")) return <span className="text-white/30">-</span>
-        return <span className="text-sm text-white/70">{note}</span>
+        if (!note || note.startsWith("account_")) return <span className="text-foreground/30">-</span>
+        return <span className="text-sm text-foreground/70">{note}</span>
       }
     },
     {
@@ -766,9 +790,9 @@ function AccountPageContent() {
                     />
                   </div>
                   {!formState.id && (
-                    <div className="rounded-2xl border border-white/10 bg-black p-4">
+                    <div className="rounded-2xl border border-border/70 bg-card p-4">
                       <p className="text-sm font-semibold">二维码登录</p>
-                      <p className="text-xs text-white/60">点击按钮获取二维码</p>
+                      <p className="text-xs text-muted-foreground">点击按钮获取二维码</p>
                       <div className="mt-4 flex flex-col items-center justify-center gap-3 py-4">
                         {bindingStatus === "idle" && (
                           <Button variant="secondary" onClick={startBinding}>
@@ -777,8 +801,8 @@ function AccountPageContent() {
                           </Button>
                         )}
                         {bindingStatus === "pending" && (
-                          <div className="flex flex-col items-center gap-2 text-sm text-white/70 w-full px-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-white" />
+                          <div className="flex flex-col items-center gap-2 text-sm text-foreground/70 w-full px-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-foreground" />
                             <span>正在初始化二维码...</span>
                             <Progress value={33} className="w-full h-1 mt-2" />
                           </div>
@@ -790,10 +814,10 @@ function AccountPageContent() {
                               alt="登录二维码"
                               width={200}
                               height={200}
-                              className="h-40 w-40 rounded-2xl border border-white/10 bg-black p-3"
+                              className="h-40 w-40 rounded-2xl border border-border/70 bg-card p-3"
                             />
-                            <p className="text-xs text-white/60">请使用 {platformLabelMap[formState.platform]} App 扫码</p>
-                            <Button size="sm" variant="ghost" className="rounded-xl bg-white/10" onClick={startBinding}>
+                            <p className="text-xs text-muted-foreground">请使用 {platformLabelMap[formState.platform]} App 扫码</p>
+                            <Button size="sm" variant="ghost" className="rounded-xl bg-foreground/10" onClick={startBinding}>
                               刷新二维码
                             </Button>
                           </div>
@@ -806,7 +830,7 @@ function AccountPageContent() {
                         {bindingStatus === "error" && (
                           <div className="flex flex-col items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
                             <span>连接出错，请重新获取二维码</span>
-                            <Button size="sm" variant="ghost" className="rounded-xl bg-white/10" onClick={startBinding}>
+                            <Button size="sm" variant="ghost" className="rounded-xl bg-foreground/10" onClick={startBinding}>
                               重新获取
                             </Button>
                           </div>
@@ -816,7 +840,7 @@ function AccountPageContent() {
                   )}
                 </div>
                 <DialogFooter>
-                  <Button variant="ghost" className="rounded-2xl border border-white/10 bg-white/5" onClick={() => setDialogOpen(false)}>
+                  <Button variant="ghost" className="rounded-2xl border border-border/70 bg-foreground/5" onClick={() => setDialogOpen(false)}>
                     取消
                   </Button>
                   <Button className="rounded-2xl" onClick={handleSaveAccount}>
@@ -904,16 +928,16 @@ function AccountPageContent() {
             placeholder="输入名称或 ID 搜索..."
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
-            className="max-w-sm rounded-2xl border-white/10 bg-black text-white placeholder:text-white/40"
+            className="max-w-sm rounded-2xl border-border/70 bg-card text-foreground placeholder:text-foreground/40"
           />
           <div className="ml-auto">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PlatformKey)}>
-              <TabsList className="flex flex-wrap gap-2 rounded-2xl bg-black p-1 border border-white/10 backdrop-blur-sm">
+              <TabsList className="flex flex-wrap gap-2 rounded-2xl bg-card p-1 border border-border/70 backdrop-blur-sm">
                 {platformTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="rounded-xl px-4 text-xs md:text-sm text-white/70 data-[state=active]:bg-white/90 data-[state=active]:text-black data-[state=active]:shadow-inner border border-transparent data-[state=active]:border-white/20 transition-colors"
+                    className="rounded-xl px-4 text-xs md:text-sm text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background data-[state=active]:shadow-inner border border-transparent data-[state=active]:border-border/80 transition-colors"
                   >
                     {tab.label}
                   </TabsTrigger>
@@ -924,7 +948,7 @@ function AccountPageContent() {
         </div>
 
         {isLoading && (
-          <div className="rounded-2xl border border-white/10 bg-black p-6 text-sm text-white/60">
+          <div className="rounded-2xl border border-border/70 bg-card p-6 text-sm text-muted-foreground">
             正在加载账号列表...
           </div>
         )}

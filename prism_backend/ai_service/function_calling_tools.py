@@ -12,12 +12,12 @@ from .function_calling_service import Tool
 
 
 def _resolve_backend_cwd() -> Path:
-    env_root = os.getenv("SYNAPSE_APP_ROOT") or os.getenv("SYNAPSE_RESOURCES_PATH")
+    env_root = os.getenv("PRISM_APP_ROOT") or os.getenv("PRISM_RESOURCES_PATH")
     if env_root:
         root = Path(env_root).resolve()
-        if root.name.lower() in {"syn_backend", "backend"}:
+        if root.name.lower() in {"prism_backend", "backend"}:
             return root
-        for name in ("syn_backend", "backend"):
+        for name in ("prism_backend", "backend"):
             candidate = root / name
             if candidate.exists():
                 return candidate

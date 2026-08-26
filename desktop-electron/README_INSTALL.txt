@@ -1,4 +1,4 @@
-欢迎安装 SynapseAutomation
+欢迎安装 Prism
 ===========================================
 
 ## 新功能
@@ -51,15 +51,15 @@
 ## 技术支持
 
 如遇问题请查看日志文件：
-- 应用日志: %APPDATA%\SynapseAutomation\logs
-- 后端日志: 安装目录\syn_backend\logs
+- 应用日志: %APPDATA%\Prism\logs
+- 后端日志: 安装目录\prism_backend\logs
 
 ## 数据备份
 
 重要数据备份位置：
-- 视频数据: 安装目录\syn_backend\backups\video_data_*
-- 数据库: 安装目录\syn_backend\db\
-- Cookie: 安装目录\syn_backend\cookiesFile\
+- 视频数据: 安装目录\prism_backend\backups\video_data_*
+- 数据库: 安装目录\prism_backend\db\
+- Cookie: 安装目录\prism_backend\cookiesFile\
 
 ===========================================
-© 2026 Synapse Team. All rights reserved.
+© 2026 Prism Team. All rights reserved.

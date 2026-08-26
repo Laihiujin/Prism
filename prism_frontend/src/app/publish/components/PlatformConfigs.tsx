@@ -67,18 +67,18 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-white/50 border-white/10 bg-black/20 h-9 hover:bg-white/5 hover:text-white">
+                <Button variant="outline" className="w-full justify-start text-muted-foreground border-border/70 bg-card/20 h-9 hover:bg-accent/40 hover:text-foreground">
                     <Gamepad2 className="w-3 h-3 mr-2" />
                     <span className="text-xs">选择小程序/游戏/应用</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="bg-[#0A0A0A] border-white/10 text-white max-w-2xl">
+            <DialogContent className="bg-[#0A0A0A] border-border/70 text-foreground max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>选择挂载内容</DialogTitle>
                 </DialogHeader>
 
                 {/* 标签页 */}
-                <div className="flex gap-2 border-b border-white/10 pb-2">
+                <div className="flex gap-2 border-b border-border/70 pb-2">
                     {tabs.map(tab => (
                         <button
                             key={tab.key}
@@ -86,8 +86,8 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                             className={cn(
                                 "px-3 py-1 text-xs rounded-md transition-all",
                                 activeTab === tab.key
-                                    ? "bg-white text-black"
-                                    : "text-white/60 hover:text-white hover:bg-white/5"
+                                    ? "bg-foreground text-background"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
                             )}
                         >
                             {tab.label}
@@ -99,7 +99,7 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                     placeholder="搜索小程序、游戏或应用..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="bg-black/20 border-white/10"
+                    className="bg-card/20 border-border/70"
                 />
                 <ScrollArea className="h-[400px]">
                     <div className="grid grid-cols-2 gap-3">
@@ -109,20 +109,20 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                                 onClick={() => {
                                     onSelect(item)
                                 }}
-                                className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-black hover:bg-white/10 cursor-pointer transition-all"
+                                className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
                             >
                                 <span className="text-2xl">{item.icon}</span>
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium truncate">{item.name}</div>
-                                    <div className="text-xs text-white/50 truncate">{item.description || item.type}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{item.description || item.type}</div>
                                 </div>
-                                <Badge variant="outline" className="text-[10px] shrink-0 border-white/20">
+                                <Badge variant="outline" className="text-[10px] shrink-0 border-border/80">
                                     {item.type}
                                 </Badge>
                             </div>
                         ))}
                         {filteredItems.length === 0 && (
-                            <div className="col-span-2 text-center py-8 text-white/40">
+                            <div className="col-span-2 text-center py-8 text-foreground/40">
                                 未找到相关内容
                             </div>
                         )}
@@ -146,12 +146,12 @@ function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-white/50 border-white/10 bg-black/20 h-9 hover:bg-white/5 hover:text-white">
+                <Button variant="outline" className="w-full justify-start text-muted-foreground border-border/70 bg-card/20 h-9 hover:bg-accent/40 hover:text-foreground">
                     <MapPin className="w-3 h-3 mr-2" />
                     <span className="text-xs">添加位置信息</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="bg-[#0A0A0A] border-white/10 text-white">
+            <DialogContent className="bg-[#0A0A0A] border-border/70 text-foreground">
                 <DialogHeader>
                     <DialogTitle>选择地点</DialogTitle>
                 </DialogHeader>
@@ -159,7 +159,7 @@ function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
                     placeholder="搜索地点..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="bg-black/20 border-white/10"
+                    className="bg-card/20 border-border/70"
                 />
                 <ScrollArea className="h-[300px]">
                     <div className="space-y-2">
@@ -169,12 +169,12 @@ function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
                                 <div
                                     key={poi.id}
                                     onClick={() => onSelect(poi)}
-                                    className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-black hover:bg-white/10 cursor-pointer transition-all"
+                                    className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
                                 >
                                     <MapPin className="w-5 h-5 text-primary" />
                                     <div className="flex-1">
                                         <div className="text-sm font-medium">{poi.name}</div>
-                                        <div className="text-xs text-white/50">{poi.address} · {poi.distance}</div>
+                                        <div className="text-xs text-muted-foreground">{poi.address} · {poi.distance}</div>
                                     </div>
                                 </div>
                             ))}
@@ -190,16 +190,16 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
     const [selectedPOI, setSelectedPOI] = useState<any>(null)
 
     return (
-        <div className="space-y-4 p-5 bg-black rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white/80">抖音配置</h3>
+                <h3 className="text-sm font-medium text-foreground/80">抖音配置</h3>
                 <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-400">抖音</Badge>
             </div>
 
             <div className="grid gap-4">
                 {/* 挂载小程序/游戏/应用 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <Gamepad2 className="w-3 h-3" />
                         挂载内容
                     </Label>
@@ -208,8 +208,8 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30">
                             <span className="text-2xl">{selectedMiniProgram.icon}</span>
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-white">{selectedMiniProgram.name}</div>
-                                <div className="text-[10px] text-white/50">{selectedMiniProgram.description}</div>
+                                <div className="text-xs font-medium text-foreground">{selectedMiniProgram.name}</div>
+                                <div className="text-[10px] text-muted-foreground">{selectedMiniProgram.description}</div>
                             </div>
                             <Badge variant="outline" className="text-[10px] shrink-0 border-blue-400/50 text-blue-400">
                                 {selectedMiniProgram.type}
@@ -217,7 +217,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10 shrink-0"
+                                className="h-6 w-6 p-0 hover:bg-accent/50 shrink-0"
                                 onClick={() => setSelectedMiniProgram(null)}
                             >
                                 ×
@@ -228,7 +228,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
 
                 {/* 添加地点 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <MapPin className="w-3 h-3" />
                         添加地点
                     </Label>
@@ -237,13 +237,13 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
                             <MapPin className="w-4 h-4 text-green-400" />
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs text-white truncate">{selectedPOI.name}</div>
-                                <div className="text-[10px] text-white/50 truncate">{selectedPOI.address}</div>
+                                <div className="text-xs text-foreground truncate">{selectedPOI.name}</div>
+                                <div className="text-[10px] text-muted-foreground truncate">{selectedPOI.address}</div>
                             </div>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10"
+                                className="h-6 w-6 p-0 hover:bg-accent/50"
                                 onClick={() => setSelectedPOI(null)}
                             >
                                 ×
@@ -261,16 +261,16 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
     const [selectedPOI, setSelectedPOI] = useState<any>(null)
 
     return (
-        <div className="space-y-4 p-5 bg-black rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white/80">快手配置</h3>
+                <h3 className="text-sm font-medium text-foreground/80">快手配置</h3>
                 <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-400">快手</Badge>
             </div>
 
             <div className="grid gap-4">
                 {/* 挂载游戏/应用 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <Gamepad2 className="w-3 h-3" />
                         挂载游戏或应用
                     </Label>
@@ -279,8 +279,8 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30">
                             <span className="text-2xl">{selectedGame.icon}</span>
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-white">{selectedGame.name}</div>
-                                <div className="text-[10px] text-white/50">{selectedGame.description}</div>
+                                <div className="text-xs font-medium text-foreground">{selectedGame.name}</div>
+                                <div className="text-[10px] text-muted-foreground">{selectedGame.description}</div>
                             </div>
                             <Badge variant="outline" className="text-[10px] shrink-0 border-orange-400/50 text-orange-400">
                                 {selectedGame.type}
@@ -288,7 +288,7 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10 shrink-0"
+                                className="h-6 w-6 p-0 hover:bg-accent/50 shrink-0"
                                 onClick={() => setSelectedGame(null)}
                             >
                                 ×
@@ -299,7 +299,7 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
 
                 {/* 添加地点 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <MapPin className="w-3 h-3" />
                         添加地点
                     </Label>
@@ -308,13 +308,13 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
                             <MapPin className="w-4 h-4 text-green-400" />
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs text-white truncate">{selectedPOI.name}</div>
-                                <div className="text-[10px] text-white/50 truncate">{selectedPOI.address}</div>
+                                <div className="text-xs text-foreground truncate">{selectedPOI.name}</div>
+                                <div className="text-[10px] text-muted-foreground truncate">{selectedPOI.address}</div>
                             </div>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10"
+                                className="h-6 w-6 p-0 hover:bg-accent/50"
                                 onClick={() => setSelectedPOI(null)}
                             >
                                 ×
@@ -331,25 +331,25 @@ export function XhsConfig({ data, onChange }: ConfigProps) {
     const [selectedPOI, setSelectedPOI] = useState<any>(null)
 
     return (
-        <div className="space-y-4 p-5 bg-black rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white/80">小红书配置</h3>
+                <h3 className="text-sm font-medium text-foreground/80">小红书配置</h3>
                 <Badge variant="outline" className="text-[10px] border-red-500/30 text-red-400">小红书</Badge>
             </div>
 
             <div className="grid gap-4">
                 {/* 添加地点 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60">添加地点</Label>
+                    <Label className="text-xs text-muted-foreground">添加地点</Label>
                     <POIDialog onSelect={setSelectedPOI} />
                     {selectedPOI && (
                         <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
                             <MapPin className="w-4 h-4 text-primary" />
-                            <span className="text-xs text-white truncate">{selectedPOI.name}</span>
+                            <span className="text-xs text-foreground truncate">{selectedPOI.name}</span>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="ml-auto h-6 w-6 p-0 hover:bg-white/10"
+                                className="ml-auto h-6 w-6 p-0 hover:bg-accent/50"
                                 onClick={() => setSelectedPOI(null)}
                             >
                                 ×
@@ -360,12 +360,12 @@ export function XhsConfig({ data, onChange }: ConfigProps) {
 
                 {/* 话题标签 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60">话题标签</Label>
+                    <Label className="text-xs text-muted-foreground">话题标签</Label>
                     <Input
                         placeholder="输入话题，用空格分隔"
-                        className="bg-black/20 border-white/10 text-xs"
+                        className="bg-card/20 border-border/70 text-xs"
                     />
-                    <p className="text-[10px] text-white/40">例如：#美食 #探店 #生活分享</p>
+                    <p className="text-[10px] text-foreground/40">例如：#美食 #探店 #生活分享</p>
                 </div>
             </div>
         </div>
@@ -385,27 +385,27 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
     ]
 
     return (
-        <div className="space-y-4 p-5 bg-black rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white/80">B站配置</h3>
+                <h3 className="text-sm font-medium text-foreground/80">B站配置</h3>
                 <Badge variant="outline" className="text-[10px] border-pink-500/30 text-pink-400">B站</Badge>
             </div>
 
             <div className="space-y-4">
                 {/* 挂载游戏 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <Gamepad2 className="w-3 h-3" />
                         挂载游戏
                     </Label>
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full justify-start text-white/50 border-white/10 bg-black/20 h-9 hover:bg-white/5 hover:text-white">
+                            <Button variant="outline" className="w-full justify-start text-muted-foreground border-border/70 bg-card/20 h-9 hover:bg-accent/40 hover:text-foreground">
                                 <Gamepad2 className="w-3 h-3 mr-2" />
                                 <span className="text-xs">选择游戏</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-[#0A0A0A] border-white/10 text-white max-w-2xl">
+                        <DialogContent className="bg-[#0A0A0A] border-border/70 text-foreground max-w-2xl">
                             <DialogHeader>
                                 <DialogTitle>选择游戏</DialogTitle>
                             </DialogHeader>
@@ -415,12 +415,12 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                                         <div
                                             key={game.id}
                                             onClick={() => setSelectedGame(game)}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-black hover:bg-white/10 cursor-pointer transition-all"
+                                            className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
                                         >
                                             <span className="text-2xl">{game.icon}</span>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-sm font-medium truncate">{game.name}</div>
-                                                <div className="text-xs text-white/50 truncate">{game.description}</div>
+                                                <div className="text-xs text-muted-foreground truncate">{game.description}</div>
                                             </div>
                                         </div>
                                     ))}
@@ -432,13 +432,13 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/30">
                             <span className="text-2xl">{selectedGame.icon}</span>
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-white">{selectedGame.name}</div>
-                                <div className="text-[10px] text-white/50">{selectedGame.description}</div>
+                                <div className="text-xs font-medium text-foreground">{selectedGame.name}</div>
+                                <div className="text-[10px] text-muted-foreground">{selectedGame.description}</div>
                             </div>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10 shrink-0"
+                                className="h-6 w-6 p-0 hover:bg-accent/50 shrink-0"
                                 onClick={() => setSelectedGame(null)}
                             >
                                 ×
@@ -449,26 +449,26 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
 
                 {/* 分区选择 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60">分区</Label>
+                    <Label className="text-xs text-muted-foreground">分区</Label>
                     <div className="flex flex-wrap gap-2">
                         <Badge variant="secondary" className="cursor-pointer">生活</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-white/10 text-white/60 hover:bg-white/10">游戏</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-white/10 text-white/60 hover:bg-white/10">娱乐</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-white/10 text-white/60 hover:bg-white/10">知识</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-white/10 text-white/60 hover:bg-white/10">科技</Badge>
+                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">游戏</Badge>
+                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">娱乐</Badge>
+                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">知识</Badge>
+                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">科技</Badge>
                     </div>
                 </div>
 
                 {/* 标签 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60">标签</Label>
+                    <Label className="text-xs text-muted-foreground">标签</Label>
                     <Input
                         placeholder="按回车键输入标签"
-                        className="bg-black/20 border-white/10 text-xs"
+                        className="bg-card/20 border-border/70 text-xs"
                         value={data.tags ? (Array.isArray(data.tags) ? data.tags.join(' ') : data.tags) : ""}
                         onChange={(e) => onChange({ ...data, tags: e.target.value.split(' ') })}
                     />
-                    <p className="text-[10px] text-white/40">使用空格分隔多个标签</p>
+                    <p className="text-[10px] text-foreground/40">使用空格分隔多个标签</p>
                 </div>
             </div>
         </div>
@@ -497,27 +497,27 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
     ]
 
     return (
-        <div className="space-y-4 p-5 bg-black rounded-2xl border border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-white/80">视频号配置</h3>
+                <h3 className="text-sm font-medium text-foreground/80">视频号配置</h3>
                 <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-400">视频号</Badge>
             </div>
 
             <div className="grid gap-4">
                 {/* 挂载公众号文章 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <FileText className="w-3 h-3" />
                         挂载公众号文章
                     </Label>
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full justify-start text-white/50 border-white/10 bg-black/20 h-9 hover:bg-white/5 hover:text-white">
+                            <Button variant="outline" className="w-full justify-start text-muted-foreground border-border/70 bg-card/20 h-9 hover:bg-accent/40 hover:text-foreground">
                                 <FileText className="w-3 h-3 mr-2" />
                                 <span className="text-xs">选择公众号文章</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-[#0A0A0A] border-white/10 text-white max-w-2xl">
+                        <DialogContent className="bg-[#0A0A0A] border-border/70 text-foreground max-w-2xl">
                             <DialogHeader>
                                 <DialogTitle>选择公众号文章</DialogTitle>
                             </DialogHeader>
@@ -527,12 +527,12 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                                         <div
                                             key={article.id}
                                             onClick={() => setSelectedArticle(article)}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-black hover:bg-white/10 cursor-pointer transition-all"
+                                            className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
                                         >
                                             <span className="text-2xl">{article.cover}</span>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-sm font-medium truncate">{article.title}</div>
-                                                <div className="text-xs text-white/50">{article.date}</div>
+                                                <div className="text-xs text-muted-foreground">{article.date}</div>
                                             </div>
                                         </div>
                                     ))}
@@ -544,13 +544,13 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
                             <FileText className="w-4 h-4 text-green-400" />
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-white truncate">{selectedArticle.title}</div>
-                                <div className="text-[10px] text-white/50">{selectedArticle.date}</div>
+                                <div className="text-xs font-medium text-foreground truncate">{selectedArticle.title}</div>
+                                <div className="text-[10px] text-muted-foreground">{selectedArticle.date}</div>
                             </div>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10 shrink-0"
+                                className="h-6 w-6 p-0 hover:bg-accent/50 shrink-0"
                                 onClick={() => setSelectedArticle(null)}
                             >
                                 ×
@@ -561,18 +561,18 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
 
                 {/* 挂载小程序 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <Smartphone className="w-3 h-3" />
                         挂载小程序
                     </Label>
                     <Dialog>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full justify-start text-white/50 border-white/10 bg-black/20 h-9 hover:bg-white/5 hover:text-white">
+                            <Button variant="outline" className="w-full justify-start text-muted-foreground border-border/70 bg-card/20 h-9 hover:bg-accent/40 hover:text-foreground">
                                 <Smartphone className="w-3 h-3 mr-2" />
                                 <span className="text-xs">选择小程序</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-[#0A0A0A] border-white/10 text-white max-w-2xl">
+                        <DialogContent className="bg-[#0A0A0A] border-border/70 text-foreground max-w-2xl">
                             <DialogHeader>
                                 <DialogTitle>选择小程序</DialogTitle>
                             </DialogHeader>
@@ -582,12 +582,12 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                                         <div
                                             key={mini.id}
                                             onClick={() => setSelectedMiniProgram(mini)}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-black hover:bg-white/10 cursor-pointer transition-all"
+                                            className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
                                         >
                                             <span className="text-2xl">{mini.icon}</span>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-sm font-medium truncate">{mini.name}</div>
-                                                <div className="text-xs text-white/50 truncate">{mini.description}</div>
+                                                <div className="text-xs text-muted-foreground truncate">{mini.description}</div>
                                             </div>
                                         </div>
                                     ))}
@@ -599,13 +599,13 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30">
                             <span className="text-2xl">{selectedMiniProgram.icon}</span>
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-white">{selectedMiniProgram.name}</div>
-                                <div className="text-[10px] text-white/50">{selectedMiniProgram.description}</div>
+                                <div className="text-xs font-medium text-foreground">{selectedMiniProgram.name}</div>
+                                <div className="text-[10px] text-muted-foreground">{selectedMiniProgram.description}</div>
                             </div>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10 shrink-0"
+                                className="h-6 w-6 p-0 hover:bg-accent/50 shrink-0"
                                 onClick={() => setSelectedMiniProgram(null)}
                             >
                                 ×
@@ -616,7 +616,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
 
                 {/* 所在位置 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-white/60 flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
                         <MapPin className="w-3 h-3" />
                         所在位置
                     </Label>
@@ -625,13 +625,13 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
                             <MapPin className="w-4 h-4 text-green-400" />
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs text-white truncate">{selectedLocation.name}</div>
-                                <div className="text-[10px] text-white/50 truncate">{selectedLocation.address}</div>
+                                <div className="text-xs text-foreground truncate">{selectedLocation.name}</div>
+                                <div className="text-[10px] text-muted-foreground truncate">{selectedLocation.address}</div>
                             </div>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 w-6 p-0 hover:bg-white/10"
+                                className="h-6 w-6 p-0 hover:bg-accent/50"
                                 onClick={() => setSelectedLocation(null)}
                             >
                                 ×

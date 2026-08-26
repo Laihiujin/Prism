@@ -17,7 +17,7 @@ echo 目标路径: %PLAYWRIGHT_BROWSERS_PATH%
 echo.
 
 REM 下载 Firefox
-cd syn_backend
+cd prism_backend
 python -m playwright install firefox
 
 echo.

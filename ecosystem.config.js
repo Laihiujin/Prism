@@ -5,8 +5,8 @@ module.exports = {
   apps: [
     // 前端服务（Next.js）
     {
-      name: 'synapse-frontend',
-      cwd: './syn_frontend_react',
+      name: 'prism-frontend',
+      cwd: './prism_frontend',
       script: 'npm',
       args: 'start',
       instances: 1,
@@ -24,11 +24,11 @@ module.exports = {
 
     // 后端API服务（FastAPI + Uvicorn）
     {
-      name: 'synapse-backend',
-      cwd: './syn_backend',
+      name: 'prism-backend',
+      cwd: './prism_backend',
       script: 'uvicorn',
       args: 'fastapi_app.main:app --host 0.0.0.0 --port 7000 --workers 4',
-      interpreter: 'python',  // 修改为你的Python路径，如 '/opt/conda/envs/syn/bin/python'
+      interpreter: 'python',  // 修改为你的Python路径，如 '/opt/conda/envs/prism/bin/python'
       instances: 1,
       autorestart: true,
       watch: false,
@@ -45,8 +45,8 @@ module.exports = {
 
     // Celery Worker（异步任务处理）
     {
-      name: 'synapse-celery',
-      cwd: './syn_backend',
+      name: 'prism-celery',
+      cwd: './prism_backend',
       script: 'celery',
       args: '-A fastapi_app.celery_app worker -l info -P threads --concurrency=4',
       interpreter: 'python',  // 修改为你的Python路径
@@ -72,8 +72,8 @@ module.exports = {
       user: 'deploy',
       host: 'your-server.com',
       ref: 'origin/master',
-      repo: 'git@github.com:your-username/SynapseAutomation.git',
-      path: '/opt/SynapseAutomation',
+      repo: 'git@github.com:your-username/Prism.git',
+      path: '/opt/Prism',
       'post-deploy': 'npm install && pm2 reload ecosystem.config.js --env production'
     }
   }

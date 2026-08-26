@@ -66,6 +66,8 @@ const PLATFORM_CODE_MAP: Record<PlatformKey, number> = {
   xiaohongshu: 1,
   bilibili: 5,
   channels: 2,
+  tiktok: 6,
+  youtube: 7,
 }
 
 type IntervalMode = "account_first" | "video_first"
@@ -920,6 +922,10 @@ export default function PublishPage() {
       case "xiaohongshu": return <XhsConfig key="xhs" {...commonProps} />
       case "bilibili": return <BilibiliConfig key="bilibili" {...commonProps} />
       case "channels": return <VideoChannelConfig key="channels" {...commonProps} />
+      // TikTok and YouTube both use the shared metadata editor. Their server-side
+      // adapters add platform-specific fields such as visibility / playlist.
+      case "tiktok":
+      case "youtube": return null
       default: return null
     }
   }
@@ -935,7 +941,7 @@ export default function PublishPage() {
               variant="outline"
               onClick={() => savePlanMutation.mutate()}
               disabled={savePlanMutation.isPending || plan.platforms.length === 0}
-              className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+              className="border-border/70 bg-foreground/5 hover:bg-accent/50 text-foreground"
             >
               {savePlanMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -947,7 +953,7 @@ export default function PublishPage() {
             <Button
               onClick={() => publishMutation.mutate()}
               disabled={publishMutation.isPending || plan.platforms.length === 0}
-              className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+              className="border-border/70 bg-foreground/5 hover:bg-accent/50 text-foreground"
             >
               {publishMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -963,7 +969,7 @@ export default function PublishPage() {
       {/* 1. 平台选择 */}
       <div className="space-y-4">
         <Label className="text-base font-medium">发布渠道</Label>
-        <div className="rounded-2xl border border-white/10 bg-black p-5">
+        <div className="rounded-2xl border border-border/70 bg-card p-5">
           <PlatformSelector
             selected={plan.platforms}
             onSelect={togglePlatform}
@@ -978,7 +984,7 @@ export default function PublishPage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 border-white/10 bg-white/5 hover:bg-white/10 text-white"
+            className="h-8 border-border/70 bg-foreground/5 hover:bg-accent/50 text-foreground"
             onClick={() => setMaterialPickerOpen(true)}
           >
             <Plus className="w-3 h-3 mr-2" />
@@ -986,7 +992,7 @@ export default function PublishPage() {
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black p-6 space-y-6">
+        <div className="rounded-2xl border border-border/70 bg-card p-6 space-y-6">
           {/* 素材列表 - 分页列表形式 */}
           {selectedMaterialsList.length > 0 ? (
             <div className="space-y-3">
@@ -998,15 +1004,15 @@ export default function PublishPage() {
                 return (
                   <div
                     key={m.id}
-                    className="flex items-start gap-4 p-4 rounded-xl border border-white/10 bg-black/20 hover:bg-black/30 transition-all group"
+                    className="flex items-start gap-4 p-4 rounded-xl border border-border/70 bg-card/20 hover:bg-card/30 transition-all group"
                   >
                     {/* 序号 */}
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-xs text-white/60 font-medium">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center text-xs text-muted-foreground font-medium">
                       {globalIndex + 1}
                     </div>
 
                     {/* 首帧预览（不叠加 AI 封面） */}
-                    <div className="relative w-24 h-32 rounded-lg overflow-hidden border border-white/10 shrink-0 bg-neutral-900">
+                    <div className="relative w-24 h-32 rounded-lg overflow-hidden border border-border/70 shrink-0 bg-neutral-900">
                       {(() => {
                         const firstFrame = firstFrameById[String(m.id)]
                         if (firstFrame) {
@@ -1014,14 +1020,14 @@ export default function PublishPage() {
                         }
                         return (
                           <div className="w-full h-full flex items-center justify-center">
-                            <Video className="w-6 h-6 text-white/20" />
+                            <Video className="w-6 h-6 text-foreground/20" />
                           </div>
                         )
                       })()}
                       {/* 元数据指示器 */}
                       {hasMetadata && (
                         <div className="absolute top-1 right-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full p-0.5">
-                          <Sparkles className="w-2.5 h-2.5 text-white" />
+                          <Sparkles className="w-2.5 h-2.5 text-foreground" />
                         </div>
                       )}
                     </div>
@@ -1030,8 +1036,8 @@ export default function PublishPage() {
                     <div className="flex-1 min-w-0 space-y-3">
                       {/* 文件名 */}
                       <div>
-                        <p className="text-sm font-medium text-white truncate">{m.filename}</p>
-                        <p className="text-xs text-white/40 mt-0.5">
+                        <p className="text-sm font-medium text-foreground truncate">{m.filename}</p>
+                        <p className="text-xs text-foreground/40 mt-0.5">
                           ID: {m.id} · {formatSizeMb((m as any).filesize)}MB · 时长: {formatDuration((m as any).duration)}
                         </p>
                       </div>
@@ -1041,13 +1047,13 @@ export default function PublishPage() {
                         <div className="space-y-2">
                           {metadata.title && (
                             <div className="flex items-start gap-2">
-                              <span className="text-xs text-white/40 shrink-0 min-w-[40px]">标题:</span>
-                              <p className="text-xs text-white/80 line-clamp-1">{String(metadata.title)}</p>
+                              <span className="text-xs text-foreground/40 shrink-0 min-w-[40px]">标题:</span>
+                              <p className="text-xs text-foreground/80 line-clamp-1">{String(metadata.title)}</p>
                             </div>
                           )}
                           {metadata.tags && metadata.tags.length > 0 && (
                             <div className="flex items-start gap-2">
-                              <span className="text-xs text-white/40 shrink-0 min-w-[40px]">标签:</span>
+                              <span className="text-xs text-foreground/40 shrink-0 min-w-[40px]">标签:</span>
                               <div className="flex flex-wrap gap-1">
                                 {metadata.tags.map((tag, i) => (
                                   <Badge key={i} variant="secondary" className="text-[10px] h-5 px-1.5">
@@ -1059,15 +1065,15 @@ export default function PublishPage() {
                           )}
                           {(metadata.cover_image || metadata.coverPath) && (
                             <div className="flex items-start gap-2">
-                              <span className="text-xs text-white/40 shrink-0 min-w-[40px]">封面:</span>
-                              <div className="relative w-16 h-20 rounded border border-white/10 overflow-hidden">
+                              <span className="text-xs text-foreground/40 shrink-0 min-w-[40px]">封面:</span>
+                              <div className="relative w-16 h-20 rounded border border-border/70 overflow-hidden">
                                 <Image src={toBackendFileUrl(metadata.cover_image || metadata.coverPath || "")} alt="封面" fill className="object-cover" unoptimized />
                               </div>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-white/30 italic">未配置元数据，点击编辑按钮添加</p>
+                        <p className="text-xs text-foreground/30 italic">未配置元数据，点击编辑按钮添加</p>
                       )}
                     </div>
 
@@ -1076,7 +1082,7 @@ export default function PublishPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 border-white/10 hover:bg-white/10"
+                        className="h-8 border-border/70 hover:bg-accent/50"
                         onClick={() => setEditingMaterialId(String(m.id))}
                       >
                         <Edit2 className="w-3 h-3 mr-1.5" />
@@ -1098,8 +1104,8 @@ export default function PublishPage() {
 
               {/* 分页控件 */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between py-2 border-t border-white/10">
-                  <div className="text-xs text-white/40">
+                <div className="flex items-center justify-between py-2 border-t border-border/70">
+                  <div className="text-xs text-foreground/40">
                     第 {currentPage} 页 / 共 {totalPages} 页
                   </div>
                   <div className="flex gap-2">
@@ -1126,8 +1132,8 @@ export default function PublishPage() {
               )}
 
               {/* 批量操作提示 */}
-              <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                <div className="flex items-center gap-2 text-xs text-white/40">
+              <div className="flex items-center justify-between pt-3 border-t border-border/70">
+                <div className="flex items-center gap-2 text-xs text-foreground/40">
                   <Sparkles className="w-3 h-3" />
                   <span>共 {selectedMaterialsList.length} 个素材</span>
                 </div>
@@ -1145,7 +1151,7 @@ export default function PublishPage() {
             </div>
           ) : (
             <div
-              className="border-2 border-dashed border-white/10 rounded-xl h-32 flex flex-col items-center justify-center text-white/40 cursor-pointer hover:border-white/20 hover:bg-white/5 transition-all"
+              className="border-2 border-dashed border-border/70 rounded-xl h-32 flex flex-col items-center justify-center text-foreground/40 cursor-pointer hover:border-border/80 hover:bg-accent/40 transition-all"
               onClick={() => setMaterialPickerOpen(true)}
             >
               <Plus className="w-6 h-6 mb-2" />
@@ -1165,7 +1171,7 @@ export default function PublishPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-8 border-white/10 bg-white/5 hover:bg-white/10 text-white"
+              className="h-8 border-border/70 bg-foreground/5 hover:bg-accent/50 text-foreground"
               onClick={() => setAccountDrawerOpen(true)}
             >
               <Plus className="w-3 h-3 mr-2" />
@@ -1174,12 +1180,12 @@ export default function PublishPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black p-5">
+        <div className="rounded-2xl border border-border/70 bg-card p-5">
           {plan.platforms.length > 0 ? (
             selectedAccountsList.length > 0 ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                  <div className="text-xs text-white/60">
+                <div className="flex items-center justify-between pb-2 border-b border-border/70">
+                  <div className="text-xs text-muted-foreground">
                     已选 {selectedAccountsList.length} 个账号
                   </div>
                   <Button
@@ -1200,7 +1206,7 @@ export default function PublishPage() {
                         className="flex items-center gap-3 p-3 rounded-xl border border-primary/50 bg-primary/10 relative group"
                       >
                         <div className="relative w-10 h-10 shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-white/10 overflow-hidden">
+                          <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-border/70 overflow-hidden">
                             {account.avatar ? (
                               <img
                                 src={account.avatar}
@@ -1212,7 +1218,7 @@ export default function PublishPage() {
                               <span className="text-sm font-medium">{(displayName || "U").slice(0, 1)}</span>
                             )}
                           </div>
-                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center p-0.5">
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-neutral-900 border border-border/70 flex items-center justify-center p-0.5">
                             <Image
                               src={PLATFORMS.find(p => p.key === (account.platform as any))?.icon ?? "/Tiktok.svg"}
                               alt={account.platform ?? "平台"}
@@ -1226,7 +1232,7 @@ export default function PublishPage() {
                           <div className="text-sm font-medium truncate text-primary">
                             {displayName}
                           </div>
-                          <div className="text-[10px] text-white/50 truncate">
+                          <div className="text-[10px] text-muted-foreground truncate">
                             ID: {account.user_id || "未知"}
                           </div>
                         </div>
@@ -1234,7 +1240,7 @@ export default function PublishPage() {
                           onClick={() => toggleAccount(account.id)}
                           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <X className="w-3.5 h-3.5 text-white/50 hover:text-red-400" />
+                          <X className="w-3.5 h-3.5 text-muted-foreground hover:text-red-400" />
                         </button>
                       </div>
                     )
@@ -1243,7 +1249,7 @@ export default function PublishPage() {
               </div>
             ) : (
               <div
-                className="border-2 border-dashed border-white/10 rounded-xl h-32 flex flex-col items-center justify-center text-white/40 cursor-pointer hover:border-white/20 hover:bg-white/5 transition-all"
+                className="border-2 border-dashed border-border/70 rounded-xl h-32 flex flex-col items-center justify-center text-foreground/40 cursor-pointer hover:border-border/80 hover:bg-accent/40 transition-all"
                 onClick={() => setAccountDrawerOpen(true)}
               >
                 <Plus className="w-6 h-6 mb-2" />
@@ -1251,7 +1257,7 @@ export default function PublishPage() {
               </div>
             )
           ) : (
-            <div className="py-12 text-center text-white/40 text-sm border-2 border-dashed border-white/10 rounded-xl">
+            <div className="py-12 text-center text-foreground/40 text-sm border-2 border-dashed border-border/70 rounded-xl">
               请先选择发布平台
             </div>
           )}
@@ -1277,16 +1283,16 @@ export default function PublishPage() {
       {/* 5. 发布设置 */}
       <div className="space-y-4">
         <Label className="text-base font-medium">发布设置</Label>
-        <div className="rounded-2xl border border-white/10 bg-black p-6 space-y-8">
+        <div className="rounded-2xl border border-border/70 bg-card p-6 space-y-8">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Label className="text-white/70">发布时间</Label>
-                <Badge variant="outline" className="rounded-full border-white/20 bg-white/5 text-[11px] text-white/70">
+                <Label className="text-foreground/70">发布时间</Label>
+                <Badge variant="outline" className="rounded-full border-border/80 bg-foreground/5 text-[11px] text-foreground/70">
                   必选
                 </Badge>
               </div>
-              <div className="text-xs text-white/50">
+              <div className="text-xs text-muted-foreground">
                 {plan.publishTiming === "immediate" ? "提交后立即触发" : "按设定时间自动发布"}
               </div>
             </div>
@@ -1298,7 +1304,7 @@ export default function PublishPage() {
                   "group rounded-2xl border p-4 text-left transition-all",
                   plan.publishTiming === "immediate"
                     ? "border-primary/50 bg-primary/10 shadow-[0_0_0_1px_rgba(94,234,212,0.2)]"
-                    : "border-white/10 bg-white/5 hover:border-white/20"
+                    : "border-border/70 bg-foreground/5 hover:border-border/80"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -1307,12 +1313,12 @@ export default function PublishPage() {
                       "h-4 w-4 rounded-full border",
                       plan.publishTiming === "immediate"
                         ? "border-primary bg-primary/70"
-                        : "border-white/30"
+                        : "border-border"
                     )}
                   />
                   <div>
                     <div className="font-medium">立即发布</div>
-                    <div className="text-xs text-white/60 mt-1">快速发出，适合实时热点</div>
+                    <div className="text-xs text-muted-foreground mt-1">快速发出，适合实时热点</div>
                   </div>
                 </div>
               </button>
@@ -1324,7 +1330,7 @@ export default function PublishPage() {
                   "group rounded-2xl border p-4 text-left transition-all",
                   plan.publishTiming === "scheduled"
                     ? "border-primary/50 bg-primary/10 shadow-[0_0_0_1px_rgba(94,234,212,0.2)]"
-                    : "border-white/10 bg-black hover:border-white/20"
+                    : "border-border/70 bg-card hover:border-border/80"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -1333,12 +1339,12 @@ export default function PublishPage() {
                       "h-4 w-4 rounded-full border",
                       plan.publishTiming === "scheduled"
                         ? "border-primary bg-primary/70"
-                        : "border-white/30"
+                        : "border-border"
                     )}
                   />
                   <div className="flex flex-col gap-1">
                     <div className="font-medium">定时发布</div>
-                    <div className="text-xs text-white/60">设置时间自动发，适合批量排期</div>
+                    <div className="text-xs text-muted-foreground">设置时间自动发，适合批量排期</div>
                     {plan.scheduleDate && plan.scheduleTime && (
                       <div className="text-[11px] text-primary/90">
                         已设置：{plan.scheduleDate} {plan.scheduleTime}
@@ -1352,7 +1358,7 @@ export default function PublishPage() {
             {plan.publishTiming === "scheduled" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="space-y-2">
-                  <Label className="text-xs text-white/60">日期</Label>
+                  <Label className="text-xs text-muted-foreground">日期</Label>
                   <DatePicker
                     value={plan.scheduleDate}
                     onChange={(date) => setPlan(prev => ({ ...prev, scheduleDate: date }))}
@@ -1361,7 +1367,7 @@ export default function PublishPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-white/60">时间</Label>
+                  <Label className="text-xs text-muted-foreground">时间</Label>
                   <TimePicker
                     value={plan.scheduleTime}
                     onChange={(time) => setPlan(prev => ({ ...prev, scheduleTime: time }))}
@@ -1375,17 +1381,17 @@ export default function PublishPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Label className="text-white/70">间隔方式</Label>
-                <Badge variant="outline" className="rounded-full border-white/20 bg-white/5 text-[11px] text-white/70">
+                <Label className="text-foreground/70">间隔方式</Label>
+                <Badge variant="outline" className="rounded-full border-border/80 bg-foreground/5 text-[11px] text-foreground/70">
                   矩阵节奏
                 </Badge>
               </div>
               <div className="flex items-center gap-3">
-                <div className="text-xs text-white/50 hidden md:block">
+                <div className="text-xs text-muted-foreground hidden md:block">
                   {plan.intervalControlEnabled ? "选择账号与视频的排布方式" : "关闭状态：默认同时发布"}
                 </div>
-                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5">
-                  <span className="text-xs text-white/70">发布间隔控制</span>
+                <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5">
+                  <span className="text-xs text-foreground/70">发布间隔控制</span>
                   <Switch
                     checked={plan.intervalControlEnabled}
                     onCheckedChange={(checked) => setPlan((prev) => ({ ...prev, intervalControlEnabled: checked }))}
@@ -1407,24 +1413,24 @@ export default function PublishPage() {
                         "group rounded-2xl border p-4 text-left transition-all",
                         active
                           ? "border-primary/50 bg-primary/10 shadow-[0_0_0_1px_rgba(94,234,212,0.2)]"
-                          : "border-white/10 bg-black hover:border-white/20"
+                          : "border-border/70 bg-card hover:border-border/80"
                       )}
                     >
                       <div className="flex items-start gap-3 mb-3">
                         <span
                           className={cn(
                             "mt-1 h-4 w-4 rounded-full border",
-                            active ? "border-primary bg-primary/70" : "border-white/30"
+                            active ? "border-primary bg-primary/70" : "border-border"
                           )}
                         />
                         <div className="space-y-1">
                           <div className="font-medium">{option.title}</div>
-                          <div className="text-xs text-white/60 leading-relaxed">{option.description}</div>
+                          <div className="text-xs text-muted-foreground leading-relaxed">{option.description}</div>
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-white/5 bg-black/20 p-3 space-y-2">
-                        <div className="grid grid-cols-[60px_repeat(3,minmax(0,1fr))] gap-2 text-[11px] text-white/60">
+                      <div className="rounded-xl border border-border/40 bg-card/20 p-3 space-y-2">
+                        <div className="grid grid-cols-[60px_repeat(3,minmax(0,1fr))] gap-2 text-[11px] text-muted-foreground">
                           <div />
                           {PREVIEW_ACCOUNTS.map((name, idx) => (
                             <div key={`${option.key}-account-${idx}`} className="text-center font-medium">
@@ -1438,12 +1444,12 @@ export default function PublishPage() {
                               key={`${option.key}-row-${rowIdx}`}
                               className="grid grid-cols-[60px_repeat(3,minmax(0,1fr))] gap-2 items-center"
                             >
-                              <div className="text-right text-xs text-white/50">{row.time}</div>
+                              <div className="text-right text-xs text-muted-foreground">{row.time}</div>
                               {row.slots.map((slot, slotIdx) => (
                                 <div
                                   key={`${option.key}-slot-${rowIdx}-${slotIdx}`}
                                   className={cn(
-                                    "flex h-8 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/5 text-[11px]",
+                                    "flex h-8 items-center justify-center rounded-lg border border-dashed border-border/70 bg-foreground/5 text-[11px]",
                                     slot && `${PREVIEW_COLORS[slotIdx % PREVIEW_COLORS.length]} border-solid font-medium`
                                   )}
                                 >
@@ -1459,7 +1465,7 @@ export default function PublishPage() {
                 })}
               </div>
             ) : (
-              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-white/60">
+              <div className="rounded-xl border border-border/70 bg-card/20 px-4 py-3 text-xs text-muted-foreground">
                 未开启间隔控制：将按高并发提交任务（同时发布）。如需节奏控制，请开启开关并选择一种排布方式。
               </div>
             )}
@@ -1482,15 +1488,15 @@ export default function PublishPage() {
 
       {/* Material Picker Dialog */}
       <Dialog open={materialPickerOpen} onOpenChange={setMaterialPickerOpen}>
-        <DialogContent className="max-w-3xl bg-neutral-900 border-white/10 text-white">
+        <DialogContent className="max-w-3xl bg-neutral-900 border-border/70 text-foreground">
           <DialogHeader>
             <DialogTitle>选择素材</DialogTitle>
           </DialogHeader>
           <div className="flex items-center gap-2 mb-4">
-            <Search className="w-4 h-4 text-white/50" />
+            <Search className="w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="搜索素材..."
-              className="bg-black/20 border-white/10"
+              className="bg-card/20 border-border/70"
               value={materialKeyword}
               onChange={(e) => setMaterialKeyword(e.target.value)}
             />
@@ -1506,7 +1512,7 @@ export default function PublishPage() {
                       key={m.id}
                       className={cn(
                         "relative aspect-[3/4] rounded-lg overflow-hidden border cursor-pointer transition-all group",
-                        isSelected ? "border-black ring-2 ring-black/50" : "border-white/10 hover:border-white/30"
+                        isSelected ? "border-border ring-2 ring-black/50" : "border-border/70 hover:border-border"
                       )}
                       onClick={() => {
                         setPlan(prev => ({
@@ -1524,15 +1530,15 @@ export default function PublishPage() {
                         }
                         return (
                           <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
-                            <Video className="w-8 h-8 text-white/20" />
+                            <Video className="w-8 h-8 text-foreground/20" />
                           </div>
                         )
                       })()}
                       <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <p className="text-xs text-white truncate">{m.filename}</p>
+                        <p className="text-xs text-foreground truncate">{m.filename}</p>
                       </div>
                       {isSelected && (
-                        <div className="absolute top-2 right-2 bg-black text-white rounded-full p-1">
+                        <div className="absolute top-2 right-2 bg-card text-foreground rounded-full p-1">
                           <Check className="w-3 h-3" />
                         </div>
                       )}
@@ -1616,11 +1622,11 @@ export default function PublishPage() {
       <Sheet open={accountDrawerOpen} onOpenChange={setAccountDrawerOpen}>
         <SheetContent
           side="right"
-          className="w-[95vw] sm:w-[85vw] lg:w-[75vw] xl:w-[1000px] sm:max-w-none bg-neutral-900 border-white/10 text-white overflow-y-auto"
+          className="w-[95vw] sm:w-[85vw] lg:w-[75vw] xl:w-[1000px] sm:max-w-none bg-neutral-900 border-border/70 text-foreground overflow-y-auto"
         >
           <SheetHeader>
-            <SheetTitle className="text-white">选择账号</SheetTitle>
-            <SheetDescription className="text-white/60">
+            <SheetTitle className="text-foreground">选择账号</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               从 {filteredAccounts.length} 个可用账号中选择发布账号
             </SheetDescription>
           </SheetHeader>
@@ -1629,10 +1635,10 @@ export default function PublishPage() {
             {/* 账号来源切换和搜索 */}
             <div className="flex items-center gap-3">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
                 <Input
                   placeholder="搜索账号名称或ID..."
-                  className="pl-9 bg-black/20 border-white/10 text-white placeholder:text-white/40"
+                  className="pl-9 bg-card/20 border-border/70 text-foreground placeholder:text-foreground/40"
                   value={accountSearchKeyword}
                   onChange={(e) => {
                     setAccountSearchKeyword(e.target.value)
@@ -1644,7 +1650,7 @@ export default function PublishPage() {
 
             {/* 已选账号统计 */}
             <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="text-sm text-white/80">
+              <div className="text-sm text-foreground/80">
                 已选择 <span className="font-semibold text-primary">{plan.accounts.length}</span> 个账号
               </div>
               {plan.accounts.length > 0 && (
@@ -1660,9 +1666,9 @@ export default function PublishPage() {
             </div>
 
             {/* 账号表格 */}
-            <div className="border border-white/10 rounded-lg overflow-hidden">
-              <div className="bg-black/40">
-                <div className="grid grid-cols-[40px_60px_1fr_150px_100px_80px_60px] gap-3 px-4 py-3 text-xs font-medium text-white/60 border-b border-white/10">
+            <div className="border border-border/70 rounded-lg overflow-hidden">
+              <div className="bg-card/40">
+                <div className="grid grid-cols-[40px_60px_1fr_150px_100px_80px_60px] gap-3 px-4 py-3 text-xs font-medium text-muted-foreground border-b border-border/70">
                   <div className="text-center">#</div>
                   <div>头像</div>
                   <div>账号名称</div>
@@ -1674,7 +1680,7 @@ export default function PublishPage() {
               </div>
 
               {drawerPaginatedAccounts.length > 0 ? (
-                <div className="divide-y divide-white/10">
+                <div className="divide-y divide-border/70">
                   {drawerPaginatedAccounts.map((account, index) => {
                     const isSelected = plan.accounts.includes(account.id)
                     const displayName = getAccountDisplayName(account)
@@ -1717,19 +1723,19 @@ export default function PublishPage() {
                       <div
                         key={account.id}
                         className={cn(
-                          "grid grid-cols-[40px_60px_1fr_150px_100px_80px_60px] gap-3 px-4 py-3 items-center hover:bg-white/5 transition-colors cursor-pointer",
+                          "grid grid-cols-[40px_60px_1fr_150px_100px_80px_60px] gap-3 px-4 py-3 items-center hover:bg-accent/40 transition-colors cursor-pointer",
                           isSelected && "bg-primary/10",
                           isExpired && "opacity-60"
                         )}
                         onClick={() => toggleAccount(account.id)}
                       >
-                        <div className="text-center text-xs text-white/40">
+                        <div className="text-center text-xs text-foreground/40">
                           {globalIndex}
                         </div>
                         <div className="relative w-10 h-10">
                           <div className={cn(
                             "w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border overflow-hidden",
-                            isExpired ? "border-red-500/30" : "border-white/10"
+                            isExpired ? "border-red-500/30" : "border-border/70"
                           )}>
                             {account.avatar ? (
                               <img
@@ -1742,7 +1748,7 @@ export default function PublishPage() {
                               <span className="text-sm font-medium">{(displayName || "U").slice(0, 1)}</span>
                             )}
                           </div>
-                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-neutral-900 border border-white/10 flex items-center justify-center p-0.5">
+                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-neutral-900 border border-border/70 flex items-center justify-center p-0.5">
                             <Image
                               src={PLATFORMS.find(p => p.key === (account.platform as any))?.icon ?? "/Tiktok.svg"}
                               alt={account.platform ?? "平台"}
@@ -1755,15 +1761,15 @@ export default function PublishPage() {
                         <div className="min-w-0">
                           <div className={cn(
                             "text-sm font-medium truncate",
-                            isSelected ? "text-primary" : isExpired ? "text-white/60" : "text-white"
+                            isSelected ? "text-primary" : isExpired ? "text-muted-foreground" : "text-foreground"
                           )}>
                             {displayName}
                           </div>
                         </div>
-                        <div className={cn("text-xs truncate", isExpired ? "text-white/30" : "text-white/50")}>
+                        <div className={cn("text-xs truncate", isExpired ? "text-foreground/30" : "text-muted-foreground")}>
                           {account.user_id || "未知"}
                         </div>
-                        <div className={cn("text-xs truncate", isExpired ? "text-white/40" : "text-white/60")}>
+                        <div className={cn("text-xs truncate", isExpired ? "text-foreground/40" : "text-muted-foreground")}>
                           {PLATFORMS.find(p => p.key === account.platform)?.name || account.platform}
                         </div>
                         <div className="flex justify-center">
@@ -1783,10 +1789,10 @@ export default function PublishPage() {
                               "w-5 h-5 rounded border flex items-center justify-center transition-all",
                               isSelected
                                 ? "bg-primary border-primary"
-                                : "border-white/30 hover:border-white/50"
+                                : "border-border hover:border-border"
                             )}
                           >
-                            {isSelected && <Check className="w-3 h-3 text-black" />}
+                            {isSelected && <Check className="w-3 h-3 text-background" />}
                           </div>
                         </div>
                       </div>
@@ -1794,7 +1800,7 @@ export default function PublishPage() {
                   })}
                 </div>
               ) : (
-                <div className="py-12 text-center text-white/40 text-sm">
+                <div className="py-12 text-center text-foreground/40 text-sm">
                   {accountSearchKeyword ? "没有找到匹配的账号" : "暂无可用账号"}
                 </div>
               )}
@@ -1803,7 +1809,7 @@ export default function PublishPage() {
             {/* 分页控件 */}
             {totalDrawerPages > 1 && (
               <div className="flex items-center justify-between pt-2">
-                <div className="text-xs text-white/50">
+                <div className="text-xs text-muted-foreground">
                   显示 {(accountDrawerPage - 1) * accountDrawerPerPage + 1} - {Math.min(accountDrawerPage * accountDrawerPerPage, drawerFilteredAccounts.length)} / 共 {drawerFilteredAccounts.length} 个账号
                 </div>
                 <div className="flex items-center gap-2">
@@ -1812,11 +1818,11 @@ export default function PublishPage() {
                     size="sm"
                     onClick={() => setAccountDrawerPage(p => Math.max(1, p - 1))}
                     disabled={accountDrawerPage === 1}
-                    className="h-7 text-xs border-white/10 bg-white/5 hover:bg-white/10"
+                    className="h-7 text-xs border-border/70 bg-foreground/5 hover:bg-accent/50"
                   >
                     上一页
                   </Button>
-                  <div className="text-xs text-white/60">
+                  <div className="text-xs text-muted-foreground">
                     {accountDrawerPage} / {totalDrawerPages}
                   </div>
                   <Button
@@ -1824,7 +1830,7 @@ export default function PublishPage() {
                     size="sm"
                     onClick={() => setAccountDrawerPage(p => Math.min(totalDrawerPages, p + 1))}
                     disabled={accountDrawerPage === totalDrawerPages}
-                    className="h-7 text-xs border-white/10 bg-white/5 hover:bg-white/10"
+                    className="h-7 text-xs border-border/70 bg-foreground/5 hover:bg-accent/50"
                   >
                     下一页
                   </Button>
@@ -1833,17 +1839,17 @@ export default function PublishPage() {
             )}
 
             {/* 底部操作按钮 */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/70">
               <Button
                 variant="ghost"
                 onClick={() => setAccountDrawerOpen(false)}
-                className="text-white/70 hover:text-white"
+                className="text-foreground/70 hover:text-foreground"
               >
                 取消
               </Button>
               <Button
                 onClick={() => setAccountDrawerOpen(false)}
-                className="bg-primary text-black hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 确定 ({plan.accounts.length})
               </Button>

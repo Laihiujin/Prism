@@ -14,6 +14,8 @@ import time
 from queue import Queue as ThreadQueue
 from loguru import logger
 import sqlite3
+import os
+import tempfile
 from typing import Any
 from datetime import datetime, timezone
 
@@ -38,6 +40,41 @@ router = APIRouter(prefix="/auth", tags=["鐧诲綍璁よ瘉"])
 
 # 鍏ㄥ眬浼氳瘽瀛樺偍
 login_sessions: Dict[str, dict] = {}
+login_sessions_lock = asyncio.Lock()
+
+
+def _write_private_json(path: Path, payload: Any) -> None:
+    """Atomically persist a credential JSON file with owner-only permissions.
+
+    This protects against partial writes and other local users. It is not
+    encryption; callers must not describe it as encrypted at rest.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
+    try:
+        try:
+            os.fchmod(fd, 0o600)
+        except (AttributeError, OSError):
+            pass
+        with os.fdopen(fd, "w", encoding="utf-8") as fp:
+            json.dump(payload, fp, ensure_ascii=False, indent=2)
+            fp.flush()
+            os.fsync(fp.fileno())
+        os.replace(temp_name, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(temp_name)
+        except OSError:
+            pass
+        raise
 
 
 def _fill_user_info_from_cookie(platform: str, cookie_data: dict, user_info: dict) -> dict:
@@ -216,19 +253,33 @@ async def generate_qrcode(
     鐢熸垚鐧诲綍浜岀淮鐮?
     鎵€鏈夊钩鍙板潎閫氳繃姝ゆ帴鍙ｇ敓鎴愪簩缁寸爜銆?
 
-    **NEW**: 浣跨敤 Playwright Worker 鐙珛杩涚▼澶勭悊锛岃В鍐充簨浠跺惊鐜啿绐?
+    **NEW**: 浣跨敤 Automation Worker 鐙珛杩涚▼澶勭悊锛岃В鍐充簨浠跺惊鐜啿绐?
     """
     try:
         logger.info(f"[Login] QR generation started: platform={platform.value} account={account_id}")
 
-        # 浣跨敤 Playwright Worker 瀹㈡埛绔?
-        from playwright_worker.client import get_worker_client
+        # 浣跨敤 Automation Worker 瀹㈡埛绔?
+        from automation_worker.client import get_worker_client
         worker = get_worker_client()
         worker_health = None
         try:
             worker_health = await worker.health_info()
         except Exception as _e:
             worker_health = {"status": "unreachable", "error": str(_e) or type(_e).__name__}
+
+        # Supersede an older attempt for the same account at the API layer as
+        # well as in the Worker, so stale sessions cannot remain pollable.
+        account_key = (platform.value.lower(), account_id)
+        stale_session_ids = []
+        async with login_sessions_lock:
+            for stale_id, stale in list(login_sessions.items()):
+                stale_platform = stale.get("platform")
+                stale_platform_value = getattr(stale_platform, "value", str(stale_platform)).lower()
+                if (stale_platform_value, stale.get("account_id")) == account_key:
+                    stale_session_ids.append(stale_id)
+                    login_sessions.pop(stale_id, None)
+        for stale_id in stale_session_ids:
+            await worker.cancel_session(stale_id)
 
         # 璋冪敤 Worker 鐢熸垚浜岀淮鐮?
         from config.conf import PLAYWRIGHT_HEADLESS
@@ -241,13 +292,14 @@ async def generate_qrcode(
         session_id = result["session_id"]
 
         # 瀛樺偍浼氳瘽淇℃伅锛堢敤浜庡悗缁繚瀛橈級
-        login_sessions[session_id] = {
-            "platform": platform,
-            "account_id": account_id,
-            "worker_session_id": session_id,  # Worker 鐨?session ID
-            "status": "waiting",
-            "created_at": time.time()
-        }
+        async with login_sessions_lock:
+            login_sessions[session_id] = {
+                "platform": platform,
+                "account_id": account_id,
+                "worker_session_id": session_id,  # Worker 鐨?session ID
+                "status": "waiting",
+                "created_at": time.time()
+            }
 
         logger.info(f"[Login] QR generated successfully via Worker: platform={platform.value} session={session_id[:8]}")
 
@@ -262,7 +314,7 @@ async def generate_qrcode(
         import traceback
         err = str(e) or type(e).__name__
         if isinstance(e, NotImplementedError):
-            err = f"{type(e).__name__} (message empty) -> 璇锋鏌?Playwright Worker 鎺у埗鍙版棩蹇椾笌 /health 鐨?event_loop_policy"
+            err = f"{type(e).__name__} (message empty) -> 璇锋鏌?Automation Worker 鎺у埗鍙版棩蹇椾笌 /health 鐨?event_loop_policy"
         logger.error(
             f"[Login] QR generation failed: platform={platform.value} account={account_id} error={type(e).__name__}: {err}"
         )
@@ -281,18 +333,18 @@ async def poll_login_status(session_id: str = Query(..., description="鐧诲綍�
     """
     杞鐧诲綍鐘舵€?
 
-    **NEW**: 閫氳繃 Playwright Worker 杞鐘舵€?
+    **NEW**: 閫氳繃 Automation Worker 杞鐘舵€?
     """
-    if session_id not in login_sessions:
+    async with login_sessions_lock:
+        session = login_sessions.get(session_id)
+    if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
-
-    session = login_sessions[session_id]
     platform = session["platform"]
     worker_session_id = session.get("worker_session_id", session_id)
 
     try:
-        # 浣跨敤 Playwright Worker 瀹㈡埛绔疆璇?
-        from playwright_worker.client import get_worker_client
+        # 浣跨敤 Automation Worker 瀹㈡埛绔疆璇?
+        from automation_worker.client import get_worker_client
         worker = get_worker_client()
 
         result = await worker.poll_status(worker_session_id)
@@ -442,7 +494,8 @@ async def poll_login_status(session_id: str = Query(..., description="鐧诲綍�
             elif platform == PlatformType.TENCENT:
                 await _save_tencent_login(session, data)
 
-            del login_sessions[session_id]
+            async with login_sessions_lock:
+                login_sessions.pop(session_id, None)
 
         return LoginStatusResponse(
             success=True,
@@ -513,8 +566,7 @@ async def _save_bilibili_login(session: dict, login_data: dict):
         else:
             final_file = account_file
 
-        with open(account_file, 'w', encoding='utf-8') as f:
-            json.dump(cookie_data, f, ensure_ascii=False, indent=2)
+        _write_private_json(account_file, cookie_data)
 
         if final_file != account_file:
             try:
@@ -583,8 +635,7 @@ async def _save_xiaohongshu_login(session: dict, login_data: dict):
         else:
             final_file = account_file
 
-        with open(account_file, 'w', encoding='utf-8') as f:
-            json.dump(cookie_data, f, ensure_ascii=False, indent=2)
+        _write_private_json(account_file, cookie_data)
 
         if final_file != account_file:
             try:
@@ -654,8 +705,7 @@ async def _save_douyin_login(session: dict, login_data: dict):
         else:
             final_file = account_file
 
-        with open(account_file, 'w', encoding='utf-8') as f:
-            json.dump(cookie_data, f, ensure_ascii=False, indent=2)
+        _write_private_json(account_file, cookie_data)
 
         if final_file != account_file:
             try:
@@ -721,8 +771,7 @@ async def _save_kuaishou_login(session: dict, login_data: dict):
         else:
             final_file = account_file
 
-        with open(account_file, 'w', encoding='utf-8') as f:
-            json.dump(cookie_data, f, ensure_ascii=False, indent=2)
+        _write_private_json(account_file, cookie_data)
 
         if final_file != account_file:
             try:
@@ -786,8 +835,7 @@ async def _save_tencent_login(session: dict, login_data: dict):
         else:
             account_file = temp_file
 
-        with open(account_file, 'w', encoding='utf-8') as f:
-            json.dump(cookie_data, f, ensure_ascii=False, indent=2)
+        _write_private_json(account_file, cookie_data)
         if final_user_id and temp_file.exists():
             try:
                 temp_file.unlink()

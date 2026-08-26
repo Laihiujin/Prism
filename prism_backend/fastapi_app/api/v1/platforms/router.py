@@ -2,7 +2,7 @@
 平台扫码登录（简化版，无官方API、无 SSE）
 支持：抖音、快手、视频号（channels）、小红书、腾讯（别名 channels）
 流程：
-- /platforms/login/start  通过 Playwright Worker 生成二维码，返回 login_id + 二维码(base64)
+- /platforms/login/start  通过 Automation Worker 生成二维码，返回 login_id + 二维码(base64)
 - /platforms/login/status 轮询登录状态；成功则保存 Cookie 文件并写入 cookie_store
 """
 import time
@@ -59,7 +59,7 @@ def _extract_base64(data_uri_or_b64: str) -> str:
 
 
 def _get_worker_client():
-    from playwright_worker.client import get_worker_client
+    from automation_worker.client import get_worker_client
 
     return get_worker_client()
 
