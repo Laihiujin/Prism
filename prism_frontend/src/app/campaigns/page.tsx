@@ -126,7 +126,7 @@ export default function CampaignsPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="搜索计划名称..."
-                        className="pl-9 rounded-xl bg-black border-white/10"
+                        className="pl-9 rounded-xl bg-card border-border/70"
                         value={searchKeyword}
                         onChange={e => setSearchKeyword(e.target.value)}
                     />
@@ -136,7 +136,7 @@ export default function CampaignsPage() {
             {isLoading ? (
                 <div className="text-center py-10 text-muted-foreground">加载中...</div>
             ) : filteredCampaigns.length === 0 ? (
-                <Card className="border-dashed border-white/10 bg-transparent">
+                <Card className="border-dashed border-border/70 bg-transparent">
                     <CardContent className="flex flex-col items-center justify-center py-10 text-center">
                         <Package className="h-10 w-10 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-medium">暂无投放计划</h3>
@@ -151,7 +151,7 @@ export default function CampaignsPage() {
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {filteredCampaigns.map((campaign: any) => (
-                        <Card key={campaign.id} className="bg-black border-white/10 hover:bg-white/[0.07] transition-all group">
+                        <Card key={campaign.id} className="bg-card border-border/70 hover:bg-accent/[0.07] transition-all group">
                             <CardHeader className="pb-3">
                                 <div className="flex justify-between items-start gap-2">
                                     <div className="space-y-1">
@@ -165,29 +165,29 @@ export default function CampaignsPage() {
                             </CardHeader>
                             <CardContent className="pb-3 space-y-4">
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                                    <div className="bg-black border border-white/10 rounded-lg p-2">
+                                    <div className="bg-card border border-border/70 rounded-lg p-2">
                                         <div className="text-xl font-bold">{campaign.task_count}</div>
                                         <div className="text-xs text-muted-foreground">Tasks</div>
                                     </div>
-                                    <div className="bg-black border border-white/10 rounded-lg p-2">
+                                    <div className="bg-card border border-border/70 rounded-lg p-2">
                                         <div className="text-xl font-bold">{campaign.platforms?.length || 0}</div>
                                         <div className="text-xs text-muted-foreground">Platforms</div>
                                     </div>
-                                    <div className="bg-black border border-white/10 rounded-lg p-2">
+                                    <div className="bg-card border border-border/70 rounded-lg p-2">
                                         <div className="text-xl font-bold">{campaign.account_ids?.length || 0}</div>
                                         <div className="text-xs text-muted-foreground">Accounts</div>
                                     </div>
-                                    <div className="bg-black border border-white/10 rounded-lg p-2">
+                                    <div className="bg-card border border-border/70 rounded-lg p-2">
                                         <div className="text-xl font-bold">{campaign.material_ids?.length || 0}</div>
                                         <div className="text-xs text-muted-foreground">Materials</div>
                                     </div>
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 text-xs">
-                                    <Badge variant="outline" className="bg-white/5 border-white/10 text-white/70">
+                                    <Badge variant="outline" className="bg-foreground/5 border-border/70 text-foreground/70">
                                         schedule: {campaign.schedule_type || "n/a"}
                                     </Badge>
-                                    <Badge variant="outline" className="bg-white/5 border-white/10 text-white/70">
+                                    <Badge variant="outline" className="bg-foreground/5 border-border/70 text-foreground/70">
                                         interval: {campaign.interval_enabled ? `${campaign.interval_mode} ${campaign.interval_minutes}m` : "off"}
                                     </Badge>
                                 </div>

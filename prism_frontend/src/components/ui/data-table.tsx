@@ -49,16 +49,16 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-white/10 bg-black">
+      <div className="rounded-2xl border border-border/70 bg-card">
         <Table className="table-fixed w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-white/5">
+              <TableRow key={headerGroup.id} className="border-border/40">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    className="text-white/60"
+                    className="text-muted-foreground"
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder ? null : (
@@ -81,7 +81,7 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="border-white/5">
+                <TableRow key={row.id} className="border-border/40">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} style={{ width: cell.column.getSize() }}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -91,7 +91,7 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-white/60">
+                <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
                   {emptyText}
                 </TableCell>
               </TableRow>
@@ -101,13 +101,13 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs text-white/60">
+        <div className="text-xs text-muted-foreground">
           共 {data.length} 条 · 第 {table.getState().pagination.pageIndex + 1} / {table.getPageCount()} 页
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            className="rounded-xl border border-white/10 bg-black"
+            className="rounded-xl border border-border/70 bg-card"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
             size="sm"
@@ -116,7 +116,7 @@ export function DataTable<TData, TValue>({
           </Button>
           <Button
             variant="ghost"
-            className="rounded-xl border border-white/10 bg-black"
+            className="rounded-xl border border-border/70 bg-card"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
             size="sm"

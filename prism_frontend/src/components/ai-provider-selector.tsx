@@ -121,7 +121,7 @@ export function AIProviderSelector() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">AI 提供商检测</h3>
+        <h3 className="text-lg font-semibold text-foreground">AI 提供商检测</h3>
         <Button
           size="sm"
           onClick={checkProviders}
@@ -149,7 +149,7 @@ export function AIProviderSelector() {
                     ? "bg-yellow-500/10 border-yellow-500/30"
                     : provider.status === "failed"
                       ? "bg-red-500/10 border-red-500/30"
-                      : "bg-white/5 border-white/10"
+                      : "bg-foreground/5 border-border/70"
               )}
             >
               <div className="space-y-3">
@@ -158,8 +158,8 @@ export function AIProviderSelector() {
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{info.emoji}</span>
                     <div>
-                      <div className="font-medium text-white">{info.name}</div>
-                      <div className="text-xs text-white/50">{provider.provider}</div>
+                      <div className="font-medium text-foreground">{info.name}</div>
+                      <div className="text-xs text-muted-foreground">{provider.provider}</div>
                     </div>
                   </div>
 
@@ -200,28 +200,28 @@ export function AIProviderSelector() {
 
                 {/* 消息和时间 */}
                 {provider.message && (
-                  <div className="text-sm text-white/70">
+                  <div className="text-sm text-foreground/70">
                     {provider.message}
                     {provider.lastChecked && (
-                      <span className="text-white/50 ml-2">({provider.lastChecked})</span>
+                      <span className="text-muted-foreground ml-2">({provider.lastChecked})</span>
                     )}
                   </div>
                 )}
 
                 {/* 模型列表 */}
                 {isSuccess && provider.models && provider.models.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-white/10">
-                    <div className="text-xs font-semibold text-white/70 uppercase">可用模型</div>
+                  <div className="space-y-2 pt-2 border-t border-border/70">
+                    <div className="text-xs font-semibold text-foreground/70 uppercase">可用模型</div>
                     <div className="flex flex-wrap gap-2">
                       {provider.models.map((model) => (
                         <Badge
                           key={model.id}
                           variant="secondary"
-                          className="bg-white/10 text-white/80 text-xs"
+                          className="bg-foreground/10 text-foreground/80 text-xs"
                         >
                           <span className="truncate max-w-[150px]">{model.name}</span>
                           {model.max_tokens && (
-                            <span className="text-white/50 ml-1">({model.max_tokens}k)</span>
+                            <span className="text-muted-foreground ml-1">({model.max_tokens}k)</span>
                           )}
                         </Badge>
                       ))}

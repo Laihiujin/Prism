@@ -31,8 +31,7 @@ export function PageHeader({
             {description}
           </p>
         )}
-      </div>
-      {actions && (
+      </div>      {actions && (
         <div className="flex flex-wrap items-center gap-2">
           {actions}
         </div>

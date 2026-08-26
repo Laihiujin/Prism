@@ -24,15 +24,15 @@ export function StatsCard({ title, value, icon, color = 'blue', onClick, isActiv
     return (
         <Card
             className={cn(
-                "border-black bg-black/40 transition-all duration-200",
-                onClick && "cursor-pointer hover:bg-black/60",
-                isActive && "ring-2 ring-primary/50 border-primary/50 bg-black/60 shadow-[0_0_15px_rgba(124,77,255,0.1)]"
+                "border-border bg-card/40 transition-all duration-200",
+                onClick && "cursor-pointer hover:bg-card/60",
+                isActive && "ring-2 ring-primary/50 border-primary/50 bg-card/60 shadow-[0_0_15px_rgba(124,77,255,0.1)]"
             )}
             onClick={onClick}
         >
             <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-2">
-                    <span className={cn("text-sm transition-colors", isActive ? "text-white" : "text-white/60")}>{title}</span>
+                    <span className={cn("text-sm transition-colors", isActive ? "text-foreground" : "text-muted-foreground")}>{title}</span>
                     <div className={cn("p-2 rounded-lg transition-all", colorClasses[color], isActive && "scale-110")}>
                         {icon}
                     </div>

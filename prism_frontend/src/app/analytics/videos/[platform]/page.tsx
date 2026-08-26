@@ -55,7 +55,7 @@ const PLATFORMS_CONFIG: Record<string, {
             { label: "总评论", key: "comments", icon: MessageCircle, color: "text-cyan-400" },
             { label: "总收藏", key: "collects", icon: Bookmark, color: "text-amber-400" },
             { label: "总分享", key: "shares", icon: Share2, color: "text-green-400" },
-            // { label: "总粉丝数", key: "follower", icon: Users, color: "text-white-400" },
+            // { label: "总粉丝数", key: "follower", icon: Users, color: "text-foreground-400" },
         ],
         metrics: ["views", "likes", "comments", "shares", "collects"]
     },
@@ -63,7 +63,7 @@ const PLATFORMS_CONFIG: Record<string, {
         label: "B站",
         color: "from-neutral-900 to-neutral-990",
         stats: [
-            // { label: "总粉丝数", key: "follower", icon: Users, color: "text-black-400" },
+            // { label: "总粉丝数", key: "follower", icon: Users, color: "text-background-400" },
             { label: "总播放", key: "views", icon: Eye, color: "text-blue-400" },
             { label: "总点赞", key: "likes", icon: Heart, color: "text-red-400" },
             { label: "总评论", key: "comments", icon: MessageCircle, color: "text-purple-400" },
@@ -459,7 +459,7 @@ export default function PlatformVideosPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsSheetOpen(true)}
-                            className="border-black bg-black/40 text-white hover:bg-black/60 rounded-xl"
+                            className="border-border bg-card/40 text-foreground hover:bg-card/60 rounded-xl"
                         >
                             <BarChart3 className="mr-2 h-4 w-4" />
                             明细表格
@@ -468,7 +468,7 @@ export default function PlatformVideosPage() {
                             onClick={handleCollect}
                             disabled={isCollecting}
                             className={cn(
-                                "bg-gradient-to-r text-white shadow-lg transition-all duration-300 hover:scale-105 rounded-xl",
+                                "bg-gradient-to-r text-foreground shadow-lg transition-all duration-300 hover:scale-105 rounded-xl",
                                 config.color
                             )}
                         >
@@ -485,38 +485,38 @@ export default function PlatformVideosPage() {
 
             {/* Platform Banner Header - Unique Design element */}
             <div className={cn(
-                "relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br border border-black shadow-2xl",
+                "relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br border border-border shadow-2xl",
                 config.color,
                 "opacity-90"
             )}>
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl">
-                                <Video className="h-6 w-6 text-white" />
+                            <div className="p-3 bg-foreground/20 backdrop-blur-md rounded-2xl">
+                                <Video className="h-6 w-6 text-foreground" />
                             </div>
-                            <h2 className="text-2xl font-bold text-white">{config.label}矩阵数据概览</h2>
+                            <h2 className="text-2xl font-bold text-foreground">{config.label}矩阵数据概览</h2>
                         </div>
-                        <p className="text-white/80 max-w-md">
+                        <p className="text-foreground/80 max-w-md">
                             当前已监控 {videoCount} 个视频，覆盖核心互动指标与传播趋势。
                         </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 md:flex md:gap-8">
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
-                            <p className="text-xs text-white/60 mb-1">今日新增播放</p>
+                        <div className="bg-foreground/10 backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
+                            <p className="text-xs text-muted-foreground mb-1">今日新增播放</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-xl font-bold text-white">{formatNumber(stats.views)}</span>
-                                <Badge className="bg-emerald-500 text-white border-0 text-[10px] h-4">
+                                <span className="text-xl font-bold text-foreground">{formatNumber(stats.views)}</span>
+                                <Badge className="bg-emerald-500 text-foreground border-0 text-[10px] h-4">
                                     <ArrowUpRight className="h-2.5 w-2.5 mr-0.5" />
                                     {videoCount}个
                                 </Badge>
                             </div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
-                            <p className="text-xs text-white/60 mb-1">平均互动率</p>
+                        <div className="bg-foreground/10 backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
+                            <p className="text-xs text-muted-foreground mb-1">平均互动率</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-xl font-bold text-white">{stats.engagement}%</span>
+                                <span className="text-xl font-bold text-foreground">{stats.engagement}%</span>
                                 <Zap className="h-3 w-3 text-yellow-300" />
                             </div>
                         </div>
@@ -524,27 +524,27 @@ export default function PlatformVideosPage() {
                 </div>
 
                 {/* Background decorative elements */}
-                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-black/10 blur-3xl" />
+                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-foreground/10 blur-3xl" />
+                <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-card/10 blur-3xl" />
             </div>
 
             {/* Dynamic Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {config.stats.map((item, idx) => (
-                    <Card key={idx} className="bg-black/40 border-black group hover:border-white/20 transition-all duration-300">
+                    <Card key={idx} className="bg-card/40 border-border group hover:border-border/80 transition-all duration-300">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-white/60 group-hover:text-white transition-colors">
+                            <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                                 {item.label}
                             </CardTitle>
-                            <div className={cn("p-2 rounded-lg bg-black/60", item.color)}>
+                            <div className={cn("p-2 rounded-lg bg-card/60", item.color)}>
                                 <item.icon className="h-4 w-4" />
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-white">
+                            <div className="text-3xl font-bold text-foreground">
                                 {formatNumber((stats as any)[item.key] || 0)}
                             </div>
-                            <p className="text-xs text-white/40 mt-1 flex items-center gap-1">
+                            <p className="text-xs text-foreground/40 mt-1 flex items-center gap-1">
                                 <TrendingUp className="h-3 w-3" />
                                 较上周期持平
                             </p>
@@ -554,22 +554,22 @@ export default function PlatformVideosPage() {
             </div>
 
             {/* Main Content Area - 热门视频双栏布局 */}
-            <Card className="bg-black/40 border-black overflow-hidden">
-                <CardHeader className="border-b border-black/20 bg-black/20">
+            <Card className="bg-card/40 border-border overflow-hidden">
+                <CardHeader className="border-b border-border/20 bg-card/20">
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg text-white">热门视频排行</CardTitle>
-                            <CardDescription className="text-white/40">基于播放、点赞、评论、收藏、分享的综合评分</CardDescription>
+                            <CardTitle className="text-lg text-foreground">热门视频排行</CardTitle>
+                            <CardDescription className="text-foreground/40">基于播放、点赞、评论、收藏、分享的综合评分</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-4">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-20">
-                            <Loader2 className="h-8 w-8 animate-spin text-white/20" />
+                            <Loader2 className="h-8 w-8 animate-spin text-foreground/20" />
                         </div>
                     ) : sortedVideos.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-white/20 italic">
+                        <div className="flex flex-col items-center justify-center py-20 text-foreground/20 italic">
                             <p>暂无视频数据，请尝试同步</p>
                         </div>
                     ) : (
@@ -579,30 +579,30 @@ export default function PlatformVideosPage() {
                                 {/* 左栏 */}
                                 <div className="space-y-2">
                                     {hotVideosData.leftColumn.map((video: any, idx: number) => (
-                                        <div key={idx} className="group flex items-start gap-2 p-2 rounded-lg bg-black/20 hover:bg-black/40 transition-all border border-black/20 hover:border-white/10">
+                                        <div key={idx} className="group flex items-start gap-2 p-2 rounded-lg bg-card/20 hover:bg-card/40 transition-all border border-border/20 hover:border-border/70">
                                             <div className="relative shrink-0">
                                                 <img
                                                     src={video.cover_url || "/placeholder-video.png"}
-                                                    className="w-24 h-32 object-cover rounded-lg border border-black"
+                                                    className="w-24 h-32 object-cover rounded-lg border border-border"
                                                     alt=""
                                                 />
-                                                <div className="absolute top-1 left-1 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-md text-xs text-white/90 font-bold">
+                                                <div className="absolute top-1 left-1 bg-card/80 backdrop-blur-md px-2 py-0.5 rounded-md text-xs text-foreground/90 font-bold">
                                                     #{(hotVideosPage - 1) * hotVideosPerPage + idx * 2 + 1}
                                                 </div>
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col">
-                                                <h4 className="text-white font-medium line-clamp-2 leading-snug mb-2">
+                                                <h4 className="text-foreground font-medium line-clamp-2 leading-snug mb-2">
                                                     {video.title || "未命名视频"}
                                                 </h4>
-                                                <div className="flex items-center gap-2 mb-2 text-xs text-white/50">
+                                                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                                     {video.author_avatar ? (
                                                         <img
                                                             src={video.author_avatar}
-                                                            className="h-4 w-4 rounded-full object-cover border border-white/10"
+                                                            className="h-4 w-4 rounded-full object-cover border border-border/70"
                                                             alt=""
                                                         />
                                                     ) : (
-                                                        <div className="h-4 w-4 rounded-full bg-white/10" />
+                                                        <div className="h-4 w-4 rounded-full bg-foreground/10" />
                                                     )}
                                                     <span className="truncate">{video.author_name || "作者未填写"}</span>
                                                 </div>
@@ -610,37 +610,37 @@ export default function PlatformVideosPage() {
                                                 {/* 详细数据展示 - 横向一排 */}
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">播放</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.views)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">播放</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.views)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">点赞</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.likes)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">点赞</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.likes)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">评论</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.comments)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">评论</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.comments)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">收藏</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.collects)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">收藏</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.collects)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">分享</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.shares)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">分享</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.shares)}</span>
                                                     </div>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
                                                         onClick={() => handleOpenVideo(video)}
-                                                        className="h-6 w-6 p-0 hover:bg-white/10 ml-auto"
+                                                        className="h-6 w-6 p-0 hover:bg-accent/50 ml-auto"
                                                         title="在浏览器中打开"
                                                     >
-                                                        <ArrowUpRight className="h-3.5 w-3.5 text-white/60 group-hover:text-white transition-colors" />
+                                                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                                                     </Button>
                                                 </div>
 
-                                                <div className="text-[10px] text-white/30 truncate">
+                                                <div className="text-[10px] text-foreground/30 truncate">
                                                     {video.publish_time || "刚刚"}
                                                 </div>
                                             </div>
@@ -651,30 +651,30 @@ export default function PlatformVideosPage() {
                                 {/* 右栏 */}
                                 <div className="space-y-2">
                                     {hotVideosData.rightColumn.map((video: any, idx: number) => (
-                                        <div key={idx} className="group flex items-start gap-2 p-2 rounded-lg bg-black/20 hover:bg-black/40 transition-all border border-black/20 hover:border-white/10">
+                                        <div key={idx} className="group flex items-start gap-2 p-2 rounded-lg bg-card/20 hover:bg-card/40 transition-all border border-border/20 hover:border-border/70">
                                             <div className="relative shrink-0">
                                                 <img
                                                     src={video.cover_url || "/placeholder-video.png"}
-                                                    className="w-24 h-32 object-cover rounded-lg border border-black"
+                                                    className="w-24 h-32 object-cover rounded-lg border border-border"
                                                     alt=""
                                                 />
-                                                <div className="absolute top-1 left-1 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-md text-xs text-white/90 font-bold">
+                                                <div className="absolute top-1 left-1 bg-card/80 backdrop-blur-md px-2 py-0.5 rounded-md text-xs text-foreground/90 font-bold">
                                                     #{(hotVideosPage - 1) * hotVideosPerPage + idx * 2 + 2}
                                                 </div>
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col">
-                                                <h4 className="text-white font-medium line-clamp-2 leading-snug mb-2">
+                                                <h4 className="text-foreground font-medium line-clamp-2 leading-snug mb-2">
                                                     {video.title || "未命名视频"}
                                                 </h4>
-                                                <div className="flex items-center gap-2 mb-2 text-xs text-white/50">
+                                                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
                                                     {video.author_avatar ? (
                                                         <img
                                                             src={video.author_avatar}
-                                                            className="h-4 w-4 rounded-full object-cover border border-white/10"
+                                                            className="h-4 w-4 rounded-full object-cover border border-border/70"
                                                             alt=""
                                                         />
                                                     ) : (
-                                                        <div className="h-4 w-4 rounded-full bg-white/10" />
+                                                        <div className="h-4 w-4 rounded-full bg-foreground/10" />
                                                     )}
                                                     <span className="truncate">{video.author_name || "作者未填写"}</span>
                                                 </div>
@@ -682,37 +682,37 @@ export default function PlatformVideosPage() {
                                                 {/* 详细数据展示 - 横向一排 */}
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">播放</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.views)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">播放</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.views)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">点赞</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.likes)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">点赞</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.likes)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">评论</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.comments)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">评论</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.comments)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">收藏</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.collects)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">收藏</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.collects)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-white/50">分享</span>
-                                                        <span className="text-xs font-medium text-white">{formatNumber(video.shares)}</span>
+                                                        <span className="text-[10px] text-muted-foreground">分享</span>
+                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.shares)}</span>
                                                     </div>
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
                                                         onClick={() => handleOpenVideo(video)}
-                                                        className="h-6 w-6 p-0 hover:bg-white/10 ml-auto"
+                                                        className="h-6 w-6 p-0 hover:bg-accent/50 ml-auto"
                                                         title="在浏览器中打开"
                                                     >
-                                                        <ArrowUpRight className="h-3.5 w-3.5 text-white/60 group-hover:text-white transition-colors" />
+                                                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                                                     </Button>
                                                 </div>
 
-                                                <div className="text-[10px] text-white/30 truncate">
+                                                <div className="text-[10px] text-foreground/30 truncate">
                                                     {video.publish_time || "刚刚"}
                                                 </div>
                                             </div>
@@ -722,17 +722,17 @@ export default function PlatformVideosPage() {
                             </div>
 
                             {/* 分页控件 */}
-                            <div className="flex items-center justify-center gap-2 pt-4 border-t border-black/20">
+                            <div className="flex items-center justify-center gap-2 pt-4 border-t border-border/20">
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     disabled={hotVideosPage <= 1}
                                     onClick={() => setHotVideosPage(prev => Math.max(1, prev - 1))}
-                                    className="border-black bg-black/40 hover:bg-black/60"
+                                    className="border-border bg-card/40 hover:bg-card/60"
                                 >
                                     上一页
                                 </Button>
-                                <span className="text-sm text-white/60">
+                                <span className="text-sm text-muted-foreground">
                                     第 {hotVideosPage} / {hotVideosTotalPages} 页
                                 </span>
                                 <Button
@@ -740,7 +740,7 @@ export default function PlatformVideosPage() {
                                     size="sm"
                                     disabled={hotVideosPage >= hotVideosTotalPages}
                                     onClick={() => setHotVideosPage(prev => Math.min(hotVideosTotalPages, prev + 1))}
-                                    className="border-black bg-black/40 hover:bg-black/60"
+                                    className="border-border bg-card/40 hover:bg-card/60"
                                 >
                                     下一页
                                 </Button>
@@ -752,14 +752,14 @@ export default function PlatformVideosPage() {
 
             {/* Sheet for Full Data Table */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="w-full sm:max-w-5xl bg-black border-black text-white">
-                    <SheetHeader className="pb-6 border-b border-black">
-                        <SheetTitle className="text-2xl text-white">{config.label} 视频数据全集</SheetTitle>
+                <SheetContent className="w-full sm:max-w-5xl bg-card border-border text-foreground">
+                    <SheetHeader className="pb-6 border-b border-border">
+                        <SheetTitle className="text-2xl text-foreground">{config.label} 视频数据全集</SheetTitle>
                         <SheetDescription>查看所有监测到的视频元数据、互动指标及发布状态</SheetDescription>
-                        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-white/60">
+                        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                             <span>每页显示</span>
                             <Select value={String(sheetPageSize)} onValueChange={(value) => setSheetPageSize(Number(value))}>
-                                <SelectTrigger className="h-8 w-20 border-white/10 bg-black text-white">
+                                <SelectTrigger className="h-8 w-20 border-border/70 bg-card text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -768,7 +768,7 @@ export default function PlatformVideosPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <div className="ml-auto flex items-center gap-2 text-white/60">
+                            <div className="ml-auto flex items-center gap-2 text-muted-foreground">
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -795,8 +795,8 @@ export default function PlatformVideosPage() {
                     <div className="mt-6 flex flex-col h-full overflow-hidden pb-10">
                         <ScrollArea className="flex-1">
                             <Table>
-                                <TableHeader className="sticky top-0 bg-black z-10 border-b border-black">
-                                    <TableRow className="border-black hover:bg-black">
+                                <TableHeader className="sticky top-0 bg-card z-10 border-b border-border">
+                                    <TableRow className="border-border hover:bg-card">
                                         <TableHead className="w-[300px]">视频内容</TableHead>
                                         <TableHead>播放</TableHead>
                                         <TableHead>点赞</TableHead>
@@ -818,21 +818,21 @@ export default function PlatformVideosPage() {
                                         const isExpanded = !!expandedRows[key]
                                         return (
                                             <Fragment key={key}>
-                                                <TableRow className="border-black hover:bg-white/5 group">
+                                                <TableRow className="border-border hover:bg-accent/40 group">
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
-                                                            <img src={v.cover_url} className="h-10 w-8 rounded object-cover border border-black" alt="" />
+                                                            <img src={v.cover_url} className="h-10 w-8 rounded object-cover border border-border" alt="" />
                                                             <div className="min-w-0">
                                                                 <span className="font-medium line-clamp-1">{v.title}</span>
-                                                                <div className="mt-1 flex items-center gap-2 text-[11px] text-white/50">
+                                                                <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
                                                                     {v.author_avatar ? (
                                                                         <img
                                                                             src={v.author_avatar}
-                                                                            className="h-3.5 w-3.5 rounded-full object-cover border border-white/10"
+                                                                            className="h-3.5 w-3.5 rounded-full object-cover border border-border/70"
                                                                             alt=""
                                                                         />
                                                                     ) : (
-                                                                        <div className="h-3.5 w-3.5 rounded-full bg-white/10" />
+                                                                        <div className="h-3.5 w-3.5 rounded-full bg-foreground/10" />
                                                                     )}
                                                                     <span className="truncate">{v.author_name || "作者未填写"}</span>
                                                                 </div>
@@ -851,13 +851,13 @@ export default function PlatformVideosPage() {
                                                                 href={v.video_url}
                                                                 target="_blank"
                                                                 rel="noreferrer"
-                                                                className="inline-flex items-center gap-1 text-white/70 hover:text-white"
+                                                                className="inline-flex items-center gap-1 text-foreground/70 hover:text-foreground"
                                                             >
                                                                 查看
                                                                 <ArrowUpRight className="h-3.5 w-3.5" />
                                                             </a>
                                                         ) : (
-                                                            <span className="text-white/30">-</span>
+                                                            <span className="text-foreground/30">-</span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
@@ -867,51 +867,51 @@ export default function PlatformVideosPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-7 px-2 text-xs text-white/70 hover:text-white"
+                                                            className="h-7 px-2 text-xs text-foreground/70 hover:text-foreground"
                                                             onClick={() => toggleRow(key)}
                                                         >
                                                             {isExpanded ? "收起" : "详情"}
                                                         </Button>
                                                     </TableCell>
-                                                    <TableCell className="text-right text-xs text-white/40">{v.publish_time}</TableCell>
+                                                    <TableCell className="text-right text-xs text-foreground/40">{v.publish_time}</TableCell>
                                                 </TableRow>
                                                 {isExpanded && (
-                                                    <TableRow className="border-black bg-black/40">
+                                                    <TableRow className="border-border bg-card/40">
                                                         <TableCell colSpan={11} className="p-4">
                                                             <div className="grid gap-4 md:grid-cols-3">
                                                                 <div className="space-y-2">
-                                                                    <div className="text-xs text-white/60">基础字段</div>
-                                                                    <div className="grid grid-cols-2 gap-2 text-xs text-white/80">
+                                                                    <div className="text-xs text-muted-foreground">基础字段</div>
+                                                                    <div className="grid grid-cols-2 gap-2 text-xs text-foreground/80">
                                                                         <div>视频ID</div>
-                                                                        <div className="text-white/50">{formatValue(v.video_id)}</div>
+                                                                        <div className="text-muted-foreground">{formatValue(v.video_id)}</div>
                                                                         <div>账号</div>
-                                                                        <div className="text-white/50">{formatValue(v.account_name || v.account_id)}</div>
+                                                                        <div className="text-muted-foreground">{formatValue(v.account_name || v.account_id)}</div>
                                                                         <div>平台</div>
-                                                                        <div className="text-white/50">{formatValue(v.platform)}</div>
+                                                                        <div className="text-muted-foreground">{formatValue(v.platform)}</div>
                                                                         <div>状态</div>
-                                                                        <div className="text-white/50">{formatValue(v.status)}</div>
+                                                                        <div className="text-muted-foreground">{formatValue(v.status)}</div>
                                                                         <div>采集时间</div>
-                                                                        <div className="text-white/50">{formatValue(v.collected_at)}</div>
+                                                                        <div className="text-muted-foreground">{formatValue(v.collected_at)}</div>
                                                                     </div>
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <div className="text-xs text-white/60">平台字段</div>
-                                                                    <div className="grid grid-cols-2 gap-2 text-xs text-white/80">
+                                                                    <div className="text-xs text-muted-foreground">平台字段</div>
+                                                                    <div className="grid grid-cols-2 gap-2 text-xs text-foreground/80">
                                                                         {extras.length > 0 ? (
                                                                             extras.map((item, idx) => (
                                                                                 <div key={`${key}-extra-${idx}`} className="contents">
                                                                                     <div>{item.label}</div>
-                                                                                    <div className="text-white/50">{formatValue(item.value)}</div>
+                                                                                    <div className="text-muted-foreground">{formatValue(item.value)}</div>
                                                                                 </div>
                                                                             ))
                                                                         ) : (
-                                                                            <div className="text-white/40">无更多字段</div>
+                                                                            <div className="text-foreground/40">无更多字段</div>
                                                                         )}
                                                                     </div>
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <div className="text-xs text-white/60">原始数据</div>
-                                                                    <pre className="max-h-56 overflow-auto rounded-lg bg-black/60 p-3 text-[10px] leading-relaxed text-white/70">
+                                                                    <div className="text-xs text-muted-foreground">原始数据</div>
+                                                                    <pre className="max-h-56 overflow-auto rounded-lg bg-card/60 p-3 text-[10px] leading-relaxed text-foreground/70">
                                                                         {rawJson || "{}"}
                                                                     </pre>
                                                                 </div>

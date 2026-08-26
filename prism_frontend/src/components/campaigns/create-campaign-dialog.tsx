@@ -42,7 +42,7 @@ interface CreateCampaignDialogProps {
 }
 
 const PLATFORMS = [
-    { id: "douyin", name: "抖音", color: "bg-black" },
+    { id: "douyin", name: "抖音", color: "bg-card" },
     { id: "kuaishou", name: "快手", color: "bg-orange-500" },
     { id: "xiaohongshu", name: "小红书", color: "bg-red-500" },
     { id: "bilibili", name: "B站", color: "bg-blue-400" },
@@ -332,7 +332,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
 
                                             return (
                                                 <Card key={platform} className="overflow-hidden border-gray-800">
-                                                    <div className="px-3 py-2 bg-black border-b border-gray-800/50 flex justify-between items-center">
+                                                    <div className="px-3 py-2 bg-card border-b border-gray-800/50 flex justify-between items-center">
                                                         <div className="flex items-center gap-2">
                                                             <div className={cn("w-2 h-2 rounded-full", pInfo?.color)} />
                                                             <span className="font-medium text-sm">{pInfo?.name}</span>
@@ -428,10 +428,10 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                                         <Video className="w-8 h-8 text-muted-foreground" />
                                                     </div>
                                                 )}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    {selectedMaterials.includes(m.id) && <Check className="w-8 h-8 text-white" />}
+                                                <div className="absolute inset-0 bg-card/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    {selectedMaterials.includes(m.id) && <Check className="w-8 h-8 text-foreground" />}
                                                 </div>
-                                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs truncate">
+                                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-card/60 text-foreground text-xs truncate">
                                                     {m.filename}
                                                 </div>
                                             </div>
@@ -468,7 +468,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
 
                                 {scheduleType !== 'immediate' && (
                                     <div className="space-y-4">
-                                        <div className="p-4 border border-gray-800/50 rounded-lg bg-black">
+                                        <div className="p-4 border border-gray-800/50 rounded-lg bg-card">
                                             <div className="flex items-center justify-between mb-3">
                                                 <div>
                                                     <Label className="font-medium">矩阵节奏</Label>
@@ -533,7 +533,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                                                 max="1440"
                                                                 value={intervalMinutes}
                                                                 onChange={(e) => setIntervalMinutes(parseInt(e.target.value) || 30)}
-                                                                className="w-24 bg-black/5 border-gray-800/50"
+                                                                className="w-24 bg-card/5 border-gray-800/50"
                                                             />
                                                             <span className="text-sm text-muted-foreground">分钟</span>
                                                         </div>
@@ -544,7 +544,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="p-4 border border-gray-800/50 rounded-lg bg-black">
+                                        <div className="p-4 border border-gray-800/50 rounded-lg bg-card">
                                             <Label className="mb-2 block">选择日期范围</Label>
                                             <Popover>
                                                 <PopoverTrigger asChild>
@@ -620,7 +620,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                             </div>
 
                             <div className="border border-gray-800/50 rounded-md">
-                                <div className="bg-black border-b border-gray-800/50 px-4 py-2 text-sm font-medium grid grid-cols-5 gap-4">
+                                <div className="bg-card border-b border-gray-800/50 px-4 py-2 text-sm font-medium grid grid-cols-5 gap-4">
                                     <div>平台</div>
                                     <div>账号</div>
                                     <div className="col-span-2">素材</div>
@@ -646,7 +646,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                     )}
                 </div>
 
-                <DialogFooter className="px-6 py-4 border-t bg-black border-gray-800/50">
+                <DialogFooter className="px-6 py-4 border-t bg-card border-gray-800/50">
                     {step > 1 && (
                         <Button variant="outline" onClick={() => setStep(step - 1)} disabled={submitting}>
                             <ChevronLeft className="w-4 h-4 mr-2" /> 上一步
