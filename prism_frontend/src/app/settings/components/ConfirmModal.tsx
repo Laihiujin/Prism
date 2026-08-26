@@ -52,15 +52,15 @@ export function ConfirmModal({
 
   return (
     <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
-      <AlertDialogContent className="border border-white/10 bg-black/95">
+      <AlertDialogContent className="border border-border/70 bg-card">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white">{title}</AlertDialogTitle>
-          <AlertDialogDescription className="text-white/70">{description}</AlertDialogDescription>
+          <AlertDialogTitle className="text-foreground">{title}</AlertDialogTitle>
+          <AlertDialogDescription className="text-foreground/70">{description}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {requireInput && (
           <div className="space-y-2 py-4">
-            <Label htmlFor="confirm-input" className="text-white/90">
+            <Label htmlFor="confirm-input" className="text-foreground/90">
               请输入 <span className="font-mono font-bold text-destructive">{confirmText}</span> 以确认
             </Label>
             <Input
@@ -68,14 +68,14 @@ export function ConfirmModal({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={`输入 ${confirmText}`}
-              className="border-white/20 bg-white/5 text-white"
+              className="border-border/80 bg-foreground/5 text-foreground"
               autoComplete="off"
             />
           </div>
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancel} className="border-white/20 text-white hover:bg-white/10">
+          <AlertDialogCancel onClick={handleCancel} className="border-border/80 text-foreground hover:bg-accent/50">
             取消
           </AlertDialogCancel>
           <AlertDialogAction
@@ -83,8 +83,8 @@ export function ConfirmModal({
             disabled={!canConfirm}
             className={
               variant === "danger"
-                ? "bg-destructive text-white hover:bg-destructive/90"
-                : "bg-primary text-black hover:bg-primary/90"
+                ? "bg-destructive text-foreground hover:bg-destructive/90"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
             }
           >
             确认

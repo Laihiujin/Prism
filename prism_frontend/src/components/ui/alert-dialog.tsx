@@ -35,7 +35,7 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 rounded-3xl border border-white/10 /95 p-6 text-white shadow-2xl shadow-black/60 backdrop-blur-xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 rounded-3xl border border-border/70 bg-card p-6 text-foreground shadow-2xl shadow-black/60 backdrop-blur-xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
         className
       )}
       {...props}
@@ -78,7 +78,7 @@ const AlertDialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AlertDialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-white/70", className)}
+    className={cn("text-sm text-foreground/70", className)}
     {...props}
   />
 ))
@@ -91,7 +91,7 @@ const AlertDialogAction = React.forwardRef<
   <AlertDialogPrimitive.Action
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-xl bg-black px-4 text-sm font-semibold text-white transition hover:scale-[1.01] focus-visible:outline-none",
+      "inline-flex h-10 items-center justify-center rounded-xl bg-card px-4 text-sm font-semibold text-foreground transition hover:scale-[1.01] focus-visible:outline-none",
       className
     )}
     {...props}
@@ -106,7 +106,7 @@ const AlertDialogCancel = React.forwardRef<
   <AlertDialogPrimitive.Cancel
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-xl border border-white/20 px-4 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none",
+      "inline-flex h-10 items-center justify-center rounded-xl border border-border/80 px-4 text-sm font-semibold text-foreground transition hover:bg-accent/50 focus-visible:outline-none",
       className
     )}
     {...props}

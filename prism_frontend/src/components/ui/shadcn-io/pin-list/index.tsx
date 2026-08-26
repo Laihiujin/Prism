@@ -132,7 +132,7 @@ function PinList({
                     </div>
                   </div>
                   <div className="flex items-center justify-center size-8 rounded-full bg-neutral-400 dark:bg-neutral-600">
-                    <Pin className="size-4 text-white fill-white" />
+                    <Pin className="size-4 text-foreground fill-foreground" />
                   </div>
                 </motion.div>
               ))}
@@ -184,7 +184,7 @@ function PinList({
                     </div>
                   </div>
                   <div className="flex items-center justify-center size-8 rounded-full bg-neutral-400 dark:bg-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity duration-250">
-                    <Pin className="size-4 text-white" />
+                    <Pin className="size-4 text-foreground" />
                   </div>
                 </motion.div>
               ))}

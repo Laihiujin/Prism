@@ -382,7 +382,7 @@ export default function TasksPage() {
   ) => {
     if (totalItems <= ITEMS_PER_PAGE) return null
     return (
-      <div className="mt-4 flex items-center justify-between text-sm text-white/60">
+      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
         <div>共 {totalItems} 条 · 第 {currentPage} / {totalPages} 页</div>
         <div className="flex gap-2">
           <Button
@@ -390,7 +390,7 @@ export default function TasksPage() {
             size="sm"
             onClick={() => onChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="border border-white/10 bg-white/5"
+            className="border border-border/70 bg-foreground/5"
           >
             上一页
           </Button>
@@ -399,7 +399,7 @@ export default function TasksPage() {
             size="sm"
             onClick={() => onChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className="border border-white/10 bg-white/5"
+            className="border border-border/70 bg-foreground/5"
           >
             下一页
           </Button>
@@ -549,7 +549,7 @@ export default function TasksPage() {
             )}
             <Button
               variant="ghost"
-              className="rounded-2xl border border-white/10 bg-white/5"
+              className="rounded-2xl border border-border/70 bg-foreground/5"
               onClick={() => {
                 refetch()
                 queryClient.invalidateQueries({ queryKey: ["manual-tasks"] })
@@ -567,16 +567,16 @@ export default function TasksPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-black border-white/10">
+        <Card className="bg-card border-border/70">
           <CardHeader className="flex items-center gap-3">
-            <Clock3 className="h-8 w-8 text-white" />
+            <Clock3 className="h-8 w-8 text-foreground" />
             <div>
               <CardTitle>定时任务</CardTitle>
               <CardDescription>{scheduledCount} 条待执行</CardDescription>
             </div>
           </CardHeader>
         </Card>
-        <Card className="bg-black border-white/10">
+        <Card className="bg-card border-border/70">
           <CardHeader className="flex items-center gap-3">
             <CheckCircle2 className="h-8 w-8 text-emerald-400" />
             <div>
@@ -585,7 +585,7 @@ export default function TasksPage() {
             </div>
           </CardHeader>
         </Card>
-        <Card className="bg-black border-white/10">
+        <Card className="bg-card border-border/70">
           <CardHeader className="flex items-center gap-3">
             <XCircle className="h-8 w-8 text-red-400" />
             <div>
@@ -594,7 +594,7 @@ export default function TasksPage() {
             </div>
           </CardHeader>
         </Card>
-        <Card className="bg-black border-white/10">
+        <Card className="bg-card border-border/70">
           <CardHeader className="flex items-center gap-3">
             <AlertCircle className="h-8 w-8 text-yellow-400" />
             <div>
@@ -617,7 +617,7 @@ export default function TasksPage() {
         </TabsList>
 
         <TabsContent value="auto">
-          <Card className="bg-black border-white/10">
+          <Card className="bg-card border-border/70">
             <CardHeader className="flex flex-wrap items-center gap-3">
               <div>
                 <CardTitle>任务列表</CardTitle>
@@ -628,7 +628,7 @@ export default function TasksPage() {
                   <Button
                     key={tab.value}
                     variant={statusFilter === tab.value ? "default" : "ghost"}
-                    className="rounded-2xl border border-white/10"
+                    className="rounded-2xl border border-border/70"
                     onClick={() => setStatusFilter(tab.value)}
                   >
                     {tab.label}
@@ -638,7 +638,7 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="rounded-2xl border border-white/10 bg-black p-6 text-center text-sm text-white/60">
+                <div className="rounded-2xl border border-border/70 bg-card p-6 text-center text-sm text-muted-foreground">
                   正在加载任务数据...
                 </div>
               ) : isError ? (
@@ -650,7 +650,7 @@ export default function TasksPage() {
                 <>
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10">
+                      <TableRow className="border-border/70">
                         <TableHead className="w-12">
                           <Checkbox
                             checked={
@@ -667,25 +667,25 @@ export default function TasksPage() {
                             }}
                           />
                         </TableHead>
-                        <TableHead className="text-white/60">标题</TableHead>
-                        <TableHead className="text-white/60">平台</TableHead>
-                        <TableHead className="text-white/60">账号</TableHead>
-                        <TableHead className="text-white/60">素材</TableHead>
-                        <TableHead className="text-white/60">时间</TableHead>
-                        <TableHead className="text-white/60">状态</TableHead>
-                        <TableHead className="text-right text-white/60">操作</TableHead>
+                        <TableHead className="text-muted-foreground">标题</TableHead>
+                        <TableHead className="text-muted-foreground">平台</TableHead>
+                        <TableHead className="text-muted-foreground">账号</TableHead>
+                        <TableHead className="text-muted-foreground">素材</TableHead>
+                        <TableHead className="text-muted-foreground">时间</TableHead>
+                        <TableHead className="text-muted-foreground">状态</TableHead>
+                        <TableHead className="text-right text-muted-foreground">操作</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.length === 0 && (
-                        <TableRow className="border-white/5">
-                          <TableCell colSpan={8} className="text-center text-sm text-white/60">
+                        <TableRow className="border-border/40">
+                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
                             暂无符合条件的任务
                           </TableCell>
                         </TableRow>
                       )}
                       {paginatedTasks.map((task) => (
-                        <TableRow key={task.id} className="border-white/10">
+                        <TableRow key={task.id} className="border-border/70">
                           <TableCell>
                             <Checkbox
                               checked={selectedTaskIds.includes(task.id)}
@@ -700,15 +700,15 @@ export default function TasksPage() {
                           </TableCell>
                           <TableCell className="font-medium">{task.title}</TableCell>
                           <TableCell>
-                            <Badge className="border-white/10 bg-white/10">{task.platform}</Badge>
+                            <Badge className="border-border/70 bg-foreground/10">{task.platform}</Badge>
                           </TableCell>
                           <TableCell>{task.account}</TableCell>
                           <TableCell>{task.material}</TableCell>
                           <TableCell>
                             {task.scheduledAt ? (
-                              <span className="text-xs text-white/70">定时 · {task.scheduledAt}</span>
+                              <span className="text-xs text-foreground/70">定时 · {task.scheduledAt}</span>
                             ) : (
-                              <span className="text-xs text-white/70">{formatBeijingDateTime(task.createdAt)}</span>
+                              <span className="text-xs text-foreground/70">{formatBeijingDateTime(task.createdAt)}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -722,7 +722,7 @@ export default function TasksPage() {
                                       ? "bg-amber-500/20 text-amber-200"
                                       : task.status === "running"
                                         ? "bg-blue-500/20 text-blue-200"
-                                        : "bg-white/10 text-white"
+                                        : "bg-foreground/10 text-foreground"
                               }
                             >
                               {task.status === "scheduled"
@@ -824,7 +824,7 @@ export default function TasksPage() {
         </TabsContent>
 
         <TabsContent value="manual">
-          <Card className="bg-black border-white/10">
+          <Card className="bg-card border-border/70">
             <CardHeader>
               <CardTitle>人工处理任务</CardTitle>
               <CardDescription>
@@ -833,7 +833,7 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               {manualLoading ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-sm text-white/60">
+                <div className="rounded-2xl border border-border/70 bg-foreground/5 p-6 text-center text-sm text-muted-foreground">
                   正在加载...
                 </div>
               ) : manualTasks.length === 0 ? (
@@ -847,7 +847,7 @@ export default function TasksPage() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-white/5">
+                    <TableRow className="border-border/40">
                       <TableHead className="w-12">
                         <Checkbox
                           checked={
@@ -864,19 +864,19 @@ export default function TasksPage() {
                           }}
                         />
                       </TableHead>
-                      <TableHead className="text-white/60">原因</TableHead>
-                      <TableHead className="text-white/60">平台</TableHead>
-                      <TableHead className="text-white/60">账号</TableHead>
-                      <TableHead className="text-white/60">素材</TableHead>
-                      <TableHead className="text-white/60">创建时间</TableHead>
-                      <TableHead className="text-right text-white/60">操作</TableHead>
+                      <TableHead className="text-muted-foreground">原因</TableHead>
+                      <TableHead className="text-muted-foreground">平台</TableHead>
+                      <TableHead className="text-muted-foreground">账号</TableHead>
+                      <TableHead className="text-muted-foreground">素材</TableHead>
+                      <TableHead className="text-muted-foreground">创建时间</TableHead>
+                      <TableHead className="text-right text-muted-foreground">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedManualTasks.map((task: any, index: number) => {
                       const manualId = getManualId(task)
                       return (
-                        <TableRow key={manualId || `manual-${index}`} className="border-white/5">
+                        <TableRow key={manualId || `manual-${index}`} className="border-border/40">
                           <TableCell>
                             <Checkbox
                               checked={manualId ? selectedManualIds.includes(manualId) : false}
@@ -905,7 +905,7 @@ export default function TasksPage() {
                           <TableCell className="max-w-[200px] truncate">
                             {task.material_name || task.material_id || "-"}
                           </TableCell>
-                          <TableCell className="text-xs text-white/70">
+                          <TableCell className="text-xs text-foreground/70">
                             {new Date(task.created_at).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right">

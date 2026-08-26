@@ -36,8 +36,8 @@ export function DatePicker({
                 <Button
                     variant="outline"
                     className={cn(
-                        "justify-start gap-2 rounded-2xl border-white/10 text-left font-normal text-white hover:bg-white/5",
-                        !value && "text-white/60",
+                        "justify-start gap-2 rounded-2xl border-border/70 text-left font-normal text-foreground hover:bg-accent/40",
+                        !value && "text-muted-foreground",
                         className
                     )}
                 >
@@ -45,7 +45,7 @@ export function DatePicker({
                     {displayValue}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto border-white/10 bg-black p-0" align="start">
+            <PopoverContent className="w-auto border-border/70 bg-card p-0" align="start">
                 <Calendar
                     mode="single"
                     selected={selectedDate}

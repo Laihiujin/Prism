@@ -101,7 +101,7 @@ export default function IntervalTimelinePreview({
   // 如果视频或账号数量为0，显示提示
   if (videoCount === 0 || accountCount === 0) {
     return (
-      <div className="p-5 rounded-xl border border-white/10 bg-black/20 text-center text-white/40">
+      <div className="p-5 rounded-xl border border-border/70 bg-card/20 text-center text-foreground/40">
         <Clock className="w-8 h-8 mx-auto mb-2" />
         <p className="text-sm">请先选择视频和账号</p>
       </div>
@@ -111,11 +111,11 @@ export default function IntervalTimelinePreview({
   return (
     <div className="p-5 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
           发布时间轴预览
         </h4>
-        <div className="text-xs text-white/60">
+        <div className="text-xs text-muted-foreground">
           {mode === "video_first" ? "视频优先" : "账号优先"} · 间隔 {intervalSeconds / 60}分钟
         </div>
       </div>
@@ -138,7 +138,7 @@ export default function IntervalTimelinePreview({
                   <p className="text-sm font-mono text-primary font-medium">
                     {displayTime}
                   </p>
-                  <p className="text-[10px] text-white/40">
+                  <p className="text-[10px] text-foreground/40">
                     +{formatDuration(firstTask.offset)}
                   </p>
                 </div>
@@ -162,7 +162,7 @@ export default function IntervalTimelinePreview({
 
         {/* 显示提示（如果有更多任务未显示） */}
         {(videoCount > 10 || accountCount > 5) && (
-          <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10 text-xs text-white/60 text-center">
+          <div className="mt-4 p-3 rounded-lg bg-foreground/5 border border-border/70 text-xs text-muted-foreground text-center">
             <Video className="w-4 h-4 inline mr-2" />
             仅显示前 {Math.min(videoCount, 10)} 个视频 × {Math.min(accountCount, 5)} 个账号的时间轴预览
           </div>
@@ -170,10 +170,10 @@ export default function IntervalTimelinePreview({
       </ScrollArea>
 
       {/* 汇总页脚 */}
-      <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
-        <div className="text-white/60 space-x-4">
-          <span>总任务: <span className="text-white font-medium">{schedule.length}</span> 个</span>
-          <span>总时长: <span className="text-white font-medium">{hours}h {minutes}m</span></span>
+      <div className="mt-4 pt-4 border-t border-border/70 flex items-center justify-between text-xs">
+        <div className="text-muted-foreground space-x-4">
+          <span>总任务: <span className="text-foreground font-medium">{schedule.length}</span> 个</span>
+          <span>总时长: <span className="text-foreground font-medium">{hours}h {minutes}m</span></span>
         </div>
         {randomOffset > 0 && (
           <div className="text-orange-400">

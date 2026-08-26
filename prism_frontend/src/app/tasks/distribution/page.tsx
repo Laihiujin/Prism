@@ -226,9 +226,9 @@ export default function DistributionPage() {
         <div className="space-y-6 p-6">
             <div className="flex flex-wrap items-center gap-4">
                 <div>
-                    <p className="text-sm uppercase tracking-[0.3em] text-white/50">任务分发</p>
+                    <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">任务分发</p>
                     <h1 className="mt-2 text-3xl font-semibold">扫码派发管理</h1>
-                    <p className="text-sm text-white/60">管理二维码扫码领视频任务，监控库存与分发状态</p>
+                    <p className="text-sm text-muted-foreground">管理二维码扫码领视频任务，监控库存与分发状态</p>
                 </div>
                 <div className="ml-auto flex gap-3">
                     <Button variant="ghost" onClick={() => refetch()} disabled={isLoading}>
@@ -306,13 +306,13 @@ export default function DistributionPage() {
                                 <div className="grid grid-cols-4 gap-4">
                                     <Label className="text-right pt-2">
                                         选择素材
-                                        <span className="block text-xs text-white/50 mt-1">
+                                        <span className="block text-xs text-muted-foreground mt-1">
                                             已选: {formData.video_files.length} / 1
                                         </span>
                                     </Label>
-                                    <div className="col-span-3 border border-white/10 rounded-md h-[200px] overflow-y-auto p-2 space-y-1">
+                                    <div className="col-span-3 border border-border/70 rounded-md h-[200px] overflow-y-auto p-2 space-y-1">
                                         {materials.length === 0 ? (
-                                            <p className="text-sm text-white/50 text-center py-4">暂无素材，请先上传</p>
+                                            <p className="text-sm text-muted-foreground text-center py-4">暂无素材，请先上传</p>
                                         ) : (
                                             materials.map((file) => {
                                                 const fileKey = file.storageKey || file.fileUrl
@@ -323,13 +323,13 @@ export default function DistributionPage() {
                                                         key={file.id}
                                                         className={`flex items-center gap-2 p-2 rounded cursor-pointer text-sm ${checked
                                                             ? "bg-primary/20 text-primary"
-                                                            : "hover:bg-white/5"
+                                                            : "hover:bg-accent/40"
                                                             }`}
                                                         onClick={() => toggleMaterial(fileKey)}
                                                     >
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center ${checked
                                                             ? "border-primary bg-primary text-primary-foreground"
-                                                            : "border-white/30"
+                                                            : "border-border"
                                                             }`}>
                                                             {checked && <Plus className="w-3 h-3" />}
                                                         </div>
@@ -345,11 +345,11 @@ export default function DistributionPage() {
                                 {isCreating && (
                                     <div className="w-full space-y-2 mb-4">
                                         <div className="flex items-center justify-between text-sm">
-                                            <span className="text-white/60">创建进度</span>
-                                            <span className="text-white">{createProgress}%</span>
+                                            <span className="text-muted-foreground">创建进度</span>
+                                            <span className="text-foreground">{createProgress}%</span>
                                         </div>
                                         <Progress value={createProgress} className="h-2" />
-                                        <p className="text-xs text-white/50 text-center">
+                                        <p className="text-xs text-muted-foreground text-center">
                                             {createProgress < 30 && "正在准备..."}
                                             {createProgress >= 30 && createProgress < 60 && "正在创建任务..."}
                                             {createProgress >= 60 && createProgress < 90 && "正在配置素材..."}
@@ -368,14 +368,14 @@ export default function DistributionPage() {
                 </div>
             </div>
 
-            <Card className="border-white/10 bg-black">
+            <Card className="border-border/70 bg-card">
                 <CardHeader>
                     <CardTitle>任务列表</CardTitle>
                     <CardDescription>查看所有已创建的扫码派发任务</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap items-center gap-3 mb-4">
-                        <div className="inline-flex rounded-full bg-white/5 p-1 border border-white/10">
+                        <div className="inline-flex rounded-full bg-foreground/5 p-1 border border-border/70">
                             <Button
                                 variant={statusFilter === "pending" ? "default" : "ghost"}
                                 size="sm"
@@ -399,14 +399,14 @@ export default function DistributionPage() {
                                 已派发 ({dispatchedCount})
                             </Button>
                         </div>
-                        <p className="text-sm text-white/60">
+                        <p className="text-sm text-muted-foreground">
                             共 {filteredTasks.length} 条记录，每页 10 条，当前第 {currentPage} / {totalPages} 页
                         </p>
                     </div>
 
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-white/10 hover:bg-white/5">
+                            <TableRow className="border-border/70 hover:bg-accent/40">
                                 <TableHead>ID</TableHead>
                                 <TableHead>平台</TableHead>
                                 <TableHead>标题模板</TableHead>
@@ -419,7 +419,7 @@ export default function DistributionPage() {
                         <TableBody>
                             {paginatedTasks.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center text-white/50">
+                                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                                         暂无任务
                                     </TableCell>
                                 </TableRow>
@@ -427,7 +427,7 @@ export default function DistributionPage() {
                                 paginatedTasks.map((task) => (
                                     <TableRow
                                         key={task.task_id}
-                                        className="border-white/10 hover:bg-white/5 cursor-pointer"
+                                        className="border-border/70 hover:bg-accent/40 cursor-pointer"
                                         onClick={() => {
                                             setSelectedTask({
                                                 id: String(task.task_id),
@@ -455,7 +455,7 @@ export default function DistributionPage() {
                                             <span className="text-emerald-400">{task.available_count}</span> / {task.total_videos}
                                         </TableCell>
                                         <TableCell>{task.distributed_count}</TableCell>
-                                        <TableCell className="text-sm text-white/50">
+                                        <TableCell className="text-sm text-muted-foreground">
                                             {new Date(task.created_at).toLocaleString()}
                                         </TableCell>
                                         <TableCell>
@@ -479,7 +479,7 @@ export default function DistributionPage() {
                                                         })
                                                         setDrawerOpen(true)
                                                     }}
-                                                    className="rounded-xl border border-white/10"
+                                                    className="rounded-xl border border-border/70"
                                                 >
                                                     <QrCode className="mr-2 h-4 w-4" />
                                                     QR派发
@@ -503,7 +503,7 @@ export default function DistributionPage() {
                         </TableBody>
                     </Table>
 
-                    <div className="flex items-center justify-between mt-4 text-sm text-white/70">
+                    <div className="flex items-center justify-between mt-4 text-sm text-foreground/70">
                         <span>
                             显示 {filteredTasks.length === 0 ? 0 : start + 1}-{Math.min(end, filteredTasks.length)} / {filteredTasks.length}
                         </span>

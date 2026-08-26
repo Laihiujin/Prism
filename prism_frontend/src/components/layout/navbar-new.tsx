@@ -267,7 +267,7 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={cn(
-        "sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-background/60 px-6 backdrop-blur-xl relative",
+        "sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/80 bg-glass px-6 relative",
         className
       )}
     >
@@ -291,7 +291,7 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
           <Input
             value={inputValue}
             placeholder="Search... 输入 / 跳转页面"
-            className="h-9 w-full rounded-2xl border-border bg-background pl-9 pr-12 text-sm text-foreground transition-all focus:w-[22rem] focus:border-primary/40 focus:bg-background"
+            className="h-9 w-full rounded-xl border-border/80 bg-background/60 pl-9 pr-12 text-sm text-foreground shadow-[inset_0_1px_0_0_hsl(var(--border)/0.4)] backdrop-blur-md transition-all focus:w-[22rem] focus:border-primary/40 focus:bg-background"
             onChange={(event) => handleChange(event.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => {
@@ -317,8 +317,8 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
           </Badge>
 
           {showSlashResults && (
-            <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur-xl">
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] overflow-hidden rounded-xl border border-border/80 bg-glass-strong shadow-2xl backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-border/80 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs uppercase tracking-[0.18em] text-foreground/40">Page Search</span>
                   <Badge variant="secondary" className="border border-border bg-accent/60 text-[10px] text-foreground/55">
@@ -345,9 +345,9 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
                                 type="button"
                                 onMouseDown={(event) => event.preventDefault()}
                                 onClick={() => navigateToRoute(route)}
-                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-foreground/75 transition hover:bg-accent hover:text-foreground"
+                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-foreground/75 transition hover:bg-accent hover:text-foreground"
                               >
-                                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-accent/60">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-accent/60">
                                   <Icon className="h-4 w-4" />
                                 </div>
                                 <div className="min-w-0 flex-1">

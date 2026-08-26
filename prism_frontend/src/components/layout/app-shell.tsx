@@ -6,6 +6,7 @@ import { HermesEmbeddedHost } from "@/components/hermes/hermes-embedded-host"
 import { SidebarNew } from "@/components/layout/sidebar-new"
 import { NavbarNew } from "@/components/layout/navbar-new"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
+import Aurora from "@/components/Aurora"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -14,17 +15,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hermesActive = pathname === "/ai-agent"
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground selection:bg-primary/30 selection:text-white md:min-h-screen md:w-full">
-      {/* Animated Background */}
-      <div className="fixed inset-0 z-0">
-        {/* Grid Pattern (softened) */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.28)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.28)_1px,transparent_1px)] bg-[size:32px_32px]" />
-        {/* Radial Gradient (White/Silver, softened) */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_50%_-30%,hsl(var(--primary)/0.06),transparent)]" />
+    <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground selection:bg-primary/30 selection:text-foreground md:min-h-screen md:w-full">
+      {/* SaaS ambient background: deep Aurora glow + soft radial fade */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 opacity-[0.55]">
+          <Aurora
+            colorStops={["#1E3A8A", "#0EA5E9", "#312E81", "#111827"]}
+            amplitude={0.9}
+            blend={0.35}
+            speed={0.5}
+          />
+        </div>
+        <div className="absolute inset-0 bg-ambient-fade" />
+        {/* Depth vignette so content stays readable */}
+        <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_50%,transparent_55%,hsl(var(--background)/0.85)_100%)]" />
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex relative z-20">
         <SidebarNew collapsed={collapsed} setCollapsed={setCollapsed} className="z-20" />
       </div>
 

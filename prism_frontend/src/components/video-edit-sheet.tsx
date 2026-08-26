@@ -83,7 +83,7 @@ export function VideoEditSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="w-full sm:max-w-lg bg-black border-white/10">
+            <SheetContent className="w-full sm:max-w-lg bg-card border-border/70">
                 <SheetHeader>
                     <SheetTitle>编辑视频</SheetTitle>
                     <SheetDescription>
@@ -99,7 +99,7 @@ export function VideoEditSheet({
                             <SelectTrigger id="account" className="rounded-xl">
                                 <SelectValue placeholder="选择发布账号" />
                             </SelectTrigger>
-                            <SelectContent className="bg-black border-white/10">
+                            <SelectContent className="bg-card border-border/70">
                                 {accounts.map((account) => (
                                     <SelectItem key={account.id} value={account.id}>
                                         <div className="flex items-center gap-2">
@@ -136,7 +136,7 @@ export function VideoEditSheet({
                                         <span className="mr-1">#{tag}</span>
                                         <button
                                             onClick={() => handleRemoveTag(tag)}
-                                            className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                                            className="ml-1 hover:bg-accent/60 rounded-full p-0.5"
                                         >
                                             <X className="h-3 w-3" />
                                         </button>
@@ -144,7 +144,7 @@ export function VideoEditSheet({
                                 ))}
                             </div>
                         </div>
-                        <p className="text-xs text-white/50">
+                        <p className="text-xs text-muted-foreground">
                             提示: 在描述中使用 @标签名 会自动添加到标签列表
                         </p>
                     </div>
@@ -159,7 +159,7 @@ export function VideoEditSheet({
                             onChange={(e) => handleDescriptionChange(e.target.value)}
                             className="min-h-[200px] rounded-xl resize-none"
                         />
-                        <div className="flex justify-between text-xs text-white/50">
+                        <div className="flex justify-between text-xs text-muted-foreground">
                             <span>{description.length} 字符</span>
                             <span>支持 @ 提及自动添加标签</span>
                         </div>

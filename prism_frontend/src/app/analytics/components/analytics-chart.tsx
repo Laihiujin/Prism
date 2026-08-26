@@ -12,16 +12,16 @@ interface AnalyticsChartProps {
 export function AnalyticsChart({ data, dataKey = "playCount", color = "#3b82f6", title = "数据" }: AnalyticsChartProps) {
     if (!data || data.length === 0) {
         return (
-            <div className="h-[350px] flex items-center justify-center text-white/50 border border-dashed border-white/10 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent">
+            <div className="h-[350px] flex items-center justify-center text-muted-foreground border border-dashed border-border/70 rounded-xl bg-gradient-to-br from-foreground/[0.02] to-transparent">
                 <div className="text-center space-y-3">
-                    <div className="w-16 h-16 mx-auto rounded-full bg-white/5 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-foreground/5 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-foreground/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                     </div>
                     <div>
-                        <p className="text-base font-medium text-white/60">暂无趋势数据</p>
-                        <p className="text-sm text-white/30 mt-1">请尝试调整筛选条件或采集数据</p>
+                        <p className="text-base font-medium text-muted-foreground">暂无趋势数据</p>
+                        <p className="text-sm text-foreground/30 mt-1">请尝试调整筛选条件或采集数据</p>
                     </div>
                 </div>
             </div>

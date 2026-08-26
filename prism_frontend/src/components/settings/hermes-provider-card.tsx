@@ -230,12 +230,12 @@ export function HermesProviderCard() {
     "http://127.0.0.1:9119"
 
   return (
-    <Card className="border-white/10 bg-white/0">
+    <Card className="border-border/70 bg-transparent">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-white">
+        <CardTitle className="flex items-center gap-2 text-foreground">
           Hermes 模型提供商
         </CardTitle>
-        <CardDescription className="text-white/60">
+        <CardDescription className="text-muted-foreground">
           在系统页直接维护 Hermes Agent 的 provider、模型、API Key 和最大轮次，不再依赖旧的 Agent 设置页。
         </CardDescription>
       </CardHeader>
@@ -302,17 +302,17 @@ export function HermesProviderCard() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-            <div className="text-xs uppercase tracking-[0.22em] text-white/40">当前提供商</div>
-            <div className="mt-2 text-sm font-medium text-white">{savedConfig?.provider || providerLabel}</div>
+          <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
+            <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">当前提供商</div>
+            <div className="mt-2 text-sm font-medium text-foreground">{savedConfig?.provider || providerLabel}</div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-            <div className="text-xs uppercase tracking-[0.22em] text-white/40">Hermes Home</div>
-            <div className="mt-2 break-all text-sm text-white/80">{savedConfig?.runtime?.home_path || "未检测到"}</div>
+          <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
+            <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">Hermes Home</div>
+            <div className="mt-2 break-all text-sm text-foreground/80">{savedConfig?.runtime?.home_path || "未检测到"}</div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-            <div className="text-xs uppercase tracking-[0.22em] text-white/40">Dashboard</div>
-            <div className="mt-2 break-all text-sm text-white/80">{dashboardUrl}</div>
+          <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
+            <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">Dashboard</div>
+            <div className="mt-2 break-all text-sm text-foreground/80">{dashboardUrl}</div>
           </div>
         </div>
 
@@ -321,11 +321,11 @@ export function HermesProviderCard() {
             {loading.save ? <Loader2 className="animate-spin" /> : <Save />}
             保存模型配置
           </Button>
-          <Button variant="secondary" className="bg-white/10" onClick={() => void testConfig()} disabled={loading.test}>
+          <Button variant="secondary" className="bg-foreground/10" onClick={() => void testConfig()} disabled={loading.test}>
             {loading.test ? <Loader2 className="animate-spin" /> : <TestTube2 />}
             测试连接
           </Button>
-          <Button variant="secondary" className="bg-white/10" onClick={() => void hydrate()} disabled={loading.hydrate}>
+          <Button variant="secondary" className="bg-foreground/10" onClick={() => void hydrate()} disabled={loading.hydrate}>
             {loading.hydrate ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             刷新
           </Button>

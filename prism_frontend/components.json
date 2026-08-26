@@ -13,5 +13,13 @@
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils"
+  },
+  "registries": {
+    "@reactbits": {
+      "url": "https://reactbits.dev/r/{name}.json"
+    },
+    "@reactbits-pro": {
+      "url": "https://pro.reactbits.dev/api/r/pro/{name}.json"
+    }
   }
 }

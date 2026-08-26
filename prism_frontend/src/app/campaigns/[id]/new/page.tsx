@@ -220,7 +220,7 @@ export default function CampaignPackageBuilderPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-semibold">构建任务包</h1>
-          <p className="text-sm text-white/60">选择素材与账号，生成可发布的子任务</p>
+          <p className="text-sm text-muted-foreground">选择素材与账号，生成可发布的子任务</p>
         </div>
         <div className="flex gap-2">
 
@@ -232,7 +232,7 @@ export default function CampaignPackageBuilderPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border-white/10 bg-white/5">
+        <Card className="lg:col-span-2 border-border/70 bg-foreground/5">
           <CardHeader>
             <CardTitle>基础信息</CardTitle>
             <CardDescription>确认计划与任务包信息，便于追踪与复用</CardDescription>
@@ -241,12 +241,12 @@ export default function CampaignPackageBuilderPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label>关联计划</Label>
-                <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="mt-2 rounded-xl border border-border/70 bg-foreground/5 p-3">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
                     <span className="font-medium">{plan?.name || `计划 #${planId}`}</span>
                   </div>
-                  <p className="mt-1 text-xs text-white/60 line-clamp-2">{plan?.remark || "未添加备注"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{plan?.remark || "未添加备注"}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {planPlatforms.map((p) => (
                       <Badge key={p} variant="secondary" className="rounded-xl text-xs">
@@ -278,7 +278,7 @@ export default function CampaignPackageBuilderPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-border/70 bg-foreground/5">
           <CardHeader>
             <CardTitle>发布策略</CardTitle>
             <CardDescription>控制分发模式与定时配置</CardDescription>
@@ -318,9 +318,9 @@ export default function CampaignPackageBuilderPage() {
                 </Button>
               </div>
               {scheduleMode === "daily" && (
-                <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="space-y-2 rounded-xl border border-border/70 bg-foreground/5 p-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm text-white/80">时间点</Label>
+                    <Label className="text-sm text-foreground/80">时间点</Label>
                     <Button variant="ghost" size="sm" className="rounded-lg" onClick={handleAddTimePoint}>
                       + 添加
                     </Button>
@@ -332,34 +332,34 @@ export default function CampaignPackageBuilderPage() {
                         value={time}
                         onChange={(e) => handleChangeTimePoint(index, e.target.value)}
                         placeholder="HH:mm"
-                        className="rounded-lg bg-black/20"
+                        className="rounded-lg bg-card/20"
                       />
                     ))}
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-sm text-white/80">单账号每日条数</Label>
+                    <Label className="text-sm text-foreground/80">单账号每日条数</Label>
                     <Input
                       type="number"
                       min={1}
                       value={perAccountPerDay}
                       onChange={(e) => setPerAccountPerDay(Math.max(1, Number(e.target.value) || 1))}
-                      className="rounded-lg bg-black/20"
+                      className="rounded-lg bg-card/20"
                     />
                   </div>
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-foreground/5 p-3">
               <div>
                 <p className="font-medium">自动生成任务</p>
-                <p className="text-xs text-white/60">保存后立即拆解为发布任务</p>
+                <p className="text-xs text-muted-foreground">保存后立即拆解为发布任务</p>
               </div>
               <Switch checked={generateTasks} onCheckedChange={setGenerateTasks} />
             </div>
             <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/10 p-3">
               <div>
                 <p className="font-medium">直接调用发布接口</p>
-                <p className="text-xs text-white/70">同步触发矩阵发布，避免重复配置</p>
+                <p className="text-xs text-foreground/70">同步触发矩阵发布，避免重复配置</p>
               </div>
               <Switch checked={publishNow} onCheckedChange={setPublishNow} />
             </div>
@@ -368,7 +368,7 @@ export default function CampaignPackageBuilderPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="border-white/10 bg-white/5 lg:col-span-2">
+        <Card className="border-border/70 bg-foreground/5 lg:col-span-2">
           <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle>选择平台与账号</CardTitle>
@@ -390,7 +390,7 @@ export default function CampaignPackageBuilderPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {filteredAccounts.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-white/60">
+              <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
                 当前平台暂无账号
               </div>
             ) : (
@@ -406,12 +406,12 @@ export default function CampaignPackageBuilderPage() {
                           "flex w-full items-center justify-between rounded-xl border p-3 text-left transition",
                           active
                             ? "border-primary/50 bg-primary/10"
-                            : "border-white/10 bg-white/5 hover:border-white/20"
+                            : "border-border/70 bg-foreground/5 hover:border-border/80"
                         )}
                       >
                         <div>
                           <p className="font-medium">{account.name}</p>
-                          <p className="text-xs text-white/60">{account.user_id || account.id}</p>
+                          <p className="text-xs text-muted-foreground">{account.user_id || account.id}</p>
                         </div>
                         <Badge variant={active ? "secondary" : "outline"} className="rounded-lg">
                           {account.status}
@@ -425,14 +425,14 @@ export default function CampaignPackageBuilderPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-border/70 bg-foreground/5">
           <CardHeader>
             <CardTitle>选择素材</CardTitle>
             <CardDescription>仅显示待发布素材</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {pendingMaterials.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-white/60">
+              <div className="rounded-xl border border-dashed border-border/70 p-6 text-center text-sm text-muted-foreground">
                 暂无待发布素材
               </div>
             ) : (
@@ -448,20 +448,20 @@ export default function CampaignPackageBuilderPage() {
                           "w-full rounded-xl border p-3 text-left transition",
                           active
                             ? "border-primary/50 bg-primary/10"
-                            : "border-white/10 bg-white/5 hover:border-white/20"
+                            : "border-border/70 bg-foreground/5 hover:border-border/80"
                         )}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div>
                             <p className="font-medium">{material.filename}</p>
-                            <p className="text-xs text-white/60">{material.filesize}</p>
+                            <p className="text-xs text-muted-foreground">{material.filesize}</p>
                           </div>
                           <Badge variant="outline" className="rounded-lg text-xs">
                             {(material.type as any)?.toUpperCase?.() || 'FILE'}
                           </Badge>
                         </div>
                         {material.note && (
-                          <p className="mt-1 text-xs text-white/60 line-clamp-2">{material.note}</p>
+                          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{material.note}</p>
                         )}
                       </button>
                     )
@@ -480,7 +480,7 @@ export default function CampaignPackageBuilderPage() {
               <CheckCircle2 className="h-5 w-5 text-primary" />
               <p className="font-semibold">执行摘要</p>
             </div>
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-foreground/70">
               {selectedAccounts.length} 个账号 · {selectedMaterials.length} 条素材 ·{" "}
               {scheduleMode === "immediate" ? "即时发布" : `${timePoints.length} 个时间点`}
             </p>
@@ -488,7 +488,7 @@ export default function CampaignPackageBuilderPage() {
           <div className="flex flex-wrap gap-3">
             <Button
               variant="ghost"
-              className="rounded-xl border border-white/10"
+              className="rounded-xl border border-border/70"
               onClick={() => router.push(`/campaigns/${planId}`)}
             >
               取消
