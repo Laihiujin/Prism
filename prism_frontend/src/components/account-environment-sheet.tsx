@@ -167,6 +167,16 @@ export function AccountEnvironmentSheet({
                                 <FieldRow label="Backend" value={browser.backend || "patchright"} />
                                 <FieldRow label="Engine" value={browser.engine || "Patchright Chromium"} />
                                 <FieldRow label="Persona Profile" value={browser.persona_profile_id || "未分配"} mono />
+                                <div className="flex items-start justify-between gap-4 py-2 border-b border-border/50 last:border-0">
+                                    <span className="text-xs text-muted-foreground shrink-0">Persona 服务</span>
+                                    {browser.persona_online ? (
+                                        <Badge variant="secondary" className="text-xs bg-emerald-500/15 text-emerald-400 border-emerald-500/30">在线</Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="text-xs bg-yellow-500/15 text-yellow-400 border-yellow-500/30">
+                                            离线 · 回退 Patchright
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

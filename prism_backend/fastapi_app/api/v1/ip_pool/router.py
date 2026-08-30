@@ -446,3 +446,42 @@ async def release_qingguo_ip(
             "message": "释放成功" if success else "释放失败"
         }
     }
+
+
+# ── Persona Studio 状态（Browser Identity 层健康）──
+
+@router.get("/persona/status")
+async def persona_status():
+    """Persona Studio 服务状态（Browser Identity / Fingerprint / Profile 层）。"""
+    try:
+        from fastapi_app.services.persona_client import get_persona_client
+        from fastapi_app.core.config import settings
+        client = get_persona_client()
+        online = await client.health()
+        profiles = []
+        engine = settings.PERSONA_DEFAULT_ENGINE
+        if online:
+            try:
+                profiles = await client.list_profiles()
+            except Exception:
+                profiles = []
+        return {
+            "status": "success",
+            "result": {
+                "online": online,
+                "api_base": client.base_url,
+                "default_engine": engine,
+                "inject_proxy": settings.PERSONA_INJECT_PROXY,
+                "profile_count": len(profiles) if isinstance(profiles, list) else 0,
+                "message": "Persona Studio 在线" if online else "Persona Studio 离线，浏览器回退 Patchright 直连模式",
+            }
+        }
+    except Exception as e:
+        logger.error(f"查询 Persona 状态失败: {e}")
+        return {
+            "status": "success",
+            "result": {
+                "online": False,
+                "message": "Persona Studio 不可用",
+            }
+        }

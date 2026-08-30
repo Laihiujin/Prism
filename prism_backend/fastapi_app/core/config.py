@@ -106,6 +106,16 @@ class Settings(BaseSettings):
     VIDEO_FILES_DIR: str = str(Path(DATA_DIR) / "videoFile")
     UPLOAD_DIR: str = str(Path(DATA_DIR) / "uploads")
 
+    # ── Persona Studio（Browser Identity / Fingerprint / Profile 层）──
+    # persona serve 的 HTTP API 地址；为空则回退 PatchrightBackend 直连模式
+    PERSONA_API_BASE: str = "http://127.0.0.1:8787"
+    # 每个账号默认的 Persona 引擎（cloak/camoufox/patchright/playwright）
+    PERSONA_DEFAULT_ENGINE: str = "patchright"
+    # 创建 Persona Profile 时是否注入 Prism 账号固定代理
+    PERSONA_INJECT_PROXY: bool = True
+    # 浏览器环境启动超时（秒）
+    PERSONA_LAUNCH_TIMEOUT: int = 60
+
     # 任务队列配置
     TASK_QUEUE_MAX_WORKERS: int = 3  # 并发任务数（降低资源占用）
     TASK_MAX_RETRIES: int = 3
