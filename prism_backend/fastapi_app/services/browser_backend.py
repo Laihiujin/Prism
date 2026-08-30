@@ -156,27 +156,109 @@ class PatchrightBackend(BrowserBackend):
 
 
 class PersonaBackend(BrowserBackend):
-    """Persona Studio 后端（预留）。
+    """Persona Studio 后端（Browser Identity / Fingerprint / Profile 层）。
 
-    Persona Studio 负责指纹/Profile 持久化；Prism 只做 account_id ↔ persona_profile_id
-    映射 + 注入固定 Proxy。接入时实现 start()：调用 Persona API 启动 profile 并取 CDP/上下文。
+    Prism 不自研指纹/Profile 持久化，全部交给 Persona Studio：
+    - account_id ↔ persona_profile_id 一一映射（Prism 账号表维护）
+    - Persona 负责指纹生成、Profile 存储、Cookie/LocalStorage 持久会话、
+      引擎选择（cloak/camoufox/patchright/playwright）、代理注入
+    - Prism 通过 Persona HTTP API attach CDP，再用 patchright connect_over_cdp
+      驱动浏览器执行平台 Adapter（Platform Adapter 无感知）
+
+    链路：Account → Persona Profile → Fingerprint → Sticky Proxy → Patchright → Platform Adapter
     """
 
     name = "persona"
 
     def __init__(self, api_base: Optional[str] = None):
-        self.api_base = api_base  # 例如 http://127.0.0.1:PORT
+        self.api_base = api_base  # http://127.0.0.1:8787
+
+    def _client(self):
+        from fastapi_app.services.persona_client import PersonaClient
+        return PersonaClient(base_url=self.api_base)
 
     async def start(
         self,
         account_id: str,
         profile: Optional[Dict[str, Any]] = None,
         proxy: Optional[Dict[str, Any]] = None,
+        headless: bool = True,
         **kwargs,
     ) -> BrowserSession:
-        raise NotImplementedError(
-            "Persona Studio 尚未接入。接入后：persona_profile_id 启动 Profile，注入 proxy，返回 CDP 上下文。"
+        from fastapi_app.core.config import settings
+        from utils.automation_provider import async_playwright
+
+        profile = profile or {}
+        persona_profile_id = profile.get("persona_profile_id") or account_id
+        client = self._client()
+
+        # 1. 确保 Profile 存在（幂等）
+        engine = kwargs.get("engine") or settings.PERSONA_DEFAULT_ENGINE
+        proxy_meta = proxy or {}
+        await client.ensure_profile(
+            persona_profile_id,
+            proxy=proxy_meta if settings.PERSONA_INJECT_PROXY else None,
+            engine=engine,
+            country=proxy_meta.get("country"),
         )
+
+        # 2. Attach CDP（headless 模式由调用方决定）
+        attach = await client.attach(persona_profile_id, headless=headless)
+        ws_url = attach.get("wsUrl") or attach.get("ws_url")
+        if not ws_url:
+            raise RuntimeError(
+                f"Persona attach 未返回 wsUrl: {attach}（请确认 persona serve 已启动且引擎已安装）"
+            )
+
+        # 3. 用 Patchright 连接 CDP（Platform Adapter 无感知）
+        pw = await async_playwright().start()
+        browser = await pw.chromium.connect_over_cdp(ws_url)
+        context = browser.contexts[0] if browser.contexts else await browser.new_context()
+        page = context.pages[0] if context.pages else await context.new_page()
+
+        logger.info(
+            f"[PersonaBackend] 启动 {account_id} persona_profile={persona_profile_id} "
+            f"engine={engine} proxy={'已注入' if proxy_meta else '直连'} headless={headless}"
+        )
+        return BrowserSession(
+            account_id=account_id,
+            backend=self.name,
+            context=context,
+            page=page,
+            browser=browser,
+            extra={
+                "pw": pw,
+                "persona_profile_id": persona_profile_id,
+                "client": client,
+            },
+        )
+
+    async def stop(self, session: BrowserSession):
+        persona_profile_id = session.extra.get("persona_profile_id")
+        client = session.extra.get("client")
+        await session.close()
+        pw = session.extra.pop("pw", None)
+        if pw is not None:
+            try:
+                await pw.stop()
+            except Exception:
+                pass
+        # 停止 Persona 侧浏览器进程（Profile 数据保留）
+        if client is not None and persona_profile_id:
+            try:
+                await client.stop(persona_profile_id)
+            except Exception as e:
+                logger.warning(f"[PersonaBackend] persona stop 失败: {e}")
+
+    async def health(self, account_id: str) -> Dict[str, Any]:
+        client = self._client()
+        online = await client.health()
+        return {
+            "backend": self.name,
+            "account_id": account_id,
+            "persona_api": self.api_base,
+            "status": "online" if online else "offline",
+        }
 
 
 class BrowserBackendManager:
@@ -193,7 +275,13 @@ class BrowserBackendManager:
         if not cls._backends:
             cls.register(PatchrightBackend())
             cls.register(PersonaBackend())
-        backend = cls._backends.get(name)
+        # 别名：persona-studio / persona_studio → persona
+        normalized = {
+            "persona-studio": "persona",
+            "persona_studio": "persona",
+            "camofox": "persona",
+        }.get(name, name)
+        backend = cls._backends.get(normalized)
         if backend is None:
             logger.warning(f"BrowserBackend '{name}' 未注册，回退 patchright")
             return cls._backends["patchright"]
