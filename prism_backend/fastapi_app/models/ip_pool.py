@@ -31,6 +31,8 @@ class IPStatus(str, Enum):
     FAILED = "failed"         # 失效
     BANNED = "banned"         # 被封禁
     CHECKING = "checking"     # 检测中
+    DEGRADED = "degraded"     # 降级（连续1次失败，暂不换绑）
+    AUTH_FAILED = "auth_failed"  # 认证失败（密码错误等）
 
 
 class ProxyIP(BaseModel):
@@ -38,7 +40,8 @@ class ProxyIP(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     
     # 基础信息
-    ip: str = Field(..., description="IP地址")
+    name: Optional[str] = Field(None, description="节点名称，如 proxy-001")
+    ip: str = Field(..., description="IP地址/主机")
     port: int = Field(..., description="端口号")
     protocol: IPProtocol = Field(default=IPProtocol.HTTP, description="协议类型")
     
@@ -54,13 +57,26 @@ class ProxyIP(BaseModel):
     
     # 绑定信息（支持多账号绑定）
     bound_account_ids: List[str] = Field(default_factory=list, description="绑定的账号ID列表")
-    max_bindings: int = Field(default=30, description="最大绑定账号数")
+    max_bindings: int = Field(default=1, description="最大绑定账号数，默认1（账号级固定绑定）")
     
     # 地理位置
     country: str = Field(default="CN", description="国家代码")
     region: Optional[str] = Field(None, description="省/州")
     city: Optional[str] = Field(None, description="城市")
     isp: Optional[str] = Field(None, description="运营商")
+    asn: Optional[str] = Field(None, description="ASN编号")
+    
+    # 出口IP（健康检测时经代理探测到的真实出口IP）
+    exit_ip: Optional[str] = Field(None, description="出口IP（经代理实际出口）")
+    latency_ms: Optional[int] = Field(None, description="最近延迟(ms)")
+    
+    # ── 健康状态机（连续失败计数 + 出口IP漂移检测）──
+    consecutive_failures: int = Field(default=0, description="连续失败次数")
+    is_enabled: bool = Field(default=True, description="是否启用（禁用后不可绑定/使用）")
+    previous_exit_ip: Optional[str] = Field(None, description="上一次检测到的出口IP（用于漂移检测）")
+    exit_ip_changed_at: Optional[datetime] = Field(None, description="出口IP最近一次变化时间")
+    last_success_at: Optional[datetime] = Field(None, description="最近成功检测时间")
+    last_failure_at: Optional[datetime] = Field(None, description="最近失败检测时间")
     
     # 使用统计
     success_count: int = Field(default=0, description="成功次数")
@@ -90,7 +106,16 @@ class ProxyIP(BaseModel):
     @property
     def is_healthy(self) -> bool:
         """是否健康"""
-        return self.status == IPStatus.AVAILABLE and self.success_rate >= 70
+        return self.status in (IPStatus.AVAILABLE, IPStatus.IN_USE)
+    
+    @property
+    def exit_ip_changed(self) -> bool:
+        """出口IP是否发生过漂移"""
+        return bool(
+            self.exit_ip
+            and self.previous_exit_ip
+            and self.exit_ip != self.previous_exit_ip
+        )
     
     def to_proxy_url(self) -> Optional[str]:
         """转换为代理URL"""
@@ -104,6 +129,7 @@ class ProxyIP(BaseModel):
 
 class AddIPRequest(BaseModel):
     """添加IP请求"""
+    name: Optional[str] = None
     ip: str
     port: int
     protocol: IPProtocol = IPProtocol.HTTP
@@ -114,9 +140,15 @@ class AddIPRequest(BaseModel):
     region: Optional[str] = None
     city: Optional[str] = None
     isp: Optional[str] = None
-    max_bindings: int = 30
+    asn: Optional[str] = None
+    max_bindings: int = 1
     note: Optional[str] = None
     provider: Optional[str] = None
+
+
+class ImportProxyRequest(BaseModel):
+    """批量导入代理请求"""
+    items: List[AddIPRequest]
 
 
 class BindAccountRequest(BaseModel):

@@ -190,6 +190,11 @@ LaunchScript/python-3.11.9-embed-amd64.zip
 /prism_backend/reverse_api/artifacts/
 /prism_backend/reverse_api/signing/.baseline-run/
 
+# Prism backend runtime data (Proxy Manager / browser profiles)
+/prism_backend/data/ip_pool.json
+/prism_backend/browser_profiles/
+/prism_backend/data/browser_profiles/
+
 # Python build metadata
 *.egg-info/
 

@@ -82,7 +82,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "账号管理", href: "/account", icon: UsersRound },
       { label: "素材管理", href: "/materials", icon: FolderKanban },
-      { label: "IP 资源池", href: "/ip-pool", icon: Globe },
+      { label: "代理管理", href: "/ip-pool", icon: Globe },
     ],
   },
   {
