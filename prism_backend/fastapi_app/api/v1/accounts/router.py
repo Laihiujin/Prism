@@ -571,6 +571,14 @@ async def get_account_environment(account_id: str):
         except Exception as e:
             logger.warning(f"读取代理服务失败: {e}")
 
+        # Persona serve 在线状态
+        persona_online = False
+        try:
+            from fastapi_app.services.persona_client import get_persona_client
+            persona_online = await get_persona_client().health()
+        except Exception:
+            persona_online = False
+
         env = {
             "account": {
                 "account_id": account.get("account_id"),
@@ -581,6 +589,7 @@ async def get_account_environment(account_id: str):
             "browser": {
                 "backend": binding.get("browser_backend") or "patchright",
                 "persona_profile_id": binding.get("persona_profile_id"),
+                "persona_online": persona_online,
                 "engine": "patchright",
             },
             "proxy": {
@@ -689,8 +698,11 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
                 }
 
         profile = {
-            "persona_profile_id": binding.get("persona_profile_id"),
+            "persona_profile_id": binding.get("persona_profile_id") or account_id,
         }
+        # Persona Proxy 需带 country 用于指纹 locale/timezone 对齐
+        if proxy_config and proxy_obj and proxy_obj.country:
+            proxy_config["country"] = proxy_obj.country
         session = await backend.start(
             account_id,
             profile=profile,
@@ -724,7 +736,10 @@ async def stop_account_browser(account_id: str):
         session = _ACTIVE_SESSIONS.pop(account_id, None)
         if session is None:
             return {"status": "success", "result": {"success": True, "message": "无活动浏览器会话"}}
-        await session.close()
+        # 通过对应 backend 停止（Persona 后端需同时停止 Persona 侧进程）
+        from fastapi_app.services.browser_backend import get_browser_backend
+        backend = get_browser_backend(session.backend)
+        await backend.stop(session)
         return {"status": "success", "result": {"success": True, "message": "浏览器已关闭，Profile 已保留"}}
     except Exception as e:
         logger.error(f"停止账号浏览器失败 {account_id}: {e}")
