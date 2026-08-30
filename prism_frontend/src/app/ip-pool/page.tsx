@@ -18,6 +18,7 @@ import {
     Server,
     MapPin,
     CloudLightning,
+    MonitorSmartphone,
     LogOut
 } from "lucide-react"
 
@@ -168,6 +169,14 @@ export default function IPPoolPage() {
         queryKey: ["accounts"],
         queryFn: async () => {
             const res = await fetch("/api/v1/accounts?limit=1000")
+            return res.json()
+        }
+    })
+
+    const { data: personaStatus } = useQuery({
+        queryKey: ["ip-pool", "persona-status"],
+        queryFn: async () => {
+            const res = await fetch("/api/v1/ip-pool/persona/status")
             return res.json()
         }
     })
@@ -443,6 +452,31 @@ export default function IPPoolPage() {
                     icon={AlertCircle}
                     description="需及时处理"
                 />
+            </div>
+
+            {/* Browser Identity 层状态（Persona Studio） */}
+            <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card/40 px-4 py-3 text-sm">
+                <MonitorSmartphone className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">Browser Identity</span>
+                {personaStatus?.result?.online ? (
+                    <>
+                        <Badge variant="secondary" className="text-xs bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                            Persona Studio 在线
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                            引擎: {personaStatus.result.default_engine} · Profiles: {personaStatus.result.profile_count} · 代理注入: {personaStatus.result.inject_proxy ? "开" : "关"}
+                        </span>
+                    </>
+                ) : (
+                    <>
+                        <Badge variant="secondary" className="text-xs bg-yellow-500/15 text-yellow-400 border-yellow-500/30">
+                            Persona Studio 离线
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                            {personaStatus?.result?.message || "浏览器将回退 Patchright 直连模式（每账号独立 user_data_dir）"}
+                        </span>
+                    </>
+                )}
             </div>
 
             {/* Main Table */}
