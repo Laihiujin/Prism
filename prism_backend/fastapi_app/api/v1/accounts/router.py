@@ -579,6 +579,14 @@ async def get_account_environment(account_id: str):
         except Exception:
             persona_online = False
 
+        # Runtime 锁状态（安全信息，不含敏感数据）
+        runtime_status = {"locked": False}
+        try:
+            from fastapi_app.services.runtime_lock_service import get_runtime_lock_service
+            runtime_status = get_runtime_lock_service().status(account_id)
+        except Exception:
+            pass
+
         env = {
             "account": {
                 "account_id": account.get("account_id"),
@@ -592,6 +600,7 @@ async def get_account_environment(account_id: str):
                 "persona_online": persona_online,
                 "engine": "patchright",
             },
+            "runtime": runtime_status,
             "proxy": {
                 "proxy_id": proxy_id,
                 "name": proxy.name if proxy else None,
@@ -618,6 +627,35 @@ async def get_account_environment(account_id: str):
         raise
     except Exception as e:
         logger.error(f"获取账号环境失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{account_id}/runtime")
+async def get_account_runtime(account_id: str):
+    """查询账号 Browser Runtime 状态（锁 + 浏览器后端）。"""
+    try:
+        from fastapi_app.services.runtime_lock_service import get_runtime_lock_service
+        lock_service = get_runtime_lock_service()
+        lock_status = lock_service.status(account_id)
+        binding = cookie_manager.get_account_binding(account_id) or {}
+        active_local = account_id in _ACTIVE_SESSIONS
+        return {
+            "status": "success",
+            "result": {
+                "account_id": account_id,
+                "locked": lock_status.get("locked", False),
+                "operation": lock_status.get("operation"),
+                "task_id": lock_status.get("task_id"),
+                "worker_id": lock_status.get("worker_id"),
+                "acquired_at": lock_status.get("acquired_at"),
+                "expires_at": lock_status.get("expires_at"),
+                "ttl_remaining": lock_status.get("ttl_remaining"),
+                "browser_backend": binding.get("browser_backend") or "patchright",
+                "active_local": active_local,
+            },
+        }
+    except Exception as e:
+        logger.error(f"查询账号 Runtime 状态失败 {account_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -667,9 +705,36 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
     """
     启动账号浏览器环境（统一 BrowserBackend）。
 
-    链路：读取绑定 → 选择 backend → 注入固定 Proxy → 启动 Persistent Context。
-    profile 数据永久保留；仅 start/stop 控制进程生命周期。
+    链路：AccountRuntimeLock → 读取绑定 → 选择 backend → 注入固定 Proxy → 启动。
+    同一账号同时只允许一个活跃 Runtime；冲突返回 409 ACCOUNT_RUNTIME_BUSY。
     """
+    from fastapi_app.services.runtime_lock_service import (
+        get_runtime_lock_service, RuntimeLockConflict, RuntimeLockUnavailable,
+        LockHeartbeat,
+    )
+
+    lock_service = get_runtime_lock_service()
+    import uuid as _uuid
+    task_id = f"api-start-{_uuid.uuid4().hex[:8]}"
+
+    # 1. 获取锁（非阻塞；冲突 → 409）
+    lock = None
+    try:
+        lock = lock_service.acquire_or_raise(
+            account_id, operation="browser_start", task_id=task_id
+        )
+    except RuntimeLockConflict as e:
+        return {
+            "status": "error",
+            "code": "ACCOUNT_RUNTIME_BUSY",
+            "detail": str(e),
+            "runtime": e.status,
+        }
+    except RuntimeLockUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    # 2. 启动浏览器（锁保持持有，heartbeat 续期）
+    heartbeat = None
     try:
         binding = cookie_manager.get_account_binding(account_id) or {}
         proxy_id = binding.get("proxy_id")
@@ -709,8 +774,14 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
             proxy=proxy_config,
             headless=request.headless,
         )
-        # 会话句柄暂存（真实生产应放入 runtime registry / Redis）
-        _ACTIVE_SESSIONS[account_id] = session
+        # 会话句柄 + 锁 + 心跳暂存（Runtime 保持存活期间持续持有锁）
+        heartbeat = LockHeartbeat(lock_service, account_id, lock["token"])
+        heartbeat.start()
+        _ACTIVE_SESSIONS[account_id] = {
+            "session": session,
+            "lock": lock,
+            "heartbeat": heartbeat,
+        }
         return {
             "status": "success",
             "result": {
@@ -719,27 +790,67 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
                 "account_id": account_id,
                 "proxy": proxy_meta,
                 "persona_profile_id": binding.get("persona_profile_id"),
+                "runtime": {
+                    "locked": True,
+                    "operation": lock["operation"],
+                    "task_id": lock["task_id"],
+                    "acquired_at": lock["acquired_at"],
+                },
                 "message": "浏览器环境已启动",
             },
         }
     except NotImplementedError as e:
+        # 启动失败：释放锁
+        if lock:
+            lock_service.release(account_id, lock["token"])
         return {"status": "success", "result": {"success": False, "message": str(e)}}
     except Exception as e:
+        if lock:
+            lock_service.release(account_id, lock["token"])
         logger.error(f"启动账号浏览器失败 {account_id}: {e}")
         raise HTTPException(status_code=500, detail=f"启动浏览器失败: {e}")
 
 
 @router.post("/{account_id}/browser/stop")
-async def stop_account_browser(account_id: str):
-    """停止账号浏览器进程（Profile 数据永久保留，仅关闭进程）。"""
+async def stop_account_browser(account_id: str, force: bool = False):
+    """
+    停止账号浏览器进程（Profile 数据永久保留，仅关闭进程）。
+
+    默认只能停止当前调用方持有的 Runtime（token 校验）；
+    force=true 为管理员强制停止（显式操作，不默认启用）。
+    """
+    from fastapi_app.services.runtime_lock_service import get_runtime_lock_service
+    lock_service = get_runtime_lock_service()
+
+    entry = _ACTIVE_SESSIONS.get(account_id)
+    if entry is None:
+        return {"status": "success", "result": {"success": True, "message": "无活动浏览器会话"}}
+    session = entry["session"]
+    lock = entry["lock"]
+    heartbeat = entry.get("heartbeat")
+
+    # token 校验：默认只允许持有者释放
+    if not force:
+        current = lock_service.status(account_id)
+        if not current.get("locked"):
+            pass  # 锁已过期，允许清理本地会话
+        elif current.get("task_id") != lock.get("task_id") or current.get("worker_id") != lock.get("worker_id"):
+            raise HTTPException(
+                status_code=409,
+                detail="Runtime 由其他调用方持有（task_id 不匹配）；如需强制停止请传 force=true",
+            )
+
     try:
-        session = _ACTIVE_SESSIONS.pop(account_id, None)
-        if session is None:
-            return {"status": "success", "result": {"success": True, "message": "无活动浏览器会话"}}
-        # 通过对应 backend 停止（Persona 后端需同时停止 Persona 侧进程）
-        from fastapi_app.services.browser_backend import get_browser_backend
-        backend = get_browser_backend(session.backend)
-        await backend.stop(session)
+        # 停止心跳 → 关闭浏览器 → 释放锁（try/finally）
+        try:
+            if heartbeat:
+                heartbeat.stop()
+            from fastapi_app.services.browser_backend import get_browser_backend
+            backend = get_browser_backend(session.backend)
+            await backend.stop(session)
+        finally:
+            _ACTIVE_SESSIONS.pop(account_id, None)
+            lock_service.release(account_id, lock["token"])
         return {"status": "success", "result": {"success": True, "message": "浏览器已关闭，Profile 已保留"}}
     except Exception as e:
         logger.error(f"停止账号浏览器失败 {account_id}: {e}")
