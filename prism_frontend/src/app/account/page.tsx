@@ -4,7 +4,9 @@ import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, use
 import NextImage from "next/image"
 import { useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw } from "lucide-react"
+import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw, MonitorSmartphone } from "lucide-react"
+
+import { AccountEnvironmentSheet } from "@/components/account-environment-sheet"
 
 import {
   AlertDialog,
@@ -149,6 +151,7 @@ function AccountPageContent() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isStatusChecking, setIsStatusChecking] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [envSheet, setEnvSheet] = useState<{ open: boolean; account: Account | null }>({ open: false, account: null })
   const [formState, setFormState] = useState<AccountFormState>({ name: "", platform: "kuaishou" })
   const [bindingStatus, setBindingStatus] = useState<"idle" | "pending" | "code" | "success" | "error">("idle")
   const [qrImage, setQrImage] = useState<string | null>(null)
@@ -706,6 +709,15 @@ function AccountPageContent() {
           <Button size="sm" variant="secondary" className="h-8 rounded-xl px-3 text-xs" onClick={() => openEditDialog(row.original)}>
             编辑
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-xl px-3 text-xs border-border/70 bg-foreground/5 hover:bg-accent/50"
+            onClick={() => setEnvSheet({ open: true, account: row.original })}
+          >
+            <MonitorSmartphone className="h-3.5 w-3.5 mr-1" />
+            环境
+          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button size="sm" variant="destructive" className="h-8 rounded-xl px-3 text-xs">
@@ -954,6 +966,14 @@ function AccountPageContent() {
         )}
         <DataTable columns={columns} data={filteredAccounts} pageSize={8} />
       </PageSection>
+
+      <AccountEnvironmentSheet
+        accountId={envSheet.account?.id || ""}
+        accountName={envSheet.account?.name || ""}
+        platform={envSheet.account?.platform || ""}
+        open={envSheet.open}
+        onOpenChange={(open) => setEnvSheet((prev) => ({ ...prev, open }))}
+      />
     </div>
   )
 }

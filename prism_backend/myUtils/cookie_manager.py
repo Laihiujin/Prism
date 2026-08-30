@@ -202,6 +202,13 @@ class CookieManager:
                 conn.execute("ALTER TABLE cookie_accounts ADD COLUMN user_id TEXT")
             if "login_status" not in columns:
                 conn.execute("ALTER TABLE cookie_accounts ADD COLUMN login_status TEXT DEFAULT 'unknown'")
+            # ── Proxy Manager / Persona Studio 固定身份绑定 ──
+            if "proxy_id" not in columns:
+                conn.execute("ALTER TABLE cookie_accounts ADD COLUMN proxy_id TEXT")
+            if "persona_profile_id" not in columns:
+                conn.execute("ALTER TABLE cookie_accounts ADD COLUMN persona_profile_id TEXT")
+            if "browser_backend" not in columns:
+                conn.execute("ALTER TABLE cookie_accounts ADD COLUMN browser_backend TEXT DEFAULT 'patchright'")
 
     def _ensure_database(self):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -839,7 +846,7 @@ class CookieManager:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                "SELECT account_id, platform, platform_code, name, status, cookie_file, last_checked, avatar, original_name, note, user_id, login_status FROM cookie_accounts "
+                "SELECT account_id, platform, platform_code, name, status, cookie_file, last_checked, avatar, original_name, note, user_id, login_status, proxy_id, persona_profile_id, browser_backend FROM cookie_accounts "
                 "ORDER BY platform, name"
             ).fetchall()
         return [dict(row) for row in rows]
@@ -984,7 +991,7 @@ class CookieManager:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
-                "SELECT account_id, platform, platform_code, name, status, cookie_file, last_checked, avatar, original_name, note, user_id FROM cookie_accounts "
+                "SELECT account_id, platform, platform_code, name, status, cookie_file, last_checked, avatar, original_name, note, user_id, proxy_id, persona_profile_id, browser_backend FROM cookie_accounts "
                 "WHERE account_id = ?",
                 (account_id,),
             )
@@ -1042,6 +1049,51 @@ class CookieManager:
             )
             conn.commit()
         return cursor.rowcount > 0
+
+    def set_account_binding(
+        self,
+        account_id: str,
+        *,
+        proxy_id: Optional[str] = None,
+        persona_profile_id: Optional[str] = None,
+        browser_backend: Optional[str] = None,
+        clear_proxy: bool = False,
+    ) -> bool:
+        """更新账号的固定身份绑定（proxy_id / persona_profile_id / browser_backend）。sticky 绑定，持久化。"""
+        updates: List[str] = []
+        params: List[Any] = []
+        if clear_proxy:
+            updates.append("proxy_id = NULL")
+        elif proxy_id is not None:
+            updates.append("proxy_id = ?")
+            params.append(proxy_id)
+        if persona_profile_id is not None:
+            updates.append("persona_profile_id = ?")
+            params.append(persona_profile_id)
+        if browser_backend is not None:
+            updates.append("browser_backend = ?")
+            params.append(browser_backend)
+        if not updates:
+            return False
+        params.append(account_id)
+        with self.lock, sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                f"UPDATE cookie_accounts SET {', '.join(updates)} WHERE account_id = ?",
+                params,
+            )
+            conn.commit()
+        return cursor.rowcount > 0
+
+    def get_account_binding(self, account_id: str) -> Optional[Dict[str, Any]]:
+        """读取账号固定绑定信息（不读 cookie 内容）。"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT account_id, platform, name, proxy_id, persona_profile_id, browser_backend FROM cookie_accounts WHERE account_id = ?",
+                (account_id,),
+            )
+            row = cursor.fetchone()
+        return dict(row) if row else None
 
     def update_account(self, account_id: str, *, name: Optional[str] = None, platform_code: Optional[int] = None, **kwargs) -> bool:
         updates: List[str] = []

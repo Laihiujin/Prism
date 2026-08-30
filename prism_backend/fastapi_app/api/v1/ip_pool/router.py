@@ -4,10 +4,11 @@ IP池管理API路由
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime
 
 from fastapi_app.models.ip_pool import (
     ProxyIP, IPStatus, IPSourceType, AddIPRequest, 
-    BindAccountRequest, IPStatsResponse, IPProtocol
+    ImportProxyRequest, BindAccountRequest, IPStatsResponse, IPProtocol
 )
 from fastapi_app.services.ip_pool_service import get_ip_pool_service, IPPoolService
 from fastapi_app.services.qingguo_service import qingguo_service
@@ -57,6 +58,22 @@ async def list_ips(
             "success": True,
             "items": [ip.model_dump(mode="json") for ip in ips],
             "total": len(ips)
+        }
+    }
+
+
+@router.get("/export")
+async def export_ips(
+    service: IPPoolService = Depends(get_ip_pool_service)
+):
+    """导出所有代理信息"""
+    data = service.export_ips()
+    return {
+        "status": "success",
+        "result": {
+            "success": True,
+            "items": data,
+            "total": len(data)
         }
     }
 
@@ -197,11 +214,14 @@ async def auto_bind_account(
     prefer_region: Optional[str] = None,
     service: IPPoolService = Depends(get_ip_pool_service)
 ):
-    """自动为账号分配IP"""
+    """自动为账号分配IP（已有绑定则返回原代理，不换绑）"""
+    existing = service.get_ip_for_account(account_id)
     ip = service.auto_bind_account(account_id, prefer_region)
     
     if not ip:
         raise HTTPException(status_code=404, detail="没有可用IP")
+    
+    message = f"账号已绑定代理 {ip.ip}:{ip.port}（持久绑定，不换绑）" if existing else f"首次分配代理 {ip.ip}:{ip.port}"
     
     return {
         "status": "success",
@@ -209,7 +229,30 @@ async def auto_bind_account(
             "success": True,
             "ip_id": ip.id,
             "ip": f"{ip.ip}:{ip.port}",
-            "message": f"成功绑定到IP {ip.ip}:{ip.port}"
+            "message": message,
+            "existing_binding": bool(existing)
+        }
+    }
+
+
+@router.post("/{ip_id}/toggle")
+async def toggle_ip_enabled(
+    ip_id: str,
+    service: IPPoolService = Depends(get_ip_pool_service)
+):
+    """启用/禁用代理节点"""
+    ip = service.get_ip(ip_id)
+    if not ip:
+        raise HTTPException(status_code=404, detail="代理不存在")
+    ip.is_enabled = not ip.is_enabled
+    ip.updated_at = datetime.now()
+    service._save_ips()
+    return {
+        "status": "success",
+        "result": {
+            "success": True,
+            "is_enabled": ip.is_enabled,
+            "message": "代理已启用" if ip.is_enabled else "代理已禁用"
         }
     }
 
@@ -238,8 +281,46 @@ async def check_ip_health(
             "success": True,
             "healthy": healthy,
             "ip_status": IPStatus.AVAILABLE if healthy else IPStatus.FAILED,
+            "exit_ip": ip.exit_ip,
+            "asn": ip.asn,
+            "latency_ms": ip.latency_ms,
             "message": "IP可用 (连接成功)" if healthy else "IP不可用 (连接失败)"
         }
+    }
+
+
+@router.post("/import")
+async def import_ips(
+    request: ImportProxyRequest,
+    service: IPPoolService = Depends(get_ip_pool_service)
+):
+    """批量导入代理"""
+    added = service.import_ips(request.items)
+    return {
+        "status": "success",
+        "result": {
+            "success": True,
+            "count": len(added),
+            "message": f"成功导入 {len(added)} 个代理"
+        }
+    }
+
+
+@router.post("/batch-check")
+async def batch_check_health(
+    ids: List[str],
+    service: IPPoolService = Depends(get_ip_pool_service)
+):
+    """批量检测指定代理"""
+    results = {}
+    for ip_id in ids:
+        ip = service.get_ip(ip_id)
+        if ip:
+            healthy = await service.check_ip_health(ip)
+            results[ip_id] = {"healthy": healthy, "exit_ip": ip.exit_ip, "asn": ip.asn, "latency_ms": ip.latency_ms}
+    return {
+        "status": "success",
+        "result": results
     }
 
 
