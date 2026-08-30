@@ -40,6 +40,9 @@ _PLATFORM_PROFILE_URLS = {
 
 router = APIRouter(tags=["账号管理"])
 
+# 活动浏览器会话注册表（生产版应改为 Redis runtime registry + 并发锁）
+_ACTIVE_SESSIONS: Dict[str, Any] = {}
+
 # 包含工具路由
 router.include_router(tools_router)
 
@@ -519,3 +522,210 @@ async def prune_by_frontend_snapshot(request: FrontendAccountSnapshotRequest):
 #     except Exception as e:
 #         logger.error(f"同步用户信息失败: {e}")
 #         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# 账号环境 / 固定身份绑定（Proxy Manager + Persona Studio）
+# ============================================================
+
+from ....schemas.common import StatusResponse as _StatusResponse  # noqa: E402
+from pydantic import BaseModel as _BaseModel  # noqa: E402
+
+
+class _BindProxyRequest(_BaseModel):
+    proxy_id: str
+
+
+class _RebindProxyRequest(_BaseModel):
+    proxy_id: str
+
+
+class _BrowserActionRequest(_BaseModel):
+    headless: bool = True
+
+
+def _proxy_service():
+    from fastapi_app.services.ip_pool_service import get_ip_pool_service
+    return get_ip_pool_service()
+
+
+@router.get("/{account_id}/environment")
+async def get_account_environment(account_id: str):
+    """
+    账号环境视图：展示固定身份绑定关系。
+    Account → Browser Profile(Persona) → Sticky Proxy → Patchright。
+    """
+    try:
+        account = cookie_manager.get_account_by_id(account_id)
+        if not account:
+            raise HTTPException(status_code=404, detail="账号不存在")
+
+        binding = cookie_manager.get_account_binding(account_id) or {}
+        proxy_id = binding.get("proxy_id")
+        proxy = None
+        proxy_service = None
+        try:
+            proxy_service = _proxy_service()
+            if proxy_id:
+                proxy = proxy_service.get_ip(proxy_id)
+        except Exception as e:
+            logger.warning(f"读取代理服务失败: {e}")
+
+        env = {
+            "account": {
+                "account_id": account.get("account_id"),
+                "platform": account.get("platform"),
+                "name": account.get("name"),
+                "user_id": account.get("user_id"),
+            },
+            "browser": {
+                "backend": binding.get("browser_backend") or "patchright",
+                "persona_profile_id": binding.get("persona_profile_id"),
+                "engine": "patchright",
+            },
+            "proxy": {
+                "proxy_id": proxy_id,
+                "name": proxy.name if proxy else None,
+                "host": proxy.ip if proxy else None,
+                "port": proxy.port if proxy else None,
+                "protocol": proxy.protocol if proxy else None,
+                "exit_ip": proxy.exit_ip if proxy else None,
+                "asn": proxy.asn if proxy else None,
+                "isp": proxy.isp if proxy else None,
+                "country": proxy.country if proxy else None,
+                "region": proxy.region if proxy else None,
+                "city": proxy.city if proxy else None,
+                "latency_ms": proxy.latency_ms if proxy else None,
+                "status": proxy.status if proxy else None,
+                "last_check_at": proxy.last_check_at if proxy else None,
+            },
+            "identity": {
+                "stable": bool(proxy_id),
+                "relationship": "Account → Persona Profile → Sticky Proxy → Patchright → Platform Adapter",
+            },
+        }
+        return {"status": "success", "result": env}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取账号环境失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{account_id}/proxy/bind")
+async def bind_account_proxy(account_id: str, request: _BindProxyRequest):
+    """固定绑定账号到代理（sticky，登录/发布/数据回收复用同一代理）。"""
+    try:
+        service = _proxy_service()
+        success = service.bind_account_to_ip(request.proxy_id, account_id)
+        return {"status": "success", "result": {"success": success, "message": "账号已固定绑定到代理"}}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"绑定代理失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{account_id}/proxy/unbind")
+async def unbind_account_proxy(account_id: str):
+    """解除账号固定代理绑定。"""
+    try:
+        service = _proxy_service()
+        success = service.unbind_account(account_id)
+        return {"status": "success", "result": {"success": success, "message": "已解除代理绑定" if success else "账号无绑定"}}
+    except Exception as e:
+        logger.error(f"解绑代理失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{account_id}/proxy/rebind")
+async def rebind_account_proxy(account_id: str, request: _RebindProxyRequest):
+    """换绑：解绑原代理并绑定到新代理。"""
+    try:
+        service = _proxy_service()
+        service.unbind_account(account_id)
+        success = service.bind_account_to_ip(request.proxy_id, account_id)
+        return {"status": "success", "result": {"success": success, "message": "账号已换绑到新代理"}}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"换绑代理失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{account_id}/browser/start")
+async def start_account_browser(account_id: str, request: _BrowserActionRequest):
+    """
+    启动账号浏览器环境（统一 BrowserBackend）。
+
+    链路：读取绑定 → 选择 backend → 注入固定 Proxy → 启动 Persistent Context。
+    profile 数据永久保留；仅 start/stop 控制进程生命周期。
+    """
+    try:
+        binding = cookie_manager.get_account_binding(account_id) or {}
+        proxy_id = binding.get("proxy_id")
+        backend_name = binding.get("browser_backend") or "patchright"
+
+        from fastapi_app.services.browser_backend import get_browser_backend
+        from fastapi_app.services.ip_pool_service import get_ip_pool_service
+
+        backend = get_browser_backend(backend_name)
+        proxy_config = None
+        proxy_meta = None
+        if proxy_id:
+            proxy_service = get_ip_pool_service()
+            proxy_obj = proxy_service.get_ip(proxy_id)
+            if proxy_obj:
+                url = proxy_obj.to_proxy_url()
+                if url:
+                    proxy_config = {"server": url}
+                proxy_meta = {
+                    "proxy_id": proxy_id,
+                    "name": proxy_obj.name,
+                    "host": proxy_obj.ip,
+                    "port": proxy_obj.port,
+                    "exit_ip": proxy_obj.exit_ip,
+                    "status": proxy_obj.status,
+                }
+
+        profile = {
+            "persona_profile_id": binding.get("persona_profile_id"),
+        }
+        session = await backend.start(
+            account_id,
+            profile=profile,
+            proxy=proxy_config,
+            headless=request.headless,
+        )
+        # 会话句柄暂存（真实生产应放入 runtime registry / Redis）
+        _ACTIVE_SESSIONS[account_id] = session
+        return {
+            "status": "success",
+            "result": {
+                "success": True,
+                "backend": backend_name,
+                "account_id": account_id,
+                "proxy": proxy_meta,
+                "persona_profile_id": binding.get("persona_profile_id"),
+                "message": "浏览器环境已启动",
+            },
+        }
+    except NotImplementedError as e:
+        return {"status": "success", "result": {"success": False, "message": str(e)}}
+    except Exception as e:
+        logger.error(f"启动账号浏览器失败 {account_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"启动浏览器失败: {e}")
+
+
+@router.post("/{account_id}/browser/stop")
+async def stop_account_browser(account_id: str):
+    """停止账号浏览器进程（Profile 数据永久保留，仅关闭进程）。"""
+    try:
+        session = _ACTIVE_SESSIONS.pop(account_id, None)
+        if session is None:
+            return {"status": "success", "result": {"success": True, "message": "无活动浏览器会话"}}
+        await session.close()
+        return {"status": "success", "result": {"success": True, "message": "浏览器已关闭，Profile 已保留"}}
+    except Exception as e:
+        logger.error(f"停止账号浏览器失败 {account_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"停止浏览器失败: {e}")
