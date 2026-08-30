@@ -10,8 +10,21 @@ import {
 } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { RefreshCcw, MonitorSmartphone, Globe, Network, ShieldCheck } from "lucide-react"
+import { RefreshCcw, MonitorSmartphone, Globe, Network, ShieldCheck, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+const RUNTIME_LABELS: Record<string, string> = {
+    browser_start: "浏览器启动中",
+    publish: "发布中",
+    data_collect: "数据回收中",
+    login_check: "登录态检查中",
+    login: "登录中",
+}
+
+function runtimeLabel(op?: string): string {
+    if (!op) return "运行中"
+    return RUNTIME_LABELS[op] || op
+}
 
 interface AccountEnvironmentSheetProps {
     accountId: string
@@ -26,6 +39,7 @@ interface EnvironmentData {
     browser: Record<string, any>
     proxy: Record<string, any>
     identity: Record<string, any>
+    runtime?: Record<string, any>
 }
 
 function FieldRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
@@ -102,6 +116,7 @@ export function AccountEnvironmentSheet({
     const proxy = data?.proxy || {}
     const browser = data?.browser || {}
     const account = data?.account || {}
+    const runtime = data?.runtime || {}
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -202,6 +217,39 @@ export function AccountEnvironmentSheet({
                                     <ProxyStatusBadge status={proxy.status} />
                                 </div>
                                 <FieldRow label="最后检测" value={proxy.last_check_at ? new Date(proxy.last_check_at).toLocaleString() : "-"} />
+                            </div>
+                        </div>
+
+                        {/* Runtime 状态 */}
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <Activity className="h-4 w-4 text-primary" />
+                                <h3 className="text-sm font-semibold">Runtime</h3>
+                            </div>
+                            <div className="rounded-xl border border-border/70 bg-foreground/5 px-4 py-1">
+                                <div className="flex items-start justify-between gap-4 py-2 border-b border-border/50 last:border-0">
+                                    <span className="text-xs text-muted-foreground shrink-0">状态</span>
+                                    {runtime.locked ? (
+                                        <Badge variant="secondary" className="text-xs bg-blue-500/15 text-blue-400 border-blue-500/30">
+                                            {runtimeLabel(runtime.operation)}
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="text-xs bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                                            空闲
+                                        </Badge>
+                                    )}
+                                </div>
+                                {runtime.locked && (
+                                    <>
+                                        <FieldRow label="操作" value={runtime.operation || "-"} mono />
+                                        <FieldRow label="任务" value={runtime.task_id || "-"} mono />
+                                        <FieldRow label="Worker" value={runtime.worker_id || "-"} mono />
+                                        <FieldRow
+                                            label="剩余 TTL"
+                                            value={runtime.ttl_remaining != null ? `${runtime.ttl_remaining}s` : "-"}
+                                        />
+                                    </>
+                                )}
                             </div>
                         </div>
 

@@ -107,14 +107,28 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = str(Path(DATA_DIR) / "uploads")
 
     # ── Persona Studio（Browser Identity / Fingerprint / Profile 层）──
-    # persona serve 的 HTTP API 地址；为空则回退 PatchrightBackend 直连模式
-    PERSONA_API_BASE: str = "http://127.0.0.1:8787"
+    # 是否启用 Persona Studio 集成（默认关，保持 patchright 直连）
+    PERSONA_ENABLED: bool = False
+    # persona serve 的 HTTP API 地址
+    PERSONA_API_URL: str = "http://127.0.0.1:8787"
+    # 兼容旧配置名
+    @property
+    def PERSONA_API_BASE(self) -> str:
+        return self.PERSONA_API_URL
+    # Persona API 请求超时（秒）
+    PERSONA_REQUEST_TIMEOUT: float = 15.0
     # 每个账号默认的 Persona 引擎（cloak/camoufox/patchright/playwright）
     PERSONA_DEFAULT_ENGINE: str = "patchright"
     # 创建 Persona Profile 时是否注入 Prism 账号固定代理
     PERSONA_INJECT_PROXY: bool = True
     # 浏览器环境启动超时（秒）
     PERSONA_LAUNCH_TIMEOUT: int = 60
+    # 默认浏览器后端（patchright / persona）。账号 browser_backend=persona 时才走 PersonaBackend
+    PRISM_BROWSER_BACKEND_DEFAULT: str = "patchright"
+
+    # ── Account Runtime 分布式锁（Redis per-account）──
+    PRISM_RUNTIME_LOCK_ENABLED: bool = True      # 是否启用 Runtime 锁
+    PRISM_RUNTIME_LOCK_TTL: int = 300            # 锁 TTL（秒），长任务靠 heartbeat 续期
 
     # 任务队列配置
     TASK_QUEUE_MAX_WORKERS: int = 3  # 并发任务数（降低资源占用）

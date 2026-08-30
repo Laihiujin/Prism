@@ -243,23 +243,66 @@ def publish_single_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
             # 动态导入（避免循环依赖）
             from myUtils.batch_publish_service import BatchPublishService
 
-            # 创建临时服务实例执行发布
-            service = BatchPublishService(task_manager=None)
-
-            # 执行异步发布逻辑
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # ── Account Runtime 锁：同账号同时只允许一个活跃 Browser Runtime ──
+            from fastapi_app.services.runtime_lock_service import (
+                get_runtime_lock_service, LockHeartbeat,
+                RuntimeLockConflict, RuntimeLockUnavailable,
+            )
+            lock_service = get_runtime_lock_service()
+            runtime_lock = None
+            heartbeat = None
             try:
-                result = loop.run_until_complete(service.handle_single_publish(task_data))
+                try:
+                    runtime_lock = lock_service.acquire_or_raise(
+                        account_id=str(account_id) if account_id else "unknown",
+                        operation="publish",
+                        task_id=task_id,
+                    )
+                except RuntimeLockConflict as e:
+                    # 同账号其他任务（发布/数据回收/登录检查）在跑 → backoff 重试
+                    logger.warning(
+                        f"[Celery] Task {task_id} 账号 {account_id} Runtime 忙: {e}，进入 backoff 重试"
+                    )
+                    raise self.retry(exc=e, countdown=10, max_retries=5)
+                except RuntimeLockUnavailable as e:
+                    # Redis 不可用：记录告警，按未加锁继续（避免任务失败）
+                    logger.error(f"[Celery] Runtime 锁不可用: {e}")
+
+                # 长任务心跳：自动续期锁 TTL
+                if runtime_lock:
+                    heartbeat = LockHeartbeat(
+                        lock_service,
+                        str(account_id) if account_id else "unknown",
+                        runtime_lock["token"],
+                    )
+                    heartbeat.start()
+
+                # 创建临时服务实例执行发布
+                service = BatchPublishService(task_manager=None)
+
+                # 执行异步发布逻辑
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    result = loop.run_until_complete(service.handle_single_publish(task_data))
+                finally:
+                    loop.close()
+
+                # 更新素材状态为已发布
+                if task_data.get('file_id'):
+                    _update_material_status(task_data)
+
+                logger.info(f"[Celery] Task {task_id} completed successfully")
+                return result
             finally:
-                loop.close()
-
-            # 更新素材状态为已发布
-            if task_data.get('file_id'):
-                _update_material_status(task_data)
-
-            logger.info(f"[Celery] Task {task_id} completed successfully")
-            return result
+                # 无论成功/失败，停止心跳并释放锁（try/finally 保证）
+                if heartbeat:
+                    heartbeat.stop()
+                if runtime_lock:
+                    lock_service.release(
+                        str(account_id) if account_id else "unknown",
+                        runtime_lock["token"],
+                    )
 
     except ConcurrencyLimitException as e:
         # 并发限制异常 - 重新入队
