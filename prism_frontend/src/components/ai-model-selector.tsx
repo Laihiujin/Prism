@@ -83,7 +83,7 @@ export function AIModelSelector({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between bg-foreground/5 border-border/80 text-foreground hover:bg-accent/50 hover:border-border"
+          className="w-full justify-between bg-black border-border/80 text-foreground hover:bg-accent/50 hover:border-border"
           disabled={isLoading || isProcessing || models.length === 0}
         >
           <div className="flex items-center gap-2 max-w-xs truncate">
@@ -94,7 +94,7 @@ export function AIModelSelector({
                 </span>
                 <span className="truncate text-sm">{selected.name}</span>
                 {selected.speed === "fast" && (
-                  <Zap className="h-3 w-3 text-yellow-400 flex-shrink-0" />
+                  <Zap className="h-3 w-3 text-white flex-shrink-0" />
                 )}
               </>
             ) : (
@@ -104,7 +104,7 @@ export function AIModelSelector({
           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 flex-shrink-0" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0 bg-gradient-to-b from-slate-900 to-slate-800 border-border/70">
+      <PopoverContent className="w-full p-0 bg-gradient-to-b from-white to-white border-border/70">
         <Command className="bg-transparent">
           <CommandInput
             placeholder="搜索模型..."
@@ -127,7 +127,7 @@ export function AIModelSelector({
                     key={model.id}
                     value={model.id}
                     onSelect={() => handleSelectModel(model.id)}
-                    className="aria-selected:bg-blue-600/30 aria-selected:text-foreground text-foreground/70 cursor-pointer hover:bg-accent/50"
+                    className="aria-selected:bg-black aria-selected:text-foreground text-foreground/70 cursor-pointer hover:bg-accent/50"
                   >
                     <div className="flex items-center justify-between w-full gap-2">
                       <div className="flex items-center gap-2 flex-1">
@@ -135,7 +135,7 @@ export function AIModelSelector({
                           className={cn(
                             "h-4 w-4 flex-shrink-0",
                             selectedModel === model.id
-                              ? "opacity-100 text-blue-400"
+                              ? "opacity-100 text-white"
                               : "opacity-0"
                           )}
                         />
@@ -154,9 +154,9 @@ export function AIModelSelector({
                             variant="secondary"
                             className={cn(
                               "text-xs",
-                              model.speed === "fast" && "bg-yellow-500/20 text-yellow-200",
-                              model.speed === "medium" && "bg-blue-500/20 text-blue-200",
-                              model.speed === "slow" && "bg-purple-500/20 text-purple-200"
+                              model.speed === "fast" && "bg-black text-white",
+                              model.speed === "medium" && "bg-black text-white",
+                              model.speed === "slow" && "bg-black text-white"
                             )}
                           >
                             <Clock className="h-3 w-3 mr-1" />
@@ -166,7 +166,7 @@ export function AIModelSelector({
                         {model.contextWindow && (
                           <Badge
                             variant="secondary"
-                            className="text-xs bg-foreground/10 text-foreground/70"
+                            className="text-xs bg-black text-foreground/70"
                           >
                             {model.contextWindow}K
                           </Badge>

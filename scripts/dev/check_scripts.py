@@ -18,11 +18,6 @@ REQUIRED_FILES = {
         ("scripts/start-win.bat", "Windows批处理脚本"),
         ("scripts/setup-and-start.sh", "Linux/Mac Shell脚本"),
     ],
-    "Docker配置": [
-        ("Dockerfile", "Docker镜像定义"),
-        ("docker-compose.yml", "Docker Compose编排"),
-        ("docker-entrypoint.sh", "Docker启动脚本"),
-    ],
     "Nginx配置": [
         ("nginx.conf", "Nginx反向代理配置"),
         ("setup-nginx.sh", "Nginx自动配置脚本"),
@@ -72,7 +67,6 @@ def check_files():
         print("🚀 快速开始:")
         print("   python scripts/start.py                              # 本地启动")
         print("   python scripts/start-server.py --background          # 云服务器启动")
-        print("   docker-compose up -d                         # Docker启动")
         print("\n📖 查看文档:")
         print("   - README_SCRIPTS.md         主文档")
         print("   - QUICK_START.md            快速参考")
@@ -97,13 +91,10 @@ def show_help():
     print("2️⃣  云服务器后台启动")
     print("   python scripts/start-server.py --background\n")
     
-    print("3️⃣  Docker容器启动")
-    print("   docker-compose up -d\n")
-    
-    print("4️⃣  Windows用户")
+    print("3️⃣  Windows用户")
     print("   双击运行: scripts/start-win.bat\n")
     
-    print("5️⃣  PowerShell用户")
+    print("4️⃣  PowerShell用户")
     print("   .\\scripts/start.ps1\n")
     
     print("📖 文档说明:\n")

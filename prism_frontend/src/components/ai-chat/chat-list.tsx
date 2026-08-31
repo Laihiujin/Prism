@@ -33,7 +33,7 @@ export function ChatList({
   if (messages.length === 0) {
     return (
       <div className="flex min-h-[420px] flex-col items-center justify-center gap-5 rounded-[28px] border border-dashed border-border/70 bg-card px-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-border/70 bg-foreground/5 text-foreground">
+        <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-border/70 bg-black text-foreground">
           <HermesLogoIcon className="h-7 w-7" />
         </div>
         <div className="space-y-2">
@@ -58,7 +58,7 @@ export function ChatList({
             className={`flex items-start gap-3 ${isUser ? "justify-end" : "justify-start"}`}
           >
             {!isUser && (
-              <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-foreground/5 text-foreground">
+              <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-black text-foreground">
                 <HermesLogoIcon className={`h-4 w-4 ${isThinking ? "opacity-80" : ""}`} />
               </div>
             )}
@@ -66,9 +66,9 @@ export function ChatList({
             <div
               className={`max-w-[min(820px,82%)] rounded-[26px] border px-5 py-4 shadow-[0_18px_60px_-40px_rgba(0,0,0,0.9)] ${
                 isUser
-                    ? "rounded-tr-md border-border/70 bg-foreground text-neutral-950"
+                    ? "rounded-tr-md border-border/70 bg-foreground text-white"
                     : isThinking
-                    ? "rounded-tl-md border-border/70 bg-neutral-950 text-foreground"
+                    ? "rounded-tl-md border-border/70 bg-black text-foreground"
                     : "rounded-tl-md border-border/70 bg-card text-foreground"
               }`}
             >
@@ -91,7 +91,7 @@ export function ChatList({
                       code: ({ children, className }) => {
                         const isInline = !className
                         return isInline ? (
-                          <code className="rounded-lg bg-foreground/10 px-1.5 py-0.5 font-mono text-[13px] text-foreground">
+                          <code className="rounded-lg bg-black px-1.5 py-0.5 font-mono text-[13px] text-foreground">
                             {children}
                           </code>
                         ) : (
@@ -110,7 +110,7 @@ export function ChatList({
             </div>
 
             {isUser && (
-              <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-foreground">
+              <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white bg-black text-foreground">
                 <User className="h-4 w-4" />
               </div>
             )}
@@ -120,7 +120,7 @@ export function ChatList({
 
       {isLoading && showTypingIndicator && (
         <div className="flex items-start gap-3">
-          <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-foreground/5 text-foreground">
+          <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-black text-foreground">
             <HermesLogoIcon className="h-4 w-4" />
           </div>
           <div className="rounded-[26px] rounded-tl-md border border-border/70 bg-card px-5 py-4 text-foreground shadow-[0_18px_60px_-40px_rgba(0,0,0,0.9)]">

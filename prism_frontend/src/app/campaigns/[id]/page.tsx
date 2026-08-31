@@ -66,11 +66,11 @@ export default function CampaignDetailPage() {
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'finished': return <CheckCircle2 className="w-4 h-4 text-green-500" />
-            case 'failed': return <XCircle className="w-4 h-4 text-red-500" />
-            case 'running': return <Play className="w-4 h-4 text-blue-500 animate-pulse" />
+            case 'finished': return <CheckCircle2 className="w-4 h-4 text-white" />
+            case 'failed': return <XCircle className="w-4 h-4 text-white" />
+            case 'running': return <Play className="w-4 h-4 text-white animate-pulse" />
             case 'pending': return <Clock className="w-4 h-4 text-muted-foreground" />
-            default: return <AlertCircle className="w-4 h-4 text-yellow-500" />
+            default: return <AlertCircle className="w-4 h-4 text-white" />
         }
     }
 
@@ -100,7 +100,7 @@ export default function CampaignDetailPage() {
                 </Card>
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="text-2xl font-bold text-green-500">
+                        <div className="text-2xl font-bold text-white">
                             {tasks.filter((t: any) => t.status === 'finished').length}
                         </div>
                         <div className="text-xs text-muted-foreground">已完成</div>
@@ -108,7 +108,7 @@ export default function CampaignDetailPage() {
                 </Card>
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="text-2xl font-bold text-blue-500">
+                        <div className="text-2xl font-bold text-white">
                             {tasks.filter((t: any) => t.status === 'running' || t.status === 'pending').length}
                         </div>
                         <div className="text-xs text-muted-foreground">进行中/等待</div>
@@ -116,7 +116,7 @@ export default function CampaignDetailPage() {
                 </Card>
                 <Card>
                     <CardContent className="pt-6">
-                        <div className="text-2xl font-bold text-red-500">
+                        <div className="text-2xl font-bold text-white">
                             {tasks.filter((t: any) => t.status === 'failed').length}
                         </div>
                         <div className="text-xs text-muted-foreground">失败</div>
@@ -168,7 +168,7 @@ export default function CampaignDetailPage() {
                                                         {task.updated_at ? format(new Date(task.updated_at), "MM-dd HH:mm") : "-"}
                                                     </div>
                                                     {task.error_msg && (
-                                                        <div className="col-span-6 text-xs text-red-500 mt-1 bg-red-500/10 p-2 rounded">
+                                                        <div className="col-span-6 text-xs text-white mt-1 bg-black p-2 rounded">
                                                             错误: {task.error_msg}
                                                         </div>
                                                     )}

@@ -48,29 +48,29 @@ const PLATFORMS_CONFIG: Record<string, {
 }> = {
     douyin: {
         label: "抖音",
-        color: "from-neutral-900 to-neutral-990",
+        color: "from-black to-black",
         stats: [
-            { label: "总播放", key: "views", icon: Eye, color: "text-blue-400" },
-            { label: "总点赞", key: "likes", icon: Heart, color: "text-pink-400" },
-            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-cyan-400" },
-            { label: "总收藏", key: "collects", icon: Bookmark, color: "text-amber-400" },
-            { label: "总分享", key: "shares", icon: Share2, color: "text-green-400" },
+            { label: "总播放", key: "views", icon: Eye, color: "text-white" },
+            { label: "总点赞", key: "likes", icon: Heart, color: "text-white" },
+            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
+            { label: "总收藏", key: "collects", icon: Bookmark, color: "text-white" },
+            { label: "总分享", key: "shares", icon: Share2, color: "text-white" },
             // { label: "总粉丝数", key: "follower", icon: Users, color: "text-foreground-400" },
         ],
         metrics: ["views", "likes", "comments", "shares", "collects"]
     },
     bilibili: {
         label: "B站",
-        color: "from-neutral-900 to-neutral-990",
+        color: "from-black to-black",
         stats: [
             // { label: "总粉丝数", key: "follower", icon: Users, color: "text-background-400" },
-            { label: "总播放", key: "views", icon: Eye, color: "text-blue-400" },
-            { label: "总点赞", key: "likes", icon: Heart, color: "text-red-400" },
-            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-purple-400" },
-            { label: "总收藏", key: "collects", icon: Star, color: "text-orange-400" },
-            { label: "总分享", key: "shares", icon: Share2, color: "text-green-400" },
-            { label: "总硬币", key: "coins", icon: Coins, color: "text-yellow-400" },
-            { label: "总弹幕", key: "danmaku", icon: MessageSquare, color: "text-red-400" },
+            { label: "总播放", key: "views", icon: Eye, color: "text-white" },
+            { label: "总点赞", key: "likes", icon: Heart, color: "text-white" },
+            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
+            { label: "总收藏", key: "collects", icon: Star, color: "text-white" },
+            { label: "总分享", key: "shares", icon: Share2, color: "text-white" },
+            { label: "总硬币", key: "coins", icon: Coins, color: "text-white" },
+            { label: "总弹幕", key: "danmaku", icon: MessageSquare, color: "text-white" },
 
 
         ],
@@ -78,34 +78,34 @@ const PLATFORMS_CONFIG: Record<string, {
     },
     kuaishou: {
         label: "快手",
-        color: "from-neutral-900 to-neutral-990",
+        color: "from-black to-black",
         stats: [
-            { label: "总播放", key: "views", icon: Eye, color: "text-blue-400" },
-            { label: "总点赞", key: "likes", icon: Heart, color: "text-red-400" },
-            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-orange-400" },
-            { label: "互动率", key: "engagement", icon: Zap, color: "text-yellow-400" },
+            { label: "总播放", key: "views", icon: Eye, color: "text-white" },
+            { label: "总点赞", key: "likes", icon: Heart, color: "text-white" },
+            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
+            { label: "互动率", key: "engagement", icon: Zap, color: "text-white" },
         ],
         metrics: ["views", "likes", "comments", "shares"]
     },
     xiaohongshu: {
         label: "小红书",
-        color: "from-neutral-900 to-neutral-990",
+        color: "from-black to-black",
         stats: [
-            { label: "总点赞", key: "likes", icon: Heart, color: "text-red-400" },
-            { label: "总收藏", key: "collects", icon: Bookmark, color: "text-amber-400" },
-            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-pink-400" },
-            { label: "粉丝转化", key: "conversion", icon: Users, color: "text-red-400" },
+            { label: "总点赞", key: "likes", icon: Heart, color: "text-white" },
+            { label: "总收藏", key: "collects", icon: Bookmark, color: "text-white" },
+            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
+            { label: "粉丝转化", key: "conversion", icon: Users, color: "text-white" },
         ],
         metrics: ["likes", "collects", "comments", "shares"]
     },
     channels: {
         label: "视频号",
-        color: "from-neutral-900 to-neutral-990",
+        color: "from-black to-black",
         stats: [
-            { label: "总播放", key: "views", icon: Eye, color: "text-blue-400" },
-            { label: "总点赞", key: "likes", icon: Heart, color: "text-red-400" },
-            { label: "总转发", key: "shares", icon: Send, color: "text-emerald-400" },
-            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-teal-400" },
+            { label: "总播放", key: "views", icon: Eye, color: "text-white" },
+            { label: "总点赞", key: "likes", icon: Heart, color: "text-white" },
+            { label: "总转发", key: "shares", icon: Send, color: "text-white" },
+            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
         ],
         metrics: ["views", "likes", "comments", "shares", "collects"]
     }
@@ -492,7 +492,7 @@ export default function PlatformVideosPage() {
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                            <div className="p-3 bg-foreground/20 backdrop-blur-md rounded-2xl">
+                            <div className="p-3 bg-black backdrop-blur-md rounded-2xl">
                                 <Video className="h-6 w-6 text-foreground" />
                             </div>
                             <h2 className="text-2xl font-bold text-foreground">{config.label}矩阵数据概览</h2>
@@ -503,28 +503,28 @@ export default function PlatformVideosPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 md:flex md:gap-8">
-                        <div className="bg-foreground/10 backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
+                        <div className="bg-black backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
                             <p className="text-xs text-muted-foreground mb-1">今日新增播放</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-bold text-foreground">{formatNumber(stats.views)}</span>
-                                <Badge className="bg-emerald-500 text-foreground border-0 text-[10px] h-4">
+                                <Badge className="bg-white text-foreground border-0 text-[10px] h-4">
                                     <ArrowUpRight className="h-2.5 w-2.5 mr-0.5" />
                                     {videoCount}个
                                 </Badge>
                             </div>
                         </div>
-                        <div className="bg-foreground/10 backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
+                        <div className="bg-black backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
                             <p className="text-xs text-muted-foreground mb-1">平均互动率</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-xl font-bold text-foreground">{stats.engagement}%</span>
-                                <Zap className="h-3 w-3 text-yellow-300" />
+                                <Zap className="h-3 w-3 text-white" />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Background decorative elements */}
-                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-foreground/10 blur-3xl" />
+                <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-black blur-3xl" />
                 <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-card/10 blur-3xl" />
             </div>
 
@@ -602,7 +602,7 @@ export default function PlatformVideosPage() {
                                                             alt=""
                                                         />
                                                     ) : (
-                                                        <div className="h-4 w-4 rounded-full bg-foreground/10" />
+                                                        <div className="h-4 w-4 rounded-full bg-black" />
                                                     )}
                                                     <span className="truncate">{video.author_name || "作者未填写"}</span>
                                                 </div>
@@ -674,7 +674,7 @@ export default function PlatformVideosPage() {
                                                             alt=""
                                                         />
                                                     ) : (
-                                                        <div className="h-4 w-4 rounded-full bg-foreground/10" />
+                                                        <div className="h-4 w-4 rounded-full bg-black" />
                                                     )}
                                                     <span className="truncate">{video.author_name || "作者未填写"}</span>
                                                 </div>
@@ -832,7 +832,7 @@ export default function PlatformVideosPage() {
                                                                             alt=""
                                                                         />
                                                                     ) : (
-                                                                        <div className="h-3.5 w-3.5 rounded-full bg-foreground/10" />
+                                                                        <div className="h-3.5 w-3.5 rounded-full bg-black" />
                                                                     )}
                                                                     <span className="truncate">{v.author_name || "作者未填写"}</span>
                                                                 </div>
@@ -861,7 +861,7 @@ export default function PlatformVideosPage() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-0">在线</Badge>
+                                                        <Badge variant="outline" className="bg-black text-white border-0">在线</Badge>
                                                     </TableCell>
                                                     <TableCell>
                                                         <Button

@@ -15,7 +15,7 @@ interface GradientTextProps {
 export default function GradientText({
   children,
   className = '',
-  colors = ['#5227FF', '#FF9FFC', '#B497CF'],
+  colors = ['#FFFFFF', '#C8C8C8', '#FFFFFF'],
   animationSpeed = 8,
   showBorder = false,
   direction = 'horizontal',

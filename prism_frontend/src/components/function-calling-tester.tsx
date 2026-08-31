@@ -100,7 +100,7 @@ export function FunctionCallingTester() {
     return (
         <div className="space-y-6">
             {/* 输入区域 */}
-            <Card className="bg-foreground/5 border-border/70">
+            <Card className="bg-black border-border/70">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Code className="w-5 h-5 text-primary" />
@@ -115,7 +115,7 @@ export function FunctionCallingTester() {
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
                         placeholder="例如：帮我列出所有抖音账号"
-                        className="bg-foreground/5 border-border/70 text-foreground placeholder:text-foreground/40 min-h-[100px]"
+                        className="bg-black border-border/70 text-foreground placeholder:text-foreground/40 min-h-[100px]"
                     />
 
                     <div className="flex gap-3">
@@ -141,7 +141,7 @@ export function FunctionCallingTester() {
                             onClick={loadTools}
                             disabled={toolsLoading}
                             variant="outline"
-                            className="bg-foreground/5 border-border/70"
+                            className="bg-black border-border/70"
                         >
                             {toolsLoading ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -156,7 +156,7 @@ export function FunctionCallingTester() {
 
             {/* 可用工具列表 */}
             {tools.length > 0 && (
-                <Card className="bg-foreground/5 border-border/70">
+                <Card className="bg-black border-border/70">
                     <CardHeader>
                         <CardTitle className="text-sm flex items-center gap-2">
                             <Wrench className="w-4 h-4" />
@@ -167,10 +167,10 @@ export function FunctionCallingTester() {
                         {tools.map((tool, index) => (
                             <div
                                 key={index}
-                                className="p-3 bg-foreground/5 rounded-lg border border-border/70"
+                                className="p-3 bg-black rounded-lg border border-border/70"
                             >
                                 <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                                    <Badge variant="outline" className="bg-black text-primary border-primary/30">
                                         {tool.name}
                                     </Badge>
                                 </div>
@@ -183,13 +183,13 @@ export function FunctionCallingTester() {
 
             {/* 执行结果 */}
             {result && (
-                <Card className="bg-foreground/5 border-border/70">
+                <Card className="bg-black border-border/70">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             {result.success ? (
-                                <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                <CheckCircle2 className="w-5 h-5 text-white" />
                             ) : (
-                                <XCircle className="w-5 h-5 text-red-400" />
+                                <XCircle className="w-5 h-5 text-white" />
                             )}
                             执行结果
                         </CardTitle>
@@ -197,7 +197,7 @@ export function FunctionCallingTester() {
                     <CardContent className="space-y-4">
                         {/* 状态信息 */}
                         <div className="flex items-center gap-4 text-sm text-foreground/70">
-                            <Badge variant="outline" className={result.success ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
+                            <Badge variant="outline" className={result.success ? "bg-black text-white border-white/30" : "bg-black text-white border-white/30"}>
                                 {result.success ? "成功" : "失败"}
                             </Badge>
                             <span>迭代次数: {result.iterations}</span>
@@ -206,7 +206,7 @@ export function FunctionCallingTester() {
 
                         {/* AI 回复 */}
                         {result.message && (
-                            <div className="p-4 bg-foreground/5 rounded-lg border border-border/70">
+                            <div className="p-4 bg-black rounded-lg border border-border/70">
                                 <p className="text-sm text-muted-foreground mb-2">AI 回复：</p>
                                 <p className="text-foreground whitespace-pre-wrap">{result.message}</p>
                             </div>
@@ -219,10 +219,10 @@ export function FunctionCallingTester() {
                                 {result.tool_calls.map((call: ToolCall, index: number) => (
                                     <div
                                         key={index}
-                                        className="p-4 bg-foreground/5 rounded-lg border border-border/70"
+                                        className="p-4 bg-black rounded-lg border border-border/70"
                                     >
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                            <Badge variant="outline" className="bg-black text-white border-white/30">
                                                 {index + 1}
                                             </Badge>
                                             <span className="font-mono text-sm text-primary">{call.name}</span>

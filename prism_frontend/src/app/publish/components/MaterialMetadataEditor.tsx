@@ -316,7 +316,7 @@ export function MaterialMetadataEditor({
                                 <Button
                                     onClick={handleAIGenerate}
                                     disabled={isGenerating}
-                                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-foreground"
+                                    className="w-full bg-gradient-to-r from-white to-white hover:from-white hover:to-white text-foreground"
                                 >
                                     <Sparkles className={cn("w-4 h-4 mr-2", isGenerating && "animate-spin")} />
                                     {isGenerating ? "AI 生成中..." : "AI 智能生成"}
@@ -370,12 +370,12 @@ export function MaterialMetadataEditor({
                                         <Badge
                                             key={index}
                                             variant="secondary"
-                                            className="bg-foreground/10 text-foreground hover:bg-accent/60 flex items-center gap-1"
+                                            className="bg-black text-foreground hover:bg-accent/60 flex items-center gap-1"
                                         >
                                             {tag}
                                             <button
                                                 onClick={() => removeTag(tag)}
-                                                className="ml-1 hover:text-red-400"
+                                                className="ml-1 hover:text-white"
                                             >
                                                 <X className="w-3 h-3" />
                                             </button>
@@ -409,7 +409,7 @@ export function MaterialMetadataEditor({
                                     onClick={handleGenerateCover}
                                     disabled={isGeneratingCover}
                                     size="sm"
-                                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                                    className="bg-gradient-to-r from-white to-white hover:from-white hover:to-white"
                                 >
                                     {isGeneratingCover ? (
                                         <Loader2 className="w-3 h-3 animate-spin" />

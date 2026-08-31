@@ -7,91 +7,92 @@
 
 @layer base {
   :root {
-    /* SaaS dark: near-black with a cool blue hint, layered surfaces */
-    --background: 222 20% 4%;
-    --foreground: 210 20% 96%;
+    /* Strict black and white only — no gray */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 222 18% 6%;
-    --card-foreground: 210 20% 96%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222 20% 5%;
-    --popover-foreground: 210 20% 96%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
 
-    /* SaaS primary: refined indigo-blue */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    /* Buttons are monochrome: white surface, black text */
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 222 16% 10%;
-    --secondary-foreground: 210 20% 96%;
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 16% 10%;
-    --muted-foreground: 215 12% 60%;
+    --muted: 0 0% 0%;
+    --muted-foreground: 0 0% 100%;
 
-    --accent: 222 16% 14%;
-    --accent-foreground: 210 20% 96%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    /* Destructive is a plain white button, no red / no gray */
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
-    --border: 222 14% 14%;
-    --input: 222 14% 12%;
-    --ring: 217 91% 60%;
+    --border: 0 0% 17%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 100%;
 
-    /* Terminal-dark accent (green) for technical / data / status surfaces */
-    --terminal: 158 64% 52%;
-    --terminal-foreground: 240 10% 4%;
+    /* Terminal accent pure white (was green) */
+    --terminal: 0 0% 100%;
+    --terminal-foreground: 0 0% 0%;
 
     --radius: 0.875rem;
 
-    --chart-1: 217 91% 60%;
-    --chart-2: 158 64% 52%;
-    --chart-3: 45 93% 60%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-1: 0 0% 100%;
+    --chart-2: 0 0% 100%;
+    --chart-3: 0 0% 100%;
+    --chart-4: 0 0% 100%;
+    --chart-5: 0 0% 100%;
   }
 
   .dark {
-    --background: 222 20% 4%;
-    --foreground: 210 20% 96%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 222 18% 6%;
-    --card-foreground: 210 20% 96%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222 20% 5%;
-    --popover-foreground: 210 20% 96%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 222 16% 10%;
-    --secondary-foreground: 210 20% 96%;
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 16% 10%;
-    --muted-foreground: 215 12% 60%;
+    --muted: 0 0% 0%;
+    --muted-foreground: 0 0% 100%;
 
-    --accent: 222 16% 14%;
-    --accent-foreground: 210 20% 96%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
-    --border: 222 14% 14%;
-    --input: 222 14% 12%;
-    --ring: 217 91% 60%;
+    --border: 0 0% 17%;
+    --input: 0 0% 0%;
+    --ring: 0 0% 100%;
 
-    --terminal: 158 64% 52%;
-    --terminal-foreground: 240 10% 4%;
+    --terminal: 0 0% 100%;
+    --terminal-foreground: 0 0% 0%;
 
-    --chart-1: 217 91% 60%;
-    --chart-2: 158 64% 52%;
-    --chart-3: 45 93% 60%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-1: 0 0% 100%;
+    --chart-2: 0 0% 100%;
+    --chart-3: 0 0% 100%;
+    --chart-4: 0 0% 100%;
+    --chart-5: 0 0% 100%;
   }
 }
 
 @layer utilities {
-  /* Terminal-dark monospace / green text for logs, ids, status, metrics */
+  /* Terminal-dark monospace / light text for logs, ids, status, metrics */
   .font-terminal {
     font-family: var(--font-mono), ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
   }

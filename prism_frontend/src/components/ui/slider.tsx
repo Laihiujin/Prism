@@ -49,7 +49,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
             <input
                 type="range"
                 ref={ref}
-                className={`w-full h-2 bg-gray-300 rounded-full appearance-none cursor-pointer ${className}`}
+                className={`w-full h-2 bg-white rounded-full appearance-none cursor-pointer ${className}`}
                 min={min}
                 max={max}
                 step={step}

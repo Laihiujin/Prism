@@ -1,4 +1,4 @@
-﻿const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
 const path = require('path');
 const { nativeTheme } = require('electron');
 const { spawn, spawnSync, execSync } = require('child_process');
@@ -75,6 +75,7 @@ class PrismApp {
     process.env.PLAYWRIGHT_HEADLESS = this.runtimeSettings.browserHeadless ? 'true' : 'false';
     process.env.PRISM_AUTOMATION_RUNTIME = this.runtimeSettings.automationRuntime;
     this.applyPlatformBrowserPreferenceEnv(process.env, this.runtimeSettings.platformBrowserPreferences || {});
+    this.applyPlatformProxyPreferenceEnv(process.env, this.runtimeSettings.platformProxyPreferences || {});
     this.setupTray();
 
     console.log('App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged, 'isPackagedRuntime:', this.isPackagedRuntime);
@@ -428,8 +429,60 @@ class PrismApp {
     return {
       browserHeadless: this.normalizeBooleanSetting(raw.browserHeadless, true),
       automationRuntime: 'patchright',
-      platformBrowserPreferences: this.normalizePlatformBrowserPreferences(raw.platformBrowserPreferences)
+      platformBrowserPreferences: this.normalizePlatformBrowserPreferences(raw.platformBrowserPreferences),
+      platformProxyPreferences: this.normalizePlatformProxyPreferences(raw.platformProxyPreferences)
     };
+  }
+
+  getDefaultPlatformProxyPreferences() {
+    return {
+      douyin: 'direct',
+      kuaishou: 'direct',
+      xiaohongshu: 'direct',
+      channels: 'direct',
+      bilibili: 'direct'
+    };
+  }
+
+  normalizePlatformProxyChoice(value, fallback = 'direct') {
+    return ['direct', 'inherit'].includes(value) ? value : fallback;
+  }
+
+  normalizePlatformProxyPreferences(raw = {}) {
+    const defaults = this.getDefaultPlatformProxyPreferences();
+    const normalized = { ...defaults };
+
+    for (const [platform, defaultChoice] of Object.entries(defaults)) {
+      const directValue = raw?.[platform];
+      const aliasValue = platform === 'channels' ? raw?.tencent : undefined;
+      const candidate = typeof directValue === 'string'
+        ? directValue.trim().toLowerCase()
+        : typeof aliasValue === 'string'
+          ? aliasValue.trim().toLowerCase()
+          : undefined;
+      normalized[platform] = this.normalizePlatformProxyChoice(candidate, defaultChoice);
+    }
+
+    return normalized;
+  }
+
+  // 把平台代理偏好转成后端可消费的 PRISM_DIRECT_PLATFORMS（逗号分隔的“强制直连”平台列表）。
+  // 只有标记为 direct 的平台才会走直连；tiktok/youtube 等未配置平台默认走代理。
+  buildDirectConnectPlatforms(rawPreferences = {}) {
+    const preferences = this.normalizePlatformProxyPreferences(rawPreferences);
+    const direct = [];
+    for (const [platform, mode] of Object.entries(preferences)) {
+      if (mode === 'direct') {
+        direct.push(platform === 'channels' ? 'tencent' : platform);
+      }
+    }
+    return direct;
+  }
+
+  applyPlatformProxyPreferenceEnv(targetEnv, rawPreferences = {}) {
+    const direct = this.buildDirectConnectPlatforms(rawPreferences);
+    targetEnv.PRISM_DIRECT_PLATFORMS = direct.join(',');
+    return targetEnv.PRISM_DIRECT_PLATFORMS;
   }
 
   applyPlatformBrowserPreferenceEnv(targetEnv, rawPreferences = {}) {
@@ -467,6 +520,7 @@ class PrismApp {
     process.env.PLAYWRIGHT_HEADLESS = settings.browserHeadless ? 'true' : 'false';
     process.env.PRISM_AUTOMATION_RUNTIME = settings.automationRuntime;
     this.applyPlatformBrowserPreferenceEnv(process.env, settings.platformBrowserPreferences || {});
+    this.applyPlatformProxyPreferenceEnv(process.env, settings.platformProxyPreferences || {});
     return settings;
   }
 
@@ -1422,6 +1476,7 @@ class PrismApp {
       PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime
     };
     this.applyPlatformBrowserPreferenceEnv(relaunchEnv, this.runtimeSettings.platformBrowserPreferences || {});
+    this.applyPlatformProxyPreferenceEnv(relaunchEnv, this.runtimeSettings.platformProxyPreferences || {});
 
     if (this.isDev) {
       relaunchEnv.PRISM_START_SERVICES = process.env.PRISM_START_SERVICES || '1';
@@ -1521,6 +1576,7 @@ class PrismApp {
     const pythonEnv = this.buildPythonEnv(env);
     Object.assign(env, pythonEnv);
     this.applyPlatformBrowserPreferenceEnv(env, this.runtimeSettings.platformBrowserPreferences || {});
+    this.applyPlatformProxyPreferenceEnv(env, this.runtimeSettings.platformProxyPreferences || {});
     if (!env.PRISM_DATA_DIR) {
       if (this.isDev) {
         const devDataDir = path.join(this.repoRoot, 'prism_backend');

@@ -304,7 +304,7 @@ export function AIServiceProviderCard({
                 <div className="text-sm font-medium text-foreground">{title}</div>
                 <Badge
                   variant="outline"
-                  className={savedConfig ? "border-border/80 bg-foreground/10 text-foreground" : "border-border/70 bg-card text-muted-foreground"}
+                  className={savedConfig ? "border-border/80 bg-black text-foreground" : "border-border/70 bg-card text-muted-foreground"}
                 >
                   {savedConfig ? "已配置" : "未配置"}
                 </Badge>
@@ -396,7 +396,7 @@ export function AIServiceProviderCard({
               <Button
                 onClick={() => void saveConfig()}
                 disabled={loading.save}
-                className="border-border/80 bg-foreground/10 text-foreground hover:bg-accent/50"
+                className="border-border/80 bg-black text-foreground hover:bg-accent/50"
               >
                 {loading.save ? <Loader2 className="animate-spin" /> : <Save />}
                 保存配置
