@@ -38,22 +38,30 @@ from fastapi_app.core.config import settings
 # 锁前缀
 LOCK_PREFIX = "prism:runtime:account:"
 
-# 释放锁的 Lua 脚本：仅当 token 匹配时删除
+# 释放锁的 Lua 脚本：解析 JSON 校验 token，仅匹配时删除
 _RELEASE_LUA = """
-if redis.call('get', KEYS[1]) == ARGV[1] then
-    return redis.call('del', KEYS[1])
-else
+local raw = redis.call('get', KEYS[1])
+if not raw then
     return 0
 end
+local data = cjson.decode(raw)
+if data and data.token == ARGV[1] then
+    return redis.call('del', KEYS[1])
+end
+return 0
 """
 
-# 续期 Lua 脚本：仅当 token 匹配时延长 TTL
+# 续期 Lua 脚本：解析 JSON 校验 token，仅匹配时延长 TTL
 _RENEW_LUA = """
-if redis.call('get', KEYS[1]) == ARGV[1] then
-    return redis.call('pexpire', KEYS[1], ARGV[2])
-else
+local raw = redis.call('get', KEYS[1])
+if not raw then
     return 0
 end
+local data = cjson.decode(raw)
+if data and data.token == ARGV[1] then
+    return redis.call('pexpire', KEYS[1], ARGV[2])
+end
+return 0
 """
 
 # 读取锁内容并返回 TTL

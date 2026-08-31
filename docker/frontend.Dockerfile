@@ -3,7 +3,8 @@ FROM node:22-bookworm-slim AS deps
 WORKDIR /app/prism_frontend
 
 COPY prism_frontend/package.json prism_frontend/package-lock.json ./
-RUN npm ci --ignore-scripts
+# --force: lockfile 由 macOS 生成含 darwin 专属可选依赖（fsevents），Linux 构建跳过平台校验
+RUN npm ci --ignore-scripts --force
 
 FROM node:22-bookworm-slim AS builder
 
