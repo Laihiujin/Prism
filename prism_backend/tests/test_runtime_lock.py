@@ -200,8 +200,14 @@ def test_unavailable_when_disabled():
 
 
 def test_redis_none_unavailable():
-    """Redis 不可用时抛 RuntimeLockUnavailable（fail-closed，不静默放行）。"""
-    svc = AccountRuntimeLockService(redis=None, enabled=True)
+    """Redis 不可用时抛 RuntimeLockUnavailable（fail-closed，不静默放行）。
+
+    注：当本机 Redis 在线时，redis=None 会回退真实连接，因此这里用
+    一个指向未监听端口的客户端模拟不可用。
+    """
+    import redis as redis_pkg
+    dead = redis_pkg.Redis.from_url("redis://127.0.0.1:6399/15", socket_connect_timeout=0.3)
+    svc = AccountRuntimeLockService(redis=dead, enabled=True)
     try:
         svc.acquire("acct_1", "publish")
         assert False, "Redis 不可用时应抛错"
