@@ -173,6 +173,21 @@ function AccountPageContent() {
     activeSessionRef.current = null
   }, [])
 
+  // 取消二维码登录：停止轮询，并通知后端注销登录会话（停止 Worker 端的浏览器进程）
+  const cancelBinding = useCallback(async () => {
+    const sid = activeSessionRef.current
+    stopPolling() // 注意：会清空 activeSessionRef，所以先取 sid
+    if (sid) {
+      try {
+        await fetch(`${backendBaseUrl}/api/v1/auth/sessions/${encodeURIComponent(sid)}`, { method: "DELETE" })
+      } catch (err) {
+        console.error("Cancel login session failed", err)
+      }
+    }
+    setBindingStatus("idle")
+    setQrImage(null)
+  }, [stopPolling])
+
   useEffect(() => {
     return () => {
       stopPolling()
@@ -836,8 +851,7 @@ function AccountPageContent() {
               onOpenChange={(open) => {
                 setDialogOpen(open)
                 if (!open) {
-                  setBindingStatus("idle")
-                  setQrImage(null)
+                  cancelBinding()
                 }
               }}
             >
@@ -945,7 +959,7 @@ function AccountPageContent() {
                   )}
                 </div>
                 <DialogFooter>
-                  <Button variant="ghost" className="rounded-2xl border border-border/70 bg-black" onClick={() => setDialogOpen(false)}>
+                  <Button variant="ghost" className="rounded-2xl border border-border/70 bg-black" onClick={() => { cancelBinding(); setDialogOpen(false) }}>
                     取消
                   </Button>
                   <Button className="rounded-2xl" onClick={handleSaveAccount}>

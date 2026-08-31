@@ -127,8 +127,11 @@ if _local_chrome_raw:
     else:
         LOCAL_CHROME_PATH = str(_chrome_path.resolve())
     _preferred_chrome = _find_preferred_local_chrome()
-    if _preferred_chrome and _is_legacy_bundled_chrome(LOCAL_CHROME_PATH):
-        LOCAL_CHROME_PATH = _preferred_chrome
+    if _preferred_chrome:
+        # 优先使用系统已安装的 Chrome：配置的路径已不存在（如被卸载的
+        # Chrome for Testing）或仍是旧的 bundled 内置浏览器时，回退到系统 Chrome。
+        if not Path(LOCAL_CHROME_PATH).exists() or _is_legacy_bundled_chrome(LOCAL_CHROME_PATH):
+            LOCAL_CHROME_PATH = _preferred_chrome
 else:
     LOCAL_CHROME_PATH = _find_preferred_local_chrome()
 

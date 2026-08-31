@@ -311,6 +311,18 @@ export function useSettingsActions() {
         }
       } else {
         setStatus(null)
+        // web 版：从后端读取无头模式设置
+        try {
+          const res = await fetch(`${apiBase}/api/v1/system/browser-headless`, { cache: "no-store" })
+          if (res.ok) {
+            const payload = await res.json()
+            if (typeof payload?.headless === "boolean") {
+              updateAppInfo({ runtimeSettings: { browserHeadless: payload.headless } })
+            }
+          }
+        } catch (e) {
+          // 忽略：无头模式读不到时保持默认
+        }
       }
 
       syncBrowserRuntimeInfo(await loadBrowserRuntimeInfo())
@@ -422,7 +434,22 @@ export function useSettingsActions() {
   const setBrowserHeadless = async (browserHeadless: boolean) => {
     await handleAction("setBrowserHeadless", async () => {
       if (!isElectron) {
-        throw new Error("无头模式切换仅桌面版可用")
+        // web 版：调用后端接口写 .env
+        const response = await fetch(`${apiBase}/api/v1/system/browser-headless`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ headless: browserHeadless }),
+        })
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok || !payload?.success) {
+          throw new Error(payload?.detail || payload?.error || "无头模式更新失败")
+        }
+        updateAppInfo({ runtimeSettings: { browserHeadless: payload.headless ?? browserHeadless } })
+        toast({
+          title: "设置已保存",
+          description: "重启后端后生效",
+        })
+        return
       }
 
       const electron = (window as any).electronAPI
