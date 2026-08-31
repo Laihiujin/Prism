@@ -19,7 +19,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from loguru import logger
 
@@ -28,6 +28,50 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]  # fastapi_app/../.. = prism_
 REPO_ROOT = BACKEND_ROOT.parent  # Prism 根
 TOOLS_DIR = REPO_ROOT / "tools"
 
+# Hermes 技能（md 文件）根目录
+SKILLS_ROOT = REPO_ROOT / "runtime-data" / "app" / "hermes-home" / "skills"
+
+
+def _iter_skill_dicts() -> Iterable[Dict[str, Any]]:
+    """动态枚举 Hermes 技能（md 文件）：skills/<分类>/<技能名>/SKILL.md。
+
+    停用的技能会移到 skills/_disabled/<分类>/<技能名>/ 下（软停用，不物理删除）。
+    """
+    roots = [(SKILLS_ROOT, True)]
+    disabled_root = SKILLS_ROOT / "_disabled"
+    if disabled_root.is_dir():
+        roots.append((disabled_root, False))
+    for root, enabled in roots:
+        for cat_dir in sorted(p for p in root.iterdir() if p.is_dir()):
+            for skill_dir in sorted(p for p in cat_dir.iterdir() if p.is_dir()):
+                skill_md = skill_dir / "SKILL.md"
+                if not skill_md.is_file():
+                    continue
+                desc = ""
+                try:
+                    for ln in skill_md.read_text(errors="ignore").splitlines()[:12]:
+                        s = ln.strip()
+                        if s and not s.startswith("#"):
+                            desc = s[:140]
+                            break
+                except Exception:
+                    pass
+                yield {
+                    "id": f"skill-{cat_dir.name}-{skill_dir.name}",
+                    "name": skill_dir.name,
+                    "category": cat_dir.name,
+                    "type": "skill",
+                    "repo": "",
+                    "description": desc or f"Hermes skill (md): {cat_dir.name}/{skill_dir.name}",
+                    "install_path": f"{cat_dir.name}/{skill_dir.name}",
+                    "installed": True,
+                    "enabled": enabled,
+                    "launchable": False,
+                    "buildable": False,
+                    "_skill_path": str(skill_dir),
+                    "_is_skill": True,
+                }
+
 
 @dataclass
 class DevTool:
@@ -35,12 +79,14 @@ class DevTool:
 
     id: str
     name: str
-    type: str            # mcp / cli / agent / desktop
+    type: str            # 分类：skill / mcp / plugin / component
     repo: str            # GitHub 仓库 URL（克隆用）
     description: str
     install_path: str    # tools/ 下的子目录名
     install_cmd: str = ""  # 安装后执行的构建/安装命令（可选）
     check: str = ""      # 检测已安装的命令（可选）
+    launch_cmd: str = ""  # 从 Prism 打开/调用的命令（可选，如 macOS 应用）
+    build_cmd: str = ""  # 构建命令（可选，如 persona dashboard 构建）
 
     def target_path(self) -> Path:
         return TOOLS_DIR / self.install_path
@@ -68,6 +114,8 @@ class DevTool:
             "description": self.description,
             "install_path": self.install_path,
             "installed": self.is_installed(),
+            "launchable": bool(self.launch_cmd),
+            "buildable": bool(self.build_cmd),
         }
 
 
@@ -80,7 +128,7 @@ DEV_TOOLS: List[DevTool] = [
     DevTool(
         id="deepseek-harness",
         name="DeepSeek Harness",
-        type="agent",
+        type="component",
         repo="https://github.com/deepseek-ai/deepseek-harness.git",
         description="DeepSeek 官方 agent harness（monorepo，pnpm）。",
         install_path="deepseek-harness",
@@ -89,13 +137,13 @@ DEV_TOOLS: List[DevTool] = [
     ),
     DevTool(
         id="ccswitch",
-        name="ccswitch",
-        type="cli",
-        repo="https://github.com/Cursedpotential/ccswitch.git",
-        description="Claude Code 服务商/账号一键切换 CLI。",
-        install_path="ccswitch",
-        install_cmd="npm install 2>/dev/null || true",
-        check="command -v ccswitch",
+        name="CC Switch",
+        type="plugin",
+        repo="https://github.com/farion1231/cc-switch.git",
+        description="Claude Code 服务商/账号一键切换（macOS 桌面应用，位于 /Applications/CC Switch.app）。",
+        install_path="",
+        launch_cmd='open -a "CC Switch"',
+        check='test -d "/Applications/CC Switch.app"',
     ),
     DevTool(
         id="computer-use-linux",
@@ -110,7 +158,7 @@ DEV_TOOLS: List[DevTool] = [
     DevTool(
         id="hermes-agent",
         name="Hermes Agent",
-        type="agent",
+        type="component",
         repo="https://github.com/NousResearch/hermes-agent.git",
         description="Hermes Agent（CLI/WebUI/MCP，已在容器内置）。",
         install_path="hermes-agent",
@@ -121,9 +169,19 @@ DEV_TOOLS: List[DevTool] = [
         name="Persona Studio",
         type="mcp",
         repo="https://github.com/TechQaiser/persona-studio.git",
-        description="Browser Identity / Fingerprint / Profile 层。",
+        description="Browser Identity / Fingerprint / Profile 层（内置 WebUI 管理后台）。",
         install_path="persona-studio",
         check="command -v persona",
+        launch_cmd="open http://127.0.0.1:5173",
+        # 「构建 Dashboard」= 启动/确保 Persona WebUI 服务（http://127.0.0.1:5173）在运行，
+        # 而非产出 vite 构建产物。
+        build_cmd=(
+            "cd dashboard && "
+            "(curl -sf http://127.0.0.1:5173 >/dev/null 2>&1 && echo 'WebUI already running' || "
+            "(nohup node_modules/.bin/vite --host 127.0.0.1 --port 5173 --strictPort "
+            "> /tmp/persona-dash.log 2>&1 &)) && sleep 3 && "
+            "curl -sf http://127.0.0.1:5173 >/dev/null 2>&1 && echo 'WebUI ready: http://127.0.0.1:5173'"
+        ),
     ),
 ]
 
@@ -135,19 +193,22 @@ class DevToolRegistry:
         self.tools = tools if tools is not None else DEV_TOOLS
 
     def list(self) -> List[Dict[str, Any]]:
-        return [t.to_dict() for t in self.tools]
+        return [t.to_dict() for t in self.tools] + list(_iter_skill_dicts())
 
-    def get(self, tool_id: str) -> Optional[DevTool]:
+    def get(self, tool_id: str) -> Optional[Any]:
         for t in self.tools:
             if t.id == tool_id:
                 return t
+        for skill in _iter_skill_dicts():
+            if skill["id"] == tool_id:
+                return skill
         return None
 
     def status(self, tool_id: str) -> Optional[Dict[str, Any]]:
         tool = self.get(tool_id)
         if not tool:
             return None
-        return tool.to_dict()
+        return tool if isinstance(tool, dict) else tool.to_dict()
 
     def install(self, tool_id: str) -> Dict[str, Any]:
         """按需一键安装工具。"""
@@ -192,6 +253,15 @@ class DevToolRegistry:
         if not tool:
             raise ValueError(f"未知工具: {tool_id}")
 
+        # Skill（md 文件）：直接删除技能目录
+        if isinstance(tool, dict) and tool.get("_is_skill"):
+            path = Path(tool["_skill_path"])
+            removed = False
+            if path.exists():
+                shutil.rmtree(path, ignore_errors=True)
+                removed = True
+            return {"success": True, "message": f"{tool['name']} 技能已卸载", "removed": removed}
+
         target = tool.target_path()
         removed = False
         if target.exists() and tool.install_path:
@@ -205,6 +275,69 @@ class DevToolRegistry:
                 removed = True
 
         return {"success": True, "message": f"{tool.name} 已卸载", "removed": removed}
+
+    def launch(self, tool_id: str) -> Dict[str, Any]:
+        """从 Prism 打开/调用本地已安装的工具（如 macOS 应用）。"""
+        tool = self.get(tool_id)
+        if not tool:
+            raise ValueError(f"未知工具: {tool_id}")
+        if not tool.launch_cmd:
+            raise ValueError(f"{tool.name} 不支持从 Prism 打开")
+        if not tool.is_installed():
+            raise RuntimeError(f"{tool.name} 尚未安装，无法打开")
+        try:
+            subprocess.Popen(tool.launch_cmd, shell=True)
+            return {"success": True, "message": f"已打开 {tool.name}"}
+        except Exception as e:
+            logger.error(f"[Tools] 打开 {tool.name} 失败: {e}")
+            raise RuntimeError(f"打开 {tool.name} 失败: {e}")
+
+    def build(self, tool_id: str) -> Dict[str, Any]:
+        """构建已安装的工具（如 Persona Dashboard）。"""
+        tool = self.get(tool_id)
+        if not tool:
+            raise ValueError(f"未知工具: {tool_id}")
+        if not tool.build_cmd:
+            raise ValueError(f"{tool.name} 不支持构建")
+        if not tool.is_installed():
+            raise RuntimeError(f"{tool.name} 尚未安装，无法构建")
+        cwd = str(tool.target_path()) if tool.install_path and tool.target_path().exists() else str(REPO_ROOT)
+        logger.info(f"[Tools] 构建 {tool.name}: {tool.build_cmd} (cwd={cwd})")
+        r = subprocess.run(
+            tool.build_cmd, shell=True, capture_output=True, text=True,
+            timeout=1200, cwd=cwd,
+        )
+        if r.returncode != 0:
+            logger.error(f"[Tools] 构建 {tool.name} 失败: {r.stderr[:500]}")
+            raise RuntimeError(f"构建 {tool.name} 失败: {r.stderr[:300]}")
+        return {"success": True, "message": f"{tool.name} 构建完成"}
+
+    def set_skill_enabled(self, skill_id: str, enabled: bool) -> Dict[str, Any]:
+        """软启用/停用技能：把技能目录在 active 与 _disabled 之间移动（不物理删除）。"""
+        target = next((s for s in _iter_skill_dicts() if s["id"] == skill_id), None)
+        if not target:
+            raise ValueError(f"未知技能: {skill_id}")
+        cat, name = target["category"], target["name"]
+        active_dir = SKILLS_ROOT / cat / name
+        disabled_dir = SKILLS_ROOT / "_disabled" / cat / name
+        try:
+            if enabled:
+                if disabled_dir.exists() and not active_dir.exists():
+                    active_dir.parent.mkdir(parents=True, exist_ok=True)
+                    disabled_dir.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(disabled_dir), str(active_dir))
+            else:
+                if active_dir.exists() and not disabled_dir.exists():
+                    disabled_dir.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(active_dir), str(disabled_dir))
+        except Exception as e:
+            logger.error(f"[Tools] 停用/启用技能失败 {skill_id}: {e}")
+            raise RuntimeError(f"技能操作失败: {e}")
+        return {
+            "success": True,
+            "enabled": enabled,
+            "message": f"{name} 技能{'已启用' if enabled else '已停用'}",
+        }
 
 
 # 全局单例

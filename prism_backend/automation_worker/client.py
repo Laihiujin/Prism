@@ -18,7 +18,8 @@ class AutomationWorkerClient:
         self,
         platform: str,
         account_id: str,
-        headless: bool = True
+        headless: bool = True,
+        mode: str = "browser"
     ) -> Dict[str, Any]:
         """
         请求 Worker 生成二维码
@@ -27,6 +28,7 @@ class AutomationWorkerClient:
             platform: 平台名称
             account_id: 账号ID
             headless: 是否无头模式
+            mode: 抖音登录模式（browser=正式/当前模拟，http=逆向HTTP测试）
 
         Returns:
             包含 session_id, qr_image 等的字典
@@ -36,7 +38,8 @@ class AutomationWorkerClient:
             params = {
                 "platform": platform,
                 "account_id": account_id,
-                "headless": headless
+                "headless": headless,
+                "mode": mode,
             }
 
             logger.info(f"[WorkerClient] Requesting QR: {platform} {account_id}")

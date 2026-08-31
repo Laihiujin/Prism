@@ -19,6 +19,7 @@ import {
   UsersRound,
   Video,
   Boxes,
+  Fingerprint,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -116,11 +117,14 @@ const navSections: NavSection[] = [
     items: [
       { label: "Hermes Agent", href: "/ai-agent", icon: HermesLogoIcon },
       { label: "开发者工具", href: "/tools", icon: Boxes },
+      { label: "Persona Studio", href: "/tools/persona", icon: Fingerprint },
     ],
   },
   {
     label: "系统",
-    items: [{ label: "系统设置", href: "/settings", icon: Settings }],
+    items: [
+      { label: "系统设置", href: "/settings", icon: Settings },
+    ],
   },
 ]
 

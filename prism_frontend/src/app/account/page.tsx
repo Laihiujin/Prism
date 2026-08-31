@@ -153,6 +153,8 @@ function AccountPageContent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [envSheet, setEnvSheet] = useState<{ open: boolean; account: Account | null }>({ open: false, account: null })
   const [formState, setFormState] = useState<AccountFormState>({ name: "", platform: "kuaishou" })
+  // TikTok/YouTube 不支持扫码，走浏览器登录 / 从本机 Chrome 导入
+  const isQrPlatform = formState.platform !== "tiktok" && formState.platform !== "youtube"
   const [bindingStatus, setBindingStatus] = useState<"idle" | "pending" | "code" | "browser" | "success" | "error">("idle")
   const [qrImage, setQrImage] = useState<string | null>(null)
   const { toast } = useToast()
@@ -863,8 +865,8 @@ function AccountPageContent() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{formState.id ? "编辑账号" : "扫码绑定账号"}</DialogTitle>
-                  <DialogDescription>支持选择平台、昵称并通过扫码绑定</DialogDescription>
+                  <DialogTitle>{formState.id ? "编辑账号" : "新添账号"}</DialogTitle>
+                  <DialogDescription>选择平台、昵称并添加账号</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -902,19 +904,29 @@ function AccountPageContent() {
                   </div>
                   {!formState.id && (
                     <div className="rounded-2xl border border-border/70 bg-card p-4">
-                      <p className="text-sm font-semibold">二维码登录</p>
-                      <p className="text-xs text-muted-foreground">点击按钮获取二维码</p>
+                      <p className="text-sm font-semibold">{isQrPlatform ? "二维码登录" : "浏览器登录"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isQrPlatform
+                          ? "点击按钮获取二维码"
+                          : "TikTok / YouTube 需用浏览器登录（不支持扫码）"}
+                      </p>
                       <div className="mt-4 flex flex-col items-center justify-center gap-3 py-4">
                         {bindingStatus === "idle" && (
-                          <Button variant="secondary" onClick={startBinding}>
-                            <QrCode className="h-4 w-4" />
-                            获取二维码
-                          </Button>
+                          <div className="flex flex-col items-center gap-2">
+                            <Button variant="secondary" onClick={startBinding}>
+                              {isQrPlatform ? (
+                                <QrCode className="h-4 w-4" />
+                              ) : (
+                                <MonitorSmartphone className="h-4 w-4" />
+                              )}
+                              {isQrPlatform ? "获取二维码" : "浏览器登录"}
+                            </Button>
+                          </div>
                         )}
                         {bindingStatus === "pending" && (
                           <div className="flex flex-col items-center gap-2 text-sm text-foreground/70 w-full px-8">
                             <Loader2 className="h-6 w-6 animate-spin text-foreground" />
-                            <span>正在初始化二维码...</span>
+                            <span>{isQrPlatform ? "正在初始化二维码..." : "正在启动浏览器 / 检测登录态..."}</span>
                             <Progress value={33} className="w-full h-1 mt-2" />
                           </div>
                         )}
@@ -936,8 +948,8 @@ function AccountPageContent() {
                         {bindingStatus === "browser" && (
                           <div className="flex flex-col items-center gap-2 text-sm text-foreground/70 w-full px-8">
                             <Loader2 className="h-6 w-6 animate-spin text-foreground" />
-                            <span>请在本机弹出的浏览器窗口中完成登录，等待确认...</span>
-                            <p className="text-xs text-muted-foreground">登录完成后会自动刷新账号列表</p>
+                            <span>正在检测登录态，请稍候...</span>
+                            <p className="text-xs text-muted-foreground">可查看弹出的浏览器窗口确认状态，完成后会自动刷新账号列表</p>
                             <Progress value={50} className="w-full h-1 mt-2" />
                           </div>
                         )}

@@ -286,7 +286,8 @@ async def generate_qrcode(
         result = await worker.generate_qrcode(
             platform=platform.value.lower(),
             account_id=account_id,
-            headless=bool(PLAYWRIGHT_HEADLESS)
+            headless=bool(PLAYWRIGHT_HEADLESS),
+            mode=settings.PRISM_DOUYIN_LOGIN_MODE,
         )
 
         session_id = result["session_id"]
