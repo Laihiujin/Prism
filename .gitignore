@@ -175,6 +175,8 @@ tmp-runtime-data/
 tools/hermes-agent/
 tools/hermes-home/
 tools/hermes-webui/
+# 外部项目 clone（构建时拉取，不入库）
+tools/persona-studio/
 
 LaunchScript/python-3.11.9-embed-amd64.zip
 

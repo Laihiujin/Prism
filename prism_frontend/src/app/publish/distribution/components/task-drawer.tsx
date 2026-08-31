@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { X, QrCode, Loader2, CheckCircle2, XCircle } from "lucide-react"
 
@@ -213,6 +213,28 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
             es.close()
             eventSourceRef.current = null
         }
+    }
+
+    // 停止当前二维码登录：关闭 EventSource 连接并重置状态
+    const stopQrLogin = useCallback(() => {
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close()
+            eventSourceRef.current = null
+        }
+        // 通知后端注销登录会话，停止其浏览器/登录进程（避免取消后进程残留）
+        if (loginSessionId) {
+            fetch(`${backendBaseUrl}/api/v1/auth/sessions/${encodeURIComponent(loginSessionId)}`, { method: "DELETE" }).catch(() => {})
+        }
+        setQrSession(null)
+        setVerificationCode("")
+        setLoginProgress(0)
+        setIsLoggingIn(false)
+    }, [loginSessionId])
+
+    // 二维码抽屉关闭（点取消 / 下拉 / 点外部）时，同时停止登录连接
+    const handleQrDrawerOpenChange = (open: boolean) => {
+        setQrDrawerOpen(open)
+        if (!open) stopQrLogin()
     }
 
     useEffect(() => {
@@ -431,7 +453,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
             </Drawer>
 
             {/* QR Login Drawer (Nested) */}
-            <Drawer open={qrDrawerOpen} onOpenChange={setQrDrawerOpen}>
+            <Drawer open={qrDrawerOpen} onOpenChange={handleQrDrawerOpenChange}>
                 <DrawerContent className="bg-card border-border/70">
                     <DrawerHeader>
                         <DrawerTitle>QR视频任务派发</DrawerTitle>
@@ -443,13 +465,18 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                     <div className="px-4 py-6 space-y-6">
                         {/* QR Code & Verification stacked */}
                         <div className="flex flex-col items-center space-y-4">
-                            {qrSession?.qrCode && (
+                            {qrSession?.qrCode ? (
                                 <div className="bg-foreground p-4 rounded-2xl">
                                     <img
                                         src={qrSession.qrCode}
                                         alt="QR Code"
                                         className="w-64 h-64"
                                     />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center gap-2 w-64 h-64 rounded-2xl border border-dashed border-border/60 bg-card/40">
+                                    <QrCode className="h-10 w-10 text-muted-foreground/60" />
+                                    <span className="text-xs text-muted-foreground">正在生成二维码...</span>
                                 </div>
                             )}
 
@@ -528,24 +555,34 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                             <Button
                                 variant="outline"
                                 className="flex-1 rounded-2xl"
-                                onClick={() => setQrDrawerOpen(false)}
+                                onClick={() => {
+                                    stopQrLogin()
+                                    setQrDrawerOpen(false)
+                                }}
                             >
                                 取消
                             </Button>
-                            <Button
-                                className="flex-1 rounded-2xl"
-                                onClick={() => sendVerificationCode.mutate()}
-                                disabled={verificationCode.length !== 6 || sendVerificationCode.isPending || !loginSessionId}
-                            >
-                                {sendVerificationCode.isPending ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        验证中...
-                                    </>
-                                ) : (
-                                    "登录领取派发任务"
-                                )}
-                            </Button>
+                            {qrSession?.status === 'error' || qrSession?.status === 'expired' ? (
+                                <Button className="flex-1 rounded-2xl" onClick={startQrLogin}>
+                                    <QrCode className="mr-2 h-4 w-4" />
+                                    重新扫码
+                                </Button>
+                            ) : (
+                                <Button
+                                    className="flex-1 rounded-2xl"
+                                    onClick={() => sendVerificationCode.mutate()}
+                                    disabled={verificationCode.length !== 6 || sendVerificationCode.isPending || !loginSessionId}
+                                >
+                                    {sendVerificationCode.isPending ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            验证中...
+                                        </>
+                                    ) : (
+                                        "登录领取派发任务"
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     </DrawerFooter>
                 </DrawerContent>

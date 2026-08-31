@@ -2,7 +2,7 @@
 系统维护与工具 API 路由
 将原本的脚本功能通过 FastAPI 接口暴露
 """
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import asyncio
@@ -396,6 +396,33 @@ async def browser_runtime_uninstall(target: str):
         "removedPaths": removed_paths,
         "browserRuntimeInfo": _get_browser_runtime_info(),
     }
+
+
+@router.get("/browser-headless", summary="获取浏览器无头模式设置")
+async def get_browser_headless():
+    """读取 .env 中的 PLAYWRIGHT_HEADLESS（web 版设置页使用）。"""
+    value = True
+    env_file = _repo_root() / ".env"
+    try:
+        from dotenv import dotenv_values
+        raw = (dotenv_values(env_file) or {}).get("PLAYWRIGHT_HEADLESS")
+        if raw is not None:
+            value = str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+    except Exception:
+        pass
+    return {"success": True, "headless": bool(value)}
+
+
+@router.put("/browser-headless", summary="设置浏览器无头模式")
+async def set_browser_headless(headless: bool = Body(..., embed=True)):
+    """写入 .env 的 PLAYWRIGHT_HEADLESS。修改后需重启后端才生效。"""
+    env_file = _repo_root() / ".env"
+    try:
+        from dotenv import set_key
+        set_key(str(env_file), "PLAYWRIGHT_HEADLESS", "true" if headless else "false", quote_mode="never")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"写入 .env 失败: {str(e)}")
+    return {"success": True, "headless": bool(headless), "restart_required": True}
 
 
 @router.post("/manual-sync", summary="????????")
