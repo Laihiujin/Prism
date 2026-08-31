@@ -79,6 +79,20 @@ module.exports = {
       error_file: './logs/persona-error.log',
       out_file: './logs/persona-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      // Persona per-country 代理网关：独立官方 mihomo，提供 7771-7776
+      // 绑定各国家节点(见 tools/persona-studio/proxies/config.yaml)
+      name: 'persona-proxy',
+      cwd: '.',
+      script: '/Users/laihiujin/Documents/siuyechu/Prism/tools/persona-studio/proxies/mihomo',
+      interpreter: 'none', // 原生二进制
+      args: '-d tools/persona-studio/proxies -f tools/persona-studio/proxies/config.yaml',
+      autorestart: true,
+      watch: false,
+      error_file: './logs/persona-proxy-error.log',
+      out_file: './logs/persona-proxy-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
   ]
 }

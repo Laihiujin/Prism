@@ -13,6 +13,7 @@ pkill -f "automation_worker/worker.py" 2>/dev/null
 pkill -f "celery -A fastapi_app" 2>/dev/null
 pkill -f "persona.*serve" 2>/dev/null
 pkill -f "tools/persona-studio/dashboard/node_modules/.bin/vite" 2>/dev/null
+pkill -f "persona-studio/proxies/mihomo" 2>/dev/null
 sleep 1
 
 echo "============================================"
@@ -27,6 +28,7 @@ echo "  前端        http://localhost:3000"
 echo "  后端        http://127.0.0.1:7000/api/docs"
 echo "  Worker      http://127.0.0.1:7001/health"
 echo "  Persona API http://127.0.0.1:8787"
+echo "  代理网关     http://127.0.0.1:7771-7776 (sg/jp/us/de/tw/hk)"
 
 echo
 echo "常用: PM2_HOME=$PM2_HOME $PM2 logs / restart all / stop all"
