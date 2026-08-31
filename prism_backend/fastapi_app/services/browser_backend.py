@@ -189,18 +189,57 @@ class PersonaBackend(BrowserBackend):
         from utils.automation_provider import async_playwright
 
         profile = profile or {}
-        persona_profile_id = profile.get("persona_profile_id") or account_id
         client = self._client()
 
-        # 1. 确保 Profile 存在（幂等）
-        engine = kwargs.get("engine") or settings.PERSONA_DEFAULT_ENGINE
-        proxy_meta = proxy or {}
-        await client.ensure_profile(
-            persona_profile_id,
-            proxy=proxy_meta if settings.PERSONA_INJECT_PROXY else None,
-            engine=engine,
-            country=proxy_meta.get("country"),
-        )
+        # ── Account ↔ Persona Profile 持久映射 ──
+        # 1) 账号表已存 persona_profile_id → 永久复用
+        # 2) 未存 → 创建（name=platform_account_id）并写回账号表
+        # 3) 已存但 Persona 侧丢失 → 明确 repair 流程，不静默新建身份
+        account_binding = None
+        try:
+            from myUtils.cookie_manager import cookie_manager
+            account_binding = cookie_manager.get_account_binding(account_id) or {}
+        except Exception:
+            pass
+
+        stored_profile_id = (account_binding or {}).get("persona_profile_id")
+        platform = (account_binding or {}).get("platform") or profile.get("platform") or "account"
+        if not stored_profile_id:
+            # 首次：创建 <platform>_<account_id> 便于人工定位
+            persona_profile_id = f"{platform}_{account_id}" if platform != account_id else account_id
+            await client.ensure_profile(
+                persona_profile_id,
+                proxy=proxy if settings.PERSONA_INJECT_PROXY else None,
+                engine=kwargs.get("engine") or settings.PERSONA_DEFAULT_ENGINE,
+                country=(proxy or {}).get("country"),
+            )
+            # 写回账号表（持久化）
+            try:
+                from myUtils.cookie_manager import cookie_manager
+                cookie_manager.set_account_binding(account_id, persona_profile_id=persona_profile_id)
+            except Exception as e:
+                logger.warning(f"[PersonaBackend] 持久化 persona_profile_id 失败 {account_id}: {e}")
+            logger.info(f"[PersonaBackend] 首次创建 Profile {persona_profile_id} 并绑定账号 {account_id}")
+        else:
+            persona_profile_id = stored_profile_id
+            # 已存：检查 Persona 侧是否存在（丢失 → repair，不静默重建）
+            existing = await client.get_profile(persona_profile_id)
+            if existing is None:
+                raise RuntimeError(
+                    f"Persona Profile '{persona_profile_id}' 已从 Persona 侧丢失，"
+                    "需要显式 repair/recreate（不静默生成新身份）。"
+                    "请删除账号表 persona_profile_id 后重新 start，或人工在 Persona 重建。"
+                )
+            # 存在：如传入代理且与 Persona Profile 当前不一致，同步代理配置（rebind 场景）
+            if proxy and settings.PERSONA_INJECT_PROXY:
+                p_proxy = existing.get("proxy") or {}
+                p_server = p_proxy.get("server") if isinstance(p_proxy, dict) else None
+                if p_server != proxy.get("server"):
+                    logger.info(
+                        f"[PersonaBackend] 账号 {account_id} rebind 检测到代理变化，"
+                        f"同步 Persona Profile {persona_profile_id}: {p_server} -> {proxy.get('server')}"
+                    )
+                    await client.update_profile(persona_profile_id, proxy=proxy)
 
         # 2. Attach CDP（headless 模式由调用方决定）
         attach = await client.attach(persona_profile_id, headless=headless)
@@ -218,7 +257,8 @@ class PersonaBackend(BrowserBackend):
 
         logger.info(
             f"[PersonaBackend] 启动 {account_id} persona_profile={persona_profile_id} "
-            f"engine={engine} proxy={'已注入' if proxy_meta else '直连'} headless={headless}"
+            f"engine={kwargs.get('engine') or settings.PERSONA_DEFAULT_ENGINE} "
+            f"proxy={'已注入' if proxy else '直连'} headless={headless}"
         )
         return BrowserSession(
             account_id=account_id,

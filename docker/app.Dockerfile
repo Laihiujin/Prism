@@ -15,6 +15,15 @@ RUN python -m pip install --break-system-packages --upgrade pip \
     && python -m pip install --break-system-packages -r requirements.txt \
     && python -m patchright install --with-deps chromium
 
+# ── Persona Studio（Browser Identity / Fingerprint / Profile 层）──
+# 构建期 clone 到镜像（不污染仓库）；persona serve 提供 HTTP API
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && git clone --depth 1 https://github.com/TechQaiser/persona-studio.git /opt/persona-studio \
+    && cd /opt/persona-studio/engine \
+    && python -m pip install --break-system-packages -e ".[api,launch]" \
+    && python -m pip --version \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY prism_backend ./prism_backend
 COPY tools/hermes-agent ./tools/hermes-agent
 COPY tools/hermes-webui ./tools/hermes-webui
@@ -27,6 +36,6 @@ RUN python -m venv --system-site-packages /opt/hermes-venv \
     && chmod +x ./docker/start-app.sh \
     && mkdir -p /app/runtime-data
 
-EXPOSE 7000 7001 9119 9131
+EXPOSE 7000 7001 8787 9119 9131
 
 ENTRYPOINT ["./docker/start-app.sh"]
