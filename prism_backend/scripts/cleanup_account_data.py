@@ -5,6 +5,7 @@
 import os
 import json
 import shutil
+import time
 from pathlib import Path
 from datetime import datetime
 from typing import Set, List, Dict
@@ -151,6 +152,10 @@ def cleanup_cookies_directory(active_identifiers: Set[str], dry_run: bool = Fals
 
     logger.info("开始清理 cookiesFile 目录...")
 
+    # 宽限期：近期抓取/修改的 cookie 不删，避免登录成功但账号还没入库时被误删
+    GRACE_SECONDS = 3600  # 1 小时
+    now = time.time()
+
     for file_path in COOKIES_DIR.glob("*.json"):
         stats['total'] += 1
         filename = file_path.name
@@ -159,6 +164,15 @@ def cleanup_cookies_directory(active_identifiers: Set[str], dry_run: bool = Fals
             stats['kept'] += 1
             logger.info(f"保留: {filename}")
             continue
+
+        try:
+            age = now - file_path.stat().st_mtime
+            if age < GRACE_SECONDS:
+                stats['kept'] += 1
+                logger.info(f"宽限期保留(近期抓取): {filename}")
+                continue
+        except Exception:
+            pass
 
         stats['deleted'] += 1
         if dry_run:

@@ -12,6 +12,7 @@ Login is interactive (Google account, no QR code): the browser opens, the user s
 the storage_state is saved. Reuse it afterwards for fully unattended uploads.
 """
 import asyncio
+import re
 from pathlib import Path
 
 from patchright.async_api import Page, Playwright, async_playwright
@@ -39,7 +40,13 @@ def _msg(emoji: str, text: str) -> str:
 
 def _chrome_launch_options(*, headless: bool, **options):
     """Use the explicitly configured local Chrome before a browser channel."""
-    launch_options = {"headless": headless, **options}
+    launch_options = {
+        "headless": headless,
+        "args": [
+            "--disable-blink-features=AutomationControlled",
+        ],
+        **options,
+    }
     if LOCAL_CHROME_PATH:
         launch_options["executable_path"] = LOCAL_CHROME_PATH
     else:
@@ -88,11 +95,20 @@ async def youtube_cookie_gen(account_file, headless: bool = False):
         await page.goto(STUDIO_URL, wait_until="domcontentloaded")
         youtube_logger.info(_msg("🔐", "请在弹出的浏览器里登录 Google / YouTube 账号，登录后会自动保存"))
         ok = False
+        _login_cookies = {"SID", "HSID", "SSID", "SAPISID", "GAPS", "SIDCC"}
         for _ in range(600):  # 最多等 10 分钟
-            if "/channel/" in page.url:
-                await page.wait_for_timeout(2000)  # 让 cookie 落定
-                ok = True
-                break
+            url = page.url.lower()
+            # 离开 Google 登录页并进入 YouTube，且已带 Google 登录 cookie
+            if (
+                "accounts.google.com" not in url
+                and ("studio.youtube.com" in url or "/channel/" in url or "youtube.com" in url)
+            ):
+                state = await context.storage_state()
+                names = {c.get("name") for c in state.get("cookies", [])}
+                if names & _login_cookies:
+                    await page.wait_for_timeout(2000)  # 让 cookie 落定
+                    ok = True
+                    break
             await asyncio.sleep(1)
         if ok:
             await context.storage_state(path=account_file)
