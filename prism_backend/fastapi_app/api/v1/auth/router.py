@@ -875,12 +875,23 @@ async def _save_tencent_login(session: dict, login_data: dict):
 
 @router.delete("/sessions/{session_id}", summary="Delete login session")
 async def delete_session(session_id: str):
-    """Delete a login session."""
-    if session_id in login_sessions:
-        del login_sessions[session_id]
-        return {"success": True, "message": "Session deleted"}
+    """Delete a login session and stop its login process/browser on the worker."""
+    async with login_sessions_lock:
+        session = login_sessions.pop(session_id, None)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
 
-    raise HTTPException(status_code=404, detail="Session not found")
+    # Stop the Worker's login process / browser for this session, otherwise it
+    # keeps running in the background after the user cancels.
+    worker_session_id = session.get("worker_session_id", session_id)
+    try:
+        from automation_worker.client import get_worker_client
+        worker = get_worker_client()
+        await worker.cancel_session(worker_session_id)
+    except Exception as e:
+        logger.warning(f"[Login] Cancel worker session failed for {session_id}: {e}")
+
+    return {"success": True, "message": "Session deleted and login process stopped"}
 
 
 @router.get("/sessions/cleanup", summary="Cleanup expired sessions")
