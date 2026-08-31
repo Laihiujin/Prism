@@ -19,7 +19,6 @@ import {
   UsersRound,
   Video,
   Boxes,
-  Fingerprint,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -117,7 +116,6 @@ const navSections: NavSection[] = [
     items: [
       { label: "Hermes Agent", href: "/ai-agent", icon: HermesLogoIcon },
       { label: "开发者工具", href: "/tools", icon: Boxes },
-      { label: "Persona Studio", href: "/tools/persona", icon: Fingerprint },
     ],
   },
   {

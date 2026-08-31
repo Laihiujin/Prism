@@ -71,24 +71,13 @@ module.exports = {
       name: 'persona-api',
       cwd: '.',
       script: '/Users/laihiujin/Documents/siuyechu/Prism/.venv/bin/persona',
+      interpreter: 'none', // 按 shebang 直接运行 Python CLI
       args: '--data-dir tools/persona-studio/data serve',
       autorestart: true,
       watch: false,
       env: { PLAYWRIGHT_BROWSERS_PATH: '/Users/laihiujin/Documents/siuyechu/Prism/browsers' },
       error_file: './logs/persona-error.log',
       out_file: './logs/persona-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    },
-    {
-      name: 'persona-dashboard',
-      cwd: './tools/persona-studio/dashboard',
-      script: './node_modules/.bin/vite',
-      args: '--host 127.0.0.1 --port 5175 --strictPort',
-      autorestart: true,
-      watch: false,
-      env: { PLAYWRIGHT_BROWSERS_PATH: '/Users/laihiujin/Documents/siuyechu/Prism/browsers' },
-      error_file: './logs/persona-dashboard-error.log',
-      out_file: './logs/persona-dashboard-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
   ]
