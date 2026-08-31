@@ -172,15 +172,15 @@ DEV_TOOLS: List[DevTool] = [
         description="Browser Identity / Fingerprint / Profile 层（内置 WebUI 管理后台）。",
         install_path="persona-studio",
         check="command -v persona",
-        launch_cmd="open http://127.0.0.1:5173",
-        # 「构建 Dashboard」= 启动/确保 Persona WebUI 服务（http://127.0.0.1:5173）在运行，
+        launch_cmd="open http://127.0.0.1:5175",
+        # 「构建 Dashboard」= 启动/确保 Persona WebUI 服务（http://127.0.0.1:5175）在运行，
         # 而非产出 vite 构建产物。
         build_cmd=(
             "cd dashboard && "
-            "(curl -sf http://127.0.0.1:5173 >/dev/null 2>&1 && echo 'WebUI already running' || "
-            "(nohup node_modules/.bin/vite --host 127.0.0.1 --port 5173 --strictPort "
+            "(curl -sf http://127.0.0.1:5175 >/dev/null 2>&1 && echo 'WebUI already running' || "
+            "(nohup node_modules/.bin/vite --host 127.0.0.1 --port 5175 --strictPort "
             "> /tmp/persona-dash.log 2>&1 &)) && sleep 3 && "
-            "curl -sf http://127.0.0.1:5173 >/dev/null 2>&1 && echo 'WebUI ready: http://127.0.0.1:5173'"
+            "curl -sf http://127.0.0.1:5175 >/dev/null 2>&1 && echo 'WebUI ready: http://127.0.0.1:5175'"
         ),
     ),
 ]

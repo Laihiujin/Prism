@@ -14,6 +14,11 @@ echo   Prism Full Startup (prismenv)
 echo ============================================
 echo.
 
+REM 清理残留后端/Worker，避免端口占用导致绑定失败（[Errno 48] address already in use）
+if exist "%SCRIPT_DIR%kill_port_7000.bat" call "%SCRIPT_DIR%kill_port_7000.bat"
+if exist "%SCRIPT_DIR%kill_port_7001.bat" call "%SCRIPT_DIR%kill_port_7001.bat"
+timeout /t 1 /nobreak >nul
+
 echo [1] Checking Redis...
 %REDIS_CLI% ping >nul 2>&1
 if errorlevel 1 (
@@ -56,6 +61,16 @@ echo [5] Starting Frontend...
 start "React Frontend" "%SCRIPT_DIR%start_frontend.bat"
 
 echo.
+echo [6] Starting Persona API (8787)...
+set "PERSONA_PY=%PROJECT_ROOT%prismenv\Scripts\python.exe"
+if not exist "%PERSONA_PY%" set "PERSONA_PY=python"
+start "Persona API" cmd /c "cd /d "%PROJECT_ROOT%tools\persona-studio" && "%PERSONA_PY%" -m persona --data-dir data serve"
+
+echo.
+echo [7] Starting Persona Dashboard (5175)...
+start "Persona Dashboard" cmd /c "cd /d "%PROJECT_ROOT%tools\persona-studio\dashboard" && npm run dev"
+
+echo.
 echo ============================================
 echo   [OK] All services started
 echo ============================================
@@ -66,5 +81,8 @@ echo   - Celery Worker     (task queue)
 echo   - Automation Worker (localhost:7001)
 echo   - FastAPI Backend   (http://localhost:7000)
 echo   - React Frontend    (http://localhost:3000)
+echo   - Persona API       (http://localhost:8787)
+echo   - Persona Dashboard (http://localhost:5175)
+echo   - Hermes (由后端自动托管) (http://localhost:9119)
 echo.
 pause
