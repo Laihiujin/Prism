@@ -23,6 +23,7 @@ from ....schemas.common import Response, StatusResponse
 from .services import account_service
 from ....core.logger import logger
 from ....core.exceptions import NotFoundException, BadRequestException
+from ....core.config import settings
 from .tools import router as tools_router
 from myUtils.cookie_manager import cookie_manager
 from platforms.path_utils import resolve_cookie_file
@@ -171,15 +172,13 @@ async def open_creator_center(account_id: str):
         from automation_worker.client import get_worker_client
         client = get_worker_client()
         try:
-            # 尊重 PLAYWRIGHT_HEADLESS：docker 等无 X server 环境走无头，避免
-            # "headed browser without having a XServer running"；本机桌面设 false 则显示窗口。
-            from config.conf import PLAYWRIGHT_HEADLESS
+            # 创作者中心始终以可见窗口打开（headless=False），不跟随 PLAYWRIGHT_HEADLESS。
+            # 该无头开关只服务于登录/发布等自动化操作，创作者中心是给用户看的，必须显示窗口。
             data = await client.open_creator_center(
                 platform=platform,
                 storage_state=storage_state,
                 account_id=account_id,
                 apply_fingerprint=True,
-                headless=bool(PLAYWRIGHT_HEADLESS),
             )
             return Response(success=True, data=data)
         except Exception as e:
@@ -598,7 +597,7 @@ async def get_account_environment(account_id: str):
                 "user_id": account.get("user_id"),
             },
             "browser": {
-                "backend": binding.get("browser_backend") or "patchright",
+                "backend": binding.get("browser_backend") or settings.PRISM_BROWSER_BACKEND_DEFAULT,
                 "persona_profile_id": binding.get("persona_profile_id"),
                 "persona_online": persona_online,
                 "engine": "patchright",
@@ -653,7 +652,7 @@ async def get_account_runtime(account_id: str):
                 "acquired_at": lock_status.get("acquired_at"),
                 "expires_at": lock_status.get("expires_at"),
                 "ttl_remaining": lock_status.get("ttl_remaining"),
-                "browser_backend": binding.get("browser_backend") or "patchright",
+                "browser_backend": binding.get("browser_backend") or settings.PRISM_BROWSER_BACKEND_DEFAULT,
                 "active_local": active_local,
             },
         }
@@ -741,7 +740,7 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
     try:
         binding = cookie_manager.get_account_binding(account_id) or {}
         proxy_id = binding.get("proxy_id")
-        backend_name = binding.get("browser_backend") or "patchright"
+        backend_name = binding.get("browser_backend") or settings.PRISM_BROWSER_BACKEND_DEFAULT
 
         from fastapi_app.services.browser_backend import get_browser_backend
         from fastapi_app.services.ip_pool_service import get_ip_pool_service

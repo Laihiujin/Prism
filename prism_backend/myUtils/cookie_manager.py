@@ -422,9 +422,17 @@ class CookieManager:
                 'xiaohongshu': [],  # 小红书 - 不从cookie提取,只能从DOM/JS提取（customer-sso-sid/web_session是会话ID，不是user_id）
                 'channels': ['wxuin', 'uin'],  # 视频号
                 'bilibili': ['DedeUserID', 'DedeUserID__ckMd5'],  # B站
+                'tiktok': ['multi_sids'],  # TikTok - multi_sids 格式: <uid>%3A<session>
             }
 
-            id_fields = platform_id_map.get(platform, [])
+            # TikTok 特例：multi_sids 的值形如 "7314926308239590401%3A4c49da18..."，取 %3A 前段为 uid
+            if platform == 'tiktok':
+                for cookie in cookies_list:
+                    if isinstance(cookie, dict) and cookie.get('name') == 'multi_sids':
+                        val = cookie.get('value', '') or ''
+                        uid = val.split('%3A')[0].split(':')[0].strip()
+                        if uid:
+                            return str(uid)
 
             # 按照优先级顺序查找（先遍历id_fields，再遍历cookies）
             for id_field in id_fields:

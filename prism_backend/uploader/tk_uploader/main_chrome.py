@@ -56,36 +56,52 @@ async def tiktok_setup(account_file, handle=False):
 
 
 async def get_tiktok_cookie(account_file):
+    # TikTok 会拦截“无痕/临时 profile”的登录。这里改用按账号持久化的
+    # user-data-dir（非无痕、有稳定 profile），否则本机正常 Chrome 能登、
+    # 但 Prism 弹出来的浏览器登不上。
+    profile_root = os.getenv("PRISM_BROWSER_PROFILES_DIR") or str(
+        Path(__file__).resolve().parent.parent.parent / "data" / "browser_profiles"
+    )
+    account_key = Path(account_file).stem  # 例如 tiktok_xxx
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in account_key)
+    user_data_dir = os.path.join(profile_root, safe)
+    os.makedirs(user_data_dir, exist_ok=True)
+
     async with async_playwright() as playwright:
         options = {
             'args': [
                 '--lang en-GB',
+                '--disable-blink-features=AutomationControlled',
             ],
             'headless': False,  # Set headless option here
+            'user_data_dir': user_data_dir,  # 持久化 profile，避免无痕导致登录被拦
         }
         if LOCAL_CHROME_PATH:
             options["executable_path"] = LOCAL_CHROME_PATH
-        # Make sure to run headed.
-        browser = await playwright.chromium.launch(**options)
-        # Setup context however you like.
-        context = await browser.new_context()  # Pass any options
+        # 持久化上下文（相当于正常 Chrome 窗口，非无痕）
+        context = await playwright.chromium.launch_persistent_context(**options)
         context = await set_init_script(context)
-        page = await context.new_page()
+        page = context.pages[0] if context.pages else await context.new_page()
         await page.goto("https://www.tiktok.com/login?lang=en")
         tiktok_logger.info("Please sign in to TikTok in the opened browser (timeout: 10 minutes).")
         try:
+            _login_cookies = {"sessionid", "sessionid_ss", "sid_tt", "sid_guard", "sid_ucp_v1"}
             for _ in range(600):
-                if "login" not in page.url.lower() and "tiktok.com" in page.url.lower():
-                    await page.wait_for_timeout(1000)
-                    await context.storage_state(path=account_file)
-                    tiktok_logger.success(f"TikTok login state saved: {account_file}")
-                    return True
+                url = page.url.lower()
+                if "login" not in url and "tiktok.com" in url:
+                    # 校验是否已有登录态 cookie，避免在首页误判空登录态
+                    state = await context.storage_state()
+                    names = {c.get("name") for c in state.get("cookies", [])}
+                    if names & _login_cookies:
+                        await page.wait_for_timeout(1000)
+                        await context.storage_state(path=account_file)
+                        tiktok_logger.success(f"TikTok login state saved: {account_file}")
+                        return True
                 await asyncio.sleep(1)
             tiktok_logger.error("TikTok interactive login timed out.")
             return False
         finally:
             await context.close()
-            await browser.close()
 
 
 class TiktokVideo(object):

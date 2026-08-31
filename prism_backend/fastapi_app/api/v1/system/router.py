@@ -425,6 +425,36 @@ async def set_browser_headless(headless: bool = Body(..., embed=True)):
     return {"success": True, "headless": bool(headless), "restart_required": True}
 
 
+@router.get("/douyin-login-mode", summary="获取抖音登录模式")
+async def get_douyin_login_mode():
+    """读取 .env 的 PRISM_DOUYIN_LOGIN_MODE（browser=正式/当前模拟，http=逆向HTTP测试）。"""
+    env_file = _repo_root() / ".env"
+    value = "browser"
+    try:
+        from dotenv import dotenv_values
+        raw = (dotenv_values(env_file) or {}).get("PRISM_DOUYIN_LOGIN_MODE")
+        if raw:
+            value = str(raw).strip().lower()
+    except Exception:
+        pass
+    return {"success": True, "mode": value}
+
+
+@router.put("/douyin-login-mode", summary="设置抖音登录模式")
+async def set_douyin_login_mode(mode: str = Body(..., embed=True)):
+    """写入 .env 的 PRISM_DOUYIN_LOGIN_MODE。修改后需重启后端生效。"""
+    mode = (mode or "browser").strip().lower()
+    if mode not in {"browser", "http"}:
+        raise HTTPException(status_code=400, detail="mode 必须是 browser 或 http")
+    env_file = _repo_root() / ".env"
+    try:
+        from dotenv import set_key
+        set_key(str(env_file), "PRISM_DOUYIN_LOGIN_MODE", mode, quote_mode="never")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"写入 .env 失败: {str(e)}")
+    return {"success": True, "mode": mode, "restart_required": True}
+
+
 @router.post("/manual-sync", summary="????????")
 async def manual_sync(background_tasks: BackgroundTasks):
     """

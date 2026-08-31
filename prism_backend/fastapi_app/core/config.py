@@ -2,7 +2,7 @@
 配置管理模块
 使用 pydantic-settings 管理环境变量和配置
 """
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 from typing import List
 from pathlib import Path
@@ -126,6 +126,11 @@ class Settings(BaseSettings):
     # 默认浏览器后端（patchright / persona）。账号 browser_backend=persona 时才走 PersonaBackend
     PRISM_BROWSER_BACKEND_DEFAULT: str = "patchright"
 
+    # 抖音登录模式：
+    #   browser = 浏览器二维码登录（DouyinAdapter，正式/当前模拟路径）
+    #   http    = 逆向 HTTP API 登录（DouyinHttpAdapter，测试路径）
+    PRISM_DOUYIN_LOGIN_MODE: str = "browser"
+
     # ── Account Runtime 分布式锁（Redis per-account）──
     PRISM_RUNTIME_LOCK_ENABLED: bool = True      # 是否启用 Runtime 锁
     PRISM_RUNTIME_LOCK_TTL: int = 300            # 锁 TTL（秒），长任务靠 heartbeat 续期
@@ -160,11 +165,14 @@ class Settings(BaseSettings):
     DOUYIN_TIKTOK_API_PREFIX: str = "/api/v1/douyin-tiktok"
 
 
-    class Config:
+    model_config = SettingsConfigDict(
         # Prefer repo-root `.env` as the single source of truth.
-        env_file = (str(Path(__file__).resolve().parent.parent.parent / ".env"),)
-        case_sensitive = True
-        extra = "ignore"  # 忽略额外的环境变量
+        # config.py 位于 prism_backend/fastapi_app/core/，上溯 4 级即仓库根。
+        env_file=(str(Path(__file__).resolve().parent.parent.parent.parent / ".env"),),
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",  # 忽略额外的环境变量
+    )
 
 
 # 创建全局配置实例

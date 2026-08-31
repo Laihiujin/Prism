@@ -1151,7 +1151,7 @@ async def enrich_account(req: EnrichAccountRequest):
 
 
 @app.post("/qrcode/generate")
-async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None):
+async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None, mode: str = "browser"):
     """
     生成登录二维码
 
@@ -1185,7 +1185,13 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
             )
 
         # 获取平台适配器
-        adapter_class = PLATFORM_ADAPTERS.get(platform)
+        if platform == "douyin":
+            # 抖音登录模式：browser=浏览器(正式/当前模拟) http=逆向HTTP(测试)
+            _mode = (mode or "browser").strip().lower()
+            adapter_class = DouyinHttpAdapter if _mode == "http" else DouyinAdapter
+            logger.info(f"[Worker] 抖音登录模式: {_mode} -> adapter={adapter_class.__name__}")
+        else:
+            adapter_class = PLATFORM_ADAPTERS.get(platform)
         if not adapter_class:
             return JSONResponse(
                 status_code=400,
