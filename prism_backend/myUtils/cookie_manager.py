@@ -209,6 +209,8 @@ class CookieManager:
                 conn.execute("ALTER TABLE cookie_accounts ADD COLUMN persona_profile_id TEXT")
             if "browser_backend" not in columns:
                 conn.execute("ALTER TABLE cookie_accounts ADD COLUMN browser_backend TEXT DEFAULT 'patchright'")
+            if "persona_proxy" not in columns:
+                conn.execute("ALTER TABLE cookie_accounts ADD COLUMN persona_proxy TEXT DEFAULT 'direct'")
 
     def _ensure_database(self):
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1065,9 +1067,10 @@ class CookieManager:
         proxy_id: Optional[str] = None,
         persona_profile_id: Optional[str] = None,
         browser_backend: Optional[str] = None,
+        persona_proxy: Optional[str] = None,
         clear_proxy: bool = False,
     ) -> bool:
-        """更新账号的固定身份绑定（proxy_id / persona_profile_id / browser_backend）。sticky 绑定，持久化。"""
+        """更新账号的固定身份绑定（proxy_id / persona_profile_id / browser_backend / persona_proxy）。sticky 绑定，持久化。"""
         updates: List[str] = []
         params: List[Any] = []
         if clear_proxy:
@@ -1081,6 +1084,9 @@ class CookieManager:
         if browser_backend is not None:
             updates.append("browser_backend = ?")
             params.append(browser_backend)
+        if persona_proxy is not None:
+            updates.append("persona_proxy = ?")
+            params.append(persona_proxy)
         if not updates:
             return False
         params.append(account_id)
@@ -1097,7 +1103,7 @@ class CookieManager:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute(
-                "SELECT account_id, platform, name, proxy_id, persona_profile_id, browser_backend FROM cookie_accounts WHERE account_id = ?",
+                "SELECT account_id, platform, name, proxy_id, persona_profile_id, browser_backend, persona_proxy FROM cookie_accounts WHERE account_id = ?",
                 (account_id,),
             )
             row = cursor.fetchone()

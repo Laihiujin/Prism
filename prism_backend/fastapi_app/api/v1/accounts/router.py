@@ -1,7 +1,7 @@
 """
 账号管理API路由
 """
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Body, HTTPException, status, Depends
 from typing import Optional, Any, Dict
 import asyncio
 import subprocess
@@ -702,6 +702,35 @@ async def rebind_account_proxy(account_id: str, request: _RebindProxyRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{account_id}/persona-proxy", response_model=Response[dict])
+async def get_account_persona_proxy(account_id: str):
+    """读取账号绑定的 persona 代理地区，及可用地区列表。"""
+    binding = cookie_manager.get_account_binding(account_id) or {}
+    from fastapi_app.services.persona_proxies import list_proxies
+    return {
+        "status": "success",
+        "result": {
+            "account_id": account_id,
+            "persona_proxy": binding.get("persona_proxy") or "direct",
+            "available": list_proxies(),
+        },
+    }
+
+
+@router.put("/{account_id}/persona-proxy", response_model=Response[dict])
+async def set_account_persona_proxy(account_id: str, region: str = Body(..., embed=True)):
+    """设置账号使用的 persona 代理地区（direct/sg/jp/us/de/tw/hk）。"""
+    from fastapi_app.services.persona_proxies import PERSONA_PROXIES
+    region = (region or "direct").strip().lower()
+    if region not in PERSONA_PROXIES:
+        raise HTTPException(status_code=400, detail=f"未知地区: {region}，可选: {', '.join(PERSONA_PROXIES)}")
+    ok = cookie_manager.set_account_binding(account_id, persona_proxy=region)
+    return {
+        "status": "success",
+        "result": {"account_id": account_id, "persona_proxy": region, "updated": ok},
+    }
+
+
 @router.post("/{account_id}/browser/start")
 async def start_account_browser(account_id: str, request: _BrowserActionRequest):
     """
@@ -743,33 +772,50 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
         backend_name = binding.get("browser_backend") or settings.PRISM_BROWSER_BACKEND_DEFAULT
 
         from fastapi_app.services.browser_backend import get_browser_backend
-        from fastapi_app.services.ip_pool_service import get_ip_pool_service
+        from fastapi_app.services.persona_proxies import resolve_proxy as resolve_persona_proxy
 
         backend = get_browser_backend(backend_name)
         proxy_config = None
         proxy_meta = None
-        if proxy_id:
-            proxy_service = get_ip_pool_service()
-            proxy_obj = proxy_service.get_ip(proxy_id)
-            if proxy_obj:
-                url = proxy_obj.to_proxy_url()
-                if url:
-                    proxy_config = {"server": url}
-                proxy_meta = {
-                    "proxy_id": proxy_id,
-                    "name": proxy_obj.name,
-                    "host": proxy_obj.ip,
-                    "port": proxy_obj.port,
-                    "exit_ip": proxy_obj.exit_ip,
-                    "status": proxy_obj.status,
-                }
-
         profile = {
             "persona_profile_id": binding.get("persona_profile_id") or account_id,
         }
-        # Persona Proxy 需带 country 用于指纹 locale/timezone 对齐
-        if proxy_config and proxy_obj and proxy_obj.country:
-            proxy_config["country"] = proxy_obj.country
+
+        # Persona 代理池（ClashParty 端口 7001–7006）：账号绑定 persona_proxy 地区时优先用
+        persona_region = (binding.get("persona_proxy") or "direct").strip().lower()
+        pp_config, pp_opts = resolve_persona_proxy(persona_region)
+        if persona_region != "direct" and pp_config:
+            proxy_config = pp_config
+            proxy_meta = {
+                "name": f"persona-{persona_region}",
+                "region": persona_region,
+                "country": pp_config.get("country"),
+            }
+            if pp_opts.get("locale"):
+                profile["locale"] = pp_opts["locale"]
+            if pp_opts.get("timezone_id"):
+                profile["timezone_id"] = pp_opts["timezone_id"]
+        else:
+            # 直连或未绑 persona 代理时，回退到 IP 池代理
+            if proxy_id:
+                from fastapi_app.services.ip_pool_service import get_ip_pool_service
+                proxy_service = get_ip_pool_service()
+                proxy_obj = proxy_service.get_ip(proxy_id)
+                if proxy_obj:
+                    url = proxy_obj.to_proxy_url()
+                    if url:
+                        proxy_config = {"server": url}
+                    proxy_meta = {
+                        "proxy_id": proxy_id,
+                        "name": proxy_obj.name,
+                        "host": proxy_obj.ip,
+                        "port": proxy_obj.port,
+                        "exit_ip": proxy_obj.exit_ip,
+                        "status": proxy_obj.status,
+                    }
+                    # Persona Proxy 需带 country 用于指纹 locale/timezone 对齐
+                    if proxy_obj.country:
+                        proxy_config["country"] = proxy_obj.country
         session = await backend.start(
             account_id,
             profile=profile,
