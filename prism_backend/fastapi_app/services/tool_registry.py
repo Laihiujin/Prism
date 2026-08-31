@@ -169,19 +169,9 @@ DEV_TOOLS: List[DevTool] = [
         name="Persona Studio",
         type="mcp",
         repo="https://github.com/TechQaiser/persona-studio.git",
-        description="Browser Identity / Fingerprint / Profile 层（内置 WebUI 管理后台）。",
+        description="Browser Identity / Fingerprint / Profile 层（persona serve API :8787，作为浏览器身份后端）。",
         install_path="persona-studio",
         check="command -v persona",
-        launch_cmd="open http://127.0.0.1:5175",
-        # 「构建 Dashboard」= 启动/确保 Persona WebUI 服务（http://127.0.0.1:5175）在运行，
-        # 而非产出 vite 构建产物。
-        build_cmd=(
-            "cd dashboard && "
-            "(curl -sf http://127.0.0.1:5175 >/dev/null 2>&1 && echo 'WebUI already running' || "
-            "(nohup node_modules/.bin/vite --host 127.0.0.1 --port 5175 --strictPort "
-            "> /tmp/persona-dash.log 2>&1 &)) && sleep 3 && "
-            "curl -sf http://127.0.0.1:5175 >/dev/null 2>&1 && echo 'WebUI ready: http://127.0.0.1:5175'"
-        ),
     ),
 ]
 

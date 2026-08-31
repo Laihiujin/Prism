@@ -27,6 +27,6 @@ echo "  前端        http://localhost:3000"
 echo "  后端        http://127.0.0.1:7000/api/docs"
 echo "  Worker      http://127.0.0.1:7001/health"
 echo "  Persona API http://127.0.0.1:8787"
-echo "  Persona后台 http://127.0.0.1:5175"
+
 echo
 echo "常用: PM2_HOME=$PM2_HOME $PM2 logs / restart all / stop all"
