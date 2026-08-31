@@ -199,6 +199,7 @@ LaunchScript/python-3.11.9-embed-amd64.zip
 /prism_backend/data/ip_pool.json
 /prism_backend/browser_profiles/
 /prism_backend/data/browser_profiles/
+/prism_backend/db/frontend_accounts_snapshot.json
 
 # Python build metadata
 *.egg-info/

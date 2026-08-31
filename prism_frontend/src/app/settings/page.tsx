@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -266,6 +266,46 @@ export default function SettingsPage() {
   const currentRuntime =
     appInfo?.runtimeSettings?.automationRuntime ?? browserRuntimeInfo?.preferredRuntime ?? "patchright"
   const browserHeadless = appInfo?.runtimeSettings?.browserHeadless
+  const [douyinLoginMode, setDouyinLoginMode] = useState<string>("browser")
+  const [douyinModeLoading, setDouyinModeLoading] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch("/api/v1/system/douyin-login-mode", { cache: "no-store" })
+        const payload = await res.json()
+        if (mounted && payload?.mode) setDouyinLoginMode(String(payload.mode))
+      } catch {
+        /* 忽略 */
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const updateDouyinLoginMode = async (mode: string) => {
+    setDouyinModeLoading(true)
+    try {
+      const res = await fetch("/api/v1/system/douyin-login-mode", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload?.detail || "设置失败")
+      setDouyinLoginMode(mode)
+      toast({
+        title: "已切换抖音登录模式",
+        description: mode === "http" ? "逆向 HTTP（测试）· 需重启后端生效" : "浏览器（正式/当前模拟）· 需重启后端生效",
+      })
+    } catch (err) {
+      toast({ variant: "destructive", title: "设置失败", description: getErrorMessage(err) })
+    } finally {
+      setDouyinModeLoading(false)
+    }
+  }
   const platformBrowserPreferences = {
     ...defaultPlatformBrowserPreferences,
     ...(appInfo?.runtimeSettings?.platformBrowserPreferences ?? {}),
@@ -497,6 +537,36 @@ export default function SettingsPage() {
                 onCheckedChange={(checked) => void setBrowserHeadless(checked)}
                 aria-label="切换无头模式"
               />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-medium text-foreground">抖音登录模式</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  浏览器（正式/当前模拟）为默认；「逆向 HTTP」为测试路径，确认可用后再切换。修改后需重启后端生效。
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {douyinModeLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+                <Button
+                  variant={douyinLoginMode === "browser" ? "default" : "secondary"}
+                  className={douyinLoginMode === "browser" ? "border-border/80 bg-black text-foreground" : "border-border/70 bg-card text-foreground hover:bg-accent/40"}
+                  disabled={douyinModeLoading}
+                  onClick={() => void updateDouyinLoginMode("browser")}
+                >
+                  浏览器（正式/当前模拟）
+                </Button>
+                <Button
+                  variant={douyinLoginMode === "http" ? "default" : "secondary"}
+                  className={douyinLoginMode === "http" ? "border-border/80 bg-black text-foreground" : "border-border/70 bg-card text-foreground hover:bg-accent/40"}
+                  disabled={douyinModeLoading}
+                  onClick={() => void updateDouyinLoginMode("http")}
+                >
+                  逆向 HTTP（测试）
+                </Button>
+              </div>
             </div>
           </div>
 
