@@ -29,10 +29,19 @@ COPY tools/hermes-agent ./tools/hermes-agent
 COPY tools/hermes-webui ./tools/hermes-webui
 COPY docker/start-app.sh ./docker/start-app.sh
 
-RUN python -m venv --system-site-packages /opt/hermes-venv \
-    && /opt/hermes-venv/bin/pip install --no-build-isolation --no-deps -e ./tools/hermes-agent[web] \
-    && /opt/hermes-venv/bin/pip install -r ./tools/hermes-webui/requirements.txt \
-    && touch /opt/hermes-venv/.hermes-runtime-ready \
+# ── Hermes Agent + WebUI（开箱即用，部署后无需手动 reinstall）──
+# [all] extra：CLI/终端/web/mcp/acp/google 等核心能力一次装齐；
+# 其余后端（provider/search/tts/image）走 hermes 自带的 lazy-install，首次使用自动装。
+# 独立 venv 建在 /app/prismenv（--system-site-packages 复用系统 patchright 等），
+# 干净隔离不污染 Prism 系统环境。检查器经 PRISM_HERMES_PYTHON=/app/prismenv/bin/python
+# 认该解释器 + .hermes-runtime-ready 标记 → agent_installed=True。
+RUN python -m venv --system-site-packages /app/prismenv \
+    && /app/prismenv/bin/pip install --no-build-isolation -e "/app/tools/hermes-agent[all]" \
+    && /app/prismenv/bin/pip install -r /app/tools/hermes-webui/requirements.txt \
+    && ln -sf /app/prismenv/bin/hermes /usr/local/bin/hermes \
+    && ln -sf /app/prismenv/bin/hermes-agent /usr/local/bin/hermes-agent \
+    && ln -sf /app/prismenv/bin/hermes-acp /usr/local/bin/hermes-acp \
+    && touch /app/prismenv/.hermes-runtime-ready \
     && chmod +x ./docker/start-app.sh \
     && mkdir -p /app/runtime-data
 
