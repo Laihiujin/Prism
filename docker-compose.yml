@@ -1,6 +1,6 @@
 services:
   redis:
-    image: redis:7-alpine
+    image: docker.1ms.run/library/redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
