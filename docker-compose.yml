@@ -30,6 +30,12 @@ services:
       PRISM_HERMES_PUBLIC_HOST: 127.0.0.1
       PRISM_HERMES_HOME: /app/runtime-data/hermes-home
       PRISM_HERMES_WEBUI_STATE_DIR: /app/runtime-data/hermes-home/webui
+      PRISM_HERMES_PYTHON: /app/prismenv/bin/python
+      HERMES_ENABLED: "true"
+      HERMES_WEBUI_HOST: 0.0.0.0
+      HERMES_WEBUI_PORT: "9131"
+      HERMES_HOME: /app/runtime-data/hermes-home
+      HERMES_WEBUI_STATE_DIR: /app/runtime-data/hermes-home/webui
       HOST: 0.0.0.0
       PORT: "7000"
       PERSONA_ENABLED: "true"

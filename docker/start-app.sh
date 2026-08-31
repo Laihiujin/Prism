@@ -12,6 +12,14 @@ export PRISM_DATA_DIR="${PRISM_DATA_DIR:-/app/runtime-data}"
 export CELERY_CONCURRENCY="${CELERY_CONCURRENCY:-8}"
 export PERSONA_ENABLED="${PERSONA_ENABLED:-true}"
 export PERSONA_API_URL="${PERSONA_API_URL:-http://127.0.0.1:8787}"
+export HERMES_ENABLED="${HERMES_ENABLED:-true}"
+export HERMES_WEBUI_HOST="${HERMES_WEBUI_HOST:-0.0.0.0}"
+# 9131 与 Prism 检查器默认一致（get_hermes_runtime_status 查 PRISM_HERMES_WEBUI_PORT=9131）
+export HERMES_WEBUI_PORT="${HERMES_WEBUI_PORT:-9131}"
+export HERMES_HOME="${HERMES_HOME:-${PRISM_DATA_DIR}/hermes-home}"
+export HERMES_WEBUI_STATE_DIR="${HERMES_WEBUI_STATE_DIR:-${HERMES_HOME}/webui}"
+# hermes 装在独立 /app/prismenv venv；检查器经此认解释器（agent_installed）
+export PRISM_HERMES_PYTHON="${PRISM_HERMES_PYTHON:-/app/prismenv/bin/python}"
 
 mkdir -p "${PRISM_DATA_DIR}/logs" "${PRISM_DATA_DIR}/db" "${PRISM_DATA_DIR}/uploads"
 
@@ -37,7 +45,7 @@ cd /app/prism_backend
 
 cleanup() {
   local code=$?
-  for pid in "${backend_pid:-}" "${worker_pid:-}" "${celery_pid:-}" "${persona_pid:-}"; do
+  for pid in "${backend_pid:-}" "${worker_pid:-}" "${celery_pid:-}" "${persona_pid:-}" "${hermes_webui_pid:-}"; do
     if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null; then
       kill "${pid}" 2>/dev/null || true
     fi
@@ -73,4 +81,21 @@ worker_pid=$!
 python -u fastapi_app/run.py &
 backend_pid=$!
 
-wait -n "${celery_pid}" "${worker_pid}" "${backend_pid}" ${persona_pid:+}
+# ── Hermes WebUI（可选，默认启用；端口 9131 与 Prism 检查器一致）──
+if [ "${HERMES_ENABLED}" = "true" ] && [ -f /app/prismenv/bin/python ] && [ -f /app/tools/hermes-webui/server.py ]; then
+  echo "[start-app] 启动 Hermes WebUI: ${HERMES_WEBUI_HOST}:${HERMES_WEBUI_PORT}"
+  mkdir -p "${HERMES_WEBUI_STATE_DIR}" "${HERMES_HOME}"
+  HERMES_WEBUI_HOST="${HERMES_WEBUI_HOST}" \
+  HERMES_WEBUI_PORT="${HERMES_WEBUI_PORT}" \
+  HERMES_HOME="${HERMES_HOME}" \
+  HERMES_WEBUI_STATE_DIR="${HERMES_WEBUI_STATE_DIR}" \
+  HERMES_WEBUI_AGENT_DIR="/app/tools/hermes-agent" \
+  /app/prismenv/bin/python /app/tools/hermes-webui/server.py \
+    > "${PRISM_DATA_DIR}/logs/hermes-webui.log" 2>&1 &
+  hermes_webui_pid=$!
+else
+  echo "[start-app] Hermes WebUI 未启用（HERMES_ENABLED=${HERMES_ENABLED}）"
+  hermes_webui_pid=""
+fi
+
+wait -n "${celery_pid}" "${worker_pid}" "${backend_pid}" ${persona_pid:+} ${hermes_webui_pid:+}
