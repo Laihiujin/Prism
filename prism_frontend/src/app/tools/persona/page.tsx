@@ -7,11 +7,11 @@ export default function PersonaStudioPage() {
         <div>
           <div className="font-medium text-foreground">Persona Studio</div>
           <div className="text-xs text-muted-foreground">
-            内嵌浏览器身份 / 指纹 / Profile 管理后台（persona serve :8787 · dashboard :5173）
+            内嵌浏览器身份 / 指纹 / Profile 管理后台（persona serve :8787 · dashboard :5175）
           </div>
         </div>
         <a
-          href="http://127.0.0.1:5173"
+          href="http://127.0.0.1:5175"
           target="_blank"
           rel="noreferrer"
           className="rounded-lg border border-border/70 bg-black px-3 py-1.5 text-xs text-foreground hover:bg-accent/40"
@@ -20,7 +20,7 @@ export default function PersonaStudioPage() {
         </a>
       </div>
       <iframe
-        src="http://127.0.0.1:5173"
+        src="http://127.0.0.1:5175"
         className="h-full w-full flex-1 border-0"
         title="Persona Studio"
       />
