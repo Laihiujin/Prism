@@ -73,15 +73,15 @@ export function PublishOtpDialog() {
         <div className="flex flex-col items-center gap-4 py-4">
           <InputOTP maxLength={6} value={code} onChange={setCode}>
             <InputOTPGroup>
-              <InputOTPSlot index={0} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
-              <InputOTPSlot index={1} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
-              <InputOTPSlot index={2} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
+              <InputOTPSlot index={0} className="h-12 w-10 rounded-xl border-border/70 bg-black text-foreground" />
+              <InputOTPSlot index={1} className="h-12 w-10 rounded-xl border-border/70 bg-black text-foreground" />
+              <InputOTPSlot index={2} className="h-12 w-10 rounded-xl border-border/70 bg-black text-foreground" />
             </InputOTPGroup>
             <InputOTPSeparator />
             <InputOTPGroup>
-              <InputOTPSlot index={3} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
-              <InputOTPSlot index={4} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
-              <InputOTPSlot index={5} className="h-12 w-10 rounded-xl border-border/70 bg-neutral-900 text-foreground" />
+              <InputOTPSlot index={3} className="h-12 w-10 rounded-xl border-border/70 bg-black text-foreground" />
+              <InputOTPSlot index={4} className="h-12 w-10 rounded-xl border-border/70 bg-black text-foreground" />
+              <InputOTPSlot index={5} className="h-12 w-10 rounded-xl border-border/70 bg-black text-foreground" />
             </InputOTPGroup>
           </InputOTP>
         </div>

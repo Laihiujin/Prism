@@ -440,7 +440,7 @@ ${userInput}
     return (
         <div className={cn("flex flex-col h-full", className)}>
             {!hideFooter && (
-                <div className="px-6 py-4 border-b border-border/70 bg-[#0A0A0A] flex justify-end">
+                <div className="px-6 py-4 border-b border-border/70 bg-white flex justify-end">
                     <Button onClick={handleSave} disabled={isSaving} className="min-w-[100px]">
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (mode === 'create' ? "确认发布" : "保存更改")}
                     </Button>
@@ -454,7 +454,7 @@ ${userInput}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">内容设置</h3>
-                            <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/20">
+                            <Badge variant="secondary" className="bg-black text-white border-white/20">
                                 <Sparkles className="w-3 h-3 mr-1" /> AI Ready
                             </Badge>
                         </div>
@@ -469,7 +469,7 @@ ${userInput}
                                             id="update-disk-file"
                                             checked={updateDiskFile}
                                             onChange={(e) => setUpdateDiskFile(e.target.checked)}
-                                            className="h-3.5 w-3.5 rounded border-border/80 bg-foreground/5 text-primary focus:ring-2 focus:ring-primary cursor-pointer"
+                                            className="h-3.5 w-3.5 rounded border-border/80 bg-black text-primary focus:ring-2 focus:ring-primary cursor-pointer"
                                         />
                                         <label htmlFor="update-disk-file" className="text-xs text-muted-foreground cursor-pointer">
                                             同步修改磁盘文件名
@@ -495,7 +495,7 @@ ${userInput}
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                                        className="h-6 text-xs text-white hover:text-white hover:bg-black"
                                         onClick={() => handleAIGenerate('title')}
                                         disabled={!!aiGenerating}
                                     >
@@ -517,7 +517,7 @@ ${userInput}
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                                        className="h-6 text-xs text-white hover:text-white hover:bg-black"
                                         onClick={() => handleAIGenerate('desc')}
                                         disabled={!!aiGenerating}
                                     >
@@ -528,7 +528,7 @@ ${userInput}
                                 <Textarea
                                     value={editForm.description}
                                     onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                                    className="bg-foreground/5 border-border/70 min-h-[100px]"
+                                    className="bg-black border-border/70 min-h-[100px]"
                                     placeholder="输入视频描述或脚本..."
                                 />
                             </div> */}
@@ -539,7 +539,7 @@ ${userInput}
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 text-xs text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                                        className="h-6 text-xs text-white hover:text-white hover:bg-black"
                                         onClick={() => handleAIGenerate('tags')}
                                         disabled={!!aiGenerating}
                                     >
@@ -566,7 +566,7 @@ ${userInput}
                                         <SelectTrigger className="bg-card border-border/70">
                                             <SelectValue placeholder="选择分组" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-[#1A1A1A] border-border/70 text-foreground">
+                                        <SelectContent className="bg-white border-border/70 text-foreground">
                                             <SelectItem value="none">无分组</SelectItem>
                                             {groupOptions.map(group => (
                                                 <SelectItem key={group} value={group}>{group}</SelectItem>
@@ -615,14 +615,14 @@ ${userInput}
                                 input?.click()
                             }}
                         >
-                            <div className="relative group-hover/file:shadow-2xl z-40 bg-card dark:bg-neutral-900 flex items-center justify-center h-32 mt-1 w-full mx-auto rounded-md shadow-[0px_10px_50px_rgba(0,0,0,0.1)]">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="tabler-icon tabler-icon-upload h-4 w-4 text-neutral-600 dark:text-neutral-300">
+                            <div className="relative group-hover/file:shadow-2xl z-40 bg-card dark:bg-black flex items-center justify-center h-32 mt-1 w-full mx-auto rounded-md shadow-[0px_10px_50px_rgba(0,0,0,0.1)]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="tabler-icon tabler-icon-upload h-4 w-4 text-white dark:text-white">
                                     <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
                                     <path d="M7 9l5 -5l5 5"></path>
                                     <path d="M12 4l0 12"></path>
                                 </svg>
                             </div>
-                            <div className="absolute opacity-0 border border-dashed border-sky-400 inset-0 z-30 bg-transparent flex items-center justify-center h-32 mt-4 w-full mx-auto rounded-md" />
+                            <div className="absolute opacity-0 border border-dashed border-white inset-0 z-30 bg-transparent flex items-center justify-center h-32 mt-4 w-full mx-auto rounded-md" />
                             <input
                                 id={`ai-cover-ref-upload-${material?.id ?? "temp"}`}
                                 type="file"
@@ -642,7 +642,7 @@ ${userInput}
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">封面工坊</h3>
                             {(coverJobStatus === "pending" || coverJobStatus === "running") && (
-                                <Badge variant="secondary" className="bg-purple-500/10 text-purple-300 border-purple-500/20">
+                                <Badge variant="secondary" className="bg-black text-white border-white/20">
                                     <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 生成中
                                 </Badge>
                             )}
@@ -695,7 +695,7 @@ ${userInput}
                                             {referenceImage ? `参考图：${referenceImage.name}` : "参考图：未选择（可选）"}
                                         </div>
                                         <Button
-                                            className="bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 border-0"
+                                            className="bg-gradient-to-br from-white to-white hover:from-white hover:to-white border-0"
                                             onClick={handleGenerateCover}
                                             disabled={!!aiGenerating || coverJobStatus === "pending" || coverJobStatus === "running"}
                                         >
@@ -709,7 +709,7 @@ ${userInput}
                                     </div>
                                 </div>
                                 {coverJobError && (
-                                    <p className="text-xs text-red-400">{coverJobError}</p>
+                                    <p className="text-xs text-white">{coverJobError}</p>
                                 )}
                             </div>
                         </div>
@@ -735,7 +735,7 @@ export function MaterialEditorSheet({
 }: MaterialEditorSheetProps) {
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-full sm:max-w-[770px] border-l border-border/70 bg-[#0A0A0A] p-0 flex flex-col shadow-2xl">
+            <SheetContent side="right" className="w-full sm:max-w-[770px] border-l border-border/70 bg-white p-0 flex flex-col shadow-2xl">
                 <SheetHeader className="px-6 py-4 border-b border-border/70">
                     <SheetTitle>{mode === 'batch' ? '批量编辑素材' : '编辑素材详情'}</SheetTitle>
                     <SheetDescription>配置标题、描述与封面，支持 AI 一键生成。</SheetDescription>

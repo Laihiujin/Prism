@@ -31,7 +31,7 @@ export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) 
                         className={cn(
                             "relative flex items-center gap-3 p-4 rounded-xl border text-left transition-all group",
                             isSelected
-                                ? "border-primary bg-primary/10 ring-1 ring-primary"
+                                ? "border-primary bg-black ring-1 ring-primary"
                                 : "border-border/70 bg-card hover:bg-accent/50 hover:border-border/80",
                             platform.disabled && "opacity-50 cursor-not-allowed"
                         )}

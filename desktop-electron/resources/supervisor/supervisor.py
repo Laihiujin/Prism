@@ -66,6 +66,15 @@ PLATFORM_BROWSER_DEFAULTS: Dict[str, str] = {
     "bilibili": "chromium",
 }
 
+# 大陆平台默认强制直连（不走本机 VPN/全局代理）。与前端 platformProxyPreferences 的 direct 一致。
+PLATFORM_PROXY_DEFAULTS: Dict[str, str] = {
+    "douyin": "direct",
+    "kuaishou": "direct",
+    "xiaohongshu": "direct",
+    "channels": "direct",
+    "bilibili": "direct",
+}
+
 
 class ProcessManager:
     def __init__(self) -> None:
@@ -666,6 +675,33 @@ class Supervisor:
 
         return normalized
 
+    def _normalize_platform_proxy_preferences(self, raw: object) -> Dict[str, str]:
+        normalized = dict(PLATFORM_PROXY_DEFAULTS)
+        if not isinstance(raw, dict):
+            return normalized
+
+        for platform, default_mode in PLATFORM_PROXY_DEFAULTS.items():
+            direct_value = raw.get(platform)
+            alias_value = raw.get("tencent") if platform == "channels" else None
+            candidate = direct_value if direct_value is not None else alias_value
+            normalized[platform] = self._normalize_platform_proxy_choice(candidate, default_mode)
+
+        return normalized
+
+    def _normalize_platform_proxy_choice(self, value: object, fallback: str = "direct") -> str:
+        normalized = str(value or "").strip().lower()
+        if normalized in {"direct", "inherit"}:
+            return normalized
+        return fallback
+
+    def build_direct_connect_platforms(self, raw: object) -> List[str]:
+        preferences = self._normalize_platform_proxy_preferences(raw)
+        direct = []
+        for platform, mode in preferences.items():
+            if mode == "direct":
+                direct.append("tencent" if platform == "channels" else platform)
+        return direct
+
     def build_env(self) -> Dict[str, str]:
         env = os.environ.copy()
         runtime_settings = self._load_runtime_settings()
@@ -697,6 +733,9 @@ class Supervisor:
         for platform, choice in platform_browser_preferences.items():
             env[f"PRISM_PLATFORM_BROWSER_{platform.upper()}"] = choice
         env["PRISM_PLATFORM_BROWSER_TENCENT"] = platform_browser_preferences.get("channels", "chromium")
+        env["PRISM_DIRECT_PLATFORMS"] = ",".join(
+            self.build_direct_connect_platforms(runtime_settings.get("platformProxyPreferences"))
+        )
         env["BACKEND_PORT"] = str(self.service_ports["backend"])
         env["PRISM_BACKEND_PORT"] = str(self.service_ports["backend"])
         env["AUTOMATION_WORKER_PORT"] = str(self.service_ports["automation-worker"])
@@ -746,10 +785,12 @@ class Supervisor:
             env["LOCAL_FIREFOX_PATH"] = str(firefox_path)
 
         logger.info(
-            "Runtime settings applied: PLAYWRIGHT_HEADLESS=%s PRISM_AUTOMATION_RUNTIME=%s PRISM_PLATFORM_BROWSER_PREFERENCES=%s",
+            "Runtime settings applied: PLAYWRIGHT_HEADLESS=%s PRISM_AUTOMATION_RUNTIME=%s "
+            "PRISM_PLATFORM_BROWSER_PREFERENCES=%s PRISM_DIRECT_PLATFORMS=%s",
             env["PLAYWRIGHT_HEADLESS"],
             env["PRISM_AUTOMATION_RUNTIME"],
             env.get("PRISM_PLATFORM_BROWSER_PREFERENCES", ""),
+            env.get("PRISM_DIRECT_PLATFORMS", ""),
         )
 
         return env

@@ -390,7 +390,7 @@ export default function TasksPage() {
             size="sm"
             onClick={() => onChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="border border-border/70 bg-foreground/5"
+            className="border border-border/70 bg-black"
           >
             上一页
           </Button>
@@ -399,7 +399,7 @@ export default function TasksPage() {
             size="sm"
             onClick={() => onChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className="border border-border/70 bg-foreground/5"
+            className="border border-border/70 bg-black"
           >
             下一页
           </Button>
@@ -451,7 +451,7 @@ export default function TasksPage() {
               <>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-orange-500/50 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"
+                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Batch cancel button clicked", selectedTaskIds)
                     batchCancelMutation.mutate({ taskIds: selectedTaskIds, force: false })
@@ -463,7 +463,7 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-red-500/50 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Batch force cancel button clicked", selectedTaskIds)
                     batchCancelMutation.mutate({ taskIds: selectedTaskIds, force: true })
@@ -475,7 +475,7 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-blue-500/50 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20"
+                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Batch retry button clicked", selectedTaskIds)
                     batchRetryMutation.mutate(selectedTaskIds)
@@ -503,7 +503,7 @@ export default function TasksPage() {
               <>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-red-500/50 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Clear failed button clicked")
                     try {
@@ -518,7 +518,7 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-green-500/50 bg-green-500/10 text-green-200 hover:bg-green-500/20"
+                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Clear success button clicked")
                     try {
@@ -549,7 +549,7 @@ export default function TasksPage() {
             )}
             <Button
               variant="ghost"
-              className="rounded-2xl border border-border/70 bg-foreground/5"
+              className="rounded-2xl border border-border/70 bg-black"
               onClick={() => {
                 refetch()
                 queryClient.invalidateQueries({ queryKey: ["manual-tasks"] })
@@ -578,7 +578,7 @@ export default function TasksPage() {
         </Card>
         <Card className="bg-card border-border/70">
           <CardHeader className="flex items-center gap-3">
-            <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+            <CheckCircle2 className="h-8 w-8 text-white" />
             <div>
               <CardTitle>发布成功</CardTitle>
               <CardDescription>{successCount} 条已完成</CardDescription>
@@ -587,7 +587,7 @@ export default function TasksPage() {
         </Card>
         <Card className="bg-card border-border/70">
           <CardHeader className="flex items-center gap-3">
-            <XCircle className="h-8 w-8 text-red-400" />
+            <XCircle className="h-8 w-8 text-white" />
             <div>
               <CardTitle>失败/异常</CardTitle>
               <CardDescription>{errorCount} 条需要关注</CardDescription>
@@ -596,7 +596,7 @@ export default function TasksPage() {
         </Card>
         <Card className="bg-card border-border/70">
           <CardHeader className="flex items-center gap-3">
-            <AlertCircle className="h-8 w-8 text-yellow-400" />
+            <AlertCircle className="h-8 w-8 text-white" />
             <div>
               <CardTitle>人工处理</CardTitle>
               <CardDescription>{manualStats.pending || 0} 条待处理</CardDescription>
@@ -642,7 +642,7 @@ export default function TasksPage() {
                   正在加载任务数据...
                 </div>
               ) : isError ? (
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center text-sm text-red-400">
+                <div className="rounded-2xl border border-white/20 bg-black p-6 text-center text-sm text-white">
                   加载失败: {error?.message || "未知错误"}
                   <Button variant="outline" size="sm" className="ml-4" onClick={() => refetch()}>重试</Button>
                 </div>
@@ -700,7 +700,7 @@ export default function TasksPage() {
                           </TableCell>
                           <TableCell className="font-medium">{task.title}</TableCell>
                           <TableCell>
-                            <Badge className="border-border/70 bg-foreground/10">{task.platform}</Badge>
+                            <Badge className="border-border/70 bg-black">{task.platform}</Badge>
                           </TableCell>
                           <TableCell>{task.account}</TableCell>
                           <TableCell>{task.material}</TableCell>
@@ -715,14 +715,14 @@ export default function TasksPage() {
                             <Badge
                               className={
                                 task.status === "success"
-                                  ? "bg-emerald-500/20 text-emerald-200"
+                                  ? "bg-black text-white"
                                   : task.status === "error"
-                                    ? "bg-red-500/20 text-red-200"
+                                    ? "bg-black text-white"
                                     : task.status === "scheduled"
-                                      ? "bg-amber-500/20 text-amber-200"
+                                      ? "bg-black text-white"
                                       : task.status === "running"
-                                        ? "bg-blue-500/20 text-blue-200"
-                                        : "bg-foreground/10 text-foreground"
+                                        ? "bg-black text-white"
+                                        : "bg-black text-foreground"
                               }
                             >
                               {task.status === "scheduled"
@@ -749,7 +749,7 @@ export default function TasksPage() {
                                   disabled={retryTaskMutation.isPending}
                                   title="重试任务"
                                 >
-                                  <RefreshCcw className="h-4 w-4 text-blue-400" />
+                                  <RefreshCcw className="h-4 w-4 text-white" />
                                 </Button>
                               )}
                               {(task.status === "pending" || task.status === "scheduled") && (
@@ -765,7 +765,7 @@ export default function TasksPage() {
                                   disabled={cancelTaskMutation.isPending}
                                   title="取消任务"
                                 >
-                                  <Ban className="h-4 w-4 text-orange-400" />
+                                  <Ban className="h-4 w-4 text-white" />
                                 </Button>
                               )}
                               {task.status === "running" && (
@@ -795,7 +795,7 @@ export default function TasksPage() {
                                   disabled={cancelTaskMutation.isPending}
                                   title="强制取消运行中的任务（测试版-无确认）"
                                 >
-                                  <Ban className="h-4 w-4 text-red-400" />
+                                  <Ban className="h-4 w-4 text-white" />
                                 </Button>
                               )}
                               <Button
@@ -808,7 +808,7 @@ export default function TasksPage() {
                                 disabled={deleteTaskMutation.isPending}
                                 title="删除记录（无确认-测试版）"
                               >
-                                <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-400" />
+                                <Trash2 className="h-4 w-4 text-white hover:text-white" />
                               </Button>
                             </div>
                           </TableCell>
@@ -833,12 +833,12 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               {manualLoading ? (
-                <div className="rounded-2xl border border-border/70 bg-foreground/5 p-6 text-center text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border/70 bg-black p-6 text-center text-sm text-muted-foreground">
                   正在加载...
                 </div>
               ) : manualTasks.length === 0 ? (
                 <div className="text-center py-10">
-                  <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-4" />
+                  <CheckCircle2 className="h-10 w-10 text-white mx-auto mb-4" />
                   <h3 className="text-lg font-medium">暂无待处理任务</h3>
                   <p className="text-sm text-muted-foreground mt-1">
                     所有任务都已处理完成
@@ -892,7 +892,7 @@ export default function TasksPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4 text-yellow-500" />
+                              <AlertCircle className="h-4 w-4 text-white" />
                               <span>{task.reason}</span>
                             </div>
                           </TableCell>

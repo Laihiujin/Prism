@@ -322,7 +322,7 @@ export default function DistributionPage() {
                                                     <div
                                                         key={file.id}
                                                         className={`flex items-center gap-2 p-2 rounded cursor-pointer text-sm ${checked
-                                                            ? "bg-primary/20 text-primary"
+                                                            ? "bg-black text-primary"
                                                             : "hover:bg-accent/40"
                                                             }`}
                                                         onClick={() => toggleMaterial(fileKey)}
@@ -375,7 +375,7 @@ export default function DistributionPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap items-center gap-3 mb-4">
-                        <div className="inline-flex rounded-full bg-foreground/5 p-1 border border-border/70">
+                        <div className="inline-flex rounded-full bg-black p-1 border border-border/70">
                             <Button
                                 variant={statusFilter === "pending" ? "default" : "ghost"}
                                 size="sm"
@@ -452,7 +452,7 @@ export default function DistributionPage() {
                                             {task.title_template}
                                         </TableCell>
                                         <TableCell>
-                                            <span className="text-emerald-400">{task.available_count}</span> / {task.total_videos}
+                                            <span className="text-white">{task.available_count}</span> / {task.total_videos}
                                         </TableCell>
                                         <TableCell>{task.distributed_count}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">
@@ -487,7 +487,7 @@ export default function DistributionPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="rounded-xl border border-red-500/30 text-red-200 hover:bg-red-500/20"
+                                                    className="rounded-xl border border-white/30 text-white hover:bg-black"
                                                     onClick={(e) => {
                                                         e.stopPropagation()
                                                         handleDelete(task.task_id)

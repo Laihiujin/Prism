@@ -52,8 +52,8 @@ export function AIChatMessage({
           className={cn(
             "p-3 rounded-lg",
             isUser
-              ? "bg-blue-600 text-foreground border-blue-500/50"
-              : "bg-foreground/10 border-border/80 text-foreground backdrop-blur-sm"
+              ? "bg-white text-foreground border-white/50"
+              : "bg-black border-border/80 text-foreground backdrop-blur-sm"
           )}
         >
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -73,22 +73,22 @@ export function AIChatMessage({
         {!isUser && message.metadata && (
           <div className="flex flex-wrap gap-2 mt-2">
             {message.metadata.provider && (
-              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
+              <Badge variant="secondary" className="text-xs bg-black text-muted-foreground">
                 {message.metadata.provider}
               </Badge>
             )}
             {message.metadata.model && (
-              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
+              <Badge variant="secondary" className="text-xs bg-black text-muted-foreground">
                 {message.metadata.model}
               </Badge>
             )}
             {message.metadata.executionTime && (
-              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
+              <Badge variant="secondary" className="text-xs bg-black text-muted-foreground">
                 ⏱ {message.metadata.executionTime.toFixed(2)}s
               </Badge>
             )}
             {message.metadata.tokensUsed && (
-              <Badge variant="secondary" className="text-xs bg-foreground/5 text-muted-foreground">
+              <Badge variant="secondary" className="text-xs bg-black text-muted-foreground">
                 🔢 {message.metadata.tokensUsed} tokens
               </Badge>
             )}
@@ -139,14 +139,14 @@ export function AIChatMessage({
 
       {/* 用户头像 */}
       {isUser && (
-        <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-foreground text-sm font-semibold flex-shrink-0">
+        <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-foreground text-sm font-semibold flex-shrink-0">
           U
         </div>
       )}
 
       {/* AI 头像 */}
       {!isUser && (
-        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-foreground text-sm font-semibold flex-shrink-0">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-white to-white flex items-center justify-center text-foreground text-sm font-semibold flex-shrink-0">
           AI
         </div>
       )}

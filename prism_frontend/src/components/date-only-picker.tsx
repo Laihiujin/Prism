@@ -44,7 +44,7 @@ export function DateOnlyPicker({ value, onChange, placeholder = "选择日期", 
         <Button
           variant="outline"
           className={cn(
-            "justify-start gap-2 rounded-2xl border-border/80 bg-foreground/5 text-left font-normal",
+            "justify-start gap-2 rounded-2xl border-border/80 bg-black text-left font-normal",
             !value && "text-muted-foreground"
           )}
         >
@@ -80,7 +80,7 @@ export function DateOnlyPicker({ value, onChange, placeholder = "选择日期", 
               className="bg-transparent p-0"
             />
             <div className="mt-4 flex gap-2">
-              <Button variant="ghost" className="flex-1 rounded-2xl border border-border/70 bg-foreground/5" onClick={() => { onChange(undefined); setOpen(false) }}>
+              <Button variant="ghost" className="flex-1 rounded-2xl border border-border/70 bg-black" onClick={() => { onChange(undefined); setOpen(false) }}>
                 清除
               </Button>
               <Button className="flex-1 rounded-2xl" onClick={handleApply} disabled={!tempDate}>

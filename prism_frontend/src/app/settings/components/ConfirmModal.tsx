@@ -68,7 +68,7 @@ export function ConfirmModal({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={`输入 ${confirmText}`}
-              className="border-border/80 bg-foreground/5 text-foreground"
+              className="border-border/80 bg-black text-foreground"
               autoComplete="off"
             />
           </div>

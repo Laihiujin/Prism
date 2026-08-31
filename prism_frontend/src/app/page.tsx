@@ -214,7 +214,7 @@ export default function DashboardPage() {
         // description="快手、抖音、视频号、小红书统一监控"
         actions={
           isRefreshing && (
-            <Badge className="rounded-2xl border-border bg-primary/10 text-xs text-primary">
+            <Badge className="rounded-2xl border-border bg-black text-xs text-primary">
               数据刷新中...
             </Badge>
           )
@@ -230,7 +230,7 @@ export default function DashboardPage() {
               className="group card-glow hairline-top relative cursor-pointer overflow-hidden border-border/80 bg-card/70 backdrop-blur-sm transition hover:bg-card"
               onClick={() => handleNavigate(stat.href)}
             >
-              <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/10 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+              <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-black blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
               <CardHeader className="pb-2">
                 <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl border border-border/80 bg-accent/50">
                   <Icon className="h-[18px] w-[18px] text-primary" />
@@ -377,10 +377,10 @@ export default function DashboardPage() {
             {alertsToShow.map((alert) => (
               <div
                 key={alert.id}
-                className="rounded-xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-100"
+                className="rounded-xl border border-white/25 bg-black p-4 text-sm text-white"
               >
                 <p className="font-semibold">{alert.title}</p>
-                <p className="text-xs text-red-200">{alert.action}</p>
+                <p className="text-xs text-white">{alert.action}</p>
               </div>
             ))}
           </CardContent>

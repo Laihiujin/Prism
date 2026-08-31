@@ -196,7 +196,7 @@ export function ModelSettingsDialog({ open, onOpenChange }: ModelSettingsDialogP
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-auto p-0 text-xs text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                                className="h-auto p-0 text-xs text-white hover:text-white disabled:opacity-50"
                                 onClick={fetchModels}
                                 disabled={isLoading}
                             >
@@ -223,9 +223,9 @@ export function ModelSettingsDialog({ open, onOpenChange }: ModelSettingsDialogP
                                     <SelectTrigger>
                                         <SelectValue placeholder="选择模型" />
                                     </SelectTrigger>
-                                    <SelectContent className="max-h-60 overflow-y-auto bg-neutral-900 border-border/70 text-foreground">
+                                    <SelectContent className="max-h-60 overflow-y-auto bg-black border-border/70 text-foreground">
                                         {models.map((m) => (
-                                            <SelectItem key={m} value={m} className="text-foreground hover:bg-accent/50 focus:bg-foreground/10 cursor-pointer">
+                                            <SelectItem key={m} value={m} className="text-foreground hover:bg-accent/50 focus:bg-black cursor-pointer">
                                                 {m}
                                             </SelectItem>
                                         ))}

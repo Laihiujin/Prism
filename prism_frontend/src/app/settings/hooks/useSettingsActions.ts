@@ -22,6 +22,7 @@ interface LoadingState {
   setBrowserHeadless: boolean
   setAutomationRuntime: boolean
   setPlatformBrowser: boolean
+  setPlatformProxy: boolean
   installPatchright: boolean
   uninstallPatchright: boolean
   installChromium: boolean
@@ -80,6 +81,7 @@ interface RuntimeSettings {
   browserHeadless: boolean
   automationRuntime?: "patchright"
   platformBrowserPreferences?: Partial<Record<PlatformBrowserKey, PlatformBrowserChoice>>
+  platformProxyPreferences?: Partial<Record<PlatformProxyKey, PlatformProxyChoice>>
 }
 
 interface AppInfo {
@@ -94,6 +96,8 @@ interface AppInfo {
 
 export type PlatformBrowserKey = "douyin" | "kuaishou" | "xiaohongshu" | "channels" | "bilibili"
 export type PlatformBrowserChoice = "auto" | "chromium" | "firefox"
+export type PlatformProxyKey = "douyin" | "kuaishou" | "xiaohongshu" | "channels" | "bilibili"
+export type PlatformProxyChoice = "direct" | "inherit"
 
 const DEFAULT_PLATFORM_BROWSER_PREFERENCES: Record<PlatformBrowserKey, PlatformBrowserChoice> = {
   douyin: "chromium",
@@ -101,6 +105,14 @@ const DEFAULT_PLATFORM_BROWSER_PREFERENCES: Record<PlatformBrowserKey, PlatformB
   xiaohongshu: "chromium",
   channels: "chromium",
   bilibili: "chromium",
+}
+
+const DEFAULT_PLATFORM_PROXY_PREFERENCES: Record<PlatformProxyKey, PlatformProxyChoice> = {
+  douyin: "direct",
+  kuaishou: "direct",
+  xiaohongshu: "direct",
+  channels: "direct",
+  bilibili: "direct",
 }
 
 const isElectron = typeof window !== "undefined" && Boolean((window as any).electronAPI)
@@ -126,6 +138,7 @@ export function useSettingsActions() {
     setBrowserHeadless: false,
     setAutomationRuntime: false,
     setPlatformBrowser: false,
+    setPlatformProxy: false,
     installPatchright: false,
     uninstallPatchright: false,
     installChromium: false,
@@ -150,7 +163,7 @@ export function useSettingsActions() {
               browserHeadless:
                 incomingRuntimeSettings?.browserHeadless ??
                 previousRuntimeSettings?.browserHeadless ??
-                false,
+                true,
               automationRuntime:
                 incomingRuntimeSettings?.automationRuntime ??
                 previousRuntimeSettings?.automationRuntime,
@@ -158,6 +171,11 @@ export function useSettingsActions() {
                 ...DEFAULT_PLATFORM_BROWSER_PREFERENCES,
                 ...(previousRuntimeSettings?.platformBrowserPreferences ?? {}),
                 ...(incomingRuntimeSettings?.platformBrowserPreferences ?? {}),
+              },
+              platformProxyPreferences: {
+                ...DEFAULT_PLATFORM_PROXY_PREFERENCES,
+                ...(previousRuntimeSettings?.platformProxyPreferences ?? {}),
+                ...(incomingRuntimeSettings?.platformProxyPreferences ?? {}),
               },
             }
           : undefined
@@ -501,6 +519,45 @@ export function useSettingsActions() {
     }, "平台浏览器设置已更新，服务已重启")
   }
 
+  const setPlatformProxyPreference = async (
+    platform: PlatformProxyKey,
+    mode: PlatformProxyChoice
+  ) => {
+    await handleAction("setPlatformProxy", async () => {
+      if (!isElectron) {
+        throw new Error("平台代理切换仅桌面版可用")
+      }
+
+      const currentPreferences = {
+        ...DEFAULT_PLATFORM_PROXY_PREFERENCES,
+        ...(appInfo?.runtimeSettings?.platformProxyPreferences ?? {}),
+      }
+
+      const electron = (window as any).electronAPI
+      const result = await electron.settings.update({
+        platformProxyPreferences: {
+          ...currentPreferences,
+          [platform]: mode,
+        },
+      })
+      if (!result.success) {
+        throw new Error(result.error || "平台代理设置更新失败")
+      }
+
+      updateAppInfo({
+        runtimeSettings: result.settings,
+        browserRuntimeInfo: result.browserRuntimeInfo,
+      })
+
+      const restartResult = await electron.system.restartAll()
+      if (!restartResult.success) {
+        throw new Error(restartResult.error || "服务重启失败")
+      }
+
+      await refreshStatus({ silent: true })
+    }, "平台代理设置已更新，服务已重启")
+  }
+
   const restartServicesAfterBrowserAssetChange = async () => {
     const restartViaBackend = async () => {
       const response = await fetch(`${apiBase}/api/v1/system/supervisor/restart`, {
@@ -763,6 +820,7 @@ export function useSettingsActions() {
     setBrowserHeadless,
     setAutomationRuntime,
     setPlatformBrowserPreference,
+    setPlatformProxyPreference,
     installPatchright,
     uninstallPatchright,
     installChromium,

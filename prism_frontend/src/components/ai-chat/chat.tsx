@@ -178,7 +178,7 @@ export function Chat() {
     return (
         <div className="flex h-[85vh] w-full flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border/40 bg-neutral-900/50 px-6 py-4 backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-border/40 bg-black/50 px-6 py-4 backdrop-blur-md">
                 <div className="flex items-center gap-4">
                     <div>
                         <h2 className="text-base font-bold text-foreground">Prism </h2>
@@ -199,8 +199,8 @@ export function Chat() {
                     <Badge
                         variant="outline"
                         className={`gap-1 text-xs font-normal ${isConnected
-                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                            : "border-border/70 bg-foreground/5 text-foreground/40"
+                            ? "border-white/20 bg-black text-white"
+                            : "border-border/70 bg-black text-foreground/40"
                             }`}
                     >
                         <HermesLogoIcon className="h-3 w-3" />
@@ -210,14 +210,14 @@ export function Chat() {
             </div>
 
             {/* Mode Switch */}
-            <div className="border-b border-border/40 bg-neutral-900/40 px-6 py-3 flex justify-center">
+            <div className="border-b border-border/40 bg-black/40 px-6 py-3 flex justify-center">
                 <Tabs value={mode} onValueChange={handleModeChange}>
-                    <TabsList className="grid w-[200px] grid-cols-2 bg-foreground/5">
+                    <TabsList className="grid w-[200px] grid-cols-2 bg-black">
                         <TabsTrigger value="chat" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                             <MessageSquare className="mr-2 h-3 w-3" />
                             瀵硅瘽
                         </TabsTrigger>
-                        <TabsTrigger value="agent" className="text-xs data-[state=active]:bg-purple-600 data-[state=active]:text-foreground">
+                        <TabsTrigger value="agent" className="text-xs data-[state=active]:bg-white data-[state=active]:text-foreground">
                             <HermesLogoIcon className="mr-2 h-3 w-3" />
                             Agent
                         </TabsTrigger>
@@ -226,7 +226,7 @@ export function Chat() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto bg-gradient-to-b from-black to-neutral-950 p-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+            <div className="flex-1 overflow-y-auto bg-gradient-to-b from-black to-black p-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
                 <div className="mx-auto max-w-3xl">
                     <ChatList
                         messages={messages}

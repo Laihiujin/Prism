@@ -161,10 +161,10 @@ export function SidebarNew({
               >
                 <div className="relative">
                   <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover ring-1 ring-border/80" />
-                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-[#22C55E]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-white" />
                 </div>
                 <GradientText
-                  colors={["#3B82F6", "#22D3EE", "#60A5FA"]}
+                  colors={["#FFFFFF", "#C8C8C8", "#FFFFFF"]}
                   animationSpeed={14}
                   className="whitespace-nowrap text-base font-semibold tracking-tight !mx-0 !justify-start"
                 >Prism</GradientText>
@@ -179,7 +179,7 @@ export function SidebarNew({
               >
                 <div className="relative">
                   <img src="/logo.png" alt="Prism Logo" className="h-10 w-10 rounded-full object-cover ring-1 ring-border/80" />
-                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-[#22C55E]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-white" />
                 </div>
               </motion.div>
             )}

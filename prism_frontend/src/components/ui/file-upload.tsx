@@ -89,7 +89,7 @@ export const FileUpload = ({
                                 key="file-0"
                                 layoutId="file-upload"
                                 className={cn(
-                                    "relative overflow-hidden z-40 bg-foreground/5 flex flex-col items-start justify-start p-4 mt-4 w-full mx-auto rounded-xl",
+                                    "relative overflow-hidden z-40 bg-black flex flex-col items-start justify-start p-4 mt-4 w-full mx-auto rounded-xl",
                                     "border border-border/70"
                                 )}
                             >
@@ -98,7 +98,7 @@ export const FileUpload = ({
                                         e.stopPropagation();
                                         handleRemoveFile(0);
                                     }}
-                                    className="absolute top-2 right-2 z-50 h-7 w-7 rounded-full bg-foreground/10 hover:bg-accent/50 flex items-center justify-center text-foreground transition-colors"
+                                    className="absolute top-2 right-2 z-50 h-7 w-7 rounded-full bg-black hover:bg-accent/50 flex items-center justify-center text-foreground transition-colors"
                                 >
                                     <X className="h-4 w-4" />
                                 </button>
@@ -115,7 +115,7 @@ export const FileUpload = ({
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         layout
-                                        className="rounded-lg px-2 py-1 w-fit flex-shrink-0 text-xs text-foreground/70 bg-foreground/10"
+                                        className="rounded-lg px-2 py-1 w-fit flex-shrink-0 text-xs text-foreground/70 bg-black"
                                     >
                                         {(files[0].size / (1024 * 1024)).toFixed(2)} MB
                                     </motion.p>
@@ -141,7 +141,7 @@ export const FileUpload = ({
                                     damping: 20,
                                 }}
                                 className={cn(
-                                    "relative group-hover/file:shadow-2xl z-40 bg-foreground/5 flex items-center justify-center h-36 mt-4 w-full max-w-[10rem] mx-auto rounded-xl",
+                                    "relative group-hover/file:shadow-2xl z-40 bg-black flex items-center justify-center h-36 mt-4 w-full max-w-[10rem] mx-auto rounded-xl",
                                     "border border-border/70"
                                 )}
                             >

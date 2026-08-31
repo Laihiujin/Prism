@@ -12,10 +12,10 @@ import { StatsCard } from "../components/stats-card"
 import { AnalyticsSummary, VideoAnalytics } from "../types"
 
 const METRICS = {
-    play: { label: "播放量", key: "playCount", color: "#3b82f6", icon: <Play className="h-4 w-4" /> },
-    like: { label: "点赞", key: "likeCount", color: "#ec4899", icon: <Heart className="h-4 w-4" /> },
-    comment: { label: "评论", key: "commentCount", color: "#06b6d4", icon: <MessageCircle className="h-4 w-4" /> },
-    collect: { label: "收藏", key: "collectCount", color: "#22c55e", icon: <Bookmark className="h-4 w-4" /> },
+    play: { label: "播放量", key: "playCount", color: "#ffffff", icon: <Play className="h-4 w-4" /> },
+    like: { label: "点赞", key: "likeCount", color: "#c0c0c0", icon: <Heart className="h-4 w-4" /> },
+    comment: { label: "评论", key: "commentCount", color: "#808080", icon: <MessageCircle className="h-4 w-4" /> },
+    collect: { label: "收藏", key: "collectCount", color: "#404040", icon: <Bookmark className="h-4 w-4" /> },
 }
 
 export default function TrendsPage() {
@@ -142,7 +142,7 @@ export default function TrendsPage() {
                                 <button
                                     key={key}
                                     onClick={() => setChartMetric(key as keyof typeof METRICS)}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${chartMetric === key ? "bg-foreground/10 text-foreground shadow-sm" : "text-foreground/40 hover:text-foreground/80"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${chartMetric === key ? "bg-black text-foreground shadow-sm" : "text-foreground/40 hover:text-foreground/80"}`}
                                 >
                                     {config.label}
                                 </button>
@@ -182,7 +182,7 @@ export default function TrendsPage() {
                                             <div className="text-sm text-foreground truncate">{video.title || "未命名"}</div>
                                             <div className="text-xs text-muted-foreground">{video.platform}</div>
                                         </div>
-                                        <Badge className="bg-foreground/10 text-foreground border-border/70">
+                                        <Badge className="bg-black text-foreground border-border/70">
                                             {formatNumber(video.playCount || 0)}
                                         </Badge>
                                     </div>

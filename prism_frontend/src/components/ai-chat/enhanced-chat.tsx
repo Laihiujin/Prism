@@ -986,7 +986,7 @@ export function EnhancedAIChat({
               <Button
                 variant="ghost"
                 size="icon"
-                className="mt-1 rounded-2xl border border-border/70 bg-foreground/5 text-foreground/70 hover:bg-accent/50 hover:text-foreground"
+                className="mt-1 rounded-2xl border border-border/70 bg-black text-foreground/70 hover:bg-accent/50 hover:text-foreground"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
                 <Sidebar className="h-4 w-4" />
@@ -994,7 +994,7 @@ export function EnhancedAIChat({
 
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-foreground/5 text-foreground">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/70 bg-black text-foreground">
                     <HermesLogoIcon className="h-5 w-5" />
                   </div>
                   <div>
@@ -1004,10 +1004,10 @@ export function EnhancedAIChat({
                 </div>
 
                 <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">
+                  <div className="rounded-full border border-border/70 bg-black px-3 py-1">
                     模型：{mode === "chat" ? chatModelConfig?.model_name || "未配置" : openclawModelConfig?.model_name || "未配置"}
                   </div>
-                  <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">
+                  <div className="rounded-full border border-border/70 bg-black px-3 py-1">
                     会话：{threads.length}
                   </div>
                 </div>
@@ -1020,9 +1020,9 @@ export function EnhancedAIChat({
                 className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
                   isConnected
                     ? connectionError
-                      ? "border-amber-500/35 bg-amber-500/10 text-amber-200"
-                      : "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
-                    : "border-border/70 bg-foreground/5 text-muted-foreground"
+                      ? "border-white/35 bg-black text-white"
+                      : "border-white/35 bg-black text-white"
+                    : "border-border/70 bg-black text-muted-foreground"
                 }`}
               >
                 {isConnected && !connectionError ? (
@@ -1037,7 +1037,7 @@ export function EnhancedAIChat({
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/ai-agent/settings")}
-                className="rounded-full border-border/70 bg-foreground/5 text-foreground/80 hover:bg-accent/50 hover:text-foreground"
+                className="rounded-full border-border/70 bg-black text-foreground/80 hover:bg-accent/50 hover:text-foreground"
               >
                 <Settings className="mr-2 h-4 w-4" />
                 运行时与入口
@@ -1050,7 +1050,7 @@ export function EnhancedAIChat({
           <div className="border-b border-border/50 bg-card/20 px-6 py-3">
             <div className="relative flex items-center justify-center">
               <Tabs value={mode === "agent" ? "chat" : mode} onValueChange={(v) => setMode(v as "chat" | "agent" | "openclaw")}>
-                <TabsList className="grid w-[520px] grid-cols-2 rounded-full border border-border/70 bg-foreground/5 p-1">
+                <TabsList className="grid w-[520px] grid-cols-2 rounded-full border border-border/70 bg-black p-1">
                   <TabsTrigger
                     value="chat"
                     className="rounded-full text-xs data-[state=active]:bg-foreground data-[state=active]:text-background"
@@ -1129,8 +1129,8 @@ export function EnhancedAIChat({
 
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 px-2 pt-3">
                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">Enter 发送</div>
-                      <div className="rounded-full border border-border/70 bg-foreground/5 px-3 py-1">Shift + Enter 换行</div>
+                      <div className="rounded-full border border-border/70 bg-black px-3 py-1">Enter 发送</div>
+                      <div className="rounded-full border border-border/70 bg-black px-3 py-1">Shift + Enter 换行</div>
                     </div>
 
                     <div className="flex items-center gap-2">

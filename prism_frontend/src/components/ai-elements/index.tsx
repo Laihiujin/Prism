@@ -74,7 +74,7 @@ export function ToolExecutionDisplay({
         <CollapsibleTrigger className="w-full">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-1.5 h-1.5 rounded-full ${status === "completed" ? "bg-foreground/80" : status === "in-progress" ? "bg-foreground/50 animate-pulse" : "bg-foreground/30"}`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${status === "completed" ? "bg-foreground/80" : status === "in-progress" ? "bg-foreground/50 animate-pulse" : "bg-black"}`} />
               <span className="text-base font-semibold text-foreground/90">
                 {name}
               </span>

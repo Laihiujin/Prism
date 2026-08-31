@@ -14,7 +14,12 @@ function normalizeBackendBaseUrl(raw: string): string {
 }
 
 export const backendBaseUrl = normalizeBackendBaseUrl(
-  process.env.NEXT_PUBLIC_BACKEND_URL ?? process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:7000"
+  // 服务端（Next.js route handler）优先用容器内可达的后端地址（如 http://app:7000）。
+  // 该变量不带 NEXT_PUBLIC_ 前缀，不会被注入浏览器端 bundle，客户端会回落到 NEXT_PUBLIC_BACKEND_URL。
+  process.env.PRISM_INTERNAL_BACKEND_URL ??
+    process.env.NEXT_PUBLIC_BACKEND_URL ??
+    process.env.NEXT_PUBLIC_API_BASE ??
+    "http://127.0.0.1:7000"
 )
 
 export const API_ENDPOINTS = {

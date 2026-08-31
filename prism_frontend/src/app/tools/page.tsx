@@ -31,10 +31,10 @@ interface DevTool {
 }
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
-    agent: { label: "Agent", icon: Bot, color: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
-    mcp: { label: "MCP", icon: Server, color: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
-    cli: { label: "CLI", icon: Terminal, color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
-    desktop: { label: "桌面", icon: AppWindow, color: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+    agent: { label: "Agent", icon: Bot, color: "bg-black text-white border-white/30" },
+    mcp: { label: "MCP", icon: Server, color: "bg-black text-white border-white/30" },
+    cli: { label: "CLI", icon: Terminal, color: "bg-black text-white border-white/30" },
+    desktop: { label: "桌面", icon: AppWindow, color: "bg-black text-white border-white/30" },
 }
 
 export default function ToolsPage() {
@@ -87,7 +87,7 @@ export default function ToolsPage() {
                 actions={
                     <Button
                         variant="outline"
-                        className="rounded-xl border-border/70 bg-foreground/5 hover:bg-accent/50"
+                        className="rounded-xl border-border/70 bg-black hover:bg-accent/50"
                         onClick={() => refetch()}
                     >
                         <RefreshCcw className="mr-2 h-4 w-4" />
@@ -130,7 +130,7 @@ export default function ToolsPage() {
                                     variant="secondary"
                                     className={cn("text-xs shrink-0",
                                         tool.installed
-                                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                            ? "bg-black text-white border-white/30"
                                             : "bg-muted text-muted-foreground")}
                                 >
                                     {tool.installed ? "已安装" : "未安装"}

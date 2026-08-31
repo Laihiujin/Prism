@@ -1,4 +1,4 @@
-﻿"""
+"""
 鐧诲綍璁よ瘉璺敱
 鎻愪緵鍚勫钩鍙扮殑鐧诲綍API
 """
@@ -829,6 +829,11 @@ async def _save_tencent_login(session: dict, login_data: dict):
 
         user_info = _fill_user_info_from_cookie("channels", cookie_data, user_info)
         final_user_id = user_info.get("finder_username") or user_info.get("user_id") or ""
+        # 不规范（纯数字）user_id 是 cookie 兜底值，非真实 finder_username；
+        # 若保存成独立账号会与规范 finder_username 记录重复，这里直接跳过不落库。
+        if final_user_id.isdigit():
+            logger.warning(f"[Login] 跳过保存不规范视频号账号（纯数字 user_id 兜底）: {final_user_id}")
+            return
         temp_file = cookies_dir / f"tencent_{account_id}.json"
         if final_user_id:
             account_file = cookies_dir / f"channels_{final_user_id}.json"

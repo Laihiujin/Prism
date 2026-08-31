@@ -165,48 +165,11 @@ desktop-electron/      # Electron 客户端与打包
 
 ## 部署开始
 
-推荐优先使用下面两种方式之一：
+采用本地部署：适合开发、调试，可单独查看 Redis / Celery / Automation Worker / FastAPI / HermesAgent 的运行状态。
 
-- Docker 一键部署：适合快速验证、单机部署、避免本机逐个拉起服务。
-- 本地部署：适合开发、调试、单独查看 Redis / Celery / Automation Worker / FastAPI / HermesAgent 的运行状态。
+### 1) 本地部署
 
-### 1) Docker 一键部署
-
-前置条件：
-
-- 已安装 Docker Desktop（或可用的 Docker Engine + Compose）。
-- 根目录 `.env` 已按本机端口和浏览器策略调整。
-- `prism_backend\config\hermes_agent.toml` 已配置 HermesAgent 的模型信息。
-
-启动：
-
-```powershell
-.\docker-deploy.bat
-```
-
-该脚本会完成以下动作：
-
-- 构建并启动 `redis`、`app`、`frontend` 三个容器；
-- 在 `app` 容器内同时拉起 `FastAPI + Celery Worker + Automation Worker + HermesAgent Dashboard + HermesAgent WebUI`；
-- 验证 `3000 / 7000 / 9119 / 9131` 端口可访问；
-- 输出当前 `docker compose ps` 状态。
-
-访问地址：
-
-- 控制台：http://localhost:3000
-- 后端 API：http://localhost:7000/api/docs
-- HermesAgent Dashboard：http://localhost:9119
-- HermesAgent WebUI：http://localhost:9131
-
-停止：
-
-```powershell
-.\docker-stop.bat
-```
-
-### 2) 本地部署
-
-#### 2.1 安装依赖
+#### 1.1 安装依赖
 
 方式 A：`prismenv`（默认推荐）
 
@@ -234,7 +197,7 @@ npm install
 cd ..
 ```
 
-#### 2.2 配置环境
+#### 1.2 配置环境
 
 必须检查两类配置：
 
@@ -249,7 +212,7 @@ scripts\launchers\setup_browser.bat
 
 桌面版支持在“系统设置”页管理 `Chromium` / `Firefox`；所有平台自动化统一由 `Patchright` 执行。
 
-#### 2.3 启动方式
+#### 1.3 启动方式
 
 方式 A：一键拉起完整本地栈
 
@@ -299,7 +262,7 @@ scripts\launchers\start_backend_prismenv.bat
 scripts\launchers\start_frontend.bat
 ```
 
-#### 2.4 本地访问地址
+#### 1.4 本地访问地址
 
 - 控制台：http://localhost:3000
 - 后端 API：http://localhost:7000/api/docs

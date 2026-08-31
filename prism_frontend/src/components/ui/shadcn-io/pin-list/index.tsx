@@ -95,7 +95,7 @@ function PinList({
                 layout
                 key="pinned-label"
                 className={cn(
-                  'font-medium px-3 text-neutral-500 dark:text-neutral-300 text-sm mb-2',
+                  'font-medium px-3 text-white dark:text-white text-sm mb-2',
                   labelClassName,
                 )}
                 {...labelMotionProps}
@@ -118,20 +118,20 @@ function PinList({
                   layoutId={`item-${item.id}`}
                   onClick={() => toggleStatus(item.id)}
                   transition={transition}
-                  className="flex items-center justify-between gap-5 rounded-2xl bg-neutral-200 dark:bg-neutral-800 p-2"
+                  className="flex items-center justify-between gap-5 rounded-2xl bg-black dark:bg-black p-2"
                 >
                   <div className="flex items-center gap-2">
                     <div className="rounded-lg bg-background p-2">
-                      {React.createElement(item.icon as React.ComponentType<any>, { className: "size-5 text-neutral-500 dark:text-neutral-400" })}
+                      {React.createElement(item.icon as React.ComponentType<any>, { className: "size-5 text-white dark:text-white" })}
                     </div>
                     <div>
                       <div className="text-sm font-semibold">{item.name}</div>
-                      <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                      <div className="text-xs text-white dark:text-white font-medium">
                         {item.info}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center size-8 rounded-full bg-neutral-400 dark:bg-neutral-600">
+                  <div className="flex items-center justify-center size-8 rounded-full bg-black dark:bg-black">
                     <Pin className="size-4 text-foreground fill-foreground" />
                   </div>
                 </motion.div>
@@ -147,7 +147,7 @@ function PinList({
                 layout
                 key="all-label"
                 className={cn(
-                  'font-medium px-3 text-neutral-500 dark:text-neutral-300 text-sm mb-2',
+                  'font-medium px-3 text-white dark:text-white text-sm mb-2',
                   labelClassName,
                 )}
                 {...labelMotionProps}
@@ -170,20 +170,20 @@ function PinList({
                   layoutId={`item-${item.id}`}
                   onClick={() => toggleStatus(item.id)}
                   transition={transition}
-                  className="flex items-center justify-between gap-5 rounded-2xl bg-neutral-200 dark:bg-neutral-800 p-2 group"
+                  className="flex items-center justify-between gap-5 rounded-2xl bg-black dark:bg-black p-2 group"
                 >
                   <div className="flex items-center gap-2">
                     <div className="rounded-lg bg-background p-2">
-                      {React.createElement(item.icon as React.ComponentType<any>, { className: "size-5 text-neutral-500 dark:text-neutral-400" })}
+                      {React.createElement(item.icon as React.ComponentType<any>, { className: "size-5 text-white dark:text-white" })}
                     </div>
                     <div>
                       <div className="text-sm font-semibold">{item.name}</div>
-                      <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                      <div className="text-xs text-white dark:text-white font-medium">
                         {item.info}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center size-8 rounded-full bg-neutral-400 dark:bg-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity duration-250">
+                  <div className="flex items-center justify-center size-8 rounded-full bg-black dark:bg-black opacity-0 group-hover:opacity-100 transition-opacity duration-250">
                     <Pin className="size-4 text-foreground" />
                   </div>
                 </motion.div>

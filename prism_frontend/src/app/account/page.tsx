@@ -153,7 +153,7 @@ function AccountPageContent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [envSheet, setEnvSheet] = useState<{ open: boolean; account: Account | null }>({ open: false, account: null })
   const [formState, setFormState] = useState<AccountFormState>({ name: "", platform: "kuaishou" })
-  const [bindingStatus, setBindingStatus] = useState<"idle" | "pending" | "code" | "success" | "error">("idle")
+  const [bindingStatus, setBindingStatus] = useState<"idle" | "pending" | "code" | "browser" | "success" | "error">("idle")
   const [qrImage, setQrImage] = useState<string | null>(null)
   const { toast } = useToast()
   const keywordInputRef = useRef<HTMLInputElement | null>(null)
@@ -269,10 +269,7 @@ function AccountPageContent() {
 
   const startBinding = async () => {
     if (formState.platform === "tiktok" || formState.platform === "youtube") {
-      toast({
-        title: "请通过本机浏览器完成登录",
-        description: `运行 prism ${formState.platform} login --account ${formState.name || "my-account"}，完成登录后刷新账户列表。`,
-      })
+      await startBrowserLogin()
       return
     }
     setBindingStatus("pending")
@@ -307,6 +304,92 @@ function AccountPageContent() {
         variant: "destructive",
         title: "登录初始化失败",
         description: "二维码获取失败，请重试或联系管理员",
+      })
+    }
+  }
+
+  const startBrowserLogin = async () => {
+    const loginId = formState.name || `account_${Date.now()}`
+    try {
+      setBindingStatus("pending")
+      setQrImage(null)
+
+      const platform = formState.platform === "youtube" ? "youtube" : "tiktok"
+      const res = await fetch(
+        `${backendBaseUrl}/api/v1/auth/login/browser/start?platform=${platform}&account_id=${encodeURIComponent(loginId)}`,
+        { method: "POST" }
+      )
+      let data: any = null
+      let rawText = ""
+      try {
+        rawText = await res.text()
+        data = rawText ? JSON.parse(rawText) : null
+      } catch (err) {
+        console.error("Failed to parse browser login response", err, rawText)
+      }
+      if (!res.ok || !data?.success || !data?.login_id) {
+        throw new Error(describeApiError(
+          data?.detail || data?.error || data?.message || rawText || `Status ${res.status}`
+        ))
+      }
+
+      // 后端在本机运行时会弹出真实浏览器窗口；进入等待确认状态并轮询。
+      const sessionId = data.login_id
+      setBindingStatus("browser")
+
+      stopPolling()
+      activeSessionRef.current = sessionId
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          if (activeSessionRef.current !== sessionId) return
+          const statusRes = await fetch(
+            `${backendBaseUrl}/api/v1/auth/login/browser/status?login_id=${sessionId}`
+          )
+          if (!statusRes.ok) {
+            if (statusRes.status === 404) {
+              stopPolling()
+              setBindingStatus("error")
+              return
+            }
+            throw new Error(`Status ${statusRes.status}`)
+          }
+          const statusData = await statusRes.json()
+
+          if (statusData.status === "success") {
+            stopPolling()
+            setBindingStatus("success")
+            toast({
+              variant: "success",
+              title: "登录成功",
+              description: "账号已绑定并同步。",
+            })
+            await queryClient.invalidateQueries({ queryKey: ["accounts"] })
+            await refetch()
+            setTimeout(() => {
+              setDialogOpen(false)
+              setFormState({ id: "", name: "", platform: "kuaishou" })
+              setBindingStatus("idle")
+            }, 500)
+          } else if (statusData.status === "failed") {
+            stopPolling()
+            setBindingStatus("error")
+            toast({
+              variant: "destructive",
+              title: "登录失败",
+              description: statusData.message || "请重试",
+            })
+          }
+        } catch (error) {
+          console.error("Browser login poll error:", error)
+        }
+      }, 2500)
+    } catch (error) {
+      console.error("Browser login start error:", error)
+      setBindingStatus("error")
+      toast({
+        variant: "destructive",
+        title: "登录启动失败",
+        description: error instanceof Error ? error.message : "请重试或联系管理员",
       })
     }
   }
@@ -636,7 +719,7 @@ function AccountPageContent() {
       header: "平台",
       cell: ({ row }) => (
         <div className="flex justify-start">
-          <Badge className="border-none bg-foreground/10 text-xs hover:bg-accent/60">
+          <Badge className="border-none bg-black text-xs hover:bg-accent/60">
             {platformLabelMap[row.original.platform] ?? row.original.platform}
           </Badge>
         </div>
@@ -712,7 +795,7 @@ function AccountPageContent() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 rounded-xl px-3 text-xs border-border/70 bg-foreground/5 hover:bg-accent/50"
+            className="h-8 rounded-xl px-3 text-xs border-border/70 bg-black hover:bg-accent/50"
             onClick={() => setEnvSheet({ open: true, account: row.original })}
           >
             <MonitorSmartphone className="h-3.5 w-3.5 mr-1" />
@@ -790,6 +873,8 @@ function AccountPageContent() {
                         <SelectItem value="channels">视频号</SelectItem>
                         <SelectItem value="xiaohongshu">小红书</SelectItem>
                         <SelectItem value="bilibili">B站</SelectItem>
+                        <SelectItem value="tiktok">TikTok</SelectItem>
+                        <SelectItem value="youtube">YouTube</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -829,20 +914,28 @@ function AccountPageContent() {
                               className="h-40 w-40 rounded-2xl border border-border/70 bg-card p-3"
                             />
                             <p className="text-xs text-muted-foreground">请使用 {platformLabelMap[formState.platform]} App 扫码</p>
-                            <Button size="sm" variant="ghost" className="rounded-xl bg-foreground/10" onClick={startBinding}>
+                            <Button size="sm" variant="ghost" className="rounded-xl bg-black" onClick={startBinding}>
                               刷新二维码
                             </Button>
                           </div>
                         )}
+                        {bindingStatus === "browser" && (
+                          <div className="flex flex-col items-center gap-2 text-sm text-foreground/70 w-full px-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-foreground" />
+                            <span>请在本机弹出的浏览器窗口中完成登录，等待确认...</span>
+                            <p className="text-xs text-muted-foreground">登录完成后会自动刷新账号列表</p>
+                            <Progress value={50} className="w-full h-1 mt-2" />
+                          </div>
+                        )}
                         {bindingStatus === "success" && (
-                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/30 bg-black p-3 text-sm text-white">
                             <span>已完成扫码，可点击下一步完成绑定</span>
                           </div>
                         )}
                         {bindingStatus === "error" && (
-                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/30 bg-black p-3 text-sm text-white">
                             <span>连接出错，请重新获取二维码</span>
-                            <Button size="sm" variant="ghost" className="rounded-xl bg-foreground/10" onClick={startBinding}>
+                            <Button size="sm" variant="ghost" className="rounded-xl bg-black" onClick={startBinding}>
                               重新获取
                             </Button>
                           </div>
@@ -852,7 +945,7 @@ function AccountPageContent() {
                   )}
                 </div>
                 <DialogFooter>
-                  <Button variant="ghost" className="rounded-2xl border border-border/70 bg-foreground/5" onClick={() => setDialogOpen(false)}>
+                  <Button variant="ghost" className="rounded-2xl border border-border/70 bg-black" onClick={() => setDialogOpen(false)}>
                     取消
                   </Button>
                   <Button className="rounded-2xl" onClick={handleSaveAccount}>
