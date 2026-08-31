@@ -95,6 +95,9 @@ syn_backend/Redis/
 # Root config runtime artifacts
 config/cookiesFile/*.json
 config/browser_profiles/
+
+# Cookie runtime data (do not commit)
+prism_backend/cookiesFile/
 # config/conf.py
 syn_backend/config/hermes_agent.toml
 
