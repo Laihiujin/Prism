@@ -41,6 +41,7 @@ from .platforms.xiaohongshu.router import router as xiaohongshu_router
 from .platforms.tencent.router import router as tencent_router
 from .platforms.bilibili.router_biliup import router as bilibili_router  # 使用 biliup 版本
 from .platforms.tasks.router import router as platform_tasks_router
+from .tools.router import router as tools_router
 
 # 创建API路由器
 api_router = APIRouter()
@@ -83,6 +84,7 @@ api_router.include_router(xiaohongshu_router)  # router 已自带 /platforms/xia
 api_router.include_router(tencent_router)  # router 已自带 /platforms/tencent 前缀
 api_router.include_router(bilibili_router)  # router 已自带 /platforms/bilibili 前缀
 api_router.include_router(platform_tasks_router)  # router 已自带 /platforms/tasks 前缀
+api_router.include_router(tools_router)  # 开发者工具 /tools 前缀
 
 
 @api_router.get("/ping")
