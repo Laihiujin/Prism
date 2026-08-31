@@ -18,6 +18,7 @@ import {
   TrendingUp,
   UsersRound,
   Video,
+  Boxes,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -112,7 +113,10 @@ const navSections: NavSection[] = [
   },
   {
     label: "智能",
-    items: [{ label: "Hermes Agent", href: "/ai-agent", icon: HermesLogoIcon }],
+    items: [
+      { label: "Hermes Agent", href: "/ai-agent", icon: HermesLogoIcon },
+      { label: "开发者工具", href: "/tools", icon: Boxes },
+    ],
   },
   {
     label: "系统",
