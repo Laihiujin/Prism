@@ -43,12 +43,12 @@ interface CreateCampaignDialogProps {
 
 const PLATFORMS = [
     { id: "douyin", name: "抖音", color: "bg-card" },
-    { id: "kuaishou", name: "快手", color: "bg-orange-500" },
-    { id: "xiaohongshu", name: "小红书", color: "bg-red-500" },
-    { id: "bilibili", name: "B站", color: "bg-blue-400" },
-    { id: "channels", name: "视频号", color: "bg-green-600" },
-    { id: "tiktok", name: "TikTok", color: "bg-slate-700" },
-    { id: "youtube", name: "YouTube", color: "bg-red-600" },
+    { id: "kuaishou", name: "快手", color: "bg-white" },
+    { id: "xiaohongshu", name: "小红书", color: "bg-white" },
+    { id: "bilibili", name: "B站", color: "bg-white" },
+    { id: "channels", name: "视频号", color: "bg-white" },
+    { id: "tiktok", name: "TikTok", color: "bg-white" },
+    { id: "youtube", name: "YouTube", color: "bg-white" },
 ]
 
 export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCampaignDialogProps) {
@@ -283,7 +283,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 gap-0">
-                <DialogHeader className="px-6 py-4 border-b border-gray-800/50">
+                <DialogHeader className="px-6 py-4 border-b border-white/50">
                     <DialogTitle>新建投放计划</DialogTitle>
                     <DialogDescription>
                         Step {step} of 3: {step === 1 ? "基础信息" : step === 2 ? "素材与排期" : "预览与确认"}
@@ -310,8 +310,8 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                         <div
                                             key={p.id}
                                             className={cn(
-                                                "flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-800/50 cursor-pointer transition-all",
-                                                selectedPlatforms.includes(p.id) ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted"
+                                                "flex items-center gap-2 px-4 py-3 rounded-lg border border-white/50 cursor-pointer transition-all",
+                                                selectedPlatforms.includes(p.id) ? "border-primary bg-black ring-1 ring-primary" : "hover:bg-muted"
                                             )}
                                             onClick={() => togglePlatform(p.id)}
                                         >
@@ -331,8 +331,8 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                             const accs = accountsByPlatform[platform] || []
 
                                             return (
-                                                <Card key={platform} className="overflow-hidden border-gray-800">
-                                                    <div className="px-3 py-2 bg-card border-b border-gray-800/50 flex justify-between items-center">
+                                                <Card key={platform} className="overflow-hidden border-white">
+                                                    <div className="px-3 py-2 bg-card border-b border-white/50 flex justify-between items-center">
                                                         <div className="flex items-center gap-2">
                                                             <div className={cn("w-2 h-2 rounded-full", pInfo?.color)} />
                                                             <span className="font-medium text-sm">{pInfo?.name}</span>
@@ -410,14 +410,14 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                     <Label>选择素材 ({selectedMaterials.length})</Label>
                                     <Button variant="outline" size="sm" onClick={() => setSelectedMaterials(materials.map(m => m.id))}>全选</Button>
                                 </div>
-                                <ScrollArea className="h-[400px] border border-gray-800/50 rounded-md p-4">
+                                <ScrollArea className="h-[400px] border border-white/50 rounded-md p-4">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {materials.map(m => (
                                             <div
                                                 key={m.id}
                                                 className={cn(
-                                                    "relative aspect-video rounded-lg border border-gray-800/50 overflow-hidden cursor-pointer group",
-                                                    selectedMaterials.includes(m.id) ? "ring-2 ring-primary border-primary" : "hover:border-gray-800"
+                                                    "relative aspect-video rounded-lg border border-white/50 overflow-hidden cursor-pointer group",
+                                                    selectedMaterials.includes(m.id) ? "ring-2 ring-primary border-primary" : "hover:border-white"
                                                 )}
                                                 onClick={() => toggleMaterial(m.id)}
                                             >
@@ -444,21 +444,21 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                 <Label>排期设置</Label>
                                 <div className="grid grid-cols-3 gap-4">
                                     <div
-                                        className={cn("border border-gray-800/50 rounded-lg p-4 cursor-pointer text-center hover:bg-muted", scheduleType === 'immediate' && "border-primary bg-primary/5")}
+                                        className={cn("border border-white/50 rounded-lg p-4 cursor-pointer text-center hover:bg-muted", scheduleType === 'immediate' && "border-primary bg-black")}
                                         onClick={() => setScheduleType('immediate')}
                                     >
                                         <div className="font-medium">立即执行</div>
                                         <div className="text-xs text-muted-foreground mt-1">生成任务后立即进入队列</div>
                                     </div>
                                     <div
-                                        className={cn("border border-gray-800/50 rounded-lg p-4 cursor-pointer text-center hover:bg-muted", scheduleType === 'range' && "border-primary bg-primary/5")}
+                                        className={cn("border border-white/50 rounded-lg p-4 cursor-pointer text-center hover:bg-muted", scheduleType === 'range' && "border-primary bg-black")}
                                         onClick={() => setScheduleType('range')}
                                     >
                                         <div className="font-medium">固定区间</div>
                                         <div className="text-xs text-muted-foreground mt-1">在指定日期范围内分发</div>
                                     </div>
                                     <div
-                                        className={cn("border border-gray-800/50 rounded-lg p-4 cursor-pointer text-center hover:bg-muted", scheduleType === 'daily' && "border-primary bg-primary/5")}
+                                        className={cn("border border-white/50 rounded-lg p-4 cursor-pointer text-center hover:bg-muted", scheduleType === 'daily' && "border-primary bg-black")}
                                         onClick={() => setScheduleType('daily')}
                                     >
                                         <div className="font-medium">每日定量</div>
@@ -468,7 +468,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
 
                                 {scheduleType !== 'immediate' && (
                                     <div className="space-y-4">
-                                        <div className="p-4 border border-gray-800/50 rounded-lg bg-card">
+                                        <div className="p-4 border border-white/50 rounded-lg bg-card">
                                             <div className="flex items-center justify-between mb-3">
                                                 <div>
                                                     <Label className="font-medium">矩阵节奏</Label>
@@ -501,12 +501,12 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                             </div>
 
                                             {intervalEnabled && (
-                                                <div className="space-y-3 pt-3 border-t border-gray-800/50">
+                                                <div className="space-y-3 pt-3 border-t border-white/50">
                                                     <div className="grid grid-cols-2 gap-3">
                                                         <div
                                                             className={cn(
-                                                                "border border-gray-800/50 rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors",
-                                                                intervalMode === 'account_video' && "border-primary bg-primary/10 ring-1 ring-primary"
+                                                                "border border-white/50 rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors",
+                                                                intervalMode === 'account_video' && "border-primary bg-black ring-1 ring-primary"
                                                             )}
                                                             onClick={() => setIntervalMode('account_video')}
                                                         >
@@ -515,8 +515,8 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                                         </div>
                                                         <div
                                                             className={cn(
-                                                                "border border-gray-800/50 rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors",
-                                                                intervalMode === 'video' && "border-primary bg-primary/10 ring-1 ring-primary"
+                                                                "border border-white/50 rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors",
+                                                                intervalMode === 'video' && "border-primary bg-black ring-1 ring-primary"
                                                             )}
                                                             onClick={() => setIntervalMode('video')}
                                                         >
@@ -533,7 +533,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                                                 max="1440"
                                                                 value={intervalMinutes}
                                                                 onChange={(e) => setIntervalMinutes(parseInt(e.target.value) || 30)}
-                                                                className="w-24 bg-card/5 border-gray-800/50"
+                                                                className="w-24 bg-card/5 border-white/50"
                                                             />
                                                             <span className="text-sm text-muted-foreground">分钟</span>
                                                         </div>
@@ -544,7 +544,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="p-4 border border-gray-800/50 rounded-lg bg-card">
+                                        <div className="p-4 border border-white/50 rounded-lg bg-card">
                                             <Label className="mb-2 block">选择日期范围</Label>
                                             <Popover>
                                                 <PopoverTrigger asChild>
@@ -593,25 +593,25 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                     {step === 3 && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <Card className="border-gray-800/50">
+                                <Card className="border-white/50">
                                     <CardContent className="pt-6 text-center">
                                         <div className="text-2xl font-bold">{selectedPlatforms.length}</div>
                                         <div className="text-xs text-muted-foreground">覆盖平台</div>
                                     </CardContent>
                                 </Card>
-                                <Card className="border-gray-800/50">
+                                <Card className="border-white/50">
                                     <CardContent className="pt-6 text-center">
                                         <div className="text-2xl font-bold">{selectedAccounts.length}</div>
                                         <div className="text-xs text-muted-foreground">使用账号</div>
                                     </CardContent>
                                 </Card>
-                                <Card className="border-gray-800/50">
+                                <Card className="border-white/50">
                                     <CardContent className="pt-6 text-center">
                                         <div className="text-2xl font-bold">{selectedMaterials.length}</div>
                                         <div className="text-xs text-muted-foreground">素材数量</div>
                                     </CardContent>
                                 </Card>
-                                <Card className="border-gray-800/50">
+                                <Card className="border-white/50">
                                     <CardContent className="pt-6 text-center">
                                         <div className="text-2xl font-bold text-primary">{previewTasks.length}</div>
                                         <div className="text-xs text-muted-foreground">预计生成任务</div>
@@ -619,8 +619,8 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                 </Card>
                             </div>
 
-                            <div className="border border-gray-800/50 rounded-md">
-                                <div className="bg-card border-b border-gray-800/50 px-4 py-2 text-sm font-medium grid grid-cols-5 gap-4">
+                            <div className="border border-white/50 rounded-md">
+                                <div className="bg-card border-b border-white/50 px-4 py-2 text-sm font-medium grid grid-cols-5 gap-4">
                                     <div>平台</div>
                                     <div>账号</div>
                                     <div className="col-span-2">素材</div>
@@ -628,7 +628,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                 </div>
                                 <ScrollArea className="h-[300px]">
                                     {previewTasks.map((task, i) => (
-                                        <div key={i} className="px-4 py-3 text-sm grid grid-cols-5 gap-4 border-b border-gray-800/30 last:border-0 hover:bg-muted/50">
+                                        <div key={i} className="px-4 py-3 text-sm grid grid-cols-5 gap-4 border-b border-white/30 last:border-0 hover:bg-muted/50">
                                             <div className="flex items-center gap-2">
                                                 <div className={cn("w-2 h-2 rounded-full", PLATFORMS.find(p => p.id === task.platform)?.color)} />
                                                 {PLATFORMS.find(p => p.id === task.platform)?.name}
@@ -646,7 +646,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                     )}
                 </div>
 
-                <DialogFooter className="px-6 py-4 border-t bg-card border-gray-800/50">
+                <DialogFooter className="px-6 py-4 border-t bg-card border-white/50">
                     {step > 1 && (
                         <Button variant="outline" onClick={() => setStep(step - 1)} disabled={submitting}>
                             <ChevronLeft className="w-4 h-4 mr-2" /> 上一步

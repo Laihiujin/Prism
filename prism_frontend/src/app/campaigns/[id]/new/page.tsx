@@ -232,7 +232,7 @@ export default function CampaignPackageBuilderPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border-border/70 bg-foreground/5">
+        <Card className="lg:col-span-2 border-border/70 bg-black">
           <CardHeader>
             <CardTitle>基础信息</CardTitle>
             <CardDescription>确认计划与任务包信息，便于追踪与复用</CardDescription>
@@ -241,7 +241,7 @@ export default function CampaignPackageBuilderPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label>关联计划</Label>
-                <div className="mt-2 rounded-xl border border-border/70 bg-foreground/5 p-3">
+                <div className="mt-2 rounded-xl border border-border/70 bg-black p-3">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
                     <span className="font-medium">{plan?.name || `计划 #${planId}`}</span>
@@ -278,7 +278,7 @@ export default function CampaignPackageBuilderPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-foreground/5">
+        <Card className="border-border/70 bg-black">
           <CardHeader>
             <CardTitle>发布策略</CardTitle>
             <CardDescription>控制分发模式与定时配置</CardDescription>
@@ -318,7 +318,7 @@ export default function CampaignPackageBuilderPage() {
                 </Button>
               </div>
               {scheduleMode === "daily" && (
-                <div className="space-y-2 rounded-xl border border-border/70 bg-foreground/5 p-3">
+                <div className="space-y-2 rounded-xl border border-border/70 bg-black p-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm text-foreground/80">时间点</Label>
                     <Button variant="ghost" size="sm" className="rounded-lg" onClick={handleAddTimePoint}>
@@ -349,14 +349,14 @@ export default function CampaignPackageBuilderPage() {
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-foreground/5 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-black p-3">
               <div>
                 <p className="font-medium">自动生成任务</p>
                 <p className="text-xs text-muted-foreground">保存后立即拆解为发布任务</p>
               </div>
               <Switch checked={generateTasks} onCheckedChange={setGenerateTasks} />
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/10 p-3">
+            <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-black p-3">
               <div>
                 <p className="font-medium">直接调用发布接口</p>
                 <p className="text-xs text-foreground/70">同步触发矩阵发布，避免重复配置</p>
@@ -368,7 +368,7 @@ export default function CampaignPackageBuilderPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="border-border/70 bg-foreground/5 lg:col-span-2">
+        <Card className="border-border/70 bg-black lg:col-span-2">
           <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle>选择平台与账号</CardTitle>
@@ -405,8 +405,8 @@ export default function CampaignPackageBuilderPage() {
                         className={cn(
                           "flex w-full items-center justify-between rounded-xl border p-3 text-left transition",
                           active
-                            ? "border-primary/50 bg-primary/10"
-                            : "border-border/70 bg-foreground/5 hover:border-border/80"
+                            ? "border-primary/50 bg-black"
+                            : "border-border/70 bg-black hover:border-border/80"
                         )}
                       >
                         <div>
@@ -425,7 +425,7 @@ export default function CampaignPackageBuilderPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-foreground/5">
+        <Card className="border-border/70 bg-black">
           <CardHeader>
             <CardTitle>选择素材</CardTitle>
             <CardDescription>仅显示待发布素材</CardDescription>
@@ -447,8 +447,8 @@ export default function CampaignPackageBuilderPage() {
                         className={cn(
                           "w-full rounded-xl border p-3 text-left transition",
                           active
-                            ? "border-primary/50 bg-primary/10"
-                            : "border-border/70 bg-foreground/5 hover:border-border/80"
+                            ? "border-primary/50 bg-black"
+                            : "border-border/70 bg-black hover:border-border/80"
                         )}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -473,7 +473,7 @@ export default function CampaignPackageBuilderPage() {
         </Card>
       </div>
 
-      <Card className="border-primary/20 bg-primary/5">
+      <Card className="border-primary/20 bg-black">
         <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between py-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2">

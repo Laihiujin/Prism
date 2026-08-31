@@ -45,7 +45,7 @@ export function ModelSelectorInput({ placeholder }: { placeholder?: string }) {
         <input
             type="text"
             placeholder={placeholder}
-            className="w-full px-3 py-2 bg-foreground/5 border border-border/70 rounded text-foreground text-sm mb-2"
+            className="w-full px-3 py-2 bg-black border border-border/70 rounded text-foreground text-sm mb-2"
         />
     )
 }
@@ -94,7 +94,7 @@ export function ModelSelectorItem({
 
 export function ModelSelectorLogo({ provider }: { provider: string }) {
     return (
-        <div className="w-4 h-4 rounded bg-primary/20 flex items-center justify-center text-xs">
+        <div className="w-4 h-4 rounded bg-black flex items-center justify-center text-xs">
             {provider[0].toUpperCase()}
         </div>
     )

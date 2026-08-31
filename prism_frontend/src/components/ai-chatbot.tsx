@@ -254,7 +254,7 @@ export function AIChatBot() {
     <>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center text-foreground hover:scale-110"
+        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-br from-white to-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center text-foreground hover:scale-110"
         title="AI 聊天助手"
       >
         {isOpen ? (
@@ -265,11 +265,11 @@ export function AIChatBot() {
       </button>
 
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-40 w-96 max-w-[calc(100vw-2rem)] h-[700px] flex flex-col rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-border/70 shadow-2xl overflow-hidden">
+        <div className="fixed bottom-24 right-6 z-40 w-96 max-w-[calc(100vw-2rem)] h-[700px] flex flex-col rounded-2xl bg-gradient-to-br from-white via-white to-white border border-border/70 shadow-2xl overflow-hidden">
           {/* 头部 */}
-          <div className="flex items-center justify-between p-4 border-b border-border/70 bg-slate-900/80 backdrop-blur">
+          <div className="flex items-center justify-between p-4 border-b border-border/70 bg-black backdrop-blur">
             <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
               <div>
                 <h3 className="text-sm font-semibold text-foreground">AI 助手</h3>
                 {currentModel && (
@@ -290,14 +290,14 @@ export function AIChatBot() {
 
           {/* 设置面板 */}
           {showSettings && (
-            <div className="border-b border-border/70 p-4 bg-foreground/5 backdrop-blur overflow-y-auto flex-shrink-0 space-y-4">
+            <div className="border-b border-border/70 p-4 bg-black backdrop-blur overflow-y-auto flex-shrink-0 space-y-4">
               {/* AI 提供商检测和选择 */}
               <AIProviderSelector />
             </div>
           )}
 
           {/* 消息区域 */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-900 to-slate-900/50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-white to-white/50">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <p className="text-2xl mb-2">
@@ -338,7 +338,7 @@ export function AIChatBot() {
           </div>
 
           {/* 输入区域 */}
-          <div className="border-t border-border/70 p-4 bg-slate-900/80 backdrop-blur flex-shrink-0">
+          <div className="border-t border-border/70 p-4 bg-black backdrop-blur flex-shrink-0">
             <div className="flex gap-2">
               <Input
                 value={input}
@@ -351,13 +351,13 @@ export function AIChatBot() {
                   }
                 }}
                 placeholder={hasProviders ? "输入消息或快捷命令..." : "请先配置 AI..."}
-                className="bg-foreground/10 border-border/80 text-foreground placeholder:text-foreground/40 h-10 text-sm"
+                className="bg-black border-border/80 text-foreground placeholder:text-foreground/40 h-10 text-sm"
                 disabled={isLoading || !currentProvider}
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={isLoading || !currentProvider || !input.trim()}
-                className="px-3 h-10 bg-blue-600 hover:bg-blue-700"
+                className="px-3 h-10 bg-white hover:bg-white"
                 size="sm"
               >
                 <Send className="h-4 w-4" />

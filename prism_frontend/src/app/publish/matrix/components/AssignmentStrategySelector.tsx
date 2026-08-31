@@ -43,7 +43,7 @@ const ASSIGNMENT_STRATEGIES: StrategyDefinition[] = [
     badge: "默认",
     calculateTasks: (videos, accounts) => videos * accounts,
     preview: (v, a) => `${v} × ${a} = ${v * a}`,
-    color: "from-green-500 to-emerald-500"
+    color: "from-white to-white"
   },
   {
     key: "one_per_account",
@@ -52,7 +52,7 @@ const ASSIGNMENT_STRATEGIES: StrategyDefinition[] = [
     icon: <Users className="w-5 h-5" />,
     calculateTasks: (videos, accounts) => Math.min(videos, accounts),
     preview: (v, a) => `min(${v}, ${a}) = ${Math.min(v, a)}`,
-    color: "from-blue-500 to-cyan-500"
+    color: "from-white to-white"
   },
   {
     key: "cross_platform_all",
@@ -61,7 +61,7 @@ const ASSIGNMENT_STRATEGIES: StrategyDefinition[] = [
     icon: <Share2 className="w-5 h-5" />,
     calculateTasks: (videos, accounts) => videos * accounts,
     preview: (v, a) => `${v} × ${a} = ${v * a}`,
-    color: "from-purple-500 to-pink-500"
+    color: "from-white to-white"
   },
   {
     key: "per_platform_custom",
@@ -71,7 +71,7 @@ const ASSIGNMENT_STRATEGIES: StrategyDefinition[] = [
     badge: "高级",
     calculateTasks: () => 0,
     preview: () => "动态计算",
-    color: "from-orange-500 to-red-500"
+    color: "from-white to-white"
   }
 ]
 
@@ -97,7 +97,7 @@ function StrategyCard({
       className={cn(
         "relative p-5 rounded-xl border-2 text-left transition-all group",
         selected
-          ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(94,234,212,0.3)]"
+          ? "border-primary bg-black shadow-[0_0_20px_rgba(94,234,212,0.3)]"
           : "border-border/70 bg-card/20 hover:border-border"
       )}
     >
@@ -131,7 +131,7 @@ function StrategyCard({
           <p className="text-sm text-muted-foreground mb-3">{strategy.description}</p>
 
           {/* 预览计算 */}
-          <div className="text-xs text-primary/90 font-mono bg-primary/5 px-2 py-1.5 rounded">
+          <div className="text-xs text-primary/90 font-mono bg-black px-2 py-1.5 rounded">
             {strategy.preview(videoCount, accountCount)}
             {taskCount > 0 && <span className="font-bold ml-1">任务</span>}
           </div>
@@ -177,11 +177,11 @@ function TaskCountPreview({
   const taskCount = calculateTotalTasks()
 
   return (
-    <div className="p-5 rounded-xl bg-gradient-to-r from-primary/10 via-purple-500/10 to-pink-500/10 border border-primary/20">
+    <div className="p-5 rounded-xl bg-gradient-to-r from-primary/10 via-white/10 to-white/10 border border-primary/20">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground mb-1">预计生成任务数</p>
-          <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">
+          <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-white">
             {taskCount}
           </p>
         </div>
@@ -257,8 +257,8 @@ export default function AssignmentStrategySelector({
 
           {/* 策略特定选项 */}
           {config.assignmentStrategy === "one_per_account" && (
-            <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-3">
-              <Label className="text-sm font-medium text-blue-400">分配方式</Label>
+            <div className="p-4 rounded-xl border border-white/20 bg-black space-y-3">
+              <Label className="text-sm font-medium text-white">分配方式</Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { key: "random" as const, label: "随机分配" },
@@ -271,8 +271,8 @@ export default function AssignmentStrategySelector({
                     className={cn(
                       "px-3 py-2 rounded-lg text-xs transition",
                       config.onePerAccountMode === mode.key
-                        ? "bg-blue-500/30 border border-blue-400/50 text-blue-300"
-                        : "bg-foreground/5 border border-border/70 text-muted-foreground hover:border-border"
+                        ? "bg-black border border-white/50 text-white"
+                        : "bg-black border border-border/70 text-muted-foreground hover:border-border"
                     )}
                   >
                     {mode.label}

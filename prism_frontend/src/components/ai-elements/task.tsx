@@ -58,26 +58,26 @@ export function Task({
     pending: {
       icon: Circle,
       color: "text-foreground/40",
-      bgColor: "bg-foreground/5",
+      bgColor: "bg-black",
       borderColor: "border-border/70"
     },
     "in-progress": {
       icon: Clock,
-      color: "text-blue-400",
-      bgColor: "bg-blue-500/10",
-      borderColor: "border-blue-500/30"
+      color: "text-white",
+      bgColor: "bg-black",
+      borderColor: "border-white/30"
     },
     completed: {
       icon: CheckCircle2,
-      color: "text-green-400",
-      bgColor: "bg-green-500/10",
-      borderColor: "border-green-500/30"
+      color: "text-white",
+      bgColor: "bg-black",
+      borderColor: "border-white/30"
     },
     failed: {
       icon: XCircle,
-      color: "text-red-400",
-      bgColor: "bg-red-500/10",
-      borderColor: "border-red-500/30"
+      color: "text-white",
+      bgColor: "bg-black",
+      borderColor: "border-white/30"
     }
   }
 
@@ -164,13 +164,13 @@ export function TaskList({ tasks, title = "任务列表", className, onTaskClick
           <span className="text-sm font-medium text-foreground/90">{title}</span>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {inProgressCount > 0 && (
-              <span className="text-blue-400">{inProgressCount} 进行中</span>
+              <span className="text-white">{inProgressCount} 进行中</span>
             )}
             {pendingCount > 0 && (
               <span>{pendingCount} 待处理</span>
             )}
             {completedCount > 0 && (
-              <span className="text-green-400">{completedCount} 已完成</span>
+              <span className="text-white">{completedCount} 已完成</span>
             )}
           </div>
         </div>

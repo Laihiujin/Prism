@@ -182,7 +182,7 @@ export default function HermesSettingsPage() {
       />
 
       <div className="mx-auto max-w-5xl space-y-6">
-        <Card className="border-border/70 bg-foreground/5">
+        <Card className="border-border/70 bg-black">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-primary" />
@@ -227,7 +227,7 @@ export default function HermesSettingsPage() {
               <div>上次更新：{updateStatus?.last_updated_at ? new Date(updateStatus.last_updated_at).toLocaleString() : "从未"}</div>
               <div className="md:col-span-2">保留配置目录：{updateStatus?.preserved_home_path || runtime?.home_path || "未检测"}</div>
             </div>
-            {updateStatus?.last_error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-200">{updateStatus.last_error}</div>}
+            {updateStatus?.last_error && <div className="rounded-lg border border-white/30 bg-black p-3 text-white">{updateStatus.last_error}</div>}
             <div className="flex flex-wrap items-center gap-3">
               <Button variant="outline" disabled={updateBusy} onClick={() => void updateAction("check")}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${updateBusy ? "animate-spin" : ""}`} />检查更新
@@ -246,7 +246,7 @@ export default function HermesSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-foreground/5">
+        <Card className="border-border/70 bg-black">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5 text-primary" />
@@ -261,19 +261,19 @@ export default function HermesSettingsPage() {
             <div>Dashboard：{dashboardUrl}</div>
             <div>WebUI：{webuiUrl}</div>
             <div className="flex flex-wrap gap-3 pt-2">
-              <Button asChild variant="outline" className="border-border/70 bg-foreground/5">
+              <Button asChild variant="outline" className="border-border/70 bg-black">
                 <a href="/settings">
                   <Settings2 className="mr-2 h-4 w-4" />
                   打开系统设置
                 </a>
               </Button>
-              <Button asChild variant="outline" className="border-border/70 bg-foreground/5">
+              <Button asChild variant="outline" className="border-border/70 bg-black">
                 <a href={dashboardUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-2 h-4 w-4" />
                   打开 Dashboard
                 </a>
               </Button>
-              <Button asChild variant="outline" className="border-border/70 bg-foreground/5">
+              <Button asChild variant="outline" className="border-border/70 bg-black">
                 <a href={webuiUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="mr-2 h-4 w-4" />
                   打开 WebUI
@@ -283,7 +283,7 @@ export default function HermesSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/70 bg-foreground/5">
+        <Card className="border-border/70 bg-black">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-primary" />

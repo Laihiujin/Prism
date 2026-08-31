@@ -23,28 +23,28 @@ export function AccountActivityLog({ logs }: AccountActivityLogProps) {
             )}
             {logs.map((item, index) => {
                 let Icon = Activity
-                let colorClass = "text-blue-400"
-                let bgClass = "bg-blue-400/10 border-blue-400/20"
+                let colorClass = "text-white"
+                let bgClass = "bg-black border-white/20"
 
                 if (item.type === "success") {
                     Icon = CheckCircle2
-                    colorClass = "text-emerald-400"
-                    bgClass = "bg-emerald-400/10 border-emerald-400/20"
+                    colorClass = "text-white"
+                    bgClass = "bg-black border-white/20"
                 } else if (item.type === "error") {
                     Icon = XCircle
-                    colorClass = "text-red-400"
-                    bgClass = "bg-red-400/10 border-red-400/20"
+                    colorClass = "text-white"
+                    bgClass = "bg-black border-white/20"
                 } else if (item.type === "warning") {
                     Icon = Shield
-                    colorClass = "text-amber-400"
-                    bgClass = "bg-amber-400/10 border-amber-400/20"
+                    colorClass = "text-white"
+                    bgClass = "bg-black border-white/20"
                 }
 
                 return (
                     <div key={item.id || index} className="relative pl-8 pb-8 last:pb-0 group">
                         {/* Line */}
                         {index !== logs.length - 1 && (
-                            <div className="absolute left-[11px] top-8 bottom-0 w-px bg-foreground/10 group-hover:bg-accent/60 transition-colors" />
+                            <div className="absolute left-[11px] top-8 bottom-0 w-px bg-black group-hover:bg-accent/60 transition-colors" />
                         )}
 
                         {/* Dot */}

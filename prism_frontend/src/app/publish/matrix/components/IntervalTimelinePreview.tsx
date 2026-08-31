@@ -109,7 +109,7 @@ export default function IntervalTimelinePreview({
   }
 
   return (
-    <div className="p-5 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-purple-500/5">
+    <div className="p-5 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-white/5">
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
@@ -148,7 +148,7 @@ export default function IntervalTimelinePreview({
                   {tasks.map((task, idx) => (
                     <div
                       key={idx}
-                      className="px-2 py-1 rounded-md text-[10px] font-medium bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition"
+                      className="px-2 py-1 rounded-md text-[10px] font-medium bg-black border border-primary/30 text-primary hover:bg-black transition"
                       title={`账号${task.accountIdx + 1} 发布视频${task.videoIdx + 1}`}
                     >
                       A{task.accountIdx + 1}/V{task.videoIdx + 1}
@@ -162,7 +162,7 @@ export default function IntervalTimelinePreview({
 
         {/* 显示提示（如果有更多任务未显示） */}
         {(videoCount > 10 || accountCount > 5) && (
-          <div className="mt-4 p-3 rounded-lg bg-foreground/5 border border-border/70 text-xs text-muted-foreground text-center">
+          <div className="mt-4 p-3 rounded-lg bg-black border border-border/70 text-xs text-muted-foreground text-center">
             <Video className="w-4 h-4 inline mr-2" />
             仅显示前 {Math.min(videoCount, 10)} 个视频 × {Math.min(accountCount, 5)} 个账号的时间轴预览
           </div>
@@ -176,7 +176,7 @@ export default function IntervalTimelinePreview({
           <span>总时长: <span className="text-foreground font-medium">{hours}h {minutes}m</span></span>
         </div>
         {randomOffset > 0 && (
-          <div className="text-orange-400">
+          <div className="text-white">
             <Zap className="inline w-3 h-3 mr-1" />
             包含 ±{randomOffset}s 随机偏移
           </div>
