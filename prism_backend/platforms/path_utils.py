@@ -164,8 +164,12 @@ def resolve_video_file(value: str) -> str:
         value = _fallback_to_dir_by_segment(str(value), _VIDEOS_DIR, "videoFile")
         value = _fallback_to_dir_by_name(value, _VIDEOS_DIR)
         return str(value)
-    # If already contains "videoFile/...", normalize to base dir.
-    value = _fallback_to_dir_by_segment(str(value), _VIDEOS_DIR, "videoFile")
+    # 相对路径：剥掉 "videoFile/" 前缀（若有），再拼到 VIDEO_FILES_DIR。
+    # 兼容 "videoFile/foo.mp4" 与 "foo.mp4" 两种写法，避免双写 videoFile/videoFile/。
+    s = str(value).replace("\\", "/")
+    if s.startswith("videoFile/"):
+        s = s[len("videoFile/"):]
+    value = _fallback_to_dir_by_segment(s, _VIDEOS_DIR, "videoFile")
     candidate = _VIDEOS_DIR / value
     return str(candidate)
 

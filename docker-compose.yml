@@ -32,6 +32,8 @@ services:
       PRISM_HERMES_WEBUI_STATE_DIR: /app/runtime-data/hermes-home/webui
       HOST: 0.0.0.0
       PORT: "7000"
+      PERSONA_ENABLED: "true"
+      PERSONA_API_URL: http://127.0.0.1:8787
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
@@ -44,6 +46,7 @@ services:
       CELERY_CONCURRENCY: "8"
     ports:
       - "7000:7000"
+      - "8787:8787"
       - "9119:9119"
       - "9131:9131"
     volumes:
