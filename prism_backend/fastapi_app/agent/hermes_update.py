@@ -11,12 +11,19 @@ import asyncio
 import json
 import shutil
 import subprocess
+import sys
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .hermes_config import get_hermes_home_path, get_hermes_source_path, get_repo_root
+from .hermes_config import (
+    get_hermes_home_path,
+    get_hermes_python_path,
+    get_hermes_runtime_stamp_path,
+    get_hermes_source_path,
+    get_repo_root,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -130,42 +137,103 @@ def _powershell() -> Optional[str]:
     return shutil.which("pwsh") or shutil.which("powershell") or shutil.which("powershell.exe")
 
 
+def _resolve_deps_with(python_exe: Path) -> list[str]:
+    """Resolve Hermes deps (base + web) using a Python >=3.11 interpreter."""
+    code = (
+        "import json, pathlib, tomllib; "
+        "d = tomllib.loads(pathlib.Path('pyproject.toml').read_text()); "
+        "p = d.get('project', {}); "
+        "deps = list(p.get('dependencies', [])); "
+        "deps.extend((p.get('optional-dependencies') or {}).get('web', [])); "
+        "print(json.dumps(deps))"
+    )
+    result = subprocess.run(
+        [str(python_exe), "-c", code],
+        cwd=str(get_hermes_source_path()),
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        raise RuntimeError("Failed to resolve Hermes dependencies from pyproject.toml")
+    return [d for d in json.loads(result.stdout) if isinstance(d, str)]
+
+
 def apply_update() -> Dict[str, Any]:
-    """Run the existing full installer so dependencies and both Web UIs stay aligned."""
+    """Run the full update so dependencies and source stay aligned.
+
+    Windows uses the existing PowerShell installer; macOS/Linux do the same job
+    with Python (git pull + pip reinstall into prismenv) so no PowerShell is
+    required.
+    """
     settings = get_update_settings()
     state = _read_json(_state_path())
-    shell = _powershell()
-    script = get_repo_root() / "scripts" / "hermes" / "setup-local-hermes.ps1"
-    if not shell or not script.exists():
-        raise RuntimeError("找不到 PowerShell 或 Hermes 安装脚本，无法执行完整更新。")
+    branch = settings["branch"]
+    source = get_hermes_source_path()
+    python_exe = get_hermes_python_path()
+    stamp = get_hermes_runtime_stamp_path()
 
     state.update({"updating": True, "last_error": None})
     _write_json(_state_path(), state)
     try:
-        result = subprocess.run(
-            [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
-             "-Branch", settings["branch"], "-Force"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=1800,
-            check=False,
-        )
-        if result.returncode != 0:
-            raise RuntimeError((result.stderr or result.stdout or "Hermes 更新失败").strip()[-4000:])
-        state.update({
-            "updating": False,
-            "update_available": False,
-            "local_revision": _revision("HEAD"),
-            "remote_revision": _revision("HEAD"),
-            "last_updated_at": _now(),
-            "last_error": None,
-        })
+        if sys.platform == "win32":
+            shell = _powershell()
+            script = get_repo_root() / "scripts" / "hermes" / "setup-local-hermes.ps1"
+            if not shell or not script.exists():
+                raise RuntimeError("找不到 PowerShell 或 Hermes 安装脚本，无法执行完整更新。")
+            result = subprocess.run(
+                [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+                 "-Branch", branch, "-Force"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=1800, check=False,
+            )
+            if result.returncode != 0:
+                raise RuntimeError((result.stderr or result.stdout or "Hermes 更新失败").strip()[-4000:])
+        else:
+            # 拉取/重置 Hermes 源码到目标分支
+            if not (source / ".git").exists():
+                _git("clone", "--depth", "1", "--branch", branch,
+                     "https://github.com/NousResearch/hermes-agent.git", str(source))
+            else:
+                _git("fetch", "--depth", "1", "origin", branch)
+                _git("reset", "--hard", f"origin/{branch}")
+                _git("clean", "-fd")
+
+            # 确保 prismenv 存在
+            if not python_exe.exists():
+                from .hermes_config import get_prismenv_root
+                base = sys.executable
+                subprocess.run([base, "-m", "venv", str(get_prismenv_root())], check=True, timeout=300)
+
+            # 升级 pip 基础组件
+            subprocess.run([str(python_exe), "-m", "pip", "install", "--upgrade",
+                            "pip", "wheel", "setuptools"],
+                           capture_output=True, text=True, timeout=300, check=True)
+            subprocess.run([str(python_exe), "-m", "pip", "uninstall", "-y",
+                            "openmanus", "browser-use", "langchain-openai"],
+                           capture_output=True, text=True, timeout=120)
+
+            # 安装 Hermes 依赖（base + web）
+            deps = _resolve_deps_with(python_exe)
+            subprocess.run([str(python_exe), "-m", "pip", "install", *deps],
+                           capture_output=True, text=True, timeout=1200, check=True)
+
+            # 打上就绪标记
+            version = subprocess.run([str(python_exe), "--version"], capture_output=True,
+                                     text=True).stdout.strip()
+            stamp.parent.mkdir(parents=True, exist_ok=True)
+            stamp.write_text(f"{version}\n", encoding="utf-8")
     except Exception as exc:
         state.update({"updating": False, "last_error": str(exc)})
         _write_json(_state_path(), state)
         raise
+
+    state.update({
+        "updating": False,
+        "update_available": False,
+        "local_revision": _revision("HEAD"),
+        "remote_revision": _revision("HEAD"),
+        "last_updated_at": _now(),
+        "last_error": None,
+    })
     _write_json(_state_path(), state)
     return get_update_status()
 
