@@ -37,6 +37,8 @@ import { ActionRow } from "./components/ActionRow"
 import {
   type PlatformBrowserChoice,
   type PlatformBrowserKey,
+  type PlatformProxyChoice,
+  type PlatformProxyKey,
   useSettingsActions,
 } from "./hooks/useSettingsActions"
 
@@ -109,6 +111,31 @@ const defaultPlatformBrowserPreferences: Record<PlatformBrowserKey, PlatformBrow
   bilibili: "chromium",
 }
 
+const platformProxyRows: Array<{
+  key: PlatformProxyKey
+  label: string
+  description: string
+}> = [
+  { key: "douyin", label: "抖音", description: "强制直连大陆，不走本机 VPN，避免访问卡顿" },
+  { key: "kuaishou", label: "快手", description: "强制直连大陆，不走本机 VPN" },
+  { key: "xiaohongshu", label: "小红书", description: "强制直连大陆，不走本机 VPN，避免访问卡顿" },
+  { key: "channels", label: "视频号", description: "Channels / Tencent 统一浏览器代理配置" },
+  { key: "bilibili", label: "B 站", description: "强制直连大陆，不走本机 VPN" },
+]
+
+const platformProxyLabels: Record<PlatformProxyChoice, string> = {
+  direct: "直连(不走 VPN)",
+  inherit: "跟随系统(走代理)",
+}
+
+const defaultPlatformProxyPreferences: Record<PlatformProxyKey, PlatformProxyChoice> = {
+  douyin: "direct",
+  kuaishou: "direct",
+  xiaohongshu: "direct",
+  channels: "direct",
+  bilibili: "direct",
+}
+
 function SectionSwitcher({
   activeSection,
   onSelect,
@@ -130,7 +157,7 @@ function SectionSwitcher({
               className={[
                 "min-w-[118px] flex-1 rounded-xl border px-3 py-2.5 text-left transition-colors",
                 isActive
-                  ? "border-border bg-foreground/10"
+                  ? "border-border bg-black"
                   : "border-border/70 bg-card hover:bg-accent/40",
               ].join(" ")}
             >
@@ -138,7 +165,7 @@ function SectionSwitcher({
                 <div
                   className={[
                     "mt-0.5 rounded-lg p-1.5",
-                    isActive ? "bg-foreground/10 text-foreground" : "bg-card text-foreground/70",
+                    isActive ? "bg-black text-foreground" : "bg-card text-foreground/70",
                   ].join(" ")}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -208,6 +235,7 @@ export default function SettingsPage() {
     forceKillProcesses,
     exportLogs,
     setPlatformBrowserPreference,
+    setPlatformProxyPreference,
     loading,
     isElectronApp,
   } = useSettingsActions()
@@ -241,6 +269,10 @@ export default function SettingsPage() {
   const platformBrowserPreferences = {
     ...defaultPlatformBrowserPreferences,
     ...(appInfo?.runtimeSettings?.platformBrowserPreferences ?? {}),
+  }
+  const platformProxyPreferences = {
+    ...defaultPlatformProxyPreferences,
+    ...(appInfo?.runtimeSettings?.platformProxyPreferences ?? {}),
   }
 
   const getEffectivePlatformBrowser = (
@@ -318,7 +350,7 @@ export default function SettingsPage() {
                       variant="outline"
                       className={
                         value?.running
-                          ? "border-border bg-foreground/10 text-foreground"
+                          ? "border-border bg-black text-foreground"
                           : "border-border/70 bg-card text-muted-foreground"
                       }
                     >
@@ -479,7 +511,7 @@ export default function SettingsPage() {
               <div className="flex flex-wrap gap-3">
                 <Button
                   variant={currentRuntime === "patchright" ? "default" : "secondary"}
-                  className={currentRuntime === "patchright" ? "border-border/80 bg-foreground/10 text-foreground" : "border-border/70 bg-card text-foreground hover:bg-accent/40"}
+                  className={currentRuntime === "patchright" ? "border-border/80 bg-black text-foreground" : "border-border/70 bg-card text-foreground hover:bg-accent/40"}
                   disabled={loading.setAutomationRuntime || !isElectronApp}
                   onClick={() => void setAutomationRuntime("patchright")}
                 >
@@ -511,7 +543,7 @@ export default function SettingsPage() {
                   <span className="rounded-full border border-border/70 bg-card px-2 py-1 text-foreground/65">
                     已设置：{platformBrowserLabels[platformBrowserPreferences[platform.key]]}
                   </span>
-                  <span className="rounded-full border border-border/80 bg-foreground/10 px-2 py-1 text-foreground">
+                  <span className="rounded-full border border-border/80 bg-black px-2 py-1 text-foreground">
                     当前生效：{platformBrowserLabels[getEffectivePlatformBrowser(platform.key)]}
                   </span>
                 </div>
@@ -540,6 +572,48 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        <Card className="border-border/70 bg-card">
+          <CardHeader>
+            <CardTitle className="text-foreground">平台代理策略</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              为不同平台分开指定是否走本机 VPN/全局代理。设为「直连」时浏览器会清掉本机 HTTP_PROXY/HTTPS_PROXY 并加 --no-proxy-server，避免抖音/小红书等访问走境外节点卡顿。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            {platformProxyRows.map((platform) => (
+              <div key={platform.key} className="rounded-xl border border-border/70 bg-card p-4">
+                <div className="text-sm font-medium text-foreground">{platform.label}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{platform.description}</div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full border border-border/70 bg-card px-2 py-1 text-foreground/65">
+                    已设置：{platformProxyLabels[platformProxyPreferences[platform.key]]}
+                  </span>
+                </div>
+                <div className="mt-4">
+                  <Select
+                    value={platformProxyPreferences[platform.key]}
+                    onValueChange={(value) =>
+                      void setPlatformProxyPreference(platform.key, value as PlatformProxyChoice)
+                    }
+                    disabled={loading.setPlatformProxy || !isElectronApp}
+                  >
+                    <SelectTrigger className="h-10 rounded-lg border-border/70 bg-card">
+                      <SelectValue placeholder="选择代理策略" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(["direct", "inherit"] as PlatformProxyChoice[]).map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {platformProxyLabels[option]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
         <div className="space-y-6">
           <Card className="border-border/70 bg-card">
             <CardHeader>
@@ -556,7 +630,7 @@ export default function SettingsPage() {
                     variant="outline"
                     className={
                       browserRuntimeInfo?.runtimes?.patchright?.installed
-                        ? "border-border bg-foreground/10 text-foreground"
+                        ? "border-border bg-black text-foreground"
                         : "border-border/70 bg-card text-muted-foreground"
                     }
                   >
@@ -630,7 +704,7 @@ export default function SettingsPage() {
                     variant="outline"
                     className={
                       browserRuntimeInfo?.browsers?.chromium?.installed
-                        ? "border-border bg-foreground/10 text-foreground"
+                        ? "border-border bg-black text-foreground"
                         : "border-border/70 bg-card text-muted-foreground"
                     }
                   >
@@ -689,7 +763,7 @@ export default function SettingsPage() {
                     variant="outline"
                     className={
                       browserRuntimeInfo?.browsers?.firefox?.installed
-                        ? "border-border bg-foreground/10 text-foreground"
+                        ? "border-border bg-black text-foreground"
                         : "border-border/70 bg-card text-muted-foreground"
                     }
                   >

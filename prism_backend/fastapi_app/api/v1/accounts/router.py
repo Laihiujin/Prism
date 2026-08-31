@@ -171,12 +171,15 @@ async def open_creator_center(account_id: str):
         from automation_worker.client import get_worker_client
         client = get_worker_client()
         try:
+            # 尊重 PLAYWRIGHT_HEADLESS：docker 等无 X server 环境走无头，避免
+            # "headed browser without having a XServer running"；本机桌面设 false 则显示窗口。
+            from config.conf import PLAYWRIGHT_HEADLESS
             data = await client.open_creator_center(
                 platform=platform,
                 storage_state=storage_state,
                 account_id=account_id,
                 apply_fingerprint=True,
-                headless=False,
+                headless=bool(PLAYWRIGHT_HEADLESS),
             )
             return Response(success=True, data=data)
         except Exception as e:

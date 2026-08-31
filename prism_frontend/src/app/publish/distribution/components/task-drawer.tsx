@@ -386,7 +386,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                         </Button>
 
                         {boundAccount && (
-                            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                            <div className="rounded-xl border border-white/40 bg-black p-3 text-sm text-white">
                                 已绑定派发账号：{boundAccount}
                             </div>
                         )}
@@ -479,26 +479,26 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                             <div className="flex items-center gap-2 text-sm">
                                 {qrSession?.status === 'pending' && (
                                     <>
-                                        <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                                        <Loader2 className="h-4 w-4 animate-spin text-white" />
                                         <span className="text-muted-foreground">等待扫码...</span>
                                     </>
                                 )}
                                 {qrSession?.status === 'scanned' && (
                                     <>
-                                        <CheckCircle2 className="h-4 w-4 text-green-400" />
-                                        <span className="text-green-400">已扫码，请确认</span>
+                                        <CheckCircle2 className="h-4 w-4 text-white" />
+                                        <span className="text-white">已扫码，请确认</span>
                                     </>
                                 )}
                                 {qrSession?.status === 'expired' && (
                                     <>
-                                        <XCircle className="h-4 w-4 text-red-400" />
-                                        <span className="text-red-400">二维码已过期</span>
+                                        <XCircle className="h-4 w-4 text-white" />
+                                        <span className="text-white">二维码已过期</span>
                                     </>
                                 )}
                                 {qrSession?.status === 'error' && (
                                     <>
-                                        <XCircle className="h-4 w-4 text-red-400" />
-                                        <span className="text-red-400">登录失败，请重试</span>
+                                        <XCircle className="h-4 w-4 text-white" />
+                                        <span className="text-white">登录失败，请重试</span>
                                     </>
                                 )}
                             </div>

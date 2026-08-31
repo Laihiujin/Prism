@@ -98,6 +98,8 @@ type Toast = Omit<ToasterToast, "id">
 function toast({ ...props }: Toast) {
   const id = Math.random().toString(36).slice(2, 9)
 
+  const duration = props.duration ?? 4000
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: actionTypes.UPDATE_TOAST,
@@ -114,13 +116,23 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
-      duration: props.duration ?? 4000,
+      duration,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss(id)
       },
     },
   })
+
+  // Robust auto-dismiss. Radix's built-in close timer is suspended by its
+  // pause-on-hover/focus state, and that pause state can get "stuck" (e.g.
+  // when a toast is dismissed while the pointer is over it), leaving every
+  // later toast stuck on screen forever. Scheduling the dismissal here
+  // guarantees each toast closes after `duration` regardless of pointer/focus
+  // state. DISMISS on an already-closed toast is a no-op, so this is safe.
+  if (duration !== Infinity) {
+    setTimeout(() => dismiss(id), duration)
+  }
 
   return {
     id,

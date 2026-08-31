@@ -50,17 +50,17 @@ export function ToolCallDisplay({
   const getStatusIcon = () => {
     switch (status) {
       case "pending":
-        return <Play className="h-4 w-4 text-blue-500" />
+        return <Play className="h-4 w-4 text-white" />
       case "running":
-        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+        return <Loader2 className="h-4 w-4 text-white animate-spin" />
       case "success":
-        return <Check className="h-4 w-4 text-green-500" />
+        return <Check className="h-4 w-4 text-white" />
       case "error":
-        return <AlertCircle className="h-4 w-4 text-red-500" />
+        return <AlertCircle className="h-4 w-4 text-white" />
       case "rejected":
-        return <X className="h-4 w-4 text-orange-500" />
+        return <X className="h-4 w-4 text-white" />
       default:
-        return <Code2 className="h-4 w-4 text-gray-500" />
+        return <Code2 className="h-4 w-4 text-white" />
     }
   }
 
@@ -84,17 +84,17 @@ export function ToolCallDisplay({
   const getStatusColor = () => {
     switch (status) {
       case "pending":
-        return "border-blue-500/30 bg-blue-500/5"
+        return "border-white/30 bg-black"
       case "running":
-        return "border-blue-500/30 bg-blue-500/10 animate-pulse"
+        return "border-white/30 bg-black animate-pulse"
       case "success":
-        return "border-green-500/30 bg-green-500/5"
+        return "border-white/30 bg-black"
       case "error":
-        return "border-red-500/30 bg-red-500/5"
+        return "border-white/30 bg-black"
       case "rejected":
-        return "border-orange-500/30 bg-orange-500/5"
+        return "border-white/30 bg-black"
       default:
-        return "border-gray-500/30 bg-gray-500/5"
+        return "border-white/30 bg-black"
     }
   }
 
@@ -152,8 +152,8 @@ export function ToolCallDisplay({
             {/* Error */}
             {toolCall.error && (
               <div>
-                <div className="text-xs font-medium text-red-400 mb-1">错误:</div>
-                <pre className="text-xs bg-red-500/10 rounded p-2 overflow-x-auto text-red-300 border border-red-500/30 max-h-40">
+                <div className="text-xs font-medium text-white mb-1">错误:</div>
+                <pre className="text-xs bg-black rounded p-2 overflow-x-auto text-white border border-white/30 max-h-40">
                   {toolCall.error}
                 </pre>
               </div>
@@ -165,7 +165,7 @@ export function ToolCallDisplay({
                 <Button
                   size="sm"
                   onClick={() => onApprove(toolCall)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-foreground"
+                  className="flex-1 bg-white hover:bg-white text-foreground"
                 >
                   <Check className="mr-1 h-3 w-3" />
                   允许执行
@@ -174,7 +174,7 @@ export function ToolCallDisplay({
                   size="sm"
                   variant="outline"
                   onClick={() => onReject(toolCall)}
-                  className="flex-1 border-red-500/30 hover:bg-red-500/10 text-red-400"
+                  className="flex-1 border-white/30 hover:bg-black text-white"
                 >
                   <X className="mr-1 h-3 w-3" />
                   拒绝
@@ -202,18 +202,18 @@ export function ThinkingProcess({
   return (
     <div
       className={cn(
-        "rounded-lg border border-purple-500/30 bg-purple-500/5 p-3 backdrop-blur-sm",
+        "rounded-lg border border-white/30 bg-black p-3 backdrop-blur-sm",
         isThinking && "animate-pulse",
         className
       )}
     >
       <div className="flex items-center gap-2 mb-2">
         {isThinking ? (
-          <Loader2 className="h-4 w-4 text-purple-400 animate-spin" />
+          <Loader2 className="h-4 w-4 text-white animate-spin" />
         ) : (
-          <Code2 className="h-4 w-4 text-purple-400" />
+          <Code2 className="h-4 w-4 text-white" />
         )}
-        <span className="text-sm font-medium text-purple-300">
+        <span className="text-sm font-medium text-white">
           {isThinking ? "思考中" : "思考过程"}
         </span>
       </div>

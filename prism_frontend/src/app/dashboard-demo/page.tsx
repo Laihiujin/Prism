@@ -37,7 +37,7 @@ export default function DashboardDemoPage() {
                         AI Analysis
                     </ButtonMovingBorder>
                     <ShimmerButton className="shadow-2xl">
-                        <span className="whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-foreground dark:from-foreground dark:to-slate-900/10 lg:text-lg">
+                        <span className="whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-foreground dark:from-foreground dark:to-white/10 lg:text-lg">
                             Generate Report
                         </span>
                     </ShimmerButton>
@@ -56,7 +56,7 @@ export default function DashboardDemoPage() {
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">$45,231.89</div>
                         <p className="text-xs text-muted-foreground">
-                            <span className="text-emerald-500 flex items-center gap-1 inline-flex">
+                            <span className="text-white flex items-center gap-1 inline-flex">
                                 +20.1% <ArrowUpRight className="h-3 w-3" />
                             </span>{" "}
                             from last month
@@ -73,7 +73,7 @@ export default function DashboardDemoPage() {
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">+2350</div>
                         <p className="text-xs text-muted-foreground">
-                            <span className="text-emerald-500 flex items-center gap-1 inline-flex">
+                            <span className="text-white flex items-center gap-1 inline-flex">
                                 +180.1% <ArrowUpRight className="h-3 w-3" />
                             </span>{" "}
                             from last month
@@ -90,7 +90,7 @@ export default function DashboardDemoPage() {
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">+12,234</div>
                         <p className="text-xs text-muted-foreground">
-                            <span className="text-emerald-500 flex items-center gap-1 inline-flex">
+                            <span className="text-white flex items-center gap-1 inline-flex">
                                 +19% <ArrowUpRight className="h-3 w-3" />
                             </span>{" "}
                             from last month
@@ -107,7 +107,7 @@ export default function DashboardDemoPage() {
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">+573</div>
                         <p className="text-xs text-muted-foreground">
-                            <span className="text-emerald-500 flex items-center gap-1 inline-flex">
+                            <span className="text-white flex items-center gap-1 inline-flex">
                                 +201 <ArrowUpRight className="h-3 w-3" />
                             </span>{" "}
                             since last hour
@@ -137,7 +137,7 @@ export default function DashboardDemoPage() {
                             <CardContent>
                                 <div className="space-y-8">
                                     {/* Mock Chart Placeholder */}
-                                    <div className="h-[200px] w-full rounded-md bg-foreground/5 flex items-center justify-center text-muted-foreground text-sm border border-border/40">
+                                    <div className="h-[200px] w-full rounded-md bg-black flex items-center justify-center text-muted-foreground text-sm border border-border/40">
                                         [Chart Component Placeholder]
                                     </div>
                                 </div>
@@ -154,7 +154,7 @@ export default function DashboardDemoPage() {
                                 <div className="space-y-8">
                                     {[1, 2, 3, 4, 5].map((i) => (
                                         <div key={i} className="flex items-center">
-                                            <div className="h-9 w-9 rounded-full bg-foreground/10 border border-border/70 flex items-center justify-center text-foreground shadow-glow-white">
+                                            <div className="h-9 w-9 rounded-full bg-black border border-border/70 flex items-center justify-center text-foreground shadow-glow-white">
                                                 <Activity className="h-4 w-4" />
                                             </div>
                                             <div className="ml-4 space-y-1">

@@ -26,9 +26,9 @@ export function AIProviderSelector() {
   const [isChecking, setIsChecking] = useState(false)
 
   const providerInfo = {
-    siliconflow: { name: "硅基流动", emoji: "🚀", color: "bg-orange-500/20 text-orange-200" },
-    volcanoengine: { name: "火山引擎", emoji: "🌋", color: "bg-red-500/20 text-red-200" },
-    tongyi: { name: "通义千问", emoji: "💙", color: "bg-blue-500/20 text-blue-200" },
+    siliconflow: { name: "硅基流动", emoji: "🚀", color: "bg-black text-white" },
+    volcanoengine: { name: "火山引擎", emoji: "🌋", color: "bg-black text-white" },
+    tongyi: { name: "通义千问", emoji: "💙", color: "bg-black text-white" },
   }
 
   const checkProviders = async () => {
@@ -126,7 +126,7 @@ export function AIProviderSelector() {
           size="sm"
           onClick={checkProviders}
           disabled={isChecking}
-          className="gap-2 bg-blue-600 hover:bg-blue-700"
+          className="gap-2 bg-white hover:bg-white"
         >
           <RefreshCw className={cn("h-4 w-4", isChecking && "animate-spin")} />
           刷新检测
@@ -144,12 +144,12 @@ export function AIProviderSelector() {
               className={cn(
                 "p-4 border transition-all",
                 isSuccess
-                  ? "bg-green-500/10 border-green-500/30"
+                  ? "bg-black border-white/30"
                   : provider.status === "loading"
-                    ? "bg-yellow-500/10 border-yellow-500/30"
+                    ? "bg-black border-white/30"
                     : provider.status === "failed"
-                      ? "bg-red-500/10 border-red-500/30"
-                      : "bg-foreground/5 border-border/70"
+                      ? "bg-black border-white/30"
+                      : "bg-black border-border/70"
               )}
             >
               <div className="space-y-3">
@@ -168,12 +168,12 @@ export function AIProviderSelector() {
                     className={cn(
                       "gap-1.5",
                       isSuccess
-                        ? "bg-green-500/30 text-green-200"
+                        ? "bg-black text-white"
                         : provider.status === "loading"
-                          ? "bg-yellow-500/30 text-yellow-200"
+                          ? "bg-black text-white"
                           : provider.status === "failed"
-                            ? "bg-red-500/30 text-red-200"
-                            : "bg-gray-500/30 text-gray-200"
+                            ? "bg-black text-white"
+                            : "bg-black text-white"
                     )}
                   >
                     {provider.status === "success" && (
@@ -217,7 +217,7 @@ export function AIProviderSelector() {
                         <Badge
                           key={model.id}
                           variant="secondary"
-                          className="bg-foreground/10 text-foreground/80 text-xs"
+                          className="bg-black text-foreground/80 text-xs"
                         >
                           <span className="truncate max-w-[150px]">{model.name}</span>
                           {model.max_tokens && (

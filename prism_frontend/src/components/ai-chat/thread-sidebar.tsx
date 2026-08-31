@@ -86,12 +86,12 @@ export function ThreadSidebar({
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-border/70 bg-neutral-900/30 backdrop-blur-sm">
+    <div className="flex h-full w-64 flex-col border-r border-border/70 bg-black/30 backdrop-blur-sm">
       {/* Header */}
       <div className="border-b border-border/70 p-4">
         <Button
           onClick={onCreateThread}
-          className="w-full bg-foreground/10 hover:bg-accent/60 text-foreground"
+          className="w-full bg-black hover:bg-accent/60 text-foreground"
           size="sm"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -108,7 +108,7 @@ export function ThreadSidebar({
               className={cn(
                 "group relative rounded-lg p-3 transition-all cursor-pointer",
                 currentThreadId === thread.id
-                  ? "bg-foreground/15 text-foreground"
+                  ? "bg-black text-foreground"
                   : "text-foreground/70 hover:bg-accent/50 hover:text-foreground"
               )}
               onClick={() => {
@@ -190,7 +190,7 @@ export function ThreadSidebar({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onDeleteThread(thread.id)}
-                        className="text-red-500 focus:text-red-500"
+                        className="text-white focus:text-white"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         删除

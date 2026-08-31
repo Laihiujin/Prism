@@ -71,10 +71,10 @@ const ThoughtProcess = ({ content }: { content: string }) => {
     const cleanContent = content.replace(/^> 💭\s*/, '').trim();
 
     return (
-        <div className="my-2 rounded-lg border border-amber-500/20 bg-amber-500/5 overflow-hidden">
+        <div className="my-2 rounded-lg border border-white/20 bg-black overflow-hidden">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-amber-400/80 hover:bg-amber-500/10 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-white/80 hover:bg-black transition-colors"
             >
                 {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                 <Cpu className="h-3 w-3" />
@@ -88,7 +88,7 @@ const ThoughtProcess = ({ content }: { content: string }) => {
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
                     >
-                        <div className="px-3 pb-3 pt-0 text-xs text-amber-200/70 font-mono whitespace-pre-wrap border-t border-amber-500/10">
+                        <div className="px-3 pb-3 pt-0 text-xs text-white/70 font-mono whitespace-pre-wrap border-t border-white/10">
                             {cleanContent}
                         </div>
                     </motion.div>
@@ -104,12 +104,12 @@ const ToolExecution = ({ content }: { content: string }) => {
     const cleanContent = content.replace(/^> 🔧\s*/, '').trim();
 
     return (
-        <div className="my-2 rounded-lg border border-blue-500/20 bg-blue-500/5 overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-blue-400/80 border-b border-blue-500/10">
+        <div className="my-2 rounded-lg border border-white/20 bg-black overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-white/80 border-b border-white/10">
                 <Terminal className="h-3 w-3" />
                 <span>工具调用</span>
             </div>
-            <div className="px-3 py-2 text-xs text-blue-200/70 font-mono bg-card/20">
+            <div className="px-3 py-2 text-xs text-white/70 font-mono bg-card/20">
                 {cleanContent}
             </div>
         </div>
@@ -221,7 +221,7 @@ export function AgentChat() {
 
     return (
         <AssistantRuntimeProvider runtime={runtime}>
-            <div className="flex h-full w-full bg-[#09090b] text-foreground overflow-hidden font-sans">
+            <div className="flex h-full w-full bg-white text-foreground overflow-hidden font-sans">
 
                 {/* Sidebar */}
                 <motion.div
@@ -230,7 +230,7 @@ export function AgentChat() {
                     className="border-r border-border/40 bg-card/40 backdrop-blur-xl flex flex-col overflow-hidden relative z-20"
                 >
                     <div className="p-4 border-b border-border/40 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-purple-400 font-semibold">
+                        <div className="flex items-center gap-2 text-white font-semibold">
                             <Bot className="h-5 w-5" />
                             <span>OpenClaw</span>
                         </div>
@@ -248,7 +248,7 @@ export function AgentChat() {
                                     className={cn(
                                         "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200",
                                         currentThreadId === thread.id
-                                            ? "bg-foreground/10 text-foreground shadow-sm border border-border/40"
+                                            ? "bg-black text-foreground shadow-sm border border-border/40"
                                             : "text-muted-foreground hover:bg-accent/40 hover:text-foreground/80"
                                     )}
                                 >
@@ -262,7 +262,7 @@ export function AgentChat() {
                                     <Button
                                         size="icon"
                                         variant="ghost"
-                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 transition-all"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-black hover:text-white transition-all"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             deleteThread(thread.id);
@@ -277,7 +277,7 @@ export function AgentChat() {
                 </motion.div>
 
                 {/* Main Chat Area */}
-                <div className="flex-1 flex flex-col h-full relative bg-gradient-to-b from-[#0c0c0e] to-[#000000]">
+                <div className="flex-1 flex flex-col h-full relative bg-gradient-to-b from-white to-white">
 
                     {/* Header */}
                     <div className="h-14 border-b border-border/40 bg-card/20 backdrop-blur-md flex items-center justify-between px-6 z-10">
@@ -294,10 +294,10 @@ export function AgentChat() {
                                 <h2 className="text-sm font-semibold text-foreground/90">Agent 执行任务</h2>
                                 <div className="flex items-center gap-1.5">
                                     <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
                                     </span>
-                                    <span className="text-[10px] font-medium text-emerald-500/80">SYSTEM ONLINE</span>
+                                    <span className="text-[10px] font-medium text-white/80">SYSTEM ONLINE</span>
                                 </div>
                             </div>
                         </div>
@@ -314,8 +314,8 @@ export function AgentChat() {
                                         className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6"
                                     >
                                         <div className="relative">
-                                            <div className="absolute -inset-4 bg-purple-500/20 rounded-full blur-xl animate-pulse"></div>
-                                            <div className="relative h-20 w-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-2xl shadow-purple-500/20">
+                                            <div className="absolute -inset-4 bg-black rounded-full blur-xl animate-pulse"></div>
+                                            <div className="relative h-20 w-20 rounded-2xl bg-gradient-to-br from-white to-white flex items-center justify-center shadow-2xl shadow-white/10/20">
                                                 <Bot className="h-10 w-10 text-foreground" />
                                             </div>
                                         </div>
@@ -335,9 +335,9 @@ export function AgentChat() {
                                                 <Button
                                                     key={i}
                                                     variant="outline"
-                                                    className="bg-foreground/5 border-border/70 hover:bg-accent/50 text-muted-foreground hover:text-foreground text-xs h-auto py-3 justify-start"
+                                                    className="bg-black border-border/70 hover:bg-accent/50 text-muted-foreground hover:text-foreground text-xs h-auto py-3 justify-start"
                                                 >
-                                                    <Sparkles className="h-3 w-3 mr-2 text-purple-400" />
+                                                    <Sparkles className="h-3 w-3 mr-2 text-white" />
                                                     {suggestion}
                                                 </Button>
                                             ))}
@@ -354,13 +354,13 @@ export function AgentChat() {
                                                 className="flex gap-4 mb-8 justify-end group"
                                             >
                                                 <div className="flex-1 max-w-2xl">
-                                                    <div className="bg-gradient-to-br from-indigo-600 to-blue-600 text-foreground rounded-2xl rounded-tr-sm px-6 py-4 shadow-lg shadow-blue-900/20">
+                                                    <div className="bg-gradient-to-br from-white to-white text-foreground rounded-2xl rounded-tr-sm px-6 py-4 shadow-lg shadow-white/10/20">
                                                         <MessagePrimitive.Content />
                                                     </div>
                                                 </div>
                                                 <div className="flex-shrink-0 mt-1">
-                                                    <div className="h-9 w-9 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
-                                                        <User className="h-5 w-5 text-indigo-400" />
+                                                    <div className="h-9 w-9 rounded-full bg-black border border-white/30 flex items-center justify-center">
+                                                        <User className="h-5 w-5 text-white" />
                                                     </div>
                                                 </div>
                                             </motion.div>
@@ -372,12 +372,12 @@ export function AgentChat() {
                                                 className="flex gap-4 mb-8"
                                             >
                                                 <div className="flex-shrink-0 mt-1">
-                                                    <div className="h-9 w-9 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.15)]">
-                                                        <Bot className="h-5 w-5 text-purple-400" />
+                                                    <div className="h-9 w-9 rounded-full bg-black border border-white/30 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+                                                        <Bot className="h-5 w-5 text-white" />
                                                     </div>
                                                 </div>
                                                 <div className="flex-1 max-w-3xl space-y-2">
-                                                    <div className="bg-[#1a1a1c] border border-border/40 rounded-2xl rounded-tl-sm px-6 py-5 text-foreground/90 shadow-xl">
+                                                    <div className="bg-white border border-border/40 rounded-2xl rounded-tl-sm px-6 py-5 text-foreground/90 shadow-xl">
                                                         <MessageContent />
                                                     </div>
                                                 </div>
@@ -392,8 +392,8 @@ export function AgentChat() {
                         <div className="p-4 md:p-6 bg-gradient-to-t from-black via-black to-transparent pt-10">
                             <ComposerPrimitive.Root className="mx-auto max-w-3xl relative">
                                 <div className="relative group">
-                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
-                                    <div className="relative flex gap-3 items-end bg-[#121214] border border-border/70 rounded-2xl p-3 shadow-2xl">
+                                    <div className="absolute -inset-0.5 bg-gradient-to-r from-white to-white rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
+                                    <div className="relative flex gap-3 items-end bg-white border border-border/70 rounded-2xl p-3 shadow-2xl">
                                         <ComposerPrimitive.Input
                                             asChild
                                             autoFocus

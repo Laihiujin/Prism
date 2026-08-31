@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from .accounts.router import router as accounts_router
 from .campaigns.router import router as campaigns_router
 from .auth.router import router as auth_router
+from .auth.browser_login import router as auth_browser_login_router
 from .files.router import router as files_router
 from .analytics.router import router as analytics_router
 from .scripts.router import router as scripts_router
@@ -50,6 +51,7 @@ api_router = APIRouter()
 api_router.include_router(accounts_router, prefix="/accounts", tags=["账号管理"])
 api_router.include_router(campaigns_router, tags=["计划管理"])  # router 已自带 /campaigns 前缀
 api_router.include_router(auth_router, tags=["认证登录"])  # router 已自带 /auth 前缀
+api_router.include_router(auth_browser_login_router, tags=["浏览器登录"])  # /auth/login/browser 前缀
 api_router.include_router(files_router, tags=["文件管理"])  # router 已自带 /files 前缀
 api_router.include_router(analytics_router)  # router 已自带 /analytics 前缀
 api_router.include_router(scripts_router)  # router 已自带 /scripts 前缀

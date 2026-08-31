@@ -26,7 +26,7 @@ export function PublishModeSelector({ selected, onSelect }: PublishModeSelectorP
             <div
                 className={cn(
                     "relative flex items-start gap-4 p-4 rounded-xl border-2 transition-all duration-200",
-                    "border-primary bg-primary/10 shadow-[0_0_20px_-10px_rgba(var(--primary),0.3)]"
+                    "border-primary bg-black shadow-[0_0_20px_-10px_rgba(var(--primary),0.3)]"
                 )}
             >
                 <div className={cn(

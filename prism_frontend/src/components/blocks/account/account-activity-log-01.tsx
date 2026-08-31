@@ -155,15 +155,15 @@ export default function AccountActivityLog01() {
   const getEventBadge = (type: string) => {
     switch (type) {
       case "login":
-        return <Badge variant="outline" className="border-blue-200 text-blue-700">Login</Badge>;
+        return <Badge variant="outline" className="border-white text-white">Login</Badge>;
       case "security":
-        return <Badge variant="outline" className="border-red-200 text-red-700">Security</Badge>;
+        return <Badge variant="outline" className="border-white text-white">Security</Badge>;
       case "settings":
-        return <Badge variant="outline" className="border-green-200 text-green-700">Settings</Badge>;
+        return <Badge variant="outline" className="border-white text-white">Settings</Badge>;
       case "api":
-        return <Badge variant="outline" className="border-purple-200 text-purple-700">API</Badge>;
+        return <Badge variant="outline" className="border-white text-white">API</Badge>;
       case "content":
-        return <Badge variant="outline" className="border-orange-200 text-orange-700">Content</Badge>;
+        return <Badge variant="outline" className="border-white text-white">Content</Badge>;
       default:
         return <Badge variant="outline">Other</Badge>;
     }
@@ -216,10 +216,10 @@ export default function AccountActivityLog01() {
               >
                 <div className="flex items-start gap-3">
                   <div className={`rounded-full p-2 mt-1 ${
-                    event.type === "security" ? "bg-red-100 dark:bg-red-950" :
-                    event.type === "login" ? "bg-blue-100 dark:bg-blue-950" :
-                    event.type === "settings" ? "bg-green-100 dark:bg-green-950" :
-                    event.type === "api" ? "bg-purple-100 dark:bg-purple-950" :
+                    event.type === "security" ? "bg-white dark:bg-white" :
+                    event.type === "login" ? "bg-white dark:bg-white" :
+                    event.type === "settings" ? "bg-white dark:bg-white" :
+                    event.type === "api" ? "bg-white dark:bg-white" :
                     "bg-muted"
                   }`}>
                     {getEventIcon(event.type)}
@@ -231,9 +231,9 @@ export default function AccountActivityLog01() {
                         <h3 className="font-semibold">{event.action}</h3>
                         {getEventBadge(event.type)}
                         {event.success ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <CheckCircle className="h-4 w-4 text-white" />
                         ) : (
-                          <AlertCircle className="h-4 w-4 text-red-600" />
+                          <AlertCircle className="h-4 w-4 text-white" />
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -255,7 +255,7 @@ export default function AccountActivityLog01() {
                         <span className="truncate">{event.device}</span>
                       </div>
                       {event.critical && (
-                        <div className="flex items-center gap-1 text-red-600">
+                        <div className="flex items-center gap-1 text-white">
                           <AlertCircle className="h-3 w-3" />
                           <span>Critical event</span>
                         </div>

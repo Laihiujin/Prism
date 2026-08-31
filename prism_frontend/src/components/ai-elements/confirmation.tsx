@@ -74,21 +74,21 @@ export function Confirmation({
   const stateConfig = {
     request: {
       icon: AlertCircle,
-      iconColor: "text-yellow-500",
-      borderColor: "border-yellow-500/30",
-      bgColor: "bg-yellow-500/10"
+      iconColor: "text-white",
+      borderColor: "border-white/30",
+      bgColor: "bg-black"
     },
     accepted: {
       icon: CheckCircle2,
-      iconColor: "text-green-500",
-      borderColor: "border-green-500/30",
-      bgColor: "bg-green-500/10"
+      iconColor: "text-white",
+      borderColor: "border-white/30",
+      bgColor: "bg-black"
     },
     rejected: {
       icon: XCircle,
-      iconColor: "text-red-500",
-      borderColor: "border-red-500/30",
-      bgColor: "bg-red-500/10"
+      iconColor: "text-white",
+      borderColor: "border-white/30",
+      bgColor: "bg-black"
     }
   }
 
@@ -139,7 +139,7 @@ export function Confirmation({
                             </div>
                           </div>
                         )}
-                        <div className="text-sm text-green-400/80 bg-green-500/10 border border-green-500/20 rounded p-2">
+                        <div className="text-sm text-white/80 bg-black border border-white/20 rounded p-2">
                           ✓ 确认后将自动执行所有步骤，无需再次确认
                         </div>
                       </div>
@@ -171,7 +171,7 @@ export function Confirmation({
                 <Button
                   size="sm"
                   onClick={onAccept}
-                  className="bg-green-600 hover:bg-green-700 text-foreground h-8 text-sm px-4"
+                  className="bg-white hover:bg-white text-foreground h-8 text-sm px-4"
                 >
                   ✓ 确认执行
                 </Button>
@@ -181,7 +181,7 @@ export function Confirmation({
                   size="sm"
                   variant="outline"
                   onClick={onReject}
-                  className="border-red-500/30 hover:bg-red-500/20 text-foreground/80 h-8 text-sm px-4"
+                  className="border-white/30 hover:bg-black text-foreground/80 h-8 text-sm px-4"
                 >
                   ✗ 拒绝
                 </Button>

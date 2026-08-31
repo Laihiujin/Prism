@@ -62,7 +62,7 @@ export function DateTimePicker({
         <Button
           variant="outline"
           className={cn(
-            "justify-start gap-2 rounded-2xl border-border/80 bg-foreground/5 text-left font-normal",
+            "justify-start gap-2 rounded-2xl border-border/80 bg-black text-left font-normal",
             !value && "text-muted-foreground",
             className
           )}
@@ -101,7 +101,7 @@ export function DateTimePicker({
               <Button
                 type="button"
                 variant="ghost"
-                className="flex-1 rounded-2xl border border-border/70 bg-foreground/5"
+                className="flex-1 rounded-2xl border border-border/70 bg-black"
                 onClick={() => {
                   onChange(undefined)
                   setOpen(false)

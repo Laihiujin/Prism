@@ -25,6 +25,34 @@ def _clear_proxy_env() -> None:
         os.environ.pop(name, None)
 
 
+# 大陆直连平台：浏览器默认不走本机 VPN/全局代理（自动清 HTTP_PROXY/HTTPS_PROXY 环境变量
+# 并加 --no-proxy-server --proxy-bypass-list=*），避免抖音/小红书等访问走境外节点导致卡顿。
+# 仅当该平台/账号显式配置了代理（fingerprint_policy 的 proxy 或 PLAYWRIGHT_PROXY_*）时才走代理。
+# 可通过 PRISM_DIRECT_PLATFORMS（逗号分隔）覆盖/追加。
+DIRECT_CONNECT_PLATFORMS: set[str] = {
+    "douyin", "xiaohongshu", "kuaishou", "tencent", "channels",
+    "bilibili", "xigua", "baijiahao", "weibo",
+}
+
+
+def _load_direct_connect_platforms() -> set[str]:
+    override = os.getenv("PRISM_DIRECT_PLATFORMS")
+    if override is not None and override.strip():
+        # 运行时设置（前端/调度器）显式给出直连平台列表时，以它为准，避免“inherit”
+        # 的平台仍被默认清单强制直连。默认清单仅在未配置时兜底。
+        return {
+            _normalize_platform_key(p)
+            for p in override.split(",")
+            if p.strip()
+        }
+    return set(DIRECT_CONNECT_PLATFORMS)
+
+
+def _platform_prefers_direct(platform: str | None) -> bool:
+    normalized = _normalize_platform_key(platform)
+    return normalized in _load_direct_connect_platforms()
+
+
 PLATFORM_BROWSER_DEFAULTS: Dict[str, str] = {
     "douyin": "chromium",
     "kuaishou": "chromium",
@@ -325,11 +353,15 @@ async def create_context_with_policy(
             else:
                 logger.debug(f"[playwright] No local chrome executable detected for {platform}, using runtime default")
 
-    if not disable_proxy:
-        proxy = resolve_proxy(policy)
-        if proxy:
-            launch_opts["proxy"] = proxy
-    else:
+    # 代理策略（由显式 disable_proxy / 平台默认 / 配置代理共同决定）：
+    #   1) disable_proxy=True  → 强制直连（清环境变量 + --no-proxy-server），且不注入任何代理。
+    #   2) 平台/账号显式配置了代理（policy.proxy 或 PLAYWRIGHT_PROXY_*）→ 走该代理。
+    #   3) 大陆平台默认直连（不走本机 VPN/全局代理），避免境外节点卡顿。
+    #   4) 其余平台（tiktok/youtube 等）→ 继承本机代理/系统环境。
+    explicit_proxy = resolve_proxy(policy)
+    if not disable_proxy and explicit_proxy:
+        launch_opts["proxy"] = explicit_proxy
+    elif disable_proxy or _platform_prefers_direct(platform):
         _clear_proxy_env()
         if browser_choice == "chromium":
             launch_opts.setdefault("args", [])

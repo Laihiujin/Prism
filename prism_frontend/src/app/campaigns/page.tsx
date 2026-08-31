@@ -102,7 +102,7 @@ export default function CampaignsPage() {
             finished: "已完成",
         }
         return (
-            <Badge variant={variants[status] as any} className={status === 'running' ? 'bg-green-500 hover:bg-green-600' : ''}>
+            <Badge variant={variants[status] as any} className={status === 'running' ? 'bg-white hover:bg-white' : ''}>
                 {labels[status] || status}
             </Badge>
         )
@@ -184,10 +184,10 @@ export default function CampaignsPage() {
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 text-xs">
-                                    <Badge variant="outline" className="bg-foreground/5 border-border/70 text-foreground/70">
+                                    <Badge variant="outline" className="bg-black border-border/70 text-foreground/70">
                                         schedule: {campaign.schedule_type || "n/a"}
                                     </Badge>
-                                    <Badge variant="outline" className="bg-foreground/5 border-border/70 text-foreground/70">
+                                    <Badge variant="outline" className="bg-black border-border/70 text-foreground/70">
                                         interval: {campaign.interval_enabled ? `${campaign.interval_mode} ${campaign.interval_minutes}m` : "off"}
                                     </Badge>
                                 </div>
@@ -253,7 +253,7 @@ export default function CampaignsPage() {
                                         ) : null}
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
-                                            className="text-red-500 focus:text-red-500"
+                                            className="text-white focus:text-white"
                                             onClick={() => {
                                                 if (confirm('确定删除此计划吗？')) deleteMutation.mutate(campaign.id)
                                             }}

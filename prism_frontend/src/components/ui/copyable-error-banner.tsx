@@ -27,7 +27,7 @@ export function CopyableErrorBanner({ message, onDismiss, className }: CopyableE
   return (
     <div
       className={cn(
-        "relative flex items-center justify-between gap-3 bg-red-500/10 border border-red-500/50 px-4 py-3 text-red-600 dark:text-red-400",
+        "relative flex items-center justify-between gap-3 bg-black border border-white/50 px-4 py-3 text-white dark:text-white",
         className
       )}
     >
@@ -38,8 +38,8 @@ export function CopyableErrorBanner({ message, onDismiss, className }: CopyableE
           size="sm"
           onClick={handleCopy}
           className={cn(
-            "h-auto py-1 px-2 text-xs font-mono hover:bg-red-500/20",
-            copied && "text-green-600 dark:text-green-400"
+            "h-auto py-1 px-2 text-xs font-mono hover:bg-black",
+            copied && "text-white dark:text-white"
           )}
         >
           {message}
@@ -52,7 +52,7 @@ export function CopyableErrorBanner({ message, onDismiss, className }: CopyableE
           variant="ghost"
           size="icon"
           onClick={onDismiss}
-          className="h-6 w-6 hover:bg-red-500/20"
+          className="h-6 w-6 hover:bg-black"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">关闭</span>

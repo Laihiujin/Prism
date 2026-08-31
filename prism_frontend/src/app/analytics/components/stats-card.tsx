@@ -13,11 +13,11 @@ interface StatsCardProps {
 }
 
 const colorClasses = {
-    blue: 'bg-blue-500/10 text-blue-400',
-    pink: 'bg-pink-500/10 text-pink-400',
-    cyan: 'bg-cyan-500/10 text-cyan-400',
-    green: 'bg-green-500/10 text-green-400',
-    orange: 'bg-orange-500/10 text-orange-400',
+    blue: 'bg-black text-white',
+    pink: 'bg-black text-white',
+    cyan: 'bg-black text-white',
+    green: 'bg-black text-white',
+    orange: 'bg-black text-white',
 }
 
 export function StatsCard({ title, value, icon, color = 'blue', onClick, isActive }: StatsCardProps) {

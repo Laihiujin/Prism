@@ -41,7 +41,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                     {displayValue}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto border-border/70 bg-neutral-950 text-foreground p-4 shadow-2xl" align="start">
+            <PopoverContent className="w-auto border-border/70 bg-black text-foreground p-4 shadow-2xl" align="start">
                 <div className="space-y-4">
                     <div className="text-sm font-medium text-foreground">选择时间</div>
                     <div className="flex items-center gap-2">
@@ -51,7 +51,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                             <select
                                 value={hours}
                                 onChange={(e) => setHours(e.target.value)}
-                                className="appearance-none bg-neutral-900 text-foreground border border-border/70 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                                className="appearance-none bg-black text-foreground border border-border/70 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
                                 style={{ backgroundColor: "#0a0a0a", color: "#ffffff" }}
                             >
                                 {Array.from({ length: 24 }, (_, i) => (
@@ -72,7 +72,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
                             <select
                                 value={minutes}
                                 onChange={(e) => setMinutes(e.target.value)}
-                                className="appearance-none bg-neutral-900 text-foreground border border-border/70 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
+                                className="appearance-none bg-black text-foreground border border-border/70 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/60"
                                 style={{ backgroundColor: "#0a0a0a", color: "#ffffff" }}
                             >
                                 {Array.from({ length: 60 }, (_, i) => (

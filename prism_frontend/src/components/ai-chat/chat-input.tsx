@@ -39,7 +39,7 @@ export function ChatInput({ isLoading, onSubmit, input, setInput, disabled, plac
 
     return (
         <div className="relative mx-auto w-full max-w-3xl p-4">
-            <div className={`relative flex flex-col rounded-3xl border border-border/70 bg-neutral-900/50 shadow-2xl backdrop-blur-xl transition-all focus-within:border-border/80 focus-within:bg-neutral-900/80 ${disabled ? 'opacity-50' : ''}`}>
+            <div className={`relative flex flex-col rounded-3xl border border-border/70 bg-black/50 shadow-2xl backdrop-blur-xl transition-all focus-within:border-border/80 focus-within:bg-black/80 ${disabled ? 'opacity-50' : ''}`}>
                 {/* Input Area */}
                 <div className="relative px-4 pt-4">
                     <Textarea
@@ -65,7 +65,7 @@ export function ChatInput({ isLoading, onSubmit, input, setInput, disabled, plac
                             <Button
                                 size="icon"
                                 variant="destructive"
-                                className="h-8 w-8 rounded-full bg-red-600 hover:bg-red-700 text-foreground"
+                                className="h-8 w-8 rounded-full bg-white hover:bg-white text-foreground"
                                 onClick={onStop}
                             >
                                 <StopCircle className="h-4 w-4" />
@@ -78,7 +78,7 @@ export function ChatInput({ isLoading, onSubmit, input, setInput, disabled, plac
                             size="icon"
                             className={`h-8 w-8 rounded-full transition-all ${input?.trim()
                                 ? "bg-foreground text-background hover:bg-foreground/90"
-                                : "bg-foreground/10 text-foreground/30 hover:bg-accent/60"
+                                : "bg-black text-foreground/30 hover:bg-accent/60"
                                 }`}
                             onClick={() => {
                                 if (input?.trim() && !isLoading && !disabled) {

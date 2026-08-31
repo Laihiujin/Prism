@@ -24,7 +24,7 @@ const config = {
                 "app-grid":
                     "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 0, transparent 0)",
                 "button-gradient":
-                    "linear-gradient(120deg, rgba(161,102,255,1), rgba(57,189,255,1), rgba(255,88,139,1))",
+                    "linear-gradient(120deg, rgba(255,255,255,1), rgba(180,180,180,1), rgba(255,255,255,1))",
             },
             colors: {
                 border: "hsl(var(--border))",
@@ -79,7 +79,7 @@ const config = {
             boxShadow: {
                 "soft": "var(--shadow-soft)",
                 "glow-white": "var(--shadow-glow-white)",
-                "glow-primary": "0px 0px 40px rgba(147, 51, 234, 0.35)",
+                "glow-primary": "0px 0px 40px rgba(255, 255, 255, 0.25)",
                 "inner-card": "inset 0 1px 0 rgba(255,255,255,0.04)",
             },
             borderRadius: {

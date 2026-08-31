@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from typing import Any
 
@@ -23,7 +24,10 @@ def _default_adapter_factory() -> Any:
         from prism_backend.app_new.platforms.douyin import DouyinAdapter
     except ImportError:
         from app_new.platforms.douyin import DouyinAdapter
-    return DouyinAdapter({"headless": True})
+
+    # 尊重全局无头开关，避免这里硬编码 headless=True 覆盖 PLAYWRIGHT_HEADLESS 配置。
+    headless = os.getenv("PLAYWRIGHT_HEADLESS", "true").strip().lower() not in {"0", "false", "no", "off"}
+    return DouyinAdapter({"headless": headless})
 
 
 class DouyinQrLoginAdapter(QrLoginAdapter):
