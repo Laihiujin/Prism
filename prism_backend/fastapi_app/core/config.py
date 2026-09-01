@@ -70,7 +70,7 @@ class Settings(BaseSettings):
 
     # 服务器配置
     HOST: str = "0.0.0.0"
-    PORT: int = 7000  # FastAPI专用端口
+    PORT: int = 9200  # FastAPI专用端口
     DEBUG: bool = False
 
     # CORS配置

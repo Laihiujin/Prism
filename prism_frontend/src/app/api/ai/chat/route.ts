@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         const lastMessage = messages[messages.length - 1]
 
         // 调用后端 FastAPI AI 服务
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7000"
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:9200"
         const response = await fetch(`${backendUrl}/api/v1/ai/chat`, {
             method: "POST",
             headers: {
