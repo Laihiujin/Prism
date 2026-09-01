@@ -93,6 +93,129 @@ async def get_account(account_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/resolve/youtube-channel", response_model=Response[dict], summary="解析 YouTube 频道名/URL 为频道信息")
+async def resolve_youtube_channel(payload: dict = Body(...)):
+    """
+    注册 YouTube 账号前，用 TikHub 把频道名 / @handle / 频道 URL 解析为
+    频道 ID、频道名、头像，供前端预填账号信息。
+    """
+    try:
+        channel = str((payload or {}).get("channel") or "").strip()
+        if not channel:
+            raise BadRequestException("channel 不能为空（支持 @handle / 频道名 / 频道 URL）")
+
+        from myUtils.tikhub_client import get_tikhub_client
+
+        tikhub = get_tikhub_client()
+        if not tikhub:
+            raise BadRequestException("TikHub API key 未配置，无法解析 YouTube 频道")
+
+        async with tikhub as client:
+            channel_id = await client.resolve_youtube_channel_id(channel)
+            if not channel_id:
+                return Response(
+                    success=False,
+                    data={"resolved": False, "reason": f"无法解析频道: {channel}（TikHub 未返回 channel_id）"},
+                )
+            info = {}
+            try:
+                raw = await client.fetch_youtube_channel_info(channel_id=channel_id)
+                info = client.parse_youtube_channel_info(raw)
+            except Exception:
+                info = {}
+            return Response(
+                success=True,
+                data={
+                    "resolved": True,
+                    "channel_id": channel_id,
+                    "name": info.get("name") or channel,
+                    "original_name": info.get("original_name") or channel,
+                    "avatar": info.get("avatar"),
+                },
+            )
+    except BadRequestException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"解析 YouTube 频道失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{account_id}/enrich-tikhub", response_model=Response[dict], summary="用 TikHub 反查补全账号真实信息")
+async def enrich_account_tikhub(account_id: str):
+    """
+    用 TikHub 反查补全 TikTok/YouTube 账号的账号名（uniqueId）、昵称、头像。
+
+    适用于 TikTok/YouTube：登录时本地只拿到数字 uid / 占位名，
+    通过 TikHub 的用户资料接口反查真实 uniqueId、昵称、头像并写回账号库。
+    """
+    try:
+        account = cookie_manager.get_account_by_id(account_id)
+        if not account:
+            raise NotFoundException(f"账号不存在: {account_id}")
+
+        platform = (account.get("platform") or "").strip().lower()
+        if platform not in ("tiktok", "youtube"):
+            raise BadRequestException(f"平台 {platform} 暂不支持 TikHub 反查补全（仅 tiktok/youtube）")
+
+        user_id = (account.get("user_id") or "").strip()
+        if not user_id:
+            raise BadRequestException("该账号缺少 user_id，无法反查")
+
+        from myUtils.tikhub_client import get_tikhub_client
+
+        tikhub = get_tikhub_client()
+        if not tikhub:
+            raise BadRequestException("TikHub API key 未配置，无法反查补全")
+
+        # user_id 可能是兜底占位符（如 tiktok_tiktok-001 / youtube_youtube-001），
+        # 无法直接反查；此时回退用账号 name/note（用户填的频道名或 handle）反查。
+        lookup = user_id
+        if lookup.startswith(f"{platform}_"):
+            lookup = (account.get("name") or account.get("note") or "").strip() or user_id
+
+        async with tikhub as client:
+            profile = await client.fetch_account_profile(platform, lookup)
+
+        if not profile:
+            return Response(
+                success=False,
+                data={"account_id": account_id, "updated": False, "reason": "反查无结果（可能是账号不存在或 TikHub 接口受限）"},
+            )
+
+        update_kwargs = {}
+        if profile.get("user_id") and str(profile["user_id"]) != str(user_id):
+            update_kwargs["user_id"] = str(profile["user_id"])
+        if profile.get("name"):
+            update_kwargs["name"] = str(profile["name"])
+        if profile.get("original_name"):
+            update_kwargs["original_name"] = str(profile["original_name"])
+        if profile.get("avatar"):
+            update_kwargs["avatar"] = str(profile["avatar"])
+
+        updated = bool(update_kwargs)
+        if updated:
+            cookie_manager.update_account(account_id, **update_kwargs)
+
+        return Response(
+            success=True,
+            data={
+                "account_id": account_id,
+                "updated": updated,
+                "name": profile.get("name"),
+                "original_name": profile.get("original_name"),
+                "avatar": profile.get("avatar"),
+                "user_id": profile.get("user_id"),
+            },
+        )
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except BadRequestException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"TikHub 反查补全失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{account_id}/creator-center/data", response_model=Response[dict])
 async def get_creator_center_data(account_id: str):
     """

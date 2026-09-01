@@ -108,6 +108,28 @@ const PLATFORMS_CONFIG: Record<string, {
             { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
         ],
         metrics: ["views", "likes", "comments", "shares", "collects"]
+    },
+    tiktok: {
+        label: "TikTok",
+        color: "from-black to-black",
+        stats: [
+            { label: "总播放", key: "views", icon: Eye, color: "text-white" },
+            { label: "总点赞", key: "likes", icon: Heart, color: "text-white" },
+            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
+            { label: "总分享", key: "shares", icon: Share2, color: "text-white" },
+            { label: "总收藏", key: "collects", icon: Bookmark, color: "text-white" },
+        ],
+        metrics: ["views", "likes", "comments", "shares", "collects"]
+    },
+    youtube: {
+        label: "YouTube",
+        color: "from-black to-black",
+        stats: [
+            { label: "总播放", key: "views", icon: Eye, color: "text-white" },
+            { label: "总点赞", key: "likes", icon: Heart, color: "text-white" },
+            { label: "总评论", key: "comments", icon: MessageCircle, color: "text-white" },
+        ],
+        metrics: ["views", "likes", "comments"]
     }
 }
 
@@ -191,7 +213,40 @@ export default function PlatformVideosPage() {
         raw_data: parseRawData(video.raw_data || video.rawData || video.rawData || video.raw_data),
     })
 
-    const videos = useMemo(() => rawVideos.map(normalizeVideo), [rawVideos])
+    const videos = useMemo(() => {
+        const mapped = rawVideos.map(normalizeVideo)
+
+        // 去重：同一平台内按标题去重，保留互动表现更优（播放+点赞+评论+收藏+分享加权）的一条。
+        // 避免「各平台重复标题」——同一内容由于多账号转/搬运在列表里重复出现。
+        const seen = new Map<string, any>()
+        const result: any[] = []
+        const engagement = (v: any) =>
+            (v.views || 0) +
+            (v.likes || 0) * 2 +
+            (v.comments || 0) * 3 +
+            (v.collects || 0) * 2 +
+            (v.shares || 0) * 2
+
+        for (const video of mapped) {
+            const key = (video.title || "").trim()
+            if (!key) {
+                result.push(video)
+                continue
+            }
+            if (!seen.has(key)) {
+                seen.set(key, video)
+                result.push(video)
+            } else {
+                const existing = seen.get(key)
+                if (engagement(video) > engagement(existing)) {
+                    const idx = result.findIndex((item) => item === existing)
+                    if (idx >= 0) result[idx] = video
+                    seen.set(key, video)
+                }
+            }
+        }
+        return result
+    }, [rawVideos])
 
     const summaryStats = useMemo(() => {
         if (!summary) {
@@ -342,9 +397,23 @@ export default function PlatformVideosPage() {
             const data = await res.json()
 
             if (data.success || res.ok) {
+                const result = data?.data || {}
+                const okCount = result?.success ?? result?.ok ?? null
+                const failCount = result?.failed ?? null
+                const totalCount = result?.total ?? null
+                let description = `已成功同步最新的视频表现数据`
+                if (totalCount != null) {
+                    description = `共处理 ${totalCount} 个账号：成功 ${okCount ?? 0}，失败 ${failCount ?? 0}`
+                } else if (okCount != null) {
+                    description = `成功同步 ${okCount} 个账号`
+                }
+                const firstError = Array.isArray(result?.errors) ? result.errors[0] : null
+                if (firstError?.error) {
+                    description += `（${firstError.error}）`
+                }
                 toast({
                     title: `${config.label} 数据采集完成`,
-                    description: `已成功同步最新的视频表现数据`,
+                    description,
                 })
                 refetch()
             } else {
@@ -495,7 +564,7 @@ export default function PlatformVideosPage() {
                             <div className="p-3 bg-black backdrop-blur-md rounded-2xl">
                                 <Video className="h-6 w-6 text-foreground" />
                             </div>
-                            <h2 className="text-2xl font-bold text-foreground">{config.label}矩阵数据概览</h2>
+                            <h2 className="text-2xl font-bold text-foreground">矩阵数据概览</h2>
                         </div>
                         <p className="text-foreground/80 max-w-md">
                             当前已监控 {videoCount} 个视频，覆盖核心互动指标与传播趋势。

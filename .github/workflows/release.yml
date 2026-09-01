@@ -1,0 +1,192 @@
+# ============================================================
+# Prism 桌面版发布流水线：打包 Windows / macOS 并发布到 GitHub Releases
+#
+# 更新通道：electron-updater github provider（见 desktop-electron/package.json build.publish）
+#   - 主通道：GitHub Releases latest（latest.yml / latest-mac.yml + 安装包 + blockmap）
+#   - 回滚/历史版本：GitHub API 拉 release 列表 + generic feed 指向
+#     https://github.com/<owner>/<repo>/releases/download/<tag>/
+#
+# 版本一致性（自动处理）：
+#   - push tag v<版本>：workflow 自动把 desktop-electron/package.json 的 version 同步为 <版本>
+#   - 手动触发：填 version 输入则同步；留空则用 package.json 现有版本
+#   - 资产名（Prism-<version>-setup.exe）与 tag 保持一致
+#
+# macOS 签名（默认 unsigned，Gatekeeper 会拦截，需右键打开）：
+#   正式分发时配置 GitHub Secrets 后 electron-builder 自动签名/公证：
+#     CSC_LINK（证书 .p12 的 base64）、CSC_KEY_PASSWORD
+#     公证：APPLE_ID、APPLE_APP_SPECIFIC_PASSWORD、APPLE_TEAM_ID
+# ============================================================
+
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（不带 v，如 1.2.0；留空则用 package.json version）'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prism-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NEXT_TELEMETRY_DISABLED: '1'
+  # tag 触发: v1.2.0 → 1.2.0；手动触发: 用输入版本
+  PRISM_VERSION: ${{ (github.ref_type == 'tag' && github.ref_name) || inputs.version }}
+
+jobs:
+  build-windows:
+    name: Windows x64 (NSIS)
+    runs-on: windows-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 同步版本号 (与 tag/输入一致)
+        shell: bash
+        run: |
+          if [ -n "${PRISM_VERSION}" ]; then
+            VERSION="${PRISM_VERSION#v}"
+            node -e "const fs=require('fs');const p='desktop-electron/package.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));d.version='${VERSION}';fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n','utf8')"
+            echo "✅ version 同步为 ${VERSION}"
+          else
+            echo "⚠️ 手动触发未填版本，使用 package.json 现有版本"
+          fi
+          node -p "require('./desktop-electron/package.json').version"
+
+      - name: 构建前端 (Next.js standalone)
+        working-directory: prism_frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: 构建 prismenv (Python 运行时)
+        run: |
+          python -m venv prismenv
+          prismenv/Scripts/python.exe -m pip install --upgrade pip
+          prismenv/Scripts/python.exe -m pip install -r requirements.txt
+
+      - name: 构建 supervisor.exe (PyInstaller)
+        run: |
+          prismenv/Scripts/python.exe -m pip install pyinstaller
+          prismenv/Scripts/python.exe -m PyInstaller build/supervisor.spec --clean --noconfirm
+          if (Test-Path "dist/supervisor/supervisor.exe") {
+            Copy-Item "dist/supervisor/supervisor.exe" "desktop-electron/resources/supervisor/supervisor.exe"
+          } elseif (Test-Path "dist/supervisor.exe") {
+            Copy-Item "dist/supervisor.exe" "desktop-electron/resources/supervisor/supervisor.exe"
+          } else {
+            throw "supervisor.exe 未生成"
+          }
+
+      - name: 安装打包依赖 (desktop-electron)
+        working-directory: desktop-electron
+        run: npm ci
+
+      - name: 下载 Redis Windows 二进制 (tporadowski/redis)
+        shell: pwsh
+        run: |
+          $headers = @{ "User-Agent" = "Prism-build" }
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/tporadowski/redis/releases/latest" -Headers $headers
+          $asset = $release.assets | Where-Object { $_.name -like "Redis-x64-*.zip" } | Select-Object -First 1
+          if (-not $asset) { throw "redis release 无 Redis-x64 zip 资产" }
+          $zip = Join-Path $env:RUNNER_TEMP "redis-win.zip"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip
+          $dest = "desktop-electron/resources/redis"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -Path $zip -DestinationPath $dest -Force
+          Get-ChildItem $dest | Select-Object -ExpandProperty Name
+
+      - name: 准备占位目录 (services)
+        run: |
+          New-Item -ItemType Directory -Force -Path "dist/services" | Out-Null
+
+      - name: electron-builder 打包并发布 (GitHub Releases)
+        working-directory: desktop-electron
+        run: npx electron-builder --win --x64 --publish always
+
+      - name: 校验 Windows 产物
+        working-directory: desktop-electron
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "验证版本: ${VERSION}"
+          node scripts/verify-release-assets.mjs dist-build "${VERSION}"
+
+      - name: 上传安装包校验摘要
+        if: always()
+        run: |
+          echo "### Windows 产物" >> "$GITHUB_STEP_SUMMARY"
+          ls -la desktop-electron/dist-build/ | grep -E "\.exe|\.yml|\.blockmap" >> "$GITHUB_STEP_SUMMARY"
+
+  build-macos:
+    name: macOS (dmg + zip)
+    runs-on: macos-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 同步版本号 (与 tag/输入一致)
+        shell: bash
+        run: |
+          if [ -n "${PRISM_VERSION}" ]; then
+            VERSION="${PRISM_VERSION#v}"
+            node -e "const fs=require('fs');const p='desktop-electron/package.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));d.version='${VERSION}';fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n','utf8')"
+            echo "✅ version 同步为 ${VERSION}"
+          else
+            echo "⚠️ 手动触发未填版本，使用 package.json 现有版本"
+          fi
+          node -p "require('./desktop-electron/package.json').version"
+
+      - name: 构建前端 (Next.js standalone)
+        working-directory: prism_frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: 构建 prismenv (Python 运行时)
+        run: |
+          python3 -m venv prismenv
+          prismenv/bin/python -m pip install --upgrade pip
+          prismenv/bin/python -m pip install -r requirements.txt
+
+      - name: 安装打包依赖 (desktop-electron)
+        working-directory: desktop-electron
+        run: npm ci
+
+      - name: electron-builder 打包并发布 (GitHub Releases)
+        working-directory: desktop-electron
+        run: npx electron-builder --mac --publish always
+
+      - name: 校验 macOS 产物
+        working-directory: desktop-electron
+        shell: bash
+        run: |
+          ls -la dist-build/
+          test -n "$(ls dist-build/*.zip 2>/dev/null)" && echo "✅ zip OK"
+          test -f dist-build/latest-mac.yml && echo "✅ latest-mac.yml OK"
+          test -n "$(ls dist-build/*.dmg 2>/dev/null)" && echo "✅ dmg OK"

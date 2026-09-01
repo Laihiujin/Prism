@@ -46,6 +46,12 @@ class DouyinSecUidResolver:
         Returns:
             sec_uid 或 None
         """
+        # 策略0: 如果传入的本身就是数字 uid，直接反查 sec_uid
+        if str(user_id).isdigit():
+            sec_uid = await self._resolve_via_numeric_uid(user_id, None, cookie_header)
+            if sec_uid:
+                return sec_uid
+
         # 策略1: 尝试使用搜索接口
         sec_uid = await self._resolve_via_search_api(user_id, cookie_header)
         if sec_uid:
@@ -121,6 +127,15 @@ class DouyinSecUidResolver:
                         if sec_uid:
                             return sec_uid
 
+                # 搜索接口被风控拦截（verify_check）时 user_list 为空，
+                # 但响应中带有当前登录账号的数字 uid（myself_user_id）。
+                # 通过 user/profile/other 接口（接受数字 user_id）反查 sec_uid。
+                myself_user_id = data.get("myself_user_id") or response.get("myself_user_id")
+                if myself_user_id:
+                    sec_uid = await self._resolve_via_numeric_uid(myself_user_id, user_id, cookie_header)
+                    if sec_uid:
+                        return sec_uid
+
             return None
 
         except ImportError:
@@ -129,6 +144,71 @@ class DouyinSecUidResolver:
             return await self._resolve_via_direct_search(user_id, cookie_header)
         except Exception as e:
             print(f"  搜索接口解析失败: {e}")
+            return None
+
+    async def _resolve_via_numeric_uid(
+        self,
+        user_id: str,
+        expected_unique_id: Optional[str] = None,
+        cookie_header: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        通过数字 user_id 调用 user/profile/other 接口反查 sec_uid。
+
+        抖音的用户信息接口同时接受 sec_user_id 与数字 user_id，
+        此方法在 sec_uid 未知但数字 uid 已知（如搜索响应的 myself_user_id）时使用。
+        """
+        try:
+            from crawlers.douyin.web.utils import BogusManager
+            from crawlers.douyin.web.endpoints import DouyinAPIEndpoints
+
+            params = {
+                "user_id": str(user_id),
+                "aid": "6383",
+                "device_platform": "webapp",
+                "pc_client_type": "1",
+                "version_code": "170400",
+                "version_name": "17.4.0",
+            }
+            params["msToken"] = ""
+            params["a_bogus"] = BogusManager.ab_model_2_endpoint(params, DEFAULT_UA)
+
+            headers = {
+                "User-Agent": DEFAULT_UA,
+                "Referer": "https://www.douyin.com/",
+                "Origin": "https://www.douyin.com",
+            }
+            if cookie_header:
+                headers["Cookie"] = cookie_header
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(DouyinAPIEndpoints.USER_DETAIL, params=params, headers=headers)
+            if resp.status_code >= 400:
+                return None
+
+            response = resp.json()
+            if not isinstance(response, dict) or response.get("status_code") not in (0, None):
+                return None
+
+            user = response.get("user") or {}
+            sec_uid = user.get("sec_uid")
+            if not sec_uid:
+                return None
+
+            # 若提供了期望的抖音号，校验返回的用户确实匹配（避免拿到错误账号的 sec_uid）
+            if expected_unique_id:
+                unique_id = user.get("unique_id") or ""
+                uid = user.get("uid") or ""
+                if (
+                    str(unique_id) != str(expected_unique_id)
+                    and str(uid) != str(expected_unique_id)
+                ):
+                    return None
+
+            return str(sec_uid)
+
+        except Exception as e:
+            print(f"  数字uid反查sec_uid失败: {e}")
             return None
     
     async def _resolve_via_direct_search(
