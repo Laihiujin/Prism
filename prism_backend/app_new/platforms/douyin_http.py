@@ -343,6 +343,12 @@ class DouyinHttpAdapter(PlatformAdapter):
                 f"[DouyinHTTP] transient poll rejection: session={session_id[:8]} "
                 f"code={code!r} envelope={json.dumps(envelope, ensure_ascii=False)[:600]}"
             )
+            # code=2156（"系统繁忙"）：扫码确认交接被 passport 风控。根因：
+            # HTTP 会话缺少 verifycenter 会话信任——浏览器版在 get_qrcode 前会调
+            # /passport/web/challenge/（rmc-nocaptcha），该接口要求 JS 采集指纹后
+            # 种下的 s_v_web_id 等 cookie，HTTP 客户端无法执行（详见
+            # prism_backend/reverse_api/DOUYIN_HTTP_2156_FINDINGS.md）。
+            # 保持 WAITING 让二维码自然过期，避免假成功。
             return LoginResult(LoginStatus.WAITING, f"Poll retry required (code={code})")
         data = envelope.get("data") or {}
         raw_status = str(data.get("status") or "").lower()
