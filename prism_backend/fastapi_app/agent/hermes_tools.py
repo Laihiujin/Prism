@@ -12,7 +12,7 @@ from .tool_runtime import BaseTool, ToolResult
 
 
 # 后端 API 基础 URL（本地）
-API_BASE_URL = os.getenv("AGENT_API_BASE_URL", os.getenv("MANUS_API_BASE_URL", "http://localhost:7000/api/v1"))
+API_BASE_URL = os.getenv("AGENT_API_BASE_URL", os.getenv("MANUS_API_BASE_URL", "http://localhost:9200/api/v1"))
 
 _PLATFORM_CODE_MAP = {
     1: "xiaohongshu",

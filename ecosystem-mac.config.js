@@ -61,7 +61,7 @@ module.exports = {
       watch: false,
       env: {
         PORT: '3000',
-        NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:7000',
+        NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:9200',
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',
