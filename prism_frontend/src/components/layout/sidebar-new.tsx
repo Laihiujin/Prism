@@ -19,6 +19,7 @@ import {
   UsersRound,
   Video,
   Boxes,
+  Network,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -84,6 +85,7 @@ const navSections: NavSection[] = [
       { label: "账号管理", href: "/account", icon: UsersRound },
       { label: "素材管理", href: "/materials", icon: FolderKanban },
       { label: "代理管理", href: "/ip-pool", icon: Globe },
+      { label: "代理网关", href: "/persona-proxy", icon: Network },
     ],
   },
   {
