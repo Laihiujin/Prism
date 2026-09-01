@@ -462,7 +462,7 @@ async def _collect_douyin_tiktok_accounts(
             if sec_user_id:
                 _persist_douyin_sec_uid(account, sec_user_id)
         if not sec_user_id:
-            failed.append({"account_id": account_id, "error": "missing sec_user_id"})
+            failed.append({"account_id": account_id, "error": "missing sec_user_id (无法解析抖音号 sec_uid，请确认 Cookie 有效或先执行「解析 sec_uid」)"})
             continue
 
         cursor = 0
@@ -517,12 +517,35 @@ async def _collect_douyin_tiktok_accounts(
     return {"success": success, "failed": len(failed), "errors": failed}
 
 
-async def _collect_xhs_mediacrawler_accounts(account_ids: Optional[List[str]] = None) -> Dict[str, Any]:
-    return {"success": 0, "failed": 0, "errors": []}
+async def _collect_via_repo_collector(platform: str, account_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+    """复用仓库现成的采集管道（myUtils.video_collector.collect_all_accounts）。
 
+    快手/小红书/视频号：TikHub 优先，失败自动回退到 Cookie/浏览器采集，
+    并包含任务 ID 回写（数据回收）逻辑，最终写入 analytics 的 video_analytics 表。
+    """
+    from myUtils.video_collector import collector  # noqa: PLC0415
 
-async def _collect_kuaishou_mediacrawler_accounts(account_ids: Optional[List[str]] = None) -> Dict[str, Any]:
-    return {"success": 0, "failed": 0, "errors": []}
+    result = await collector.collect_all_accounts(account_ids=account_ids, platform_filter=platform)
+    details = result.get("details") or []
+    errors: List[Dict[str, Any]] = []
+    for detail in details:
+        if not detail.get("success"):
+            errors.append(
+                {
+                    "account_id": detail.get("account_id"),
+                    "account": detail.get("account"),
+                    "platform": detail.get("platform"),
+                    "error": detail.get("error") or "collection failed",
+                }
+            )
+    return {
+        "total": result.get("total", 0),
+        "success": result.get("success", 0),
+        "failed": result.get("failed", 0),
+        "errors": errors,
+        "details": details,
+    }
+
 
 @router.get("/", summary="获取分析数据", include_in_schema=True)
 @router.get("", include_in_schema=False)
@@ -710,11 +733,20 @@ async def collect_platform(platform: str, payload: Optional[CollectPayload] = Bo
         result = await _collect_douyin_tiktok_accounts(account_ids=account_ids)
         return {"success": True, "data": result, "message": "Douyin collection completed"}
     if platform == "xiaohongshu":
-        result = await _collect_xhs_mediacrawler_accounts(account_ids=account_ids)
+        result = await _collect_via_repo_collector("xiaohongshu", account_ids)
         return {"success": True, "data": result, "message": "Xiaohongshu collection completed"}
     if platform == "kuaishou":
-        result = await _collect_kuaishou_mediacrawler_accounts(account_ids=account_ids)
+        result = await _collect_via_repo_collector("kuaishou", account_ids)
         return {"success": True, "data": result, "message": "Kuaishou collection completed"}
+    if platform == "channels" or platform == "tencent":
+        result = await _collect_via_repo_collector("channels", account_ids)
+        return {"success": True, "data": result, "message": "Channels collection completed"}
+    if platform == "tiktok":
+        result = await _collect_via_repo_collector("tiktok", account_ids)
+        return {"success": True, "data": result, "message": "TikTok collection completed"}
+    if platform == "youtube":
+        result = await _collect_via_repo_collector("youtube", account_ids)
+        return {"success": True, "data": result, "message": "YouTube collection completed"}
 
     raise HTTPException(status_code=501, detail="Not implemented")
 

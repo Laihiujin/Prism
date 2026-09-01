@@ -11,10 +11,15 @@
     "build": "electron-builder --win --x64",
     "build:dir": "electron-builder --win --x64 --dir",
     "pack": "electron-builder --dir",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "release:win": "npm run build",
+    "release:finalize": "node scripts/finalize-windows-release.mjs",
+    "release:verify": "node scripts/verify-release-assets.mjs",
+    "release:version-index": "node scripts/build-version-index.mjs"
   },
   "dependencies": {
-    "electron-log": "^5.0.1"
+    "electron-log": "^5.0.1",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
@@ -41,21 +46,6 @@
     ],
     "extraResources": [
       {
-        "from": "resources/supervisor",
-        "to": "supervisor",
-        "filter": [
-          "supervisor.exe"
-        ]
-      },
-      {
-        "from": "../dist/services",
-        "to": "services",
-        "filter": [
-          "**/*",
-          "!**/nul"
-        ]
-      },
-      {
         "from": "../prismenv",
         "to": "prismenv",
         "filter": [
@@ -63,14 +53,6 @@
           "!**/__pycache__/**",
           "!**/*.pyc",
           "!**/*.pyo",
-          "!**/nul"
-        ]
-      },
-      {
-        "from": "../browsers/chromium",
-        "to": "browsers/chromium",
-        "filter": [
-          "hibbiki-*/**/*",
           "!**/nul"
         ]
       },
@@ -120,13 +102,6 @@
         "to": "scripts/packaging",
         "filter": [
           "install_hibbiki_chromium.ps1"
-        ]
-      },
-      {
-        "from": "node_modules/7zip-bin/win/x64",
-        "to": "tools/7zip",
-        "filter": [
-          "7za.exe"
         ]
       },
       {
@@ -182,17 +157,6 @@
         "filter": [
           "**/*"
         ]
-      },
-      {
-        "from": "resources/redis",
-        "to": "redis",
-        "filter": [
-          "redis-server.exe",
-          "redis-cli.exe",
-          "redis.windows.conf",
-          "redis.windows-service.conf",
-          "EventLog.dll"
-        ]
       }
     ],
     "win": {
@@ -207,7 +171,42 @@
           ]
         }
       ],
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "extraResources": [
+        {
+          "from": "resources/supervisor",
+          "to": "supervisor",
+          "filter": [
+            "supervisor.exe"
+          ]
+        },
+        {
+          "from": "resources/redis",
+          "to": "redis",
+          "filter": [
+            "redis-server.exe",
+            "redis-cli.exe",
+            "redis.windows.conf",
+            "redis.windows-service.conf",
+            "EventLog.dll"
+          ]
+        },
+        {
+          "from": "../dist/services",
+          "to": "services",
+          "filter": [
+            "**/*",
+            "!**/nul"
+          ]
+        },
+        {
+          "from": "node_modules/7zip-bin/win/x64",
+          "to": "tools/7zip",
+          "filter": [
+            "7za.exe"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -223,6 +222,49 @@
       "deleteAppDataOnUninstall": true
     },
     "compression": "maximum",
-    "electronVersion": "28.0.0"
-  }
+    "electronVersion": "28.0.0",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Laihiujin",
+        "repo": "Prism",
+        "releaseType": "release"
+      }
+    ],
+    "updater": {
+      "autoDownload": false
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extraResources": [
+        {
+          "from": "resources/supervisor",
+          "to": "supervisor",
+          "filter": [
+            "supervisor.py",
+            "api_server.py"
+          ]
+        }
+      ]
+    }
+  },
+  "repository": "https://github.com/Laihiujin/Prism.git"
 }

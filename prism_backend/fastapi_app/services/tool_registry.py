@@ -17,6 +17,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -83,23 +84,33 @@ class DevTool:
     repo: str            # GitHub 仓库 URL（克隆用）
     description: str
     install_path: str    # tools/ 下的子目录名
-    install_cmd: str = ""  # 安装后执行的构建/安装命令（可选）
+    install_cmd: str = ""  # 安装后执行的构建/安装命令（可选；外部应用时为"打开下载页"命令）
     check: str = ""      # 检测已安装的命令（可选）
     launch_cmd: str = ""  # 从 Prism 打开/调用的命令（可选，如 macOS 应用）
     build_cmd: str = ""  # 构建命令（可选，如 persona dashboard 构建）
+    install_url: str = ""  # 外部应用时的官方下载/安装链接（如 GitHub Releases）
+    note: str = ""      # 备注（如"模型管理外置"）
+    github_repo: str = ""  # GitHub repo（owner/repo）：外部应用按平台动态解析最新版下载链接
+    asset_patterns: Dict[str, str] = field(default_factory=dict)  # 平台 -> 资产名 fnmatch 模式
 
     def target_path(self) -> Path:
         return TOOLS_DIR / self.install_path
 
     def is_installed(self) -> bool:
-        return self.target_path().exists() or self._check_installed()
+        # install_path 为空（全局安装工具，如 computer-use-linux / ccswitch）时，
+        # target_path() 会退化到 TOOLS_DIR（恒存在），导致误报已安装。
+        # 此时应直接走 check 检测，而不是用目录是否存在判定。
+        if self.install_path:
+            return self.target_path().exists() or self._check_installed()
+        return self._check_installed()
 
     def _check_installed(self) -> bool:
-        if not self.check:
+        cmd = _platform_cmd(self.check)
+        if not cmd:
             return False
         try:
             r = subprocess.run(
-                self.check, shell=True, capture_output=True, timeout=10
+                cmd, shell=True, capture_output=True, timeout=10
             )
             return r.returncode == 0
         except Exception:
@@ -116,7 +127,112 @@ class DevTool:
             "installed": self.is_installed(),
             "launchable": bool(self.launch_cmd),
             "buildable": bool(self.build_cmd),
+            "install_url": self.install_url,
+            "note": self.note,
         }
+
+
+def _platform_cmd(raw: Any) -> Optional[str]:
+    """按当前平台解析命令：支持 str 或 {darwin|win32|linux|default: cmd}。
+
+    外部桌面应用（如 CC Switch）的检测/打开命令因平台而异；
+    传入 dict 时按 sys.platform 取对应平台的命令，未知平台回退到 default。
+    """
+    if isinstance(raw, dict):
+        key = {"darwin": "darwin", "win32": "win32", "linux": "linux"}.get(sys.platform)
+        if key and raw.get(key):
+            return str(raw[key])
+        return str(raw["default"]) if raw.get("default") else None
+    return str(raw) if raw else None
+
+
+def _current_platform_key() -> str:
+    """返回当前平台键：darwin / win32 / linux（未知回退 darwin）。"""
+    return {"darwin": "darwin", "win32": "win32", "linux": "linux"}.get(sys.platform, "darwin")
+
+
+def resolve_github_latest_asset(repo: str, pattern: str) -> Optional[str]:
+    """解析 GitHub repo 最新 release 中匹配 fnmatch pattern 的资产直链。
+
+    返回 browser_download_url；请求失败或没有匹配资产时返回 None。
+    （未认证匿名请求受 GitHub API 速率限制，够日常使用。）
+    """
+    import fnmatch
+    import json
+    import urllib.request
+
+    url = f"https://api.github.com/repos/{repo}/releases/latest"
+    req = urllib.request.Request(url, headers={
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "Prism-tool-registry",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        logger.warning(f"[Tools] 解析 GitHub 最新 release 失败 {repo}: {exc}")
+        return None
+    for asset in data.get("assets") or []:
+        name = asset.get("name") or ""
+        if fnmatch.fnmatch(name, pattern):
+            return asset.get("browser_download_url")
+    return None
+
+
+def resolve_ccswitch_latest_url() -> Optional[str]:
+    """按当前平台解析 CC Switch 最新版直接下载链接。
+
+    - darwin: 优先通用 macOS.dmg（universal），回退 macOS.tar.gz/zip
+    - win32:  按架构选 Windows-arm64.msi 或 Windows.msi，回退 Portable.zip
+    - linux:  x86_64.AppImage / arm64.AppImage
+    """
+    import platform
+
+    repo = "farion1231/cc-switch"
+    arch = (platform.machine() or "").lower()
+    key = _current_platform_key()
+
+    if key == "darwin":
+        for pat in ("CC-Switch-*-macOS.dmg", "CC-Switch-*-macOS.tar.gz", "CC-Switch-*-macOS.zip"):
+            url = resolve_github_latest_asset(repo, pat)
+            if url:
+                return url
+    elif key == "win32":
+        is_arm = "arm" in arch or "aarch" in arch
+        for pat in (
+            "CC-Switch-*-Windows-arm64.msi" if is_arm else "CC-Switch-*-Windows.msi",
+            "CC-Switch-*-Windows-Portable.zip",
+            "CC-Switch-*-Windows-arm64-Portable.zip",
+        ):
+            url = resolve_github_latest_asset(repo, pat)
+            if url:
+                return url
+    else:  # linux
+        is_arm = "arm" in arch or "aarch" in arch
+        for pat in (
+            "CC-Switch-*-Linux-x86_64.AppImage" if not is_arm else "CC-Switch-*-Linux-arm64.AppImage",
+            "CC-Switch-*-Linux-x86_64.deb",
+            "CC-Switch-*-Linux-arm64.deb",
+        ):
+            url = resolve_github_latest_asset(repo, pat)
+            if url:
+                return url
+    return None
+
+
+def open_url(url: str) -> None:
+    """按平台打开 URL（macOS open / Windows start / Linux xdg-open）。"""
+    key = _current_platform_key()
+    if key == "darwin":
+        cmd = f'open "{url}"'
+    elif key == "win32":
+        cmd = f'start "" "{url}"'
+    else:
+        cmd = f'xdg-open "{url}"'
+    try:
+        subprocess.Popen(cmd, shell=True)
+    except Exception as exc:
+        logger.error(f"[Tools] 打开 URL 失败: {exc}")
 
 
 # ── 工具目录 ──
@@ -133,24 +249,44 @@ DEV_TOOLS: List[DevTool] = [
         description="DeepSeek 官方 agent harness（monorepo，pnpm）。",
         install_path="deepseek-harness",
         install_cmd="pnpm install 2>/dev/null || corepack enable && pnpm install",
-        check="test -d tools/deepseek-harness/package.json",
+        check="test -f tools/deepseek-harness/package.json",
     ),
     DevTool(
         id="ccswitch",
         name="CC Switch",
         type="plugin",
         repo="https://github.com/farion1231/cc-switch.git",
-        description="Claude Code 服务商/账号一键切换（macOS 桌面应用，位于 /Applications/CC Switch.app）。",
+        description="模型提供方管理桌面应用：管理 agent 模型切换，Prism 只读桥接其数据库。",
         install_path="",
-        launch_cmd='open -a "CC Switch"',
-        check='test -d "/Applications/CC Switch.app"',
+        install_url="https://github.com/farion1231/cc-switch/releases",
+        note="模型管理外置：CC Switch 内管理 provider；Prism 支持读取ccswitch配置应用到本项目",
+        install_cmd="",
+        github_repo="farion1231/cc-switch",
+        asset_patterns={
+            "darwin": "CC-Switch-*-macOS.*",
+            "win32": "CC-Switch-*-Windows*.msi",
+            "linux": "CC-Switch-*-Linux-*.AppImage",
+        },
+        check={
+            "darwin": 'test -d "/Applications/CC Switch.app"',
+            "win32": 'if exist "%LOCALAPPDATA%\\Programs\\CC Switch\\CC Switch.exe" (exit /b 0) & if exist "%LOCALAPPDATA%\\Programs\\cc-switch\\CC Switch.exe" (exit /b 0) & if exist "%PROGRAMFILES%\\CC Switch\\CC Switch.exe" (exit /b 0) & exit /b 1',
+            "linux": 'test -d "$HOME/.local/share/cc-switch"',
+        },
+        launch_cmd={
+            "darwin": 'open -a "CC Switch"',
+            "win32": 'if exist "%LOCALAPPDATA%\\Programs\\CC Switch\\CC Switch.exe" (start "" "%LOCALAPPDATA%\\Programs\\CC Switch\\CC Switch.exe") else (start "" "CC Switch")',
+            "linux": 'cc-switch',
+        },
     ),
+    # computer-use-linux：Linux 专用桌面控制 MCP server。
+    # 注意：仅 Linux（Wayland/X11）环境可用，macOS 主机不可用。
+    # 保留此条目供需要控制 Linux 桌面/容器的用户一键安装；macOS 请用 Hermes computer-use (cua-driver)。
     DevTool(
         id="computer-use-linux",
         name="computer-use-linux",
         type="mcp",
         repo="",
-        description="Linux 桌面控制 MCP server（Wayland/X11）。",
+        description="Linux 专用桌面控制 MCP server（Wayland/X11）；仅 Linux 环境可用，macOS 不可用。",
         install_path="",
         install_cmd="npm install -g @agent-sh/computer-use-linux",
         check="command -v computer-use-linux",
@@ -223,12 +359,38 @@ class DevToolRegistry:
                 if r.returncode != 0:
                     raise RuntimeError(f"克隆失败: {r.stderr[:300]}")
 
-        # 2) 执行安装命令（npm/pnpm 等）
-        if tool.install_cmd:
+        # 2) 外部应用（无 install_path）：按平台解析最新版直链并打开下载
+        if not tool.install_path:
+            if tool.github_repo:
+                patterns = tool.asset_patterns or {}
+                pattern = patterns.get(_current_platform_key()) or ""
+                url = resolve_github_latest_asset(tool.github_repo, pattern) if pattern else None
+                if url:
+                    open_url(url)
+                    return {
+                        "success": True,
+                        "message": f"已打开 {tool.name} 最新版下载链接（{url}），请按提示完成安装",
+                        "already": False,
+                        "install_url": url,
+                    }
+                logger.warning(f"[Tools] {tool.name} 未能解析到当前平台安装包，回退到下载页")
+            if tool.install_url:
+                open_url(tool.install_url)
+                return {
+                    "success": True,
+                    "message": f"已打开 {tool.name} 下载页（外部应用，请手动安装；模型管理外置）",
+                    "already": False,
+                    "install_url": tool.install_url,
+                }
+            return {"success": True, "message": f"{tool.name} 安装完成", "already": False}
+
+        # 3) 源码工具：执行安装命令（npm/pnpm 等）
+        install_cmd = _platform_cmd(tool.install_cmd)
+        if install_cmd:
             cwd = str(tool.target_path()) if tool.install_path and tool.target_path().exists() else str(REPO_ROOT)
-            logger.info(f"[Tools] 安装 {tool.name}: {tool.install_cmd}")
+            logger.info(f"[Tools] 安装 {tool.name}: {install_cmd}")
             r = subprocess.run(
-                tool.install_cmd, shell=True, capture_output=True, text=True,
+                install_cmd, shell=True, capture_output=True, text=True,
                 timeout=1200, cwd=cwd,
             )
             if r.returncode != 0 and not tool.is_installed():
@@ -267,16 +429,17 @@ class DevToolRegistry:
         return {"success": True, "message": f"{tool.name} 已卸载", "removed": removed}
 
     def launch(self, tool_id: str) -> Dict[str, Any]:
-        """从 Prism 打开/调用本地已安装的工具（如 macOS 应用）。"""
+        """从 Prism 打开/调用本地已安装的工具（如 macOS/Windows 桌面应用）。"""
         tool = self.get(tool_id)
         if not tool:
             raise ValueError(f"未知工具: {tool_id}")
-        if not tool.launch_cmd:
+        launch_cmd = _platform_cmd(tool.launch_cmd)
+        if not launch_cmd:
             raise ValueError(f"{tool.name} 不支持从 Prism 打开")
         if not tool.is_installed():
             raise RuntimeError(f"{tool.name} 尚未安装，无法打开")
         try:
-            subprocess.Popen(tool.launch_cmd, shell=True)
+            subprocess.Popen(launch_cmd, shell=True)
             return {"success": True, "message": f"已打开 {tool.name}"}
         except Exception as e:
             logger.error(f"[Tools] 打开 {tool.name} 失败: {e}")

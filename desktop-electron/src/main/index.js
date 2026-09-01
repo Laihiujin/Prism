@@ -1,10 +1,17 @@
-const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, dialog } = require('electron');
 const path = require('path');
 const { nativeTheme } = require('electron');
 const { spawn, spawnSync, execSync } = require('child_process');
 const net = require('net');
 const log = require('electron-log');
 const fs = require('fs');
+const {
+  registerUpdateHandlers,
+  startUpdateManager,
+  stopUpdateManager,
+  checkForUpdates
+} = require('./update-manager');
+const { getVersionInfo: buildVersionInfo, aboutDetail } = require('./version-info');
 
 // 閰嶇疆鏃ュ織
 log.transports.file.level = 'info';
@@ -46,6 +53,10 @@ class PrismApp {
     this.frontendPort = 3000;
     this.backendPort = null;
     this.automationWorkerPort = null;
+    // 动态 supervisor API 端口（supervisor 启动后经状态文件发现）
+    this.supervisorApiPort = null;
+    this.supervisorStatePath = null;
+    this.supervisorLaunchToken = null;
     this.runtimeSettings = {
       browserHeadless: true,
       automationRuntime: 'patchright'
@@ -102,7 +113,22 @@ class PrismApp {
     if (shouldStartServices) {
       console.log('Starting services...');
       log.info('Starting services...');
-      await this.startServices();
+      try {
+        await this.startServices();
+      } catch (error) {
+        // 失败根因上报：弹窗展示诊断摘要 + 写入日志
+        const message = error instanceof Error ? error.message : String(error);
+        log.error('Services failed to start:', error);
+        const diagnostics = await this.getSupervisorDiagnostics(5000);
+        const detail = this.summarizeDiagnostics(diagnostics);
+        dialog.showMessageBoxSync({
+          type: 'error',
+          title: 'Prism 服务启动失败',
+          message: message.slice(0, 400),
+          detail: detail || `诊断详情见日志: ${log.transports.file.getFile().path}`,
+          buttons: ['确定']
+        });
+      }
       console.log('Services started');
       log.info('Services started');
     }
@@ -120,7 +146,68 @@ class PrismApp {
     // 5. 璁剧疆搴旂敤浜嬩欢
     this.setupAppEvents();
 
+    // 6. 应用菜单（帮助：检查更新 / 关于-双版本体系）
+    this.setupAppMenu();
+
+    // 7. 更新管理器（自托管更新通道，参考 dsh-desktop）
+    registerUpdateHandlers();
+    startUpdateManager({
+      prepareToInstall: async () => {
+        try {
+          await this.stopManagedServices();
+        } catch (error) {
+          log.warn('prepareToInstall: failed to stop managed services:', error);
+        }
+      }
+    });
+
     log.info('Prism startup complete');
+  }
+
+  setupAppMenu() {
+    const template = [
+      {
+        label: '帮助',
+        submenu: [
+          {
+            label: '检查更新…',
+            click: () => {
+              void checkForUpdates(true).then((updateStatus) => {
+                if (!updateStatus) return;
+                const phase = updateStatus.phase;
+                let title = '检查更新';
+                let message = '正在检查更新…';
+                if (phase === 'up-to-date') {
+                  message = `当前已是最新版本（${updateStatus.currentVersion}）。`;
+                } else if (phase === 'available') {
+                  message = `发现新版本：${updateStatus.availableVersion}。请到启动管理器下载安装。`;
+                } else if (phase === 'error') {
+                  title = '检查更新失败';
+                  message = updateStatus.message || '更新检查出错，请稍后重试。';
+                } else if (phase === 'unsupported') {
+                  title = '检查更新';
+                  message = updateStatus.message || '仅安装版支持自动更新。';
+                }
+                dialog.showMessageBox({ type: 'info', title, message });
+              });
+            }
+          },
+          { type: 'separator' },
+          {
+            label: '关于 Prism',
+            click: () => {
+              dialog.showMessageBox({
+                type: 'info',
+                title: '关于 Prism',
+                message: 'Prism',
+                detail: aboutDetail(this.getVersionInfo(), 'zh')
+              });
+            }
+          }
+        ]
+      }
+    ];
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   }
 
   setupAutomationPath() {
@@ -1258,13 +1345,106 @@ class PrismApp {
     this.mainWindow.focus();
   }
 
+  getSupervisorStatePath() {
+    if (this.supervisorStatePath) {
+      return this.supervisorStatePath;
+    }
+    const explicitPath = process.env.PRISM_SUPERVISOR_STATE_PATH;
+    if (explicitPath) {
+      this.supervisorStatePath = explicitPath;
+      return this.supervisorStatePath;
+    }
+    this.supervisorStatePath = path.join(app.getPath('userData'), 'supervisor-state.json');
+    return this.supervisorStatePath;
+  }
+
+  readSupervisorState() {
+    try {
+      const raw = fs.readFileSync(this.getSupervisorStatePath(), 'utf8');
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async waitForSupervisorState(timeoutMs = 30000, pollIntervalMs = 300) {
+    const deadline = Date.now() + timeoutMs;
+    let lastState = null;
+    while (Date.now() < deadline) {
+      const state = this.readSupervisorState();
+      if (state && Number.isInteger(state.apiPort) && state.apiPort > 0) {
+        lastState = state;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+    if (!lastState) {
+      throw new Error('Supervisor state file did not appear within timeout (动态端口发现失败)');
+    }
+    this.supervisorApiPort = lastState.apiPort;
+    this.supervisorLaunchToken = lastState.launchToken || null;
+
+    // 从状态文件同步服务端口（权威来源仍是 /api/status，这里先做引导）
+    const servicePorts = lastState.servicePorts || {};
+    if (Number.isInteger(servicePorts.backend) && servicePorts.backend > 0) {
+      log.info(`Bootstrap backend port from supervisor state: ${this.backendPort || 'unset'} -> ${servicePorts.backend}`);
+      this.backendPort = servicePorts.backend;
+    }
+    if (Number.isInteger(servicePorts['automation-worker']) && servicePorts['automation-worker'] > 0) {
+      log.info(`Bootstrap automation-worker port from supervisor state: ${this.automationWorkerPort || 'unset'} -> ${servicePorts['automation-worker']}`);
+      this.automationWorkerPort = servicePorts['automation-worker'];
+    }
+    log.info('Supervisor state discovered:', { apiPort: this.supervisorApiPort, launchToken: Boolean(this.supervisorLaunchToken) });
+    return lastState;
+  }
+
+  cleanupStaleSupervisorFromState() {
+    const state = this.readSupervisorState();
+    if (!state || !Number.isInteger(state.pid) || state.pid <= 0) {
+      return;
+    }
+    if (state.pid === process.pid) {
+      return;
+    }
+    const details = this.getProcessDetails(state.pid);
+    const commandLine = String(details?.commandLine || '').toLowerCase();
+    const executablePath = path.normalize(String(details?.executablePath || '')).toLowerCase();
+    const isSupervisorProcess = commandLine.includes('supervisor') || executablePath.includes('supervisor');
+    if (!isSupervisorProcess) {
+      return;
+    }
+    if (this.terminateProcessByPid(state.pid)) {
+      log.warn(`Terminated stale supervisor from previous state file (pid ${state.pid})`);
+    }
+  }
+
+  getSupervisorApiPort() {
+    return this.supervisorApiPort || 7002;
+  }
+
+  async getSupervisorDiagnostics(timeoutMs = 5000) {
+    try {
+      const payload = await this.requestSupervisor('/api/diagnostics', 'GET', timeoutMs);
+      return payload?.data || payload || null;
+    } catch (error) {
+      log.warn('Failed to fetch supervisor diagnostics:', error);
+      return null;
+    }
+  }
+
+  getVersionInfo() {
+    // 双版本体系：桌面壳版本 + 内置服务版本（参考 dsh-desktop 的 version-info）
+    return buildVersionInfo(app.getVersion(), this.getResourcesRoot(), this.repoRoot);
+  }
+
   async requestSupervisor(pathname, method = 'GET', timeoutMs = 20000) {
     const http = require('http');
 
     return new Promise((resolve, reject) => {
       const req = http.request({
         hostname: '127.0.0.1',
-        port: 7002,
+        port: this.getSupervisorApiPort(),
         path: pathname,
         method
       }, (res) => {
@@ -2073,9 +2253,35 @@ class PrismApp {
     console.log('Using supervisor to manage backend services...');
     log.info('Using supervisor to manage backend services...');
     this.startSupervisor();
-    await this.waitForSupervisorServices(90000, 1500);
+    await this.waitForSupervisorState(30000);
+    try {
+      await this.waitForSupervisorServices(90000, 1500);
+    } catch (error) {
+      // 失败根因上报：把 supervisor 诊断摘要附加到异常信息
+      const diagnostics = await this.getSupervisorDiagnostics(5000);
+      const summary = this.summarizeDiagnostics(diagnostics);
+      const wrapped = new Error(`${error.message}${summary ? ` — ${summary}` : ''}`);
+      wrapped.cause = diagnostics;
+      log.error('Supervisor services failed to become healthy:', wrapped);
+      throw wrapped;
+    }
     await this.startFrontend(this.buildServiceEnv());
     this.servicesStarted = true;
+  }
+
+  summarizeDiagnostics(diagnostics) {
+    if (!diagnostics?.services) {
+      return '';
+    }
+    const failed = [];
+    for (const [name, status] of Object.entries(diagnostics.services)) {
+      const failure = status?.failure;
+      if (failure) {
+        const detail = String(failure.detail || '').slice(0, 160);
+        failed.push(`${name}(${failure.count}次失败/${failure.restart_count || 0}次重启): ${detail}`);
+      }
+    }
+    return failed.length > 0 ? `失败服务: ${failed.join('; ')}` : '';
   }
 
   startSupervisor() {
@@ -2084,6 +2290,7 @@ class PrismApp {
     }
 
     this.ensurePrismenvConfig();
+    this.cleanupStaleSupervisorFromState();
     this.cleanupStaleSupervisorOnPort(7002);
     const supervisorPaths = this.getSupervisorPaths();
     const supervisorExe = supervisorPaths.exePath;
@@ -2112,6 +2319,8 @@ class PrismApp {
 
     // 鏋勫缓鐜鍙橀噺
     const env = this.buildServiceEnv();
+    // 动态端口发现：supervisor 把 API 端口/服务端口/启动令牌写入状态文件
+    env.PRISM_SUPERVISOR_STATE_PATH = this.getSupervisorStatePath();
 
     this.supervisorProcess = spawn(launchCmd, launchArgs, {
       cwd: supervisorPaths.cwd || this.getResourcesRoot(),
@@ -2138,6 +2347,7 @@ class PrismApp {
       console.warn(`Supervisor exited with code: ${code}`);
       log.warn(`Supervisor exited with code: ${code}`);
       this.supervisorProcess = null;
+      this.lastSupervisorExit = { code, at: Date.now() };
     });
 
     console.log('Supervisor started');
@@ -2659,7 +2869,19 @@ class PrismApp {
         backendPort: this.getBackendPort(),
         frontendUrl: this.getFrontendBaseUrl(),
         frontendPort: this.getFrontendPort(),
-        systemApiBaseUrl: this.getSystemApiBaseUrl()
+        systemApiBaseUrl: this.getSystemApiBaseUrl(),
+        versionInfo: this.getVersionInfo(),
+        supervisorApiPort: this.getSupervisorApiPort()
+      };
+    });
+
+    // 失败根因上报：supervisor 诊断
+    ipcMain.handle('supervisor:get-diagnostics', async () => {
+      return {
+        success: true,
+        diagnostics: await this.getSupervisorDiagnostics(5000),
+        supervisorExit: this.lastSupervisorExit || null,
+        supervisorApiPort: this.getSupervisorApiPort()
       };
     });
 
@@ -2969,7 +3191,7 @@ class PrismApp {
         return new Promise((resolve, reject) => {
           const req = http.request({
             hostname: '127.0.0.1',
-            port: 7002,
+            port: this.getSupervisorApiPort(),
             path: '/api/start',
             method: 'POST'
           }, (res) => {
@@ -3011,7 +3233,7 @@ class PrismApp {
         return new Promise((resolve, reject) => {
           const req = http.request({
             hostname: '127.0.0.1',
-            port: 7002,
+            port: this.getSupervisorApiPort(),
             path: '/api/stop',
             method: 'POST'
           }, (res) => {
@@ -3163,6 +3385,7 @@ class PrismApp {
     app.on('before-quit', () => {
       this.isQuitting = true;
       log.info('Application is about to quit, cleaning up resources...');
+      stopUpdateManager();
       this.cleanup();
       if (this.tray) {
         this.tray.destroy();

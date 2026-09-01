@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "base_url": "https://api.tikhub.io",
+    "fetched_at": "2026-09-01T20:11:24.147860+00:00",
+    "spec_paths": 1066
+  },
+  "endpoints": {
+    "kuaishou_user_posts": {
+      "path": "/api/v1/kuaishou/app/fetch_user_post_v2",
+      "method": "GET",
+      "params": {
+        "user_id": "user_id",
+        "pcursor": "pcursor"
+      }
+    },
+    "kuaishou_user_info": {
+      "path": "/api/v1/kuaishou/web/fetch_user_info",
+      "method": "GET",
+      "params": {
+        "user_id": "user_id"
+      }
+    },
+    "kuaishou_one_video": {
+      "path": "/api/v1/kuaishou/web/fetch_one_video",
+      "method": "GET",
+      "params": {
+        "share_text": "share_text"
+      }
+    },
+    "kuaishou_one_video_by_url": {
+      "path": "/api/v1/kuaishou/web/fetch_one_video_by_url",
+      "method": "GET",
+      "params": {
+        "url": "url"
+      }
+    },
+    "kuaishou_hot_list": {
+      "path": "/api/v1/kuaishou/web/fetch_kuaishou_hot_list_v1",
+      "method": "GET",
+      "params": {}
+    },
+    "xhs_user_notes": {
+      "path": "/api/v1/xiaohongshu/app_v2/get_user_posted_notes",
+      "method": "GET",
+      "params": {
+        "user_id": "user_id",
+        "cursor": "cursor"
+      }
+    },
+    "xhs_user_info": {
+      "path": "/api/v1/xiaohongshu/web_v3/fetch_user_info",
+      "method": "GET",
+      "params": {
+        "user_id": "user_id"
+      }
+    },
+    "channels_user_videos": {
+      "path": "/api/v1/wechat_channels/v2/fetch_user_videos",
+      "method": "POST",
+      "params": {
+        "username": "username",
+        "last_buffer": "last_buffer"
+      }
+    },
+    "channels_channel_info": {
+      "path": "/api/v1/wechat_channels/v2/fetch_channel_info",
+      "method": "POST",
+      "params": {
+        "username": "username"
+      }
+    },
+    "channels_video_detail": {
+      "path": "/api/v1/wechat_channels/v2/fetch_video_detail",
+      "method": "POST",
+      "params": {
+        "object_id": "object_id",
+        "export_id": "export_id"
+      }
+    },
+    "tiktok_user_profile": {
+      "path": "/api/v1/tiktok/web/fetch_user_profile",
+      "method": "GET",
+      "params": {
+        "secUid": "secUid",
+        "unique_id": "uniqueId"
+      }
+    },
+    "tiktok_user_posts": {
+      "path": "/api/v1/tiktok/web/fetch_user_post",
+      "method": "GET",
+      "params": {
+        "secUid": "secUid",
+        "cursor": "cursor",
+        "count": "count",
+        "cover_format": "coverFormat"
+      }
+    },
+    "youtube_channel_id": {
+      "path": "/api/v1/youtube/web/get_channel_id",
+      "method": "GET",
+      "params": {
+        "channel_name": "channel_name"
+      }
+    },
+    "youtube_channel_id_v2": {
+      "path": "/api/v1/youtube/web/get_channel_id_v2",
+      "method": "GET",
+      "params": {
+        "channel_url": "channel_url"
+      }
+    },
+    "youtube_channel_info": {
+      "path": "/api/v1/youtube/web/get_channel_info",
+      "method": "GET",
+      "params": {
+        "channel_id": "channel_id"
+      }
+    },
+    "youtube_channel_videos": {
+      "path": "/api/v1/youtube/web/get_channel_videos_v2",
+      "method": "GET",
+      "params": {
+        "channel_id": "channel_id",
+        "next_token": "nextToken",
+        "sort_by": "sortBy",
+        "content_type": "contentType"
+      }
+    },
+    "health_check": {
+      "path": "/api/v1/health/check",
+      "method": "GET",
+      "params": {}
+    },
+    "tikhub_user_info": {
+      "path": "/api/v1/tikhub/user/get_user_info",
+      "method": "GET",
+      "params": {}
+    }
+  }
+}

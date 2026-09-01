@@ -11,9 +11,9 @@ from .tool_runtime import BaseTool, ToolResult
 
 # TikTok/Douyin/Bilibili API 基础 URL (已集成到后端 7000 端口)
 # 注意: douyin_tiktok_api 已挂载在 /api/v1/douyin-tiktok 路径下
-DOUYIN_API_BASE_URL = os.getenv("DOUYIN_API_BASE_URL", "http://localhost:9200/api/v1/douyin-tiktok/api/douyin/web")
-TIKTOK_API_BASE_URL = os.getenv("TIKTOK_API_BASE_URL", "http://localhost:9200/api/v1/douyin-tiktok/api/tiktok/web")
-BILIBILI_API_BASE_URL = os.getenv("BILIBILI_API_BASE_URL", "http://localhost:9200/api/v1/douyin-tiktok/api/bilibili/web")
+DOUYIN_API_BASE_URL = os.getenv("DOUYIN_API_BASE_URL", "http://localhost:7000/api/v1/douyin-tiktok/api/douyin/web")
+TIKTOK_API_BASE_URL = os.getenv("TIKTOK_API_BASE_URL", "http://localhost:7000/api/v1/douyin-tiktok/api/tiktok/web")
+BILIBILI_API_BASE_URL = os.getenv("BILIBILI_API_BASE_URL", "http://localhost:7000/api/v1/douyin-tiktok/api/bilibili/web")
 
 
 # ============================================
@@ -55,14 +55,16 @@ class DouyinFetchUserInfoTool(BaseTool):
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.get(
-                    f"{DOUYIN_API_BASE_URL}/fetch_user_detail",
+                    f"{DOUYIN_API_BASE_URL}/handler_user_profile",
                     params={"sec_user_id": sec_user_id}
                 )
                 response.raise_for_status()
                 result = response.json()
 
                 if result.get("code") == 200:
-                    user_data = result.get("data", {})
+                    data = result.get("data", {})
+                    # handler_user_profile 接口返回结构: data.user
+                    user_data = data.get("user") or data
                     output = f"✅ 成功获取用户信息\n\n"
                     output += f"- 昵称: {user_data.get('nickname', 'N/A')}\n"
                     output += f"- 抖音号: {user_data.get('unique_id', 'N/A')}\n"
@@ -296,21 +298,33 @@ class TikTokFetchUserInfoTool(BaseTool):
 
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.get(
-                    f"{TIKTOK_API_BASE_URL}/fetch_user_detail",
-                    params={"unique_id": unique_id}
+                    f"{TIKTOK_API_BASE_URL}/fetch_user_profile",
+                    params={"uniqueId": unique_id}
                 )
                 response.raise_for_status()
                 result = response.json()
 
                 if result.get("code") == 200:
-                    user_data = result.get("data", {})
+                    data = result.get("data", {})
+                    # TikTok 接口返回结构: data.userInfo.user / data.userInfo.stats
+                    user_info = data.get("userInfo") or {}
+                    user = user_info.get("user") or {}
+                    stats = user_info.get("stats") or {}
+                    user_data = user or data
+                    nickname = user_data.get("nickname") or user_data.get("nickName") or "N/A"
+                    unique_id = user_data.get("unique_id") or user_data.get("uniqueId") or unique_id
+                    follower_count = stats.get("followerCount") or user_data.get("follower_count") or 0
+                    total_favorited = stats.get("heartCount") or user_data.get("total_favorited") or 0
+                    video_count = user_data.get("video_count") or user_data.get("videoCount") or stats.get("videoCount") or 0
+                    signature = user_data.get("signature") or "N/A"
+
                     output = f"✅ 成功获取 TikTok 用户信息\n\n"
-                    output += f"- 昵称: {user_data.get('nickname', 'N/A')}\n"
-                    output += f"- 用户名: @{user_data.get('unique_id', 'N/A')}\n"
-                    output += f"- 粉丝数: {user_data.get('follower_count', 0):,}\n"
-                    output += f"- 获赞数: {user_data.get('total_favorited', 0):,}\n"
-                    output += f"- 作品数: {user_data.get('video_count', 0)}\n"
-                    output += f"- 简介: {user_data.get('signature', 'N/A')}\n"
+                    output += f"- 昵称: {nickname}\n"
+                    output += f"- 用户名: @{unique_id}\n"
+                    output += f"- 粉丝数: {follower_count:,}\n"
+                    output += f"- 获赞数: {total_favorited:,}\n"
+                    output += f"- 作品数: {video_count}\n"
+                    output += f"- 简介: {signature}\n"
                     return ToolResult(output=output)
                 else:
                     return ToolResult(error=f"API 返回错误: {result.get('message', '未知错误')}")
@@ -364,11 +378,28 @@ class TikTokFetchUserVideosTool(BaseTool):
             unique_id = unique_id.lstrip("@")
 
             async with httpx.AsyncClient(timeout=90.0) as client:
+                # TikTok 作品列表接口需要 secUid，先用 uniqueId 解析用户信息拿 secUid
+                profile_response = await client.get(
+                    f"{TIKTOK_API_BASE_URL}/fetch_user_profile",
+                    params={"uniqueId": unique_id, "secUid": ""}
+                )
+                profile_response.raise_for_status()
+                profile_result = profile_response.json()
+                sec_uid = (
+                    (profile_result.get("data") or {})
+                    .get("userInfo", {})
+                    .get("user", {})
+                    .get("secUid")
+                )
+
+                if not sec_uid:
+                    return ToolResult(error=f"无法从 uniqueId 解析 secUid: {profile_result.get('message', '未知错误')}")
+
                 response = await client.get(
-                    f"{TIKTOK_API_BASE_URL}/fetch_user_post_videos",
+                    f"{TIKTOK_API_BASE_URL}/fetch_user_post",
                     params={
-                        "unique_id": unique_id,
-                        "max_cursor": max_cursor,
+                        "secUid": sec_uid,
+                        "cursor": max_cursor,
                         "count": count
                     }
                 )
@@ -437,7 +468,7 @@ class TikTokFetchVideoDetailTool(BaseTool):
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.get(
                     f"{TIKTOK_API_BASE_URL}/fetch_one_video",
-                    params={"aweme_id": video_id}
+                    params={"itemId": video_id}
                 )
                 response.raise_for_status()
                 result = response.json()

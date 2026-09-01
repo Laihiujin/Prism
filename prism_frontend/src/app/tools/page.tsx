@@ -35,6 +35,8 @@ interface DevTool {
     buildable?: boolean
     enabled?: boolean
     category?: string
+    install_url?: string
+    note?: string
 }
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
@@ -169,6 +171,9 @@ export default function ToolsPage() {
                         <div>
                             <CardTitle className="text-base">{tool.name}</CardTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
+                            {tool.note && (
+                                <p className="text-[11px] text-muted-foreground/70 mt-1 leading-relaxed">{tool.note}</p>
+                            )}
                         </div>
                     </div>
                     <Badge
@@ -190,7 +195,15 @@ export default function ToolsPage() {
                                 <code className="font-mono text-[10px]">{tool.install_path}</code>
                             )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
+                            {!isSkill && tool.install_url && (
+                                <a href={tool.install_url} target="_blank" rel="noreferrer" className="inline-flex">
+                                    <Button size="sm" variant="secondary" className="h-8 rounded-lg text-xs bg-foreground/10">
+                                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                                        安装链接
+                                    </Button>
+                                </a>
+                            )}
                             {isSkill ? (
                                 <Button
                                     size="sm"

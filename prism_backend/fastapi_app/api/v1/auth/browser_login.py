@@ -344,6 +344,37 @@ async def browser_login_status(login_id: str = Query(..., description="登录会
                             details["user_id"] = uid
                             cookie_manager.add_account(rec["platform"], details)
                             logger.info(f"[BrowserLogin] 已注册账号: platform={rec['platform']} user_id={uid} file={cookie_file}")
+
+                            # TikHub 反查补全真实账号名/昵称/头像（TikTok/YouTube 登录后自动填入）
+                            try:
+                                from myUtils.tikhub_client import get_tikhub_client
+
+                                tikhub = get_tikhub_client()
+                                if tikhub:
+                                    # user_id 可能是兜底占位符，回退用账号 name/note 反查
+                                    lookup = str(uid)
+                                    if lookup.startswith(f"{rec['platform']}_"):
+                                        lookup = (details.get("name") or details.get("note") or "").strip() or lookup
+                                    async with tikhub as client:
+                                        profile = await client.fetch_account_profile(rec["platform"], lookup)
+                                    if profile:
+                                        update_kwargs = {}
+                                        if profile.get("user_id") and str(profile["user_id"]) != str(uid):
+                                            update_kwargs["user_id"] = str(profile["user_id"])
+                                        if profile.get("name"):
+                                            update_kwargs["name"] = str(profile["name"])
+                                        if profile.get("original_name"):
+                                            update_kwargs["original_name"] = str(profile["original_name"])
+                                        if profile.get("avatar"):
+                                            update_kwargs["avatar"] = str(profile["avatar"])
+                                        if update_kwargs:
+                                            cookie_manager.update_account(rec["account_id"], **update_kwargs)
+                                            logger.info(
+                                                f"[BrowserLogin] TikHub 反查补全账号: platform={rec['platform']} "
+                                                f"name={profile.get('name')} avatar={'yes' if profile.get('avatar') else 'no'}"
+                                            )
+                            except Exception as enrich_exc:
+                                logger.warning(f"[BrowserLogin] TikHub enrich failed: {enrich_exc}")
                         except Exception as exc:
                             logger.warning(f"[BrowserLogin] add_account 失败: {exc}")
                     await asyncio.to_thread(cookie_manager.deep_sync_accounts)

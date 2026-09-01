@@ -15,6 +15,8 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { AIServiceProviderCard } from "@/components/settings/ai-service-provider-card"
 import { HermesProviderCard } from "@/components/settings/hermes-provider-card"
+import { CcSwitchPanel } from "@/components/settings/cc-switch-panel"
+import { TikHubApiKeyCard } from "@/components/settings/tikhub-api-key-card"
 import {
   Activity,
   AlertTriangle,
@@ -25,6 +27,7 @@ import {
   FileText,
   Globe,
   HardDrive,
+  KeyRound,
   Loader2,
   Power,
   RefreshCw,
@@ -48,6 +51,7 @@ type SectionKey =
   | "browsers"
   | "processes"
   | "storage"
+  | "apikeys"
   | "safety"
 
 type ConfirmState = {
@@ -82,6 +86,7 @@ const sectionMeta: Array<{
   { key: "browsers", label: "浏览器管理", description: "运行时与浏览器资源", icon: Globe },
   { key: "processes", label: "进程管理", description: "重启、停止与退出", icon: RotateCcw },
   { key: "storage", label: "数据清理", description: "缓存、账号与素材", icon: Database },
+  { key: "apikeys", label: "API 密钥", description: "数据接口与第三方 Key", icon: KeyRound },
   { key: "safety", label: "应急工具", description: "自检、导出与强制停止", icon: AlertTriangle },
 ]
 
@@ -452,6 +457,7 @@ export default function SettingsPage() {
 
   const renderModels = () => (
     <div className="space-y-6">
+      <CcSwitchPanel />
       <HermesProviderCard />
       <AIServiceProviderCard
         serviceType="cover_generation"
@@ -1212,6 +1218,15 @@ export default function SettingsPage() {
     </div>
   )
 
+  const renderApiKeys = () => (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-dashed border-border/70 bg-card/20 px-4 py-3 text-xs leading-5 text-muted-foreground">
+        配置第三方数据采集接口的认证信息，用于快手、小红书、视频号等平台的作品数据回收。密钥存入模型配置表（service_type=tikhub）。
+      </div>
+      <TikHubApiKeyCard />
+    </div>
+  )
+
   const renderActiveSection = () => {
     switch (activeSection) {
       case "models":
@@ -1224,6 +1239,8 @@ export default function SettingsPage() {
         return renderStorage()
       case "safety":
         return renderSafety()
+      case "apikeys":
+        return renderApiKeys()
       case "overview":
       default:
         return renderOverview()
