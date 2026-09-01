@@ -110,7 +110,7 @@ export function ChatList({
             </div>
 
             {isUser && (
-              <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white bg-black text-foreground">
+              <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-black text-foreground">
                 <User className="h-4 w-4" />
               </div>
             )}

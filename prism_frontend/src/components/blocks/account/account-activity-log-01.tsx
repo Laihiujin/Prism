@@ -155,15 +155,15 @@ export default function AccountActivityLog01() {
   const getEventBadge = (type: string) => {
     switch (type) {
       case "login":
-        return <Badge variant="outline" className="border-white text-white">Login</Badge>;
+        return <Badge variant="outline" className="border-border text-white">Login</Badge>;
       case "security":
-        return <Badge variant="outline" className="border-white text-white">Security</Badge>;
+        return <Badge variant="outline" className="border-border text-white">Security</Badge>;
       case "settings":
-        return <Badge variant="outline" className="border-white text-white">Settings</Badge>;
+        return <Badge variant="outline" className="border-border text-white">Settings</Badge>;
       case "api":
-        return <Badge variant="outline" className="border-white text-white">API</Badge>;
+        return <Badge variant="outline" className="border-border text-white">API</Badge>;
       case "content":
-        return <Badge variant="outline" className="border-white text-white">Content</Badge>;
+        return <Badge variant="outline" className="border-border text-white">Content</Badge>;
       default:
         return <Badge variant="outline">Other</Badge>;
     }
