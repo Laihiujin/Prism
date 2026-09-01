@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import json
+import concurrent.futures
 import socket
 import time
 from pathlib import Path
@@ -37,6 +38,7 @@ CONTROLLER_URL = "http://127.0.0.1:9093"
 CONTROLLER_SECRET = "persona_gateway"
 
 BASE_PORT = 8001  # 每个节点的端口起点
+MAX_NODES = 100   # 最多支持的节点数（避免端口冲突）
 
 # 过滤掉不可靠节点
 _BAD_MARKERS = ("- UDP", "[ IPv6", "[ 0.5x")
@@ -380,6 +382,8 @@ def generate_and_reload(url: str) -> Dict[str, Any]:
     nodes = parse_subscription(text)
     if not nodes:
         raise ValueError("未能从订阅中解析出任何节点")
+    if len(nodes) > MAX_NODES:
+        raise ValueError(f"节点数量过多：{len(nodes)}，最多支持 {MAX_NODES} 个节点")
 
     port_map = _assign_ports(nodes)
     NODES_PATH.write_text(_proxy_block(nodes) + "\n", encoding="utf-8")
@@ -397,20 +401,31 @@ def generate_and_reload(url: str) -> Dict[str, Any]:
     }
 
 
+def _check_one_port(port: int) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1.5) as sock:
+            return True
+    except Exception:
+        return False
+
+
 def current_status() -> Dict[str, Any]:
     state = _load_state()
     port_map = (state or {}).get("port_map", {})
-    ports = {}
-    for name, port in port_map.items():
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
-        try:
-            s.connect(("127.0.0.1", port))
-            ports[name] = True
-        except Exception:
-            ports[name] = False
-        finally:
-            s.close()
+
+    # 并行检测端口，避免节点多时任一失败导致整体缓慢
+    ports: Dict[str, bool] = {}
+    items = list(port_map.items())
+    if items:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            futures = {executor.submit(_check_one_port, port): name for name, port in items}
+            for future in concurrent.futures.as_completed(futures):
+                name = futures[future]
+                try:
+                    ports[name] = future.result()
+                except Exception:
+                    ports[name] = False
+
     controller_ok = False
     try:
         r = requests.get(f"{CONTROLLER_URL}/version", headers={"Authorization": f"Bearer {CONTROLLER_SECRET}"}, timeout=3)
