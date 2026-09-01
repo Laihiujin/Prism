@@ -43,6 +43,7 @@ export default function PersonaProxyPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [url, setUrl] = useState("")
+  const [search, setSearch] = useState("")
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["persona-proxy-status"],
@@ -58,6 +59,12 @@ export default function PersonaProxyPage() {
       .sort((a, b) => a[1] - b[1])
       .map(([name, port]) => ({ name, port, up: status.ports?.[name] ?? false }))
   }, [status])
+
+  const filteredEntries = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return nodeEntries
+    return nodeEntries.filter((n) => n.name.toLowerCase().includes(q))
+  }, [nodeEntries, search])
 
   const listeningCount = nodeEntries.filter((n) => n.up).length
   const totalNodes = nodeEntries.length
@@ -186,40 +193,55 @@ export default function PersonaProxyPage() {
         </Card>
       </div>
 
-      <PageSection title="节点端口" description="每个节点分配独立的 HTTP+SOCKS mixed 代理端口，Persona 可直接使用。">
+      <PageSection title="节点端口" description="每个节点分配独立的 HTTP+SOCKS mixed 代理端口。节点多时可用搜索框过滤。">
         {error ? (
           <div className="text-sm text-red-500">加载失败：{String((error as any)?.message || error)}</div>
         ) : nodeEntries.length === 0 ? (
           <div className="text-sm text-foreground/50">暂无节点，请先导入订阅</div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[60px]">端口</TableHead>
-                <TableHead>节点名称</TableHead>
-                <TableHead className="w-[90px]">状态</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {nodeEntries.map((n) => (
-                <TableRow key={n.name}>
-                  <TableCell>
-                    <Badge variant="outline" className="font-mono text-xs">{n.port}</Badge>
-                  </TableCell>
-                  <TableCell className="max-w-[400px] truncate" title={n.name}>
-                    {n.name}
-                  </TableCell>
-                  <TableCell>
-                    {n.up ? (
-                      <Badge className="bg-emerald-500/15 text-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" /> 监听</Badge>
-                    ) : (
-                      <Badge className="bg-red-500/15 text-red-600"><XCircle className="mr-1 h-3 w-3" /> 未监听</Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Input
+                placeholder="搜索节点名称..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <span className="text-sm text-foreground/50">
+                共 {filteredEntries.length} / {totalNodes} 个节点
+              </span>
+            </div>
+            <div className="max-h-[600px] overflow-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px]">端口</TableHead>
+                    <TableHead>节点名称</TableHead>
+                    <TableHead className="w-[90px]">状态</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEntries.map((n) => (
+                    <TableRow key={n.name}>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-xs">{n.port}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[400px] truncate" title={n.name}>
+                        {n.name}
+                      </TableCell>
+                      <TableCell>
+                        {n.up ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" /> 监听</Badge>
+                        ) : (
+                          <Badge className="bg-red-500/15 text-red-600"><XCircle className="mr-1 h-3 w-3" /> 未监听</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         )}
       </PageSection>
     </div>
