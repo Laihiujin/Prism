@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from "react"
 import { usePathname } from "next/navigation"
 import { HermesEmbeddedHost } from "@/components/hermes/hermes-embedded-host"
+import { PersonaEmbeddedHost } from "@/components/persona/persona-embedded-host"
 import { SidebarNew } from "@/components/layout/sidebar-new"
 import { NavbarNew } from "@/components/layout/navbar-new"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -12,6 +13,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const pathname = usePathname()
   const hermesActive = pathname === "/ai-agent"
+  const personaActive = pathname === "/persona"
+  const embeddedActive = hermesActive || personaActive
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground selection:bg-black selection:text-foreground md:min-h-screen md:w-full">
@@ -44,11 +47,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Suspense>
         <main className="relative flex-1 overflow-y-auto p-0">
           <Suspense fallback={null}>
-            <div className={hermesActive ? "hidden" : "mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700"}>
+            <div className={embeddedActive ? "hidden" : "mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-700"}>
               {children}
             </div>
           </Suspense>
           <HermesEmbeddedHost active={hermesActive} />
+          <PersonaEmbeddedHost active={personaActive} />
         </main>
       </div>
     </div>

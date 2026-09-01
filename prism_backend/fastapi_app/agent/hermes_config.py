@@ -410,6 +410,54 @@ def _build_prism_mcp_server_entry() -> Dict[str, Any]:
     }
 
 
+# Skill that is preloaded into every Hermes session (see DEFAULT_PRELOAD_SKILL
+# in hermes_agent.py). The repo source lives under docs/; the two runtime roots
+# are the Hermes skills dir (tools/hermes-home/skills) and the /tools skill
+# management root (runtime-data/app/hermes-home/skills). Keep them in sync so
+# editing the doc is enough to update what Hermes actually loads.
+_PROJECT_SKILL_SOURCE_REL = Path("docs") / "hermes-skills" / "prism-project-layout" / "SKILL.md"
+_PROJECT_SKILL_TARGET_RELS = (
+    Path("tools") / "hermes-home" / "skills" / "software-development" / "prism-project-layout" / "SKILL.md",
+    Path("runtime-data") / "app" / "hermes-home" / "skills" / "software-development" / "prism-project-layout" / "SKILL.md",
+)
+
+
+def _sync_project_skill_file(source: Path, target: Path) -> bool:
+    try:
+        source_text = source.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    try:
+        if target.is_file() and target.read_text(encoding="utf-8") == source_text:
+            return False
+    except OSError:
+        pass
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(source_text, encoding="utf-8")
+        return True
+    except OSError:
+        return False
+
+
+def sync_prism_project_skill() -> Path:
+    """Copy the project-layout skill from docs/ into the Hermes runtime roots.
+
+    Runs on every Hermes session setup (see _ensure_runtime_home) so editing
+    docs/hermes-skills/prism-project-layout/SKILL.md is enough to update what
+    Hermes preloads; no manual copy needed. No-op when the source is missing
+    (e.g. a packaged build without the docs tree).
+    """
+    source = get_repo_root() / _PROJECT_SKILL_SOURCE_REL
+    if not source.is_file():
+        source = get_source_repo_root() / _PROJECT_SKILL_SOURCE_REL
+    if not source.is_file():
+        return source
+    for rel in _PROJECT_SKILL_TARGET_RELS:
+        _sync_project_skill_file(source, get_repo_root() / rel)
+    return source
+
+
 def _apply_runtime_ui_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
     display = data.get("display")
     if not isinstance(display, dict):

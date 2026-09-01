@@ -8,7 +8,15 @@ module.exports = {
       script: '/Users/laihiujin/Documents/siuyechu/Prism/.venv/bin/python',
       args: 'fastapi_app/run.py',
       autorestart: true,
-      watch: false,
+      // 热重载：监视代码目录，改动后自动重启（uvicorn 本身只 reload fastapi_app，
+      // 这里覆盖 myUtils/utils/scripts 等全部后端代码）
+      watch: true,
+      watch_delay: 1000,
+      ignore_watch: [
+        'db', 'logs', 'data', 'storage', 'uploads', 'videoFile',
+        'cookies', 'cookiesFile', 'browser_profiles', 'fingerprints',
+        '**/__pycache__', '**/*.pyc', '.git',
+      ],
       max_memory_restart: '2G',
       env: {
         PYTHONUNBUFFERED: '1',
@@ -61,7 +69,7 @@ module.exports = {
       watch: false,
       env: {
         PORT: '3000',
-        NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:9200',
+        NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:7000',
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',

@@ -141,6 +141,22 @@ const ROUTE_CATALOG: SearchRoute[] = [
   },
   {
     category: "数据",
+    label: "TikTok视频数据",
+    description: "打开 TikTok 视频分析页",
+    href: "/analytics/videos/tiktok",
+    icon: Video,
+    keywords: ["tiktok", "video", "analytics", "tiktok", "视频数据"],
+  },
+  {
+    category: "数据",
+    label: "YouTube视频数据",
+    description: "打开 YouTube 视频分析页",
+    href: "/analytics/videos/youtube",
+    icon: Video,
+    keywords: ["youtube", "video", "analytics", "youtube", "视频数据"],
+  },
+  {
+    category: "数据",
     label: "数据趋势",
     description: "查看趋势和变化曲线",
     href: "/analytics/trends",

@@ -68,7 +68,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     startAll: () => invoke('supervisor:start-all'),
     stopAll: () => invoke('supervisor:stop-all'),
     restartAll: () => invoke('supervisor:restart-all'),
-    launchMainApp: () => invoke('supervisor:launch-main-app')
+    launchMainApp: () => invoke('supervisor:launch-main-app'),
+    getDiagnostics: () => invoke('supervisor:get-diagnostics')
+  },
+
+  // 自托管更新（electron-updater generic feed）
+  updates: {
+    getStatus: () => invoke('updates:status'),
+    check: () => invoke('updates:check'),
+    download: () => invoke('updates:download'),
+    install: () => invoke('updates:install'),
+    skip: (version) => invoke('updates:skip', version),
+    listVersions: () => invoke('updates:list-versions'),
+    installVersion: (version) => invoke('updates:install-version', version),
+    onStatusChanged: (callback) => {
+      const listener = (_event, status) => callback(status);
+      ipcRenderer.on('updates:status-changed', listener);
+      return () => ipcRenderer.removeListener('updates:status-changed', listener);
+    }
   },
 
   // 窗口管理

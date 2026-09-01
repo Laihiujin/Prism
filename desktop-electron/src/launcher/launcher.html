@@ -282,6 +282,32 @@
             </div>
         </div>
 
+        <!-- 软件更新（自托管更新通道） -->
+        <div class="section">
+            <div class="section-title">
+                <span>🔄 软件更新</span>
+                <span class="update-status" id="update-status" style="font-size:12px;color:rgba(255,255,255,0.5)"></span>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-secondary" id="btn-update-check" onclick="checkUpdate()">
+                    <span>🔍</span>
+                    检查更新
+                </button>
+                <button class="btn btn-primary" id="btn-update-download" onclick="downloadUpdate()" disabled>
+                    <span>⬇</span>
+                    下载更新
+                </button>
+                <button class="btn btn-primary" id="btn-update-install" onclick="installUpdate()" disabled>
+                    <span>🚀</span>
+                    安装并重启
+                </button>
+                <button class="btn btn-secondary" id="btn-update-skip" onclick="skipUpdate()" disabled>
+                    <span>⏭</span>
+                    跳过此版本
+                </button>
+            </div>
+        </div>
+
         <!-- 控制按钮 -->
         <div class="section">
             <div class="section-title">进程控制</div>
@@ -301,6 +327,10 @@
                 <button class="btn btn-primary" id="btn-launch" onclick="launchApp()" disabled>
                     <span>🚀</span>
                     启动主应用
+                </button>
+                <button class="btn btn-secondary" id="btn-diagnostics" onclick="showDiagnostics()">
+                    <span>🔬</span>
+                    诊断信息
                 </button>
             </div>
         </div>
@@ -363,7 +393,128 @@
             const pidElement = document.getElementById(`pid-${name}`);
 
             indicator.className = 'status-indicator ' + (status.running ? 'running' : 'stopped');
-            pidElement.textContent = status.running ? `PID: ${status.pid}` : '未运行';
+            if (status.running) {
+                pidElement.textContent = `PID: ${status.pid}`;
+            } else if (status.failure) {
+                // 失败根因上报：显示失败阶段 + 次数
+                const failure = status.failure;
+                pidElement.textContent = `失败(${failure.stage || 'unknown'} ×${failure.count || 1})`;
+                pidElement.style.color = '#F44336';
+            } else {
+                pidElement.textContent = '未运行';
+                pidElement.style.color = 'rgba(255, 255, 255, 0.5)';
+            }
+        }
+
+        // ── 软件更新（自托管更新通道）──
+        let updateStatusText = '';
+
+        function renderUpdateStatus(status) {
+            const label = document.getElementById('update-status');
+            const btnDownload = document.getElementById('btn-update-download');
+            const btnInstall = document.getElementById('btn-update-install');
+            const btnSkip = document.getElementById('btn-update-skip');
+
+            if (!status) return;
+            const phase = status.phase;
+            const version = status.availableVersion || '';
+            updateStatusText = `当前版本 v${status.currentVersion}`;
+
+            switch (phase) {
+                case 'checking':
+                    updateStatusText += ' · 正在检查更新…';
+                    break;
+                case 'available':
+                    updateStatusText += ` · 发现新版本 v${version}`;
+                    btnDownload.disabled = false;
+                    btnSkip.disabled = false;
+                    break;
+                case 'downloading':
+                    updateStatusText += ` · 下载中 ${status.percent ?? 0}%`;
+                    break;
+                case 'downloaded':
+                    updateStatusText += ` · v${version} 已下载，可安装`;
+                    btnInstall.disabled = false;
+                    break;
+                case 'up-to-date':
+                    updateStatusText += ' · 已是最新版本';
+                    break;
+                case 'error':
+                    updateStatusText += ` · 检查失败: ${status.message || '未知错误'}`;
+                    break;
+                case 'unsupported':
+                    updateStatusText += ` · ${status.message || '不支持自动更新'}`;
+                    break;
+                default:
+                    break;
+            }
+            label.textContent = updateStatusText;
+        }
+
+        async function checkUpdate() {
+            addLog('检查更新…', 'info');
+            try {
+                const status = await window.electronAPI.updates.check();
+                renderUpdateStatus(status);
+            } catch (error) {
+                addLog(`检查更新失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function downloadUpdate() {
+            addLog('开始下载更新…', 'info');
+            try {
+                const status = await window.electronAPI.updates.download();
+                renderUpdateStatus(status);
+            } catch (error) {
+                addLog(`下载更新失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function installUpdate() {
+            addLog('安装更新并重启…', 'warning');
+            try {
+                await window.electronAPI.updates.install();
+            } catch (error) {
+                addLog(`安装更新失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function skipUpdate() {
+            const status = await window.electronAPI.updates.getStatus();
+            const version = status?.availableVersion;
+            if (!version) return;
+            await window.electronAPI.updates.skip(version);
+            addLog(`已跳过版本 v${version}`, 'warning');
+            renderUpdateStatus(await window.electronAPI.updates.getStatus());
+        }
+
+        // 诊断信息（失败根因）
+        async function showDiagnostics() {
+            try {
+                const result = await window.electronAPI.supervisor.getDiagnostics();
+                const diagnostics = result?.diagnostics || null;
+                if (!diagnostics) {
+                    addLog('无诊断信息（supervisor 可能未运行）', 'warning');
+                    return;
+                }
+                const supervisor = diagnostics.supervisor || {};
+                addLog(`Supervisor pid=${supervisor.pid} apiPort=${supervisor.apiPort} packaged=${supervisor.isPackaged}`, 'info');
+                for (const [name, service] of Object.entries(diagnostics.services || {})) {
+                    if (service.failure) {
+                        const detail = String(service.failure.detail || '').slice(0, 200);
+                        addLog(`❌ ${name}: ${service.failure.stage} ×${service.failure.count} (重启${service.failure.restart_count || 0}次) ${detail}`, 'error');
+                        if (service.log_tail) {
+                            const tail = String(service.log_tail).split('\n').slice(-5).join(' ');
+                            addLog(`  日志尾部: ${tail.slice(0, 300)}`, 'warning');
+                        }
+                    } else {
+                        addLog(`${name}: ${service.running ? '运行中' : '未运行'}${service.port ? ` :${service.port}` : ''}`, 'info');
+                    }
+                }
+            } catch (error) {
+                addLog(`获取诊断失败: ${error.message}`, 'error');
+            }
         }
 
         // 启动所有服务
@@ -453,6 +604,9 @@
             addLog('启动管理器已就绪', 'info');
             updateStatus();
             startStatusCheck();
+            // 更新状态订阅
+            window.electronAPI.updates.getStatus().then(renderUpdateStatus).catch(() => {});
+            window.electronAPI.updates.onStatusChanged(renderUpdateStatus);
         });
     </script>
 </body>
