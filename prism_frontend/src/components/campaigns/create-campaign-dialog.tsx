@@ -331,7 +331,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                             const accs = accountsByPlatform[platform] || []
 
                                             return (
-                                                <Card key={platform} className="overflow-hidden border-white">
+                                                <Card key={platform} className="overflow-hidden border-border">
                                                     <div className="px-3 py-2 bg-card border-b border-white/50 flex justify-between items-center">
                                                         <div className="flex items-center gap-2">
                                                             <div className={cn("w-2 h-2 rounded-full", pInfo?.color)} />
@@ -417,7 +417,7 @@ export function CreateCampaignDialog({ open, onOpenChange, onSuccess }: CreateCa
                                                 key={m.id}
                                                 className={cn(
                                                     "relative aspect-video rounded-lg border border-white/50 overflow-hidden cursor-pointer group",
-                                                    selectedMaterials.includes(m.id) ? "ring-2 ring-primary border-primary" : "hover:border-white"
+                                                    selectedMaterials.includes(m.id) ? "ring-2 ring-primary border-primary" : "hover:border-border"
                                                 )}
                                                 onClick={() => toggleMaterial(m.id)}
                                             >
