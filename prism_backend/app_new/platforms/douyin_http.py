@@ -32,6 +32,16 @@ CREATE_URL = f"{ORIGIN}/passport/web/get_qrcode/"
 POLL_URL = f"{ORIGIN}/passport/web/check_qrconnect/"
 PASSPORT_APP_KEY = "6ddd3ec693f3a124adb29b91b244ece5"
 
+# 账号登录态判定所需的 cookie（与 fastapi_app/api/v1/auth/services.py 保持一致）。
+# 抖音 passport QR 确认只代表“扫码通过”，账号会话（sessionid 等）需要在
+# 跟随 redirect / 访问创作者中心与主站后由服务端种下；缺了这些 cookie，
+# 账号系统会判定为未登录（“获取不到账号 cookie”）。
+AUTH_COOKIE_NAMES = (
+    "sessionid", "sessionid_ss", "sid_guard", "sid_tt", "passport_auth_id", "odin_tt",
+)
+# 必须至少存在其中一个，才认为账号会话已激活
+CORE_AUTH_COOKIES = ("sessionid", "sessionid_ss", "sid_guard")
+
 
 def _xor5_hex(value: str) -> str:
     return bytes(byte ^ 5 for byte in value.encode()).hex()
@@ -331,7 +341,7 @@ class DouyinHttpAdapter(PlatformAdapter):
             code = code if code is not None else data.get("error_code")
             logger.warning(
                 f"[DouyinHTTP] transient poll rejection: session={session_id[:8]} "
-                f"code={code!r}"
+                f"code={code!r} envelope={json.dumps(envelope, ensure_ascii=False)[:600]}"
             )
             return LoginResult(LoginStatus.WAITING, f"Poll retry required (code={code})")
         data = envelope.get("data") or {}
@@ -348,15 +358,21 @@ class DouyinHttpAdapter(PlatformAdapter):
             return LoginResult(LoginStatus.WAITING, f"Waiting ({raw_status or 'unknown'})")
 
         redirect = data.get("redirect_url") or data.get("redirect_uri") or data.get("next")
-        if isinstance(redirect, str) and redirect.startswith("http"):
-            await client.get(redirect)
-        cookies = {cookie.name: cookie.value for cookie in client.cookies.jar}
+        activated, message, cookies = await self._activate_session_and_verify(client, session, redirect)
+        if not activated:
+            # 明确失败而不是假成功：账号会话未激活时直接报错，
+            # 避免下游拿到残缺 cookie 后判定“未登录”。
+            await self.cleanup_session(session_id, close_client=False)
+            await client.aclose()
+            logger.warning(f"[DouyinHTTP] {message} session={session_id[:8]}")
+            return LoginResult(LoginStatus.FAILED, message)
+
         full_state = {"cookies": self._storage_cookies(client), "origins": []}
         user_info = UserInfo(
             user_id=str(data.get("user_id") or data.get("uid") or "") or None,
             name=data.get("screen_name") or data.get("nickname"),
             avatar=data.get("avatar_url") or data.get("avatar"),
-            extra={"http_qr_login": True},
+            extra={"http_qr_login": True, "activated_cookies": sorted(c for c in AUTH_COOKIE_NAMES if cookies.get(c))},
         )
         await self.cleanup_session(session_id, close_client=False)
         await client.aclose()
@@ -367,6 +383,47 @@ class DouyinHttpAdapter(PlatformAdapter):
             user_info=user_info,
             full_state=full_state,
         )
+
+    async def _activate_session_and_verify(
+        self,
+        client: httpx.AsyncClient,
+        session: dict[str, Any],
+        redirect: Any,
+    ) -> tuple[bool, str, dict[str, str]]:
+        """
+        账号会话激活 + 登录 cookie 校验。
+
+        passport 的 check_qrconnect 返回 confirmed 只是“扫码确认通过”，
+        账号 cookie（sessionid/sessionid_ss/sid_guard 等）需要服务端在后续
+        请求中种下。这里依次请求：passport 给的 redirect → 创作者中心首页
+        → 主站首页，让服务端种下账号 cookie，然后校验齐全性。
+
+        Returns:
+            (ok, message, cookies)：ok=False 时 message 说明缺失的核心 cookie。
+        """
+        urls: list[str] = []
+        if isinstance(redirect, str) and redirect.startswith("http"):
+            urls.append(redirect)
+        urls.append(f"{ORIGIN}/")
+        urls.append("https://www.douyin.com/")
+
+        for url in urls:
+            try:
+                response = await client.get(url, timeout=20)
+                response.raise_for_status()
+            except Exception as exc:
+                logger.warning(f"[DouyinHTTP] session activation request failed: {url} -> {exc}")
+
+        cookies = {cookie.name: cookie.value for cookie in client.cookies.jar}
+        auth = {name: value for name, value in cookies.items() if name in AUTH_COOKIE_NAMES and value}
+        core = [name for name in CORE_AUTH_COOKIES if auth.get(name)]
+        missing = [name for name in AUTH_COOKIE_NAMES if name not in auth]
+        if not core:
+            return False, (
+                f"账号会话未激活：缺少核心登录 cookie（{', '.join(missing) or 'unknown'}）。"
+                "请重新扫码登录。"
+            ), cookies
+        return True, "", cookies
 
     @staticmethod
     def _storage_cookies(client: httpx.AsyncClient) -> list[dict[str, Any]]:
