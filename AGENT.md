@@ -6,6 +6,12 @@
 - Never commit or push real account data, cookies, browser profiles, fingerprints, proxy/IP pool data, logs, local databases, or other runtime artifacts.
 - Do not include raw account identifiers, cookie values, proxy IPs, or local-only paths in commit messages, PR descriptions, screenshots, or copied debug output.
 
+## Interface Border Rule
+
+- The interface must not use a border that is pure white at 100% opacity (e.g. `border-white`).
+- Border / divider colors must use the themed 17% border token via `border-border` (resolves to `hsl(0 0% 17%)`), never a fully opaque white.
+- The same applies to hover states (`hover:border-border`) and dashed / translucent variants — keep them at the 17% theme token instead of pure white.
+
 ## Local-Only Data
 
 The following are local runtime data and must stay out of GitHub:

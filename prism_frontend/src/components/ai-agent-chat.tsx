@@ -380,7 +380,7 @@ export function AIAgentChat() {
 
     return (
       <div key={index} className="flex justify-start">
-        <div className={clsx(base, "bg-white text-black border border-white max-w-[80%]")}>
+        <div className={clsx(base, "bg-white text-black border border-border max-w-[80%]")}>
           <div className="flex items-center gap-2 text-xs font-semibold text-white mb-1">
             <Ban className="h-4 w-4" />
             工具响应
