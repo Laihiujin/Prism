@@ -66,8 +66,16 @@ logs/*
 *.sqlite
 *.sqlite3
 *.db
+# SQLite WAL/SHM 附属运行时文件（*.db 匹配不到）
+*.db-wal
+*.db-shm
 dump.rdb
 *.rdb
+
+# 本地数据库目录（含账号/Cookie 数据，绝不入库）
+/db/
+/prism_backend/db/*.db-wal
+/prism_backend/db/*.db-shm
 
 # Media
 *.mp4
