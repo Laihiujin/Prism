@@ -9,8 +9,7 @@
     "start": "next start",
     "export": "next export,",
     "lint": "node ./scripts/lint-changed.mjs",
-    "lint:all": "eslint",
-    "prepare": "husky"
+    "lint:all": "eslint"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
