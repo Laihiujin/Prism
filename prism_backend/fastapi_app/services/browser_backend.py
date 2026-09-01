@@ -79,6 +79,11 @@ class PatchrightBackend(BrowserBackend):
 
     账号级隔离：每账号独立 user_data_dir（persistent context）。
     storage_state 仅作迁移/备份，不作为生产主机制。
+
+    浏览器来源（只读用户本机浏览器，不随安装包分发任何浏览器）：
+      - start() 未显式指定 executable_path 时，自动检测本机已安装的
+        Chrome / Edge / Firefox / Brave / Opera / Vivaldi / Arc / Chromium；
+      - 检测不到时抛清晰错误，绝不自动下载浏览器。
     """
 
     name = "patchright"
@@ -94,6 +99,30 @@ class PatchrightBackend(BrowserBackend):
         # 账号级独立目录：data/browser_profiles/<account_id>/
         safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in account_id)
         return str(Path(self.profile_root) / safe)
+
+    def _resolve_local_browser(self) -> Optional[Any]:
+        """
+        检测本机已安装的主流浏览器（进程内缓存，成功检测后不再重复扫描）。
+        返回 dict: {name, kind, path}；kind='chromium' 用 pw.chromium，'firefox' 用 pw.firefox。
+        找不到返回 None（不抛异常，由调用方给出清晰报错）。
+        """
+        if getattr(self, "_detected_browser", None) is not None:
+            return self._detected_browser
+
+        try:
+            from utils.chrome_detector import detect_browser
+
+            info = detect_browser()
+        except Exception as e:
+            logger.warning(f"[PatchrightBackend] 浏览器检测失败: {e}")
+            return None
+
+        if info is None:
+            return None
+        result = {"name": info.name, "kind": info.kind, "path": info.path}
+        self._detected_browser = result
+        logger.info(f"[PatchrightBackend] 使用本机浏览器: {info.name} -> {info.path}")
+        return result
 
     async def start(
         self,
@@ -119,12 +148,28 @@ class PatchrightBackend(BrowserBackend):
         if profile.get("timezone_id"):
             launch_kwargs["timezone_id"] = profile["timezone_id"]
 
+        # 引擎选择：调用方显式传入 executable_path 时按其类型，否则检测本机浏览器
+        engine = "chromium"
+        if "executable_path" not in launch_kwargs:
+            browser = self._resolve_local_browser()
+            if browser is None:
+                raise RuntimeError(
+                    "未检测到本机浏览器（Google Chrome / Microsoft Edge / Firefox / "
+                    "Brave / Opera / Vivaldi / Arc / Chromium）。\n"
+                    "请安装任一主流浏览器后重试，或设置 LOCAL_CHROME_PATH / "
+                    "LOCAL_FIREFOX_PATH 环境变量指向已安装的浏览器。"
+                )
+            launch_kwargs["executable_path"] = browser["path"]
+            engine = browser["kind"]
+
         pw = await async_playwright().start()
-        context = await pw.chromium.launch_persistent_context(**launch_kwargs)
+        browser_api = getattr(pw, engine)  # pw.chromium / pw.firefox
+        context = await browser_api.launch_persistent_context(**launch_kwargs)
         page = context.pages[0] if context.pages else await context.new_page()
 
         logger.info(
-            f"[PatchrightBackend] 启动 {account_id} user_data_dir={user_data_dir} "
+            f"[PatchrightBackend] 启动 {account_id} engine={engine} "
+            f"user_data_dir={user_data_dir} "
             f"proxy={'已注入' if proxy else '直连'} locale={profile.get('locale')}"
         )
         session = BrowserSession(
@@ -133,7 +178,7 @@ class PatchrightBackend(BrowserBackend):
             context=context,
             page=page,
             browser=None,
-            extra={"pw": pw, "user_data_dir": user_data_dir},
+            extra={"pw": pw, "user_data_dir": user_data_dir, "engine": engine},
         )
         return session
 

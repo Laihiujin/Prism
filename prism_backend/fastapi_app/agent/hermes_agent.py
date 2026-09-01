@@ -30,10 +30,20 @@ from .hermes_config import (
     get_workspace_root,
     read_agent_config,
     sync_agent_config_to_runtime,
+    sync_prism_project_skill,
 )
 
 
 _ANSI_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+# Project skill preloaded into every Hermes session by default. The skill lives
+# at tools/hermes-home/skills/software-development/prism-project-layout/SKILL.md
+# (docs/hermes-skills/prism-project-layout/SKILL.md is the repo source) and
+# describes the Prism layout, all backend API routes, the prism CLI, and the
+# Hermes MCP tool catalog. Passing --skills makes it active guidance for the
+# whole session instead of only being discoverable on demand.
+DEFAULT_PRELOAD_SKILL = "prism-project-layout"
+
 _dashboard_process: Optional[asyncio.subprocess.Process] = None
 _dashboard_log_task: Optional[asyncio.Task[None]] = None
 _dashboard_backend: Optional[str] = None
@@ -151,6 +161,9 @@ def _build_prompt(goal: str, context: Optional[Dict[str, Any]]) -> str:
 def _ensure_runtime_home(config: Optional[Dict[str, Any]] = None) -> Path:
     home_path = get_hermes_home_path()
     home_path.mkdir(parents=True, exist_ok=True)
+
+    # Keep the preloaded project-layout skill in sync with its docs/ source.
+    sync_prism_project_skill()
 
     config_yaml_path = home_path / "config.yaml"
     if config and config.get("llm"):
@@ -326,7 +339,12 @@ class HermesAgentWrapper:
         python_path = get_hermes_python_path()
         process = await asyncio.create_subprocess_exec(
             str(python_path),
-            *_build_hermes_cli_bootstrap_args("-z", prompt),
+            *_build_hermes_cli_bootstrap_args(
+                "-z",
+                prompt,
+                "--skills",
+                DEFAULT_PRELOAD_SKILL,
+            ),
             cwd=str(cwd),
             env=env,
             stdout=asyncio.subprocess.PIPE,
@@ -370,6 +388,8 @@ class HermesAgentWrapper:
                 "tool",
                 "--max-turns",
                 max_turns,
+                "--skills",
+                DEFAULT_PRELOAD_SKILL,
             ),
             cwd=str(cwd),
             env=env,

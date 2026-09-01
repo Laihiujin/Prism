@@ -180,6 +180,10 @@ tools/hermes-home/
 tools/hermes-webui/
 # 外部项目 clone（构建时拉取，不入库）
 tools/persona-studio/
+tools/deepseek-harness/
+
+# 项目内 Hermes 运行时配置（含 API key，不入库）
+prism_backend/config/hermes_agent.toml
 
 LaunchScript/python-3.11.9-embed-amd64.zip
 

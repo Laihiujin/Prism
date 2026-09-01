@@ -35,6 +35,7 @@ from .mediacrawler.router import router as mediacrawler_router
 from .crawler.router import router as crawler_router
 from .tikhub.router import router as tikhub_router
 from .persona_proxy.router import router as persona_proxy_router
+from .persona.router import router as persona_router
 
 # 导入平台路由
 from .platforms.douyin.router import router as douyin_router
@@ -44,6 +45,7 @@ from .platforms.tencent.router import router as tencent_router
 from .platforms.bilibili.router_biliup import router as bilibili_router  # 使用 biliup 版本
 from .platforms.tasks.router import router as platform_tasks_router
 from .tools.router import router as tools_router
+from .ccswitch.router import router as ccswitch_router  # CC Switch 桥接（读取本机 cc-switch 库并应用到项目内）
 
 # 创建API路由器
 api_router = APIRouter()
@@ -80,6 +82,7 @@ api_router.include_router(mediacrawler_router)  # /mediacrawler
 api_router.include_router(crawler_router, prefix="/crawler", tags=["混合爬虫"])  # /crawler
 api_router.include_router(tikhub_router)  # router 已自带 /tikhub 前缀
 api_router.include_router(persona_proxy_router)  # /persona-proxy 代理网关
+api_router.include_router(persona_router)  # /persona Dashboard 托管
 
 # 注册平台路由
 api_router.include_router(douyin_router)  # router 已自带 /platforms/douyin 前缀
@@ -89,6 +92,7 @@ api_router.include_router(tencent_router)  # router 已自带 /platforms/tencent
 api_router.include_router(bilibili_router)  # router 已自带 /platforms/bilibili 前缀
 api_router.include_router(platform_tasks_router)  # router 已自带 /platforms/tasks 前缀
 api_router.include_router(tools_router)  # 开发者工具 /tools 前缀
+api_router.include_router(ccswitch_router)  # /ccswitch 前缀
 
 
 @api_router.get("/ping")

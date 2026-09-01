@@ -9,6 +9,7 @@ from __future__ import annotations
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import logging
+import os
 import threading
 import time
 
@@ -41,7 +42,12 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
                 "hermes-dashboard",
                 "hermes-webui",
             ]:
-                status[name.replace("-", "_")] = self.supervisor.get_service_status(name)
+                service_status = self.supervisor.get_service_status(name)
+                failure = self.supervisor.failures.get(name)
+                if failure:
+                    service_status["failure"] = failure
+                    service_status["log_tail"] = self.supervisor._tail_log(name)
+                status[name.replace("-", "_")] = service_status
             self._send_json({"status": "success", "data": status})
             return
 
@@ -57,7 +63,25 @@ class SupervisorAPIHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/api/health":
-            self._send_json({"status": "ok", "message": "Supervisor is running"})
+            # 归属校验：Electron 对比 launchToken 与状态文件中的令牌，确认连的是本 supervisor
+            self._send_json(
+                {
+                    "status": "ok",
+                    "message": "Supervisor is running",
+                    "pid": os.getpid(),
+                    "launchToken": getattr(self.supervisor, "launch_token", None),
+                    "apiPort": getattr(self.supervisor, "api_port", None),
+                }
+            )
+            return
+
+        if self.path == "/api/diagnostics":
+            self._send_json(
+                {
+                    "status": "success",
+                    "data": self.supervisor.get_diagnostics(),
+                }
+            )
             return
 
         self._send_json({"status": "error", "message": "Not Found"}, 404)
@@ -176,6 +200,8 @@ class SupervisorHTTPServer:
         try:
             SupervisorAPIHandler.supervisor = self.supervisor
             self.server = ThreadingHTTPServer((self.host, self.port), SupervisorAPIHandler)
+            # 动态端口（port=0 或绑定后被内核调整）时回读实际监听端口
+            self.port = self.server.server_address[1]
             self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
             self.thread.start()
             logger.info("Supervisor API started: http://%s:%s", self.host, self.port)

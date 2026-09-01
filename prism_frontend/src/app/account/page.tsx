@@ -4,7 +4,7 @@ import { Suspense, startTransition, useCallback, useEffect, useMemo, useRef, use
 import NextImage from "next/image"
 import { useSearchParams } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw, MonitorSmartphone } from "lucide-react"
+import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw, MonitorSmartphone, Search } from "lucide-react"
 
 import { AccountEnvironmentSheet } from "@/components/account-environment-sheet"
 
@@ -157,6 +157,9 @@ function AccountPageContent() {
   const isQrPlatform = formState.platform !== "tiktok" && formState.platform !== "youtube"
   const [bindingStatus, setBindingStatus] = useState<"idle" | "pending" | "code" | "browser" | "success" | "error">("idle")
   const [qrImage, setQrImage] = useState<string | null>(null)
+  const [youtubeChannelInput, setYoutubeChannelInput] = useState("")
+  const [youtubeResolved, setYoutubeResolved] = useState<{ channel_id: string; name?: string; original_name?: string; avatar?: string } | null>(null)
+  const [youtubeResolving, setYoutubeResolving] = useState(false)
   const { toast } = useToast()
   const keywordInputRef = useRef<HTMLInputElement | null>(null)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -272,6 +275,9 @@ function AccountPageContent() {
     setFormState({ id: undefined, name: "", platform: "kuaishou" })
     setBindingStatus("idle")
     setQrImage(null)
+    setYoutubeChannelInput("")
+    setYoutubeResolved(null)
+    setYoutubeResolving(false)
   }
 
   const openEditDialog = (account: Account) => {
@@ -408,6 +414,39 @@ function AccountPageContent() {
         title: "登录启动失败",
         description: error instanceof Error ? error.message : "请重试或联系管理员",
       })
+    }
+  }
+
+  const handleResolveYoutubeChannel = async () => {
+    const channel = youtubeChannelInput.trim()
+    if (!channel) return
+    setYoutubeResolving(true)
+    setYoutubeResolved(null)
+    try {
+      const res = await fetch(`${backendBaseUrl}/api/v1/accounts/resolve/youtube-channel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.success || !data?.data?.resolved) {
+        throw new Error(data?.detail || data?.data?.reason || `解析失败（HTTP ${res.status}）`)
+      }
+      const info = data.data
+      setYoutubeResolved(info)
+      if (info.name && !formState.name) {
+        setFormState((prev) => ({ ...prev, name: info.name }))
+      }
+      toast({ title: "频道解析成功", description: `${info.name || info.channel_id}（ID: ${info.channel_id}）` })
+    } catch (error) {
+      console.error("Resolve YouTube channel error:", error)
+      toast({
+        variant: "destructive",
+        title: "频道解析失败",
+        description: error instanceof Error ? error.message : "请检查频道名/链接后重试",
+      })
+    } finally {
+      setYoutubeResolving(false)
     }
   }
 
@@ -590,6 +629,39 @@ function AccountPageContent() {
     } catch (error) {
       console.error(error)
       toast({ variant: "destructive", title: "删除失败", description: "请稍后再试" })
+    }
+  }
+
+  const handleEnrichTikhub = async (account: Account) => {
+    try {
+      const response = await fetch(`${backendBaseUrl}/api/v1/accounts/${encodeURIComponent(account.id)}/enrich-tikhub`, {
+        method: "POST"
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.detail || data?.data?.reason || `反查失败（HTTP ${response.status}）`)
+      }
+      const info = data.data || {}
+      if (info.updated) {
+        toast({
+          title: "账号信息已补全",
+          description: `${info.name || info.original_name || account.name}（头像${info.avatar ? "已更新" : "未获取"}）`,
+        })
+      } else {
+        toast({
+          title: "反查完成",
+          description: info.reason || "未发现可更新的信息（TikHub 可能未返回账号资料）",
+        })
+      }
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] })
+      await refetch()
+    } catch (error) {
+      console.error("Enrich TikTok account error:", error)
+      toast({
+        variant: "destructive",
+        title: "反查补全失败",
+        description: error instanceof Error ? error.message : "请稍后再试",
+      })
     }
   }
 
@@ -806,6 +878,18 @@ function AccountPageContent() {
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
+          {(row.original.platform === "tiktok" || row.original.platform === "youtube") && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-xl px-3 text-xs border-border/70 bg-black hover:bg-accent/50"
+              onClick={() => handleEnrichTikhub(row.original)}
+              title="用 TikHub 反查补全账号名/头像"
+            >
+              <RefreshCcw className="h-3.5 w-3.5 mr-1" />
+              补全
+            </Button>
+          )}
           <Button size="sm" variant="secondary" className="h-8 rounded-xl px-3 text-xs" onClick={() => openEditDialog(row.original)}>
             编辑
           </Button>
@@ -902,6 +986,50 @@ function AccountPageContent() {
                       onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
                     />
                   </div>
+                  {!formState.id && formState.platform === "youtube" && (
+                    <div className="space-y-2 rounded-2xl border border-border/70 bg-card p-4">
+                      <Label>YouTube 频道（可选，自动解析）</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="频道名 / @handle / 频道链接"
+                          value={youtubeChannelInput}
+                          onChange={(event) => {
+                            setYoutubeChannelInput(event.target.value)
+                            setYoutubeResolved(null)
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="shrink-0 rounded-xl"
+                          disabled={youtubeResolving || !youtubeChannelInput.trim()}
+                          onClick={handleResolveYoutubeChannel}
+                        >
+                          {youtubeResolving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                          解析
+                        </Button>
+                      </div>
+                      {youtubeResolved && (
+                        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background p-2 text-xs text-foreground/80">
+                          <img
+                            src={youtubeResolved.avatar || `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(youtubeResolved.name || "yt")}`}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-7 w-7 rounded-full border border-border/60 object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{youtubeResolved.name || youtubeResolved.channel_id}</p>
+                            <p className="truncate font-mono text-[10px] text-muted-foreground">{youtubeResolved.channel_id}</p>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">已解析</Badge>
+                        </div>
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        解析后会自动预填频道名和 ID；登录完成后真实信息将自动回填
+                      </p>
+                    </div>
+                  )}
                   {!formState.id && (
                     <div className="rounded-2xl border border-border/70 bg-card p-4">
                       <p className="text-sm font-semibold">{isQrPlatform ? "二维码登录" : "浏览器登录"}</p>

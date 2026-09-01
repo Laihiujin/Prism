@@ -43,7 +43,7 @@ SERVICE_NAMES = (
 )
 
 DEFAULT_PORTS: Dict[str, int] = {
-    "backend": 9200,
+    "backend": 7000,
     "worker": 7001,
     "frontend": 3000,
     "redis": 6379,

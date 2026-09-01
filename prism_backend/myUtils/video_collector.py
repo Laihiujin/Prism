@@ -448,6 +448,58 @@ class VideoDataCollector:
             "source": "tikhub",
         }
 
+    async def collect_tiktok_data_tikhub(
+        self,
+        account: Dict[str, Any],
+        client: TikHubClient,
+        max_pages: int,
+    ) -> Dict[str, Any]:
+        user_id = (account.get("user_id") or "").strip()
+        if not user_id:
+            return {"success": False, "error": "TikHub requires TikTok user_id in account.user_id"}
+
+        videos, pages = await client.collect_tiktok_posts(user_id=user_id, max_pages=max_pages)
+        saved_count = 0
+        for video in videos:
+            if video.get("video_id"):
+                self.save_video_data(account["account_id"], "tiktok", video)
+                saved_count += 1
+
+        # TikHub 请求成功即视为采集成功（count=0 表示账号暂无作品，不算失败）
+        return {
+            "success": True,
+            "count": saved_count,
+            "videos": videos,
+            "pages": pages,
+            "source": "tikhub",
+        }
+
+    async def collect_youtube_data_tikhub(
+        self,
+        account: Dict[str, Any],
+        client: TikHubClient,
+        max_pages: int,
+    ) -> Dict[str, Any]:
+        channel = (account.get("user_id") or account.get("name") or "").strip()
+        if not channel:
+            return {"success": False, "error": "TikHub requires YouTube channel (handle/name/URL) in account.user_id"}
+
+        videos, pages = await client.collect_youtube_videos(channel=channel, max_pages=max_pages)
+        saved_count = 0
+        for video in videos:
+            if video.get("video_id"):
+                self.save_video_data(account["account_id"], "youtube", video)
+                saved_count += 1
+
+        # TikHub 请求成功即视为采集成功（count=0 表示频道暂无视频，不算失败）
+        return {
+            "success": True,
+            "count": saved_count,
+            "videos": videos,
+            "pages": pages,
+            "source": "tikhub",
+        }
+
     async def _collect_with_scroll(
         self,
         page: Page,
@@ -1208,7 +1260,11 @@ class VideoDataCollector:
                 result: Optional[Dict[str, Any]] = None
                 if platform == "kuaishou":
                     if tikhub:
-                        result = await self.collect_kuaishou_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        try:
+                            result = await self.collect_kuaishou_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        except Exception as exc:  # noqa: BLE001
+                            logger.warning(f"[Kuaishou] TikHub error, falling back: {exc}")
+                            result = {"success": False, "error": f"tikhub: {exc}"}
                         if result.get("success"):
                             pass
                         else:
@@ -1218,7 +1274,11 @@ class VideoDataCollector:
                         result = await self.collect_kuaishou_data(cookie_file, account_id)
                 elif platform == "xiaohongshu":
                     if tikhub:
-                        result = await self.collect_xiaohongshu_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        try:
+                            result = await self.collect_xiaohongshu_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        except Exception as exc:  # noqa: BLE001
+                            logger.warning(f"[XHS] TikHub error, falling back: {exc}")
+                            result = {"success": False, "error": f"tikhub: {exc}"}
                         if result.get("success"):
                             pass
                         else:
@@ -1230,7 +1290,11 @@ class VideoDataCollector:
                     result = await self.collect_douyin_data(cookie_file, account_id)
                 elif platform == "channels":
                     if tikhub:
-                        result = await self.collect_channels_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        try:
+                            result = await self.collect_channels_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        except Exception as exc:  # noqa: BLE001
+                            logger.warning(f"[Channels] TikHub error, falling back: {exc}")
+                            result = {"success": False, "error": f"tikhub: {exc}"}
                         if result.get("success"):
                             pass
                         else:
@@ -1238,6 +1302,26 @@ class VideoDataCollector:
                             result = await self.collect_channels_data(cookie_file, account_id)
                     else:
                         result = await self.collect_channels_data(cookie_file, account_id)
+                elif platform == "tiktok":
+                    if tikhub:
+                        try:
+                            result = await self.collect_tiktok_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        except Exception as exc:  # noqa: BLE001
+                            logger.warning(f"[TikTok] TikHub error: {exc}")
+                            result = {"success": False, "error": f"tikhub: {exc}"}
+                        # TikTok 无浏览器回退（需海外网络），TikHub 失败即失败
+                    else:
+                        result = {"success": False, "error": "TikHub API key not configured (TikTok requires TikHub)"}
+                elif platform == "youtube":
+                    if tikhub:
+                        try:
+                            result = await self.collect_youtube_data_tikhub(account, tikhub, TIKHUB_MAX_PAGES)
+                        except Exception as exc:  # noqa: BLE001
+                            logger.warning(f"[YouTube] TikHub error: {exc}")
+                            result = {"success": False, "error": f"tikhub: {exc}"}
+                        # YouTube 无浏览器回退（需海外网络），TikHub 失败即失败
+                    else:
+                        result = {"success": False, "error": "TikHub API key not configured (YouTube requires TikHub)"}
 
                 if result:
                     results["total"] += 1

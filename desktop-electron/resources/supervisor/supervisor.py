@@ -20,6 +20,7 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 import urllib.request
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -187,7 +188,27 @@ class ProcessManager:
         proc = self.processes.get(name)
         return proc is not None and proc.poll() is None
 
-    def stop_process(self, name: str, timeout: int = 10) -> None:
+    def get_exit_code(self, name: str) -> Optional[int]:
+        proc = self.processes.get(name)
+        if proc is None:
+            return None
+        code = proc.poll()
+        return code
+
+    def tail_process_log(self, name: str, lines: int = 25) -> str:
+        """读取最近一次进程日志文件的末尾若干行（失败根因上报用）。"""
+        logs_dir = Path("logs")
+        log_file = logs_dir / f"{name}.log"
+        if not log_file.exists():
+            return ""
+        try:
+            text = log_file.read_text(encoding="utf-8", errors="replace")
+            tail = text.splitlines()[-lines:]
+            return "\n".join(tail)
+        except Exception:
+            return ""
+
+    def stop_process(self, name: str, timeout: int = 4) -> None:
         proc = self.processes.get(name)
         if not proc:
             return
@@ -195,12 +216,26 @@ class ProcessManager:
         logger.info("Stopping %s...", name)
         try:
             if sys.platform == "win32":
+                # 参考 dsh-desktop：SIGTERM 式优雅退出，超时后强杀。
+                # Windows 上没有 POSIX 信号，先尝试 taskkill 不带 /F（请求优雅退出），
+                # 超时后再 /F 强杀整个进程树。
                 subprocess.run(
-                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    ["taskkill", "/T", "/PID", str(proc.pid)],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     check=False,
+                    timeout=max(timeout + 5, 8),
                 )
+                try:
+                    proc.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    subprocess.run(
+                        ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+                    proc.wait(timeout=5)
             else:
                 proc.terminate()
                 try:
@@ -208,6 +243,12 @@ class ProcessManager:
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     proc.wait(timeout=5)
+        except Exception as exc:
+            logger.warning("Stop %s raised: %s; forcing kill", name, exc)
+            try:
+                proc.kill()
+            except Exception:
+                pass
         finally:
             thread = self.log_threads.pop(name, None)
             if thread:
@@ -245,6 +286,27 @@ class Supervisor:
         self.preferred_service_ports = dict(self.service_ports)
         self.external_services: Dict[str, bool] = {}
         self.kill_port_conflict = os.environ.get("SUPERVISOR_KILL_PORT_CONFLICT", "1") != "0"
+
+        # ── 启动令牌与状态文件（供 Electron 主进程发现 API 端口/服务端口/归属校验）──
+        self.launch_token = uuid.uuid4().hex
+        self.state_path = Path(
+            os.environ.get("PRISM_SUPERVISOR_STATE_PATH")
+            or str(Path.home() / ".prism-supervisor" / "state.json")
+        )
+        self.started_at = time.time()
+
+        # ── 失败诊断与重启策略 ──
+        # failures: {name: {count, stage, detail, exit_code, last_error_at, restart_count}}
+        self.failures: Dict[str, Dict[str, object]] = {}
+        self.restart_policy = {
+            "backend": {"max_restarts": 3, "backoff": 3.0, "stable_after": 60.0},
+            "automation-worker": {"max_restarts": 3, "backoff": 3.0, "stable_after": 60.0},
+            "hermes-dashboard": {"max_restarts": 2, "backoff": 5.0, "stable_after": 90.0},
+            "hermes-webui": {"max_restarts": 2, "backoff": 5.0, "stable_after": 90.0},
+            "celery-worker": {"max_restarts": 2, "backoff": 5.0, "stable_after": 90.0},
+            "hermes-gateway": {"max_restarts": 1, "backoff": 8.0, "stable_after": 120.0},
+        }
+        self._login_env_cache: Optional[Dict[str, str]] = None
 
         env_resources_path = os.environ.get("PRISM_RESOURCES_PATH") or os.environ.get("PRISM_APP_ROOT")
         if env_resources_path:
@@ -313,6 +375,205 @@ class Supervisor:
             if parsed > 0:
                 return parsed
         return default
+
+    # ────────────────────────────────────────────────────────────────
+    # 完整 shell 环境注入：子进程环境 = 登录环境 + 当前环境 + PRISM 覆盖
+    # ────────────────────────────────────────────────────────────────
+    def _collect_login_env(self) -> Dict[str, str]:
+        """收集用户登录会话的完整环境（PATH 等），参考 dsh-desktop 的 $SHELL -l -i -c env。
+
+        Windows：从注册表读取用户级 + 机器级环境变量；
+        macOS/Linux：通过登录 shell（-l -i）导出完整环境。
+        结果缓存；失败时回退为 os.environ。
+        """
+        if self._login_env_cache is not None:
+            return self._login_env_cache
+
+        collected: Dict[str, str] = {}
+        if sys.platform == "win32":
+            collected = self._collect_windows_registry_env()
+        else:
+            collected = self._collect_login_shell_env()
+
+        if collected:
+            # 当前进程 env 覆盖登录环境（Electron 显式设置的变量优先）
+            merged = {**collected, **os.environ}
+        else:
+            merged = os.environ.copy()
+        self._login_env_cache = merged
+        logger.info("Login environment collected: %d variables", len(merged))
+        return merged
+
+    def _collect_windows_registry_env(self) -> Dict[str, str]:
+        """从 Windows 注册表（HKCU/HKLM Environment）读取用户/机器环境变量。"""
+        ps_script = (
+            "$ErrorActionPreference = 'SilentlyContinue'; "
+            "$out = @{}; "
+            "foreach ($scope in @('User','Machine')) { "
+            "  $vars = [Environment]::GetEnvironmentVariables($scope); "
+            "  foreach ($key in $vars.Keys) { "
+            "    if (-not $out.ContainsKey($key)) { $out[$key] = [string]$vars[$key] } "
+            "  } "
+            "}; "
+            "if ($out.Count -gt 0) { $out | ConvertTo-Json -Compress }"
+        )
+        try:
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-Command", ps_script],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            )
+            if result.returncode != 0:
+                logger.warning("Registry env collection failed: %s", result.stderr[:200])
+                return {}
+            raw = str(result.stdout or "").strip()
+            if not raw:
+                return {}
+            parsed = json.loads(raw)
+            if not isinstance(parsed, dict):
+                return {}
+            return {str(k): str(v) for k, v in parsed.items() if v is not None}
+        except Exception as exc:
+            logger.warning("Failed to collect registry env: %s", exc)
+            return {}
+
+    def _collect_login_shell_env(self) -> Dict[str, str]:
+        """macOS/Linux：$SHELL -l -i -c env 收集登录 shell 环境。"""
+        shell = os.environ.get("SHELL") or "/bin/sh"
+        command = f"{shell} -l -i -c env"
+        try:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=20,
+            )
+            if result.returncode != 0:
+                logger.warning("Login shell env collection failed: %s", result.stderr[:200])
+                return {}
+            env: Dict[str, str] = {}
+            for line in str(result.stdout or "").splitlines():
+                if "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                if key and key not in env:
+                    env[key] = value
+            return env
+        except Exception as exc:
+            logger.warning("Failed to collect login shell env: %s", exc)
+            return {}
+
+    # ────────────────────────────────────────────────────────────────
+    # 失败诊断 / 启动令牌 / 状态文件
+    # ────────────────────────────────────────────────────────────────
+    def _record_failure(
+        self,
+        name: str,
+        stage: str,
+        detail: str,
+        exit_code: Optional[int] = None,
+    ) -> None:
+        entry = self.failures.setdefault(
+            name, {"count": 0, "restart_count": 0, "last_error_at": None}
+        )
+        entry["count"] = int(entry.get("count") or 0) + 1
+        entry["stage"] = stage
+        entry["detail"] = detail[:500]
+        entry["last_error_at"] = time.time()
+        if exit_code is not None:
+            entry["exit_code"] = exit_code
+        logger.error("[%s] failure recorded: %s — %s", name, stage, detail[:200])
+
+    def _tail_log(self, name: str, lines: int = 25) -> str:
+        return self.manager.tail_process_log(name, lines)
+
+    def _is_pid_listening(self, pid: Optional[int], port: int, host: str = "127.0.0.1") -> bool:
+        """校验监听端口的进程确实是本 supervisor 拉起的子进程（防止连到陈旧实例）。"""
+        if not isinstance(pid, int) or pid <= 0:
+            return False
+        try:
+            import psutil
+        except Exception:
+            return True  # psutil 不可用时退化为仅 HTTP 探测
+        try:
+            for conn in psutil.net_connections(kind="inet"):
+                if (
+                    conn.laddr
+                    and conn.laddr.ip == host
+                    and conn.laddr.port == port
+                    and conn.pid == pid
+                ):
+                    return True
+        except Exception:
+            return True
+        return False
+
+    def _write_state_file(self, api_port: Optional[int] = None) -> None:
+        """把 supervisor 的发现信息写入状态文件，Electron 主进程据此连接。"""
+        try:
+            self.state_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "pid": os.getpid(),
+                "startedAt": self.started_at,
+                "launchToken": self.launch_token,
+                "apiPort": api_port,
+                "servicePorts": {
+                    name: port for name, port in self.service_ports.items()
+                },
+            }
+            tmp_path = self.state_path.with_suffix(".json.tmp")
+            tmp_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            tmp_path.replace(self.state_path)
+        except Exception as exc:
+            logger.warning("Failed to write supervisor state file: %s", exc)
+
+    def get_diagnostics(self) -> Dict[str, object]:
+        """失败根因上报：服务状态 + 失败记录 + 环境摘要 + 日志路径。"""
+        services: Dict[str, object] = {}
+        for name in (
+            "backend",
+            "automation-worker",
+            "celery-worker",
+            "hermes-gateway",
+            "hermes-dashboard",
+            "hermes-webui",
+        ):
+            status = self.get_service_status(name)
+            failure = self.failures.get(name)
+            if failure:
+                status["failure"] = failure
+                status["log_tail"] = self._tail_log(name)
+            services[name.replace("-", "_")] = status
+
+        return {
+            "supervisor": {
+                "pid": os.getpid(),
+                "apiPort": getattr(self, "api_port", None),
+                "launchToken": self.launch_token,
+                "startedAt": self.started_at,
+                "isPackaged": self.is_packaged,
+            },
+            "services": services,
+            "environment": {
+                "resourcesPath": str(self.resources_path),
+                "backendDir": str(self.backend_dir),
+                "python": str(self.python_exe) if self.python_exe else None,
+                "prismenvSitePackages": str(self.prismenv_site_packages) if self.prismenv_site_packages else None,
+                "servicePorts": {k: v for k, v in self.service_ports.items()},
+            },
+            "logPaths": {
+                "supervisor": str(Path("logs") / "supervisor.log"),
+                "backend": str(Path("logs") / "backend.log"),
+            },
+        }
 
     def _get_gateway_state_path(self) -> Path:
         return self.hermes_home_dir / "gateway_state.json"
@@ -703,7 +964,8 @@ class Supervisor:
         return direct
 
     def build_env(self) -> Dict[str, str]:
-        env = os.environ.copy()
+        # 完整环境：登录会话环境 + 当前进程环境（PRISM_* 显式覆盖）
+        env = self._collect_login_env()
         runtime_settings = self._load_runtime_settings()
         browser_headless = runtime_settings.get("browserHeadless")
         automation_runtime = runtime_settings.get("automationRuntime")
@@ -749,6 +1011,8 @@ class Supervisor:
         env["PRISM_SUPERVISOR_MANAGES_HERMES_UI"] = "1"
         env["PRISM_HERMES_DASHBOARD_PORT"] = str(self.service_ports["hermes-dashboard"])
         env["PRISM_HERMES_WEBUI_PORT"] = str(self.service_ports["hermes-webui"])
+        # 启动令牌：子进程携带，供归属校验与未来 readiness 校验使用
+        env["PRISM_LAUNCH_TOKEN"] = self.launch_token
         if self.python_exe:
             env["PRISM_HERMES_PYTHON"] = str(self.python_exe)
 
@@ -918,26 +1182,42 @@ class Supervisor:
         if not self.manager.is_running(name):
             return False
 
+        proc = self.manager.processes.get(name)
+        child_pid = proc.pid if proc is not None else None
+
         if name == "hermes-dashboard":
             port = self.service_ports["hermes-dashboard"]
-            return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/")
+            return (
+                self.is_port_in_use(port)
+                and self._is_pid_listening(child_pid, port)
+                and self._http_ok(f"http://127.0.0.1:{port}/")
+            )
 
         if name == "hermes-webui":
             port = self.service_ports["hermes-webui"]
             if not self.is_port_in_use(port):
                 return False
             return (
-                self._http_ok(f"http://127.0.0.1:{port}/?prism_shell_health=1")
+                self._is_pid_listening(child_pid, port)
+                and self._http_ok(f"http://127.0.0.1:{port}/?prism_shell_health=1")
                 and self._http_ok(f"http://127.0.0.1:{port}/static/boot.js?prism_shell_health=1")
             )
 
         if name == "backend":
             port = self.service_ports["backend"]
-            return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/health")
+            return (
+                self.is_port_in_use(port)
+                and self._is_pid_listening(child_pid, port)
+                and self._http_ok(f"http://127.0.0.1:{port}/health")
+            )
 
         if name == "automation-worker":
             port = self.service_ports["automation-worker"]
-            return self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/health")
+            return (
+                self.is_port_in_use(port)
+                and self._is_pid_listening(child_pid, port)
+                and self._http_ok(f"http://127.0.0.1:{port}/health")
+            )
 
         return True
 
@@ -959,14 +1239,24 @@ class Supervisor:
             launch_cmd, cwd = self.get_service_launch(name)
             started = self.manager.start_process(name, launch_cmd, cwd, self.get_service_env(name, env))
             if not started:
+                self._record_failure(name, "start", "进程启动失败（start_process 返回 False）")
                 return False
-            if name in {"backend", "automation-worker", "hermes-dashboard", "hermes-webui"} and not self.wait_for_service_ready(name):
-                logger.warning("%s failed readiness after startup", name)
-                self.manager.stop_process(name)
-                return False
+            if name in {"backend", "automation-worker", "hermes-dashboard", "hermes-webui"}:
+                ready = self.wait_for_service_ready(name)
+                if not ready:
+                    probe_port = self.service_ports.get(name)
+                    log_tail = self._tail_log(name)
+                    self._record_failure(
+                        name,
+                        "readiness",
+                        f"启动后未通过就绪探测（端口 {probe_port}）；日志尾部: {log_tail[-300:] or '无'}",
+                    )
+                    self.manager.stop_process(name)
+                    return False
             return True
         except Exception as exc:
             logger.warning("Skipping %s startup: %s", name, exc)
+            self._record_failure(name, "exception", str(exc))
             return False
 
     def is_port_in_use(self, port: int, host: str = "127.0.0.1") -> bool:
@@ -1200,16 +1490,70 @@ class Supervisor:
 
     def monitor_loop(self) -> None:
         logger.info("Starting supervisor monitor loop...")
+        env = self.build_env()
+        restart_counts: Dict[str, int] = {}
+        last_alive_at: Dict[str, float] = {}
+        restart_in_flight: set[str] = set()
+
+        def _restart(name: str, proc: subprocess.Popen) -> None:
+            policy = self.restart_policy.get(name) or {}
+            max_restarts = int(policy.get("max_restarts", 0))
+            backoff = float(policy.get("backoff", 5.0))
+            count = restart_counts.get(name, 0)
+            try:
+                if count >= max_restarts:
+                    self._record_failure(
+                        name, "crash-limit", f"已达最大重启次数 {max_restarts}，停止自动重启"
+                    )
+                    return
+                restart_counts[name] = count + 1
+                self._record_failure(
+                    name, "crash", f"进程退出，准备第 {count + 1} 次重启",
+                    exit_code=proc.returncode,
+                )
+                time.sleep(backoff)
+                if self.manager.should_stop:
+                    return
+                logger.info("Restarting %s (attempt %d/%d)...", name, count + 1, max_restarts)
+                self.start_named_service(name, env)
+                self._write_state_file(getattr(self, "api_port", None))
+            finally:
+                restart_in_flight.discard(name)
+
         try:
             while not self.manager.should_stop:
-                time.sleep(5)
+                time.sleep(3)
+                now = time.time()
                 for name, proc in list(self.manager.processes.items()):
-                    if proc.poll() is not None:
-                        logger.warning("%s exited with code %s", name, proc.returncode)
+                    if proc.poll() is None:
+                        last_alive_at[name] = now
+                        continue
+                    if name in restart_in_flight:
+                        continue
+                    policy = self.restart_policy.get(name) or {}
+                    stable_after = float(policy.get("stable_after", 60.0))
+                    if restart_counts.get(name, 0) > 0 and (now - last_alive_at.get(name, 0.0)) >= stable_after:
+                        restart_counts[name] = 0
+                        logger.info("%s 稳定运行，重启计数已重置", name)
+                    logger.warning("%s exited with code %s", name, proc.returncode)
+                    if name in self.restart_policy:
+                        restart_in_flight.add(name)
+                        threading.Thread(
+                            target=_restart, args=(name, proc), daemon=True, name=f"restart-{name}"
+                        ).start()
         except KeyboardInterrupt:
             logger.info("Supervisor interrupted.")
         finally:
             self.manager.stop_all()
+
+    def _resolve_api_port(self) -> int:
+        """解析 supervisor HTTP API 端口：env 显式 → 7002 → 递增找可用端口。"""
+        env_port = self._read_env_port(("PRISM_SUPERVISOR_PORT", "SUPERVISOR_API_PORT"), 0)
+        if env_port and self._can_bind_port(env_port):
+            return env_port
+        if self._can_bind_port(7002):
+            return 7002
+        return self._find_available_port(7002)
 
     def start_all(self) -> None:
         self.start_services()
@@ -1218,12 +1562,18 @@ class Supervisor:
         try:
             from api_server import SupervisorHTTPServer
 
-            self.api_server = SupervisorHTTPServer(self, port=7002)
-            self.api_server.start()
+            self.api_port = self._resolve_api_port()
+            self.api_server = SupervisorHTTPServer(self, port=self.api_port)
+            if not self.api_server.start():
+                raise RuntimeError(f"Supervisor API 启动失败（端口 {self.api_port}）")
+            self.api_port = self.api_server.port  # 动态分配时回读实际绑定端口
+            self._write_state_file(self.api_port)
             self.start_services()
+            self._write_state_file(self.api_port)  # 服务端口确定后再写一次
             self.monitor_loop()
         except Exception as exc:
             logger.error("Supervisor runtime error: %s", exc, exc_info=True)
+            self._record_failure("supervisor", "runtime", str(exc))
         finally:
             if hasattr(self, "api_server"):
                 self.api_server.stop()
