@@ -527,6 +527,12 @@ Prism 的能力建设受益于开源生态；下列项目的代码、架构或�
 ## 许可
 Prism 自身代码基于 Apache License 2.0 开源。项目中保留的 MIT 与 Apache-2.0 上游组件继续分别适用其原始许可证；Apache-2.0 与 MIT 组件可共同分发，但必须保留上游版权、许可证和 NOTICE 归属。
 
+## Community
+
+本项目在 [LINUX DO](https://linux.do/) 社区进行交流与开源推广。
+
+感谢 LINUX DO 社区为开发者提供交流与分享的平台。
+
 ## [BuymeaCoffee](https://buymeacoffee.com/laihiujin3)
 
 | | | |
