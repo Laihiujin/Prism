@@ -622,7 +622,7 @@ ${userInput}
                                     <path d="M12 4l0 12"></path>
                                 </svg>
                             </div>
-                            <div className="absolute opacity-0 border border-dashed border-white inset-0 z-30 bg-transparent flex items-center justify-center h-32 mt-4 w-full mx-auto rounded-md" />
+                            <div className="absolute opacity-0 border border-dashed border-border inset-0 z-30 bg-transparent flex items-center justify-center h-32 mt-4 w-full mx-auto rounded-md" />
                             <input
                                 id={`ai-cover-ref-upload-${material?.id ?? "temp"}`}
                                 type="file"
