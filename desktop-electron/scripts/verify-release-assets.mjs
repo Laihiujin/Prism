@@ -56,7 +56,12 @@ function parseLatestYaml(text) {
       currentList = m[1] === 'files' ? [] : null;
       if (m[1] === 'files') out.files = currentList;
     } else if (currentList && indent === 2 && line.trim().startsWith('-')) {
-      currentList.push({});
+      const entry = {};
+      currentList.push(entry);
+      // electron-builder 的 latest.yml 把首个字段(如 url)跟在 "- " 后面
+      const inline = line.trim().slice(1).trim();
+      const inlineMatch = inline.match(/^([A-Za-z0-9_.-]+):\s*(.*)$/);
+      if (inlineMatch) entry[inlineMatch[1]] = inlineMatch[2].trim().replace(/^"|"$/g, '');
     } else if (currentList && currentList.length > 0) {
       const m = line.match(/^\s*([A-Za-z0-9_.-]+):\s*(.*)$/);
       if (m) {
@@ -126,8 +131,11 @@ async function verifyRelease(releaseDir, version) {
       if (String(yml.sha512) !== (await sha512(installerPath))) {
         errors.push('latest.yml sha512 与安装包不一致');
       }
-      if (Number(yml.size) !== info.size) {
-        errors.push(`latest.yml size(${yml.size}) 与安装包(${info.size})不一致`);
+      // latest.yml 的 size 位于 files 列表中对应安装包的那个条目里，而不是顶层字段
+      const installerEntry = (yml.files || []).find((f) => f.url === installerName);
+      const declaredSize = installerEntry ? Number(installerEntry.size) : Number(yml.size);
+      if (Number.isFinite(declaredSize) && declaredSize !== info.size) {
+        errors.push(`latest.yml size(${declaredSize}) 与安装包(${info.size})不一致`);
       }
     }
   }
