@@ -231,9 +231,6 @@
         "releaseType": "release"
       }
     ],
-    "updater": {
-      "autoDownload": false
-    },
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
