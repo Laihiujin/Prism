@@ -237,7 +237,7 @@ class Supervisor:
     def __init__(self) -> None:
         self.manager = ProcessManager()
         self.service_ports = {
-            "backend": self._read_env_port(("BACKEND_PORT", "PRISM_BACKEND_PORT"), 7000),
+            "backend": self._read_env_port(("BACKEND_PORT", "PRISM_BACKEND_PORT"), 9200),
             "automation-worker": self._read_env_port(("AUTOMATION_WORKER_PORT", "PRISM_AUTOMATION_WORKER_PORT"), 7001),
             "hermes-dashboard": self._read_env_port(("PRISM_HERMES_DASHBOARD_PORT",), 9119),
             "hermes-webui": self._read_env_port(("PRISM_HERMES_WEBUI_PORT",), 9131),
