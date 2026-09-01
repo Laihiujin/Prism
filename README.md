@@ -48,7 +48,7 @@ Prism 是一个“矩阵投放 / 分发中台”，把「账号、素材、计�
 - 每账号固定身份绑定（账号 → 浏览器身份 → 固定代理 → 浏览器执行）；
 
 ### 回：数据回收（复盘输入）
-- 当前支持：抖音、B 站；
+- 当前支持：抖音、B 站、TikTok、YouTube；
 - 预留可扩展：快手、小红书、视频号等（按平台适配器扩展）；
 
 ### 编：AI 编排加速（投前准备）
@@ -152,6 +152,14 @@ Prism 自研的代理管理：
 
 Redis 每账号 Browser Runtime 分布式锁（`runtime_lock_service`）：保证同一账号的浏览器任务串行执行，避免并发互踩；心跳续期，异常自动释放。
 
+### 9) TikTok / YouTube 数据采集 + TikHub 账号信息自动回填
+
+- **TikTok 视频数据采集**：通过 TikHub Web API 自动把账号数字 uid 解析为完整 secUid，拉取作品列表（视频 ID / 标题 / 封面 / 播放 / 点赞 / 评论 / 分享 / 收藏 / 发布时间），无需浏览器；
+- **YouTube 视频数据采集**：通过 TikHub 频道 API 拉取频道视频列表（视频 ID / 标题 / 封面 / 播放 / 点赞 / 评论 / 时长）；
+- **账号信息自动回填**：TikTok / YouTube 浏览器登录成功后，自动用 TikHub 反查账号真实资料（账号名 uniqueId、昵称、头像）并写回账号库，账号列表页直接显示真实名字和头像，无需手动补录；已有账号也可在账号列表点击「补全」手动触发反查（`POST /accounts/{id}/enrich-tikhub`）；
+- **YouTube 频道注册解析**：添加 YouTube 账号时支持直接填频道名 / @handle / 频道链接，一键解析出 channel_id、频道名、头像并预填（`POST /accounts/resolve/youtube-channel`）；
+- 依赖 TikHub API Key（`ai_model_configs` 表配置），充值后即可使用全部接口。
+
 ---
 
 ## 功能截图
@@ -178,7 +186,7 @@ Redis 每账号 Browser Runtime 分布式锁（`runtime_lock_service`）：保�
 ![creator](https://github.com/user-attachments/assets/0e8bf623-478f-4ef3-978d-74946962635d)
 
 ### 5) 视频数据回收与复盘
-当前支持：抖音、B 站（可扩展快手、小红书、视频号）；
+当前支持：抖音、B 站、TikTok、YouTube（可扩展快手、小红书、视频号）；
 
 ![Data](https://github.com/user-attachments/assets/a5635b75-a4ae-4698-b0ae-aaa2aebd6da6)
 
@@ -199,7 +207,7 @@ Redis 每账号 Browser Runtime 分布式锁（`runtime_lock_service`）：保�
 
 - 抖音、快手、小红书、视频号、B 站：网页内扫码登录（`/auth/qrcode/*`）。
 - 抖音登录模式：正式（`browser`，当前模拟）与逆向 HTTP（`http`，测试）可在 CMS 后台切换，默认 `browser`。
-- TikTok、YouTube：本机浏览器登录，登录态以 storage state 保存，供任务队列复用。
+- TikTok、YouTube：本机浏览器登录，登录态以 storage state 保存，供任务队列复用；登录后自动经 TikHub 反查回填账号名/头像。
 - 从本机 Chrome 导入：复制本机 Chrome Cookies/Local State 到 Prism 专用 profile，可在无需关闭 Chrome 的情况下把已登录账号导入。
 
 ---
