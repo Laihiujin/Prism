@@ -117,9 +117,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path "dist/services" | Out-Null
 
-      - name: electron-builder 打包并发布 (GitHub Releases)
+      - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron
-        run: npx electron-builder --win --x64 --publish always
+        run: npx electron-builder --win --x64 --publish never
 
       - name: 校验 Windows 产物
         working-directory: desktop-electron
@@ -131,9 +131,22 @@ jobs:
 
       - name: 上传安装包校验摘要
         if: always()
+        shell: pwsh
         run: |
-          echo "### Windows 产物" >> "$GITHUB_STEP_SUMMARY"
-          ls -la desktop-electron/dist-build/ | grep -E "\.exe|\.yml|\.blockmap" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Windows 产物" >> $env:GITHUB_STEP_SUMMARY
+          Get-ChildItem -Path .\desktop-electron\dist-build -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '\.(exe|yml|blockmap)$' } |
+            ForEach-Object { "  - $($_.Name)  ($([math]::Round($_.Length / 1MB, 2)) MB)" >> $env:GITHUB_STEP_SUMMARY }
+
+      - name: 上传 Windows 发布资产
+        uses: actions/upload-artifact@v4
+        with:
+          name: prism-win-assets
+          path: |
+            desktop-electron/dist-build/*.exe
+            desktop-electron/dist-build/*.exe.blockmap
+            desktop-electron/dist-build/latest.yml
+          if-no-files-found: error
 
   build-macos:
     name: macOS (dmg + zip)
@@ -178,15 +191,80 @@ jobs:
         working-directory: desktop-electron
         run: npm ci
 
-      - name: electron-builder 打包并发布 (GitHub Releases)
+      - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron
-        run: npx electron-builder --mac --publish always
+        run: npx electron-builder --mac --publish never
 
       - name: 校验 macOS 产物
         working-directory: desktop-electron
         shell: bash
         run: |
-          ls -la dist-build/
-          test -n "$(ls dist-build/*.zip 2>/dev/null)" && echo "✅ zip OK"
-          test -f dist-build/latest-mac.yml && echo "✅ latest-mac.yml OK"
-          test -n "$(ls dist-build/*.dmg 2>/dev/null)" && echo "✅ dmg OK"
+          echo "### macOS 产物" >> "$GITHUB_STEP_SUMMARY"
+          # macOS 目标: dmg(通用) / zip / latest-mac.yml (+ blockmap)
+          for f in dist-build/*.dmg dist-build/*.zip dist-build/*.blockmap dist-build/latest-mac.yml; do
+            if [ -f "$f" ]; then
+              echo "  - $(basename "$f")  ($(du -h "$f" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: 上传 macOS 发布资产
+        uses: actions/upload-artifact@v4
+        with:
+          name: prism-mac-assets
+          path: |
+            desktop-electron/dist-build/*.dmg
+            desktop-electron/dist-build/*.zip
+            desktop-electron/dist-build/*.blockmap
+            desktop-electron/dist-build/latest-mac.yml
+          if-no-files-found: error
+
+  publish:
+    name: 发布 GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-macos]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: prism-win-assets
+          path: .release-assets/win
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: prism-mac-assets
+          path: .release-assets/mac
+
+      - name: 解析版本与 tag
+        id: resolve
+        shell: bash
+        run: |
+          VERSION="${PRISM_VERSION#v}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(node -p "require('./desktop-electron/package.json').version")
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "发布版本 => $VERSION, tag => v$VERSION"
+
+      - name: 发布版本 Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.resolve.outputs.tag }}
+          name: Prism ${{ steps.resolve.outputs.version }}
+          prerelease: false
+          draft: false
+          allowUpdates: true
+          removeArtifacts: true
+          replacesArtifacts: true
+          makeLatest: true
+          commit: ${{ github.sha }}
+          body: |
+            自动发布的桌面版构建。
+            版本: `${{ steps.resolve.outputs.version }}`
+            标签: `${{ steps.resolve.outputs.tag }}`
+            提交: `${{ github.sha }}`
+          artifacts: .release-assets/win/*, .release-assets/mac/*
