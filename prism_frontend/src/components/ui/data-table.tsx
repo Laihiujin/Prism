@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -44,12 +45,13 @@ export function DataTable<TData, TValue>({
     initialState: {
       pagination: { pageIndex: 0, pageSize },
     },
+    enableColumnResizing: true,
     columnResizeMode: "onChange",
   })
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-border/70 bg-card">
+      <div className="rounded-2xl border border-border/70 bg-card overflow-x-auto">
         <Table className="table-fixed w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -58,12 +60,15 @@ export function DataTable<TData, TValue>({
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    className="text-muted-foreground"
+                    className="relative select-none text-muted-foreground border-r border-border/40 last:border-r-0"
                     style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder ? null : (
                       <div
-                        className={header.column.getCanSort() ? "cursor-pointer select-none" : undefined}
+                        className={cn(
+                          "pr-3",
+                          header.column.getCanSort() ? "cursor-pointer select-none" : undefined
+                        )}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
@@ -72,6 +77,15 @@ export function DataTable<TData, TValue>({
                           desc: " ↓",
                         }[header.column.getIsSorted() as string] ?? null}
                       </div>
+                    )}
+                    {header.column.getCanResize() && !header.isPlaceholder && (
+                      <div
+                        onMouseDown={header.getResizeHandler()}
+                        onTouchStart={header.getResizeHandler()}
+                        onDoubleClick={() => header.column.resetSize()}
+                        className="absolute right-0 top-0 z-10 h-full w-4 cursor-col-resize touch-none bg-transparent transition-colors hover:bg-primary/10"
+                        style={{ touchAction: "none" }}
+                      />
                     )}
                   </TableHead>
                 ))}
@@ -83,7 +97,11 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} className="border-border/40">
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} style={{ width: cell.column.getSize() }}>
+                    <TableCell
+                      key={cell.id}
+                      style={{ width: cell.column.getSize() }}
+                      className="border-r border-border/40 last:border-r-0"
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}

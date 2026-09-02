@@ -21,6 +21,9 @@ from utils.login_qrcode import print_terminal_qrcode
 from utils.login_qrcode import remove_qrcode_file
 from utils.login_qrcode import save_data_url_image
 from utils.log import kuaishou_logger
+from utils.browser_dom import dismiss_version_prompt
+from utils.browser_dom import handle_upload_error as shared_handle_upload_error
+from utils.browser_dom import remove_overlays
 
 KUAISHOU_UPLOAD_URL = "https://cp.kuaishou.com/article/publish/video"
 KUAISHOU_MANAGE_URL = "https://cp.kuaishou.com/article/manage/video?status=2&from=publish"
@@ -30,6 +33,13 @@ KUAISHOU_MANAGE_URL_PATTERN = "**/article/manage/video?status=2&from=publish**"
 KUAISHOU_COOKIE_INVALID_SELECTOR = "div.names div.container div.name:text('机构服务')"
 KUAISHOU_PUBLISH_STRATEGY_IMMEDIATE = "immediate"
 KUAISHOU_PUBLISH_STRATEGY_SCHEDULED = "scheduled"
+
+# ── 快手发布页的引导层选择器（react-joyride 新手引导，实测会拦截点击） ──
+# 仅命中 joyride 明确引导浮层，遵循共享模块「只删明确引导层、不误伤业务 DOM」的约定。
+KUAISHOU_JOYRIDE_SELECTORS = (
+    'div[id^="react-joyride-step"]',
+    '[class*="react-joyride"]',
+)
 
 
 def _msg(emoji: str, text: str) -> str:
@@ -359,25 +369,32 @@ class KSBaseUploader(BaseVideoUploader):
         kuaishou_logger.info(f"✅ 定时发布时间已设置为 {publish_date_str}")
 
     async def close_guide_overlay(self, page: Page) -> bool:
-        joyride_tooltip = page.locator('div[id^="react-joyride-step"] div[role="alertdialog"]')
+        """关闭快手 react-joyride 新手引导浮层（best-effort）。
 
-        # 判断是否显示
-        if await joyride_tooltip.count() > 0 and await joyride_tooltip.first.is_visible():
-            print("检测到 Joyride 引导遮罩，正在关闭...")
+        优先点 Skip 关闭（不删 DOM）；若 Skip 不在/点不掉，再用共享 utils.browser_dom.remove_overlays
+        移除 joyride 明确引导层（遵循「只删明确引导层、不误伤业务 DOM」约定）。
+        """
+        joyride_any = page.locator('div[id^="react-joyride-step"], [class*="react-joyride"]').first
+        try:
+            if not await joyride_any.count() or not await joyride_any.is_visible():
+                return False
+        except Exception:
+            return False
 
-            # 点击关闭按钮（X），使用多个可靠特征
+        kuaishou_logger.info(_msg("🗑️", "检测到 Joyride 引导遮罩，小人准备关闭"))
+        try:
             close_button = page.locator('div[role="alertdialog"]').locator(
                 '[aria-label="Skip"], [data-action="skip"], button[title="Skip"]'
             )
+            if await close_button.count():
+                await close_button.click(force=True)
+                await page.wait_for_timeout(500)
+        except Exception:
+            pass
 
-            await close_button.click(force=True)
-
-            # 等待遮罩消失
-            await joyride_tooltip.wait_for(state="hidden", timeout=5000)
-
-            print("✅ 已关闭 Joyride 遮罩")
-        else:
-            print("未检测到 Joyride 遮罩，继续执行")
+        await remove_overlays(page, KUAISHOU_JOYRIDE_SELECTORS)
+        kuaishou_logger.info(_msg("✅", "已关闭 Joyride 引导遮罩"))
+        return True
 
 
 class KSVideo(KSBaseUploader):
@@ -416,8 +433,8 @@ class KSVideo(KSBaseUploader):
             self.thumbnail_path = str(self.validate_image_file(self.thumbnail_path))
 
     async def handle_upload_error(self, page: Page):
-        kuaishou_logger.warning(_msg("😵", "视频上传摔了一跤，小人马上重新上传"))
-        await page.locator('div.progress-div [class^="upload-btn-input"]').set_input_files(self.file_path)
+        # 委托共享模块：上传失败触发重新上传（best-effort，默认 selection 与快手一致）
+        await shared_handle_upload_error(page, self.file_path)
 
     async def set_thumbnail(self, page: Page):
         if not self.thumbnail_path:
@@ -484,12 +501,7 @@ class KSVideo(KSBaseUploader):
 
             await asyncio.sleep(2)
 
-            know_button = page.locator('button[type="button"] span:text("我知道了")').first
-            try:
-                if await know_button.count() and await know_button.is_visible():
-                    await know_button.click()
-            except Exception:
-                pass
+            await dismiss_version_prompt(page)
 
             await self.close_guide_overlay(page)
 
@@ -624,12 +636,7 @@ class KSNote(KSBaseUploader):
         file_chooser = await fc_info.value
         await file_chooser.set_files(self.image_paths)
 
-        know_button = page.locator('button[type="button"] span:text("我知道了")').first
-        try:
-            if await know_button.count() and await know_button.is_visible():
-                await know_button.click()
-        except Exception:
-            pass
+        await dismiss_version_prompt(page)
 
         await self.close_guide_overlay(page)
 

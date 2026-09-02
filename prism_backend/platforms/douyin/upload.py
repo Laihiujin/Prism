@@ -5,6 +5,7 @@ import os
 import asyncio
 import time
 import logging
+import random
 from pathlib import Path
 from datetime import datetime
 from utils.automation_provider import async_playwright, Page
@@ -161,6 +162,10 @@ class DouyinUpload(BasePlatform):
                     proxy: Optional[Dict[str, str]] = None,
                     enable_third_party: bool = True,
                     location: str = '',
+                    declaration: Optional[str] = None,
+                    random_cover: bool = False,
+                    miniprogram_link: str = "",
+                    miniprogram_title: str = "",
                     **kwargs) -> Dict[str, Any]:
         """
         上传并发布抖音视频
@@ -177,6 +182,10 @@ class DouyinUpload(BasePlatform):
             proxy: 代理配置，格式如 {"server": "http://proxy.example.com:8080"}
             enable_third_party: 是否启用第三方平台同步（头条/西瓜），默认True
             location: 地理位置（POI），如 "北京市朝阳区"
+            declaration: 自主声明文本（用于"对作品内容添加声明"）
+            random_cover: 是否随机选择推荐封面（页面要求"请设置封面后再发布"时生效）
+            miniprogram_link: 小程序链接（用于挂载小程序标签）
+            miniprogram_title: 小程序标题
 
         Returns:
             上传结果
@@ -286,6 +295,9 @@ class DouyinUpload(BasePlatform):
                 await self._wait_for_upload_page(page)
                 await dismiss_douyin_tour(page, max_attempts=2)
 
+                # 关闭「官方新版本/新增功能」提示遮挡层（best-effort）
+                await self.dismiss_version_prompt(page)
+
                 # 填充标题和标签
                 await self._fill_title_and_tags(page, title, tags, enable_third_party=enable_third_party)
                 
@@ -299,13 +311,28 @@ class DouyinUpload(BasePlatform):
                 if location:
                     await self._set_location(page, location)
 
+                # 处理浏览器位置权限弹窗（有位置→允许；未选位置→不允许）
+                await self._handle_browser_permission(page, allow_location=bool(location), has_location=bool(location))
+
                 # 设置商品链接（如果提供）
                 if product_link and product_title:
                     await self._set_product_link(page, product_link, product_title)
+
+                # 设置自主声明（如果提供）
+                if declaration:
+                    await self.set_self_declaration(page, declaration)
+
+                # 挂载小程序标签（如果提供）
+                if miniprogram_link:
+                    await self.set_miniprogram_link(page, miniprogram_link)
                 
                 # 设置定时发布（如果提供）
                 if publish_dt:
                     await self._set_schedule_time(page, publish_dt)
+
+                # 未指定自定义封面且启用随机封面时，选择推荐封面（页面要求"请设置封面后再发布"时生效）
+                if random_cover and not thumbnail_path:
+                    await self._pick_recommend_cover(page, random_cover=random_cover)
 
                 # 点击发布
                 await self._publish_video(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio)
@@ -950,6 +977,176 @@ class DouyinUpload(BasePlatform):
                 logger.info("[DouyinUpload] 第三方平台同步已启用")
         except Exception as e:
             logger.warning(f"[DouyinUpload] 第三方平台同步设置失败（忽略继续）: {e}")
+
+    async def dismiss_version_prompt(self, page: Page) -> bool:
+        """关闭抖音「官方新版本/新增功能」提示遮挡层（best-effort，实测校准选择器）。"""
+        try:
+            # 版本提示/引导遮罩常见文案与容器；命中任一即尝试关闭。
+            dismiss_texts = ["立即体验", "我知道了", "知道了", "开始体验", "查看新功能", "跳过", "暂不"]
+            overlay_selectors = [
+                ".shepherd-element", ".shepherd-modal-overlay-container",
+                "[class*='mention-wrapper']", "[class*='version']", "[class*='guide']",
+                "[class*='new-version']", "[class*='update-popup']", "[class*='popup']",
+            ]
+            # 先移除所有遮罩容器（不依赖可见性，避免拦截后续点击）
+            await page.evaluate(
+                "() => { const sels = arguments[0]; document.querySelectorAll(sels.join(',')).forEach(e => e.remove()); }",
+                list(overlay_selectors),
+            )
+            for text in dismiss_texts:
+                try:
+                    btn = page.get_by_text(text, exact=True).first
+                    if await btn.count() and await btn.is_visible():
+                        await btn.click(timeout=2000)
+                        await page.wait_for_timeout(300)
+                        logger.info(f"[DouyinUpload] 已关闭版本提示遮挡: {text}")
+                        return True
+                except Exception:
+                    continue
+            return False
+        except Exception as exc:
+            logger.debug(f"[DouyinUpload] 版本提示移除未命中/跳过：{exc}")
+            return False
+
+    async def _handle_browser_permission(self, page: Page, allow_location: bool, has_location: bool) -> None:
+        """处理浏览器位置权限弹窗：有位置时点「本次允许」；没选位置时关闭/选择「不允许」。
+
+        抖音发布页在需要定位时会弹浏览器 navigator.permissions 询问框（允许/仅本次/不允许）。
+        有头模式会看到原生弹窗；无头 mode 一般直接授权。此处兜底：命中弹窗时按 has_location 决策。
+        """
+        try:
+            # 已授权场景（context permissions 里给了 geolocation）不会有弹窗；这里只兜底检测。
+            candidates = [
+                page.get_by_text("允许", exact=True).first,
+                page.get_by_text("仅本次", exact=True).first,
+                page.get_by_text("仅此一次", exact=True).first,
+                page.get_by_text("不允许", exact=True).first,
+                page.get_by_text("关闭", exact=True).first,
+            ]
+            for c in candidates:
+                if await c.count() and await c.is_visible():
+                    logger.info(f"[DouyinUpload] 检测到浏览器权限弹窗，has_location={has_location}")
+                    if has_location or allow_location:
+                        # 点「仅本次」优先；没有则「允许」
+                        pick = None
+                        for t in ("仅本次", "仅此一次", "允许"):
+                            try:
+                                pick = page.get_by_text(t, exact=True).first
+                                if await pick.count() and await pick.is_visible():
+                                    await pick.click(timeout=2000)
+                                    logger.info(f"[DouyinUpload] 已点「{t}」")
+                                    return
+                            except Exception:
+                                continue
+                        # 都没有则接受浏览器 dialog（交给 dialog handler 兜底）
+                    else:
+                        # 未选位置 → 关闭或不允许
+                        for t in ("不允许", "关闭"):
+                            try:
+                                pick = page.get_by_text(t, exact=True).first
+                                if await pick.count() and await pick.is_visible():
+                                    await pick.click(timeout=2000)
+                                    logger.info(f"[DouyinUpload] 已点「{t}」以关闭位置询问")
+                                    return
+                            except Exception:
+                                continue
+                    break
+        except Exception as exc:
+            logger.debug(f"[DouyinUpload] 位置权限弹窗处理跳过：{exc}")
+
+    async def set_miniprogram_link(self, page: Page, miniprogram_link: str) -> bool:
+        """添加标签 → 挂小程序（输入小程序链接）。best-effort，选择器需实测校准。"""
+        if not miniprogram_link:
+            return False
+        try:
+            await page.wait_for_timeout(2000)
+            await page.wait_for_selector("text=添加标签", timeout=10000)
+            dropdown = page.get_by_text("添加标签").locator("..").locator("..").locator("..").locator(".semi-select").first
+            if not await dropdown.count():
+                logger.error("[DouyinUpload] 没找到标签下拉框")
+                return False
+            await dropdown.click()
+            await page.wait_for_selector('[role="listbox"]', timeout=5000)
+            # 小程序入口：兜底命中「小程序」选项
+            opt = page.locator('[role="option"]:has-text("小程序")').first
+            if not await opt.count():
+                opt = page.get_by_text("小程序", exact=True).first
+            if not await opt.count() or not await opt.is_visible():
+                logger.warning("[DouyinUpload] 未找到「小程序」标签入口")
+                return False
+            await opt.click()
+
+            # 输入小程序链接
+            link_input = page.locator('input[placeholder*="小程序链接"], input[placeholder*="粘贴小程序"], input[placeholder*="链接"]').first
+            await link_input.wait_for(state="visible", timeout=5000)
+            await link_input.fill(miniprogram_link)
+            logger.debug(f"[DouyinUpload] 小程序链接已填: {miniprogram_link}")
+
+            add_btn = page.locator('span:has-text("添加"), button:has-text("添加")').first
+            if await add_btn.count():
+                await add_btn.click()
+            await page.wait_for_timeout(1500)
+            logger.info("[DouyinUpload] 小程序标签已挂载")
+            return True
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 挂小程序标签失败: {exc}")
+            return False
+
+    async def set_self_declaration(self, page: Page, declaration: str) -> bool:
+        """按调用方给出的平台原文选择自主声明；失败返回 False。"""
+        try:
+            # 发布页底部「自主声明」行，未选时显示占位文案「请选择自主声明」
+            entry = page.get_by_text("请选择自主声明").first
+            await entry.wait_for(state="visible", timeout=6000)
+            await entry.click()
+
+            # 弹窗标题「对作品内容添加声明」
+            dialog = page.locator(".semi-modal-content").filter(has_text="对作品内容添加声明").first
+            await dialog.wait_for(state="visible", timeout=6000)
+
+            # 单选项：Semi 的文字是 .semi-radio-addon（常带 pointer-events:none，直接点会卡 30s 超时），
+            # 要点可交互的 .semi-radio 外层；找不到外层再退回 force 强制点文字。exact 避免误命中预览「作者声明：…」。
+            option = dialog.locator(".semi-radio").filter(has_text=declaration).first
+            if await option.count():
+                await option.click(timeout=6000)
+            else:
+                await dialog.get_by_text(declaration, exact=True).first.click(timeout=6000, force=True)
+            await dialog.get_by_role("button", name="确定").click(timeout=6000)
+            await dialog.wait_for(state="hidden", timeout=6000)
+            logger.info(f"[DouyinUpload] 自主声明已选择「{declaration}」")
+            return True
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 自主声明设置失败：{exc}")
+            return False
+
+    async def _pick_recommend_cover(self, page: Page, random_cover: bool = False) -> bool:
+        """页面要求"请设置封面后再发布"时，从推荐封面里选一帧（random_cover=True 随机，否则选第 1 张）。
+
+        从旧版 uploader/douyin_uploader/main_refactored.py 的 handle_auto_video_cover 迁移。
+        """
+        if await page.get_by_text(DOUYIN_COVER_REQUIRED_TOAST_TEXT).first.is_visible():
+            logger.info("[DouyinUpload] 发布前还得先把封面弄好")
+            covers = page.locator('[class^="recommendCover-"]')
+            n = await covers.count()
+            if n > 0:
+                # 勾选随机封面：在可用推荐封面里随机选一帧，降低"只取第一张"的容错率
+                idx = random.randrange(n) if random_cover and n > 1 else 0
+                target = covers.nth(idx)
+                logger.info(f"[DouyinUpload] 小人去选推荐封面 (random={random_cover}, 共{n}, 选第{idx + 1})")
+                try:
+                    await target.click()
+                    await asyncio.sleep(1)
+                    confirm_text = "是否确认应用此封面？"
+                    if await page.get_by_text(confirm_text).first.is_visible():
+                        logger.info(f"[DouyinUpload] 弹出确认框了: {confirm_text}")
+                        await page.get_by_role("button", name="确定").click()
+                        logger.info("[DouyinUpload] 推荐封面已经应用")
+                        await asyncio.sleep(1)
+                    logger.info("[DouyinUpload] 封面选择流程完成")
+                    return True
+                except Exception as e:
+                    logger.warning(f"[DouyinUpload] 推荐封面没选成功: {e}")
+        return False
 
 
 # 全局实例

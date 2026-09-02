@@ -10,7 +10,7 @@ Prism一个 AI 驱动的多平台内容编排与自动化发布系统；
 - [项目定位](#项目定位)
 - [核心能力（矩阵投放闭环）](#核心能力矩阵投放闭环)
 - [新功能集成](#新功能集成)
-- [功能截图](#功能截图)
+- [功能](#功能)
 - [支持平台](#支持平台)
 - [架构概览](#架构概览)
 - [部署开始](#部署开始)
@@ -52,7 +52,7 @@ Prism 是一个“矩阵投放 / 分发中台”，把「账号、素材、计�
 - 预留可扩展：快手、小红书、视频号等（按平台适配器扩展）；
 
 ### 编：AI 编排加速（投前准备）
-- 内置 HermesAgent AI 助手；
+- 内置 HermesAgent AiAgent 助手(装备Computeruse、各类mcp、skill、长记忆、多Agent）
 - 自然语言生成/润色标题、标签、话题等投放配置；
 - 支持“一句话投放”（示例见下）；
 
@@ -87,8 +87,8 @@ Prism **不自研**指纹、Profile 存储、指纹伪造，全部交给 Persona
 
 ### 2) per-country 代理网关 + 每账号代理绑定
 
-独立的官方 **mihomo** 网关（`tools/persona-studio/proxies/`）提供 **7771–7776** 六个 HTTP/SOCKS mixed 端口，各路由到一个地区节点：
-
+独立的官方 **mihomo** 网关（`tools/persona-studio/proxies/`）提供 **将订阅遍历映射为 HTTP/SOCKS mixed 端口，各路由到一个地区节点：
+如：
 | 地区 | 端口 | locale / 时区对齐 |
 |---|---|---|
 | 直连 | — | 本机网络 + 本机 locale/时区 |
@@ -162,33 +162,35 @@ Redis 每账号 Browser Runtime 分布式锁（`runtime_lock_service`）：保�
 
 ---
 
-## 功能截图
+## 功能
 
 ### 1) 账号管理——登录账号
-支持平台「抖音、快手、小红书、视频号、B 站、TikTok、YouTube」；扫码、本机 Chrome 导入或本机浏览器登录后，账号自动入库并持续维护；
-
-![login](https://github.com/user-attachments/assets/98d0025d-e706-4edc-8233-3bf5bcb33257)
+支持平台「抖音、快手、小红书、视频号、B 站」扫码登录；
+「TikTok、YouTube」则是patchright调用本机浏览器登录后，账号自动入库并回源账号信息；
 
 ### 2) 素材管理——AI 标题/标签润色 + 批量上传
 支持 AI 自动补全标题、标签，支持批量拖拽上传；
 
-![upload](https://github.com/user-attachments/assets/bb406b66-a8ff-4099-8f80-2f667f4627ee)
-
 ### 3) 多平台多账号同步发布
 支持「抖音、快手、小红书、视频号、B 站」同步发布；支持 AI 一句话发布：
-“帮我把素材库刚上传的视频，生成标题、标签并定时发布 23:55，发布到五个平台；”
-
-![publish](https://github.com/user-attachments/assets/658c874a-0518-4ab7-a815-ed3d63363a2a)
+“帮我把素材库刚上传的视频，生成标题、标签并定时发布 23:55，发布到所有平台；”
 
 ### 4) 访问不同平台/账号的创作者后台
-每个账号有独立浏览器身份 + 固定代理，可访问对应创作者后台；
-
-![creator](https://github.com/user-attachments/assets/0e8bf623-478f-4ef3-978d-74946962635d)
+支持 每个账号有独立浏览器身份 + 固定代理，可访问对应创作者后台；
 
 ### 5) 视频数据回收与复盘
-当前支持：抖音、B 站、TikTok、YouTube（可扩展快手、小红书、视频号）；
+支持抖音、B 站、TikTok（本地部署API接口读取数据）
+（YouTube、快手、小红书、视频号——支持付费 API 接口读取数据）；
 
-![Data](https://github.com/user-attachments/assets/a5635b75-a4ae-4698-b0ae-aaa2aebd6da6)
+### 🎬 产品演示视频（纯黑白）
+
+**真实交互 Walkthrough**（登录弹窗 · 素材 · 矩阵发布 · 任务 · Agent 对话，Apple 质感包装）：
+
+![walkthrough](docs/demos/prism_wrap.gif)
+
+**14 页功能巡览**（仪表盘 / 账号管理 / 矩阵发布 / 数据 / Agent …，HyperFrames 合成）：
+
+![tour](docs/demos/prism_hyperframes_demo.gif)
 
 ---
 
@@ -205,10 +207,7 @@ Redis 每账号 Browser Runtime 分布式锁（`runtime_lock_service`）：保�
 
 ### 登录运行时状态
 
-- 抖音、快手、小红书、视频号、B 站：网页内扫码登录（`/auth/qrcode/*`）。
-- 抖音登录模式：正式（`browser`，当前模拟）与逆向 HTTP（`http`，测试）可在 CMS 后台切换，默认 `browser`。
-- TikTok、YouTube：本机浏览器登录，登录态以 storage state 保存，供任务队列复用；登录后自动经 TikHub 反查回填账号名/头像。
-- 从本机 Chrome 导入：复制本机 Chrome Cookies/Local State 到 Prism 专用 profile，可在无需关闭 Chrome 的情况下把已登录账号导入。
+- 支持抖音、快手、小红书、视频号、B 站、Tiktok、Youtube 账号掉线检测；
 
 ---
 

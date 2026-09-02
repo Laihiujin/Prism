@@ -105,6 +105,12 @@ async def publish_batch_videos(
             # 🆕 NEW: Deduplication parameters
             allow_duplicate_publish=request.allow_duplicate_publish,
             dedup_window_days=request.dedup_window_days,
+            # 🆕 NEW: Douyin publish options
+            declaration=request.declaration,
+            location=request.location,
+            random_cover=request.random_cover,
+            miniprogram_link=request.miniprogram_link,
+            miniprogram_title=request.miniprogram_title,
         )
 
         return Response(
@@ -160,7 +166,13 @@ async def publish_single_video(
             interval_seconds=request.interval_seconds,
             random_offset=request.random_offset,
             priority=request.priority,
-            items=request.items
+            items=request.items,
+            # 🆕 NEW: Douyin publish options
+            declaration=request.declaration,
+            location=request.location,
+            random_cover=request.random_cover,
+            miniprogram_link=request.miniprogram_link,
+            miniprogram_title=request.miniprogram_title,
         )
 
         return Response(
