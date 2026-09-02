@@ -16,11 +16,12 @@ import {
   LayoutDashboard,
   LayoutGrid,
   Settings,
-  TrendingUp,
   UsersRound,
   Video,
   Boxes,
   Network,
+  MessageCircle,
+  Server,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -126,13 +127,14 @@ const navSections: NavSection[] = [
           { label: "YouTube", href: "/analytics/videos/youtube", icon: YoutubeIcon },
         ],
       },
-      { label: "数据趋势", href: "/analytics/trends", icon: TrendingUp },
     ],
   },
   {
     label: "智能",
     items: [
       { label: "Hermes Agent", href: "/ai-agent", icon: HermesLogoIcon },
+      { label: "模型 / MCP / 插件", href: "/ai-agent/interop", icon: Server },
+      { label: "HermesChat", href: "/hermes-chat", icon: MessageCircle },
       { label: "开发者工具", href: "/tools", icon: Boxes },
     ],
   },
@@ -164,16 +166,16 @@ export function SidebarNew({
     <div className="relative flex">
       <motion.aside
         initial={false}
-        animate={{ width: collapsed ? 80 : 280 }}
+        animate={{ width: collapsed ? 64 : 240 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className={cn("relative flex h-screen flex-col border-r border-border/80 bg-glass-strong text-foreground", className)}
+        className={cn("relative flex h-screen flex-col border-r border-border bg-glass-strong text-foreground", className)}
       >
-        <div className="flex h-16 items-center justify-between border-b border-border/80 px-6">
+        <div className="flex h-[52px] items-center justify-between border-b border-border px-4">
           <AnimatePresence mode="wait">
             {!collapsed ? (
               <motion.div
                 key="logo-text"
-                initial={{ opacity: 0, x: -20 }}
+                initial={false}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
@@ -192,7 +194,7 @@ export function SidebarNew({
             ) : (
               <motion.div
                 key="logo-icon"
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={false}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.3 }}
@@ -206,7 +208,19 @@ export function SidebarNew({
           </AnimatePresence>
         </div>
 
-        <ScrollArea className="scrollbar-none flex-1 px-3 py-4">
+        {!collapsed && (
+          <div className="border-b border-border px-3 py-2">
+            <button
+              type="button"
+              className="flex h-8 w-full items-center justify-between border border-border bg-background px-2.5 text-left text-[11px] text-foreground/70 transition hover:bg-accent hover:text-foreground"
+            >
+              <span className="truncate">this workspace (default)</span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-foreground/40" />
+            </button>
+          </div>
+        )}
+
+        <ScrollArea className="scrollbar-none flex-1 px-2 py-3">
           <nav className="space-y-6">
             {navSections.map((section) => (
               <div key={section.label} className="space-y-1">
@@ -219,7 +233,7 @@ export function SidebarNew({
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <h3 className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-foreground/40">
+                      <h3 className="mb-2 px-3 text-[10px] font-medium uppercase tracking-[0.18em] text-foreground/35">
                         {section.label}
                       </h3>                    </motion.div>
                   )}
@@ -245,7 +259,7 @@ export function SidebarNew({
                             {!collapsed && (
                               <motion.span
                                 key={`text-${item.label}`}
-                                initial={{ opacity: 0, width: 0 }}
+                                initial={false}
                                 animate={{ opacity: 1, width: "auto" }}
                                 exit={{ opacity: 0, width: 0 }}
                                 transition={{ duration: 0.2 }}
@@ -287,7 +301,7 @@ export function SidebarNew({
                                   className={cn(
                                     "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
                                     childActive
-                                      ? "bg-gradient-to-r from-primary/20 to-primary/5 text-foreground"
+                                      ? "bg-accent text-foreground"
                                       : "text-foreground/60 hover:bg-accent hover:text-accent-foreground",
                                   )}
                                 >
@@ -313,13 +327,13 @@ export function SidebarNew({
                         onClick={() => onNavigate?.()}
                         className={cn(
                           "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                          isActive
-                            ? "bg-gradient-to-r from-primary/20 to-primary/5 text-foreground shadow-[inset_0_1px_0_0_hsl(var(--primary)/0.15)]"
+                            isActive
+                            ? "bg-accent text-foreground"
                             : "text-foreground/70 hover:bg-accent hover:text-accent-foreground",
                         )}
                       >
                         {isActive && (
-                          <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.6)]" />
+                          <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 bg-primary" />
                         )}
                         <Icon
                           className={cn(
@@ -332,7 +346,7 @@ export function SidebarNew({
                           {!collapsed && (
                             <motion.span
                               key={`item-${item.label}`}
-                              initial={{ opacity: 0, width: 0 }}
+                              initial={false}
                               animate={{ opacity: 1, width: "auto" }}
                               exit={{ opacity: 0, width: 0 }}
                               transition={{ duration: 0.2 }}
@@ -368,6 +382,14 @@ export function SidebarNew({
 
         {showCollapseToggle && (
           <div className="border-t border-border/80 p-3">
+            {!collapsed && (
+              <div className="mb-3 flex items-center justify-between px-2 text-[10px] uppercase tracking-[0.16em] text-foreground/35">
+                <span>System</span>
+                <span className="flex items-center gap-1.5 normal-case tracking-normal text-emerald-400/80">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Online
+                </span>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="icon"

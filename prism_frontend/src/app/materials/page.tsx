@@ -423,7 +423,7 @@ function MaterialsPageContent() {
       size: 420,
       cell: ({ row }) => {
         const hasTitle = !!row.original.title && row.original.title !== row.original.filename
-        const primary = hasTitle ? row.original.title : row.original.filename
+        const primary = (hasTitle ? row.original.title : row.original.filename) ?? ""
         return (
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="truncate font-medium" title={primary}>
@@ -528,8 +528,9 @@ function MaterialsPageContent() {
   ]
 
   return (
-    <div className="space-y-8 px-4 py-4 md:px-6 md:py-6 h-full flex flex-col">
+    <div className="mx-auto flex h-full max-w-[1440px] flex-col space-y-5 px-4 py-4 md:px-6 md:py-5">
       <PageHeader
+        eyebrow="PRISM / ASSET REGISTRY"
         title="素材管理"
         actions={
           <div className="flex gap-3">
@@ -802,28 +803,28 @@ function MaterialsPageContent() {
 
       {/* Filter Toolbar */}
       <Card className="flex-1 border-border/70 bg-card flex flex-col min-h-0 shadow-none">
-        <CardHeader className="flex-shrink-0 pb-4">
+        <CardHeader className="flex-shrink-0 border-b border-border/60 pb-4">
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="flex items-center gap-2 bg-card p-1 rounded-xl border border-border/70">
               <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)} className="w-full">
-                <TabsList className="h-9 rounded-xl bg-card border border-border/70 backdrop-blur-sm">
-                  <TabsTrigger value="all" className="rounded-lg text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
+                <TabsList className="h-8 rounded-sm bg-background border border-border/70 backdrop-blur-sm">
+                  <TabsTrigger value="all" className="rounded-sm text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
                     全部
                   </TabsTrigger>
-                  <TabsTrigger value="pending" className="rounded-lg text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
+                  <TabsTrigger value="pending" className="rounded-sm text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
                     待发布
                   </TabsTrigger>
-                  <TabsTrigger value="published" className="rounded-lg text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
+                  <TabsTrigger value="published" className="rounded-sm text-xs text-foreground/70 data-[state=active]:bg-foreground/90 data-[state=active]:text-background transition-colors">
                     已发布
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
             <div className="flex gap-3 w-full md:w-auto items-center">
-              <div className="flex items-center gap-2 bg-card border border-border/70 rounded-xl px-3 h-10">
-                <span className="text-xs text-muted-foreground">分组</span>
+              <div className="flex items-center gap-2 bg-card border border-border/70 px-2.5 h-8">
+                <span className="text-[11px] text-muted-foreground">分组</span>
                 <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v)}>
-                  <SelectTrigger className="bg-transparent border-0 h-8 px-2 text-foreground/80">
+                  <SelectTrigger className="bg-transparent border-0 h-7 px-1.5 text-xs text-foreground/80">
                     <SelectValue placeholder="全部分组" />
                   </SelectTrigger>
                   <SelectContent>
@@ -839,7 +840,7 @@ function MaterialsPageContent() {
                   placeholder="搜索素材..."
                   value={keyword}
                   onChange={e => setKeyword(e.target.value)}
-                  className="h-10 rounded-xl bg-card border-border/70 min-w-[200px]"
+                  className="h-8 bg-card border-border/70 min-w-[200px] text-xs"
                 />
               </div>
             </div>
@@ -847,10 +848,10 @@ function MaterialsPageContent() {
         </CardHeader>
         <CardContent className="flex-1 min-h-0 overflow-hidden p-0">
           <ScrollArea className="h-full">
-            <div className="p-6 pt-0">
+            <div className="p-4 pt-0">
               {selectedIds.size > 0 && (
-                <div className="mb-4 flex items-center gap-3 p-3 bg-black border border-primary/20 rounded-xl">
-                  <span className="text-sm text-foreground/80">
+                <div className="mb-3 flex items-center gap-3 p-2.5 bg-black border border-border">
+                  <span className="text-xs text-foreground/80">
                     已选择 {selectedIds.size} 个素材
                   </span>
                   <AlertDialog>

@@ -35,12 +35,14 @@ import { formatBeijingDateTime } from "@/lib/time"
 import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import CountUp from "@/components/CountUp"
+import { cn } from "@/lib/utils"
 
 export default function DashboardPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [clockReady, setClockReady] = useState(false)
   const [beijingClock, setBeijingClock] = useState("—")
+  const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "running" | "success" | "error">("all")
 
   useEffect(() => {
     setClockReady(true)
@@ -112,8 +114,9 @@ export default function DashboardPage() {
 
   const filteredTasks = useMemo(
     () =>
-      hasSearch
+        hasSearch || taskStatusFilter !== "all"
         ? recordedTasks.filter((task: any) =>
+          (taskStatusFilter === "all" || task.status === taskStatusFilter) &&
             [
               task.title,
               task.platform,
@@ -124,7 +127,7 @@ export default function DashboardPage() {
             ].some(matchesSearch)
           )
         : recordedTasks,
-    [recordedTasks, hasSearch, searchTerm]
+    [recordedTasks, hasSearch, searchTerm, taskStatusFilter]
   )
 
   const filteredAlerts = useMemo(() => {
@@ -208,8 +211,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 px-4 py-4 md:px-6 md:py-6">
+    <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-4 md:px-6 md:py-5">
       <PageHeader
+        eyebrow="PRISM / CONTROL CENTER"
         title="矩阵投放仪表盘"
         // description="快手、抖音、视频号、小红书统一监控"
         actions={
@@ -231,18 +235,18 @@ export default function DashboardPage() {
               onClick={() => handleNavigate(stat.href)}
             >
               <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-black blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              <CardHeader className="pb-2">
-                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl border border-border/80 bg-accent/50">
-                  <Icon className="h-[18px] w-[18px] text-primary" />
-                </div>
-                <CardDescription className="text-sm text-muted-foreground">{stat.label}</CardDescription>
-                <CardTitle className="text-3xl text-foreground">
+              <CardHeader className="flex-row items-start justify-between pb-3">
+                <div className="space-y-2">
+                  <CardDescription className="font-terminal text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{stat.label}</CardDescription>
+                  <CardTitle className="text-2xl text-foreground">
                   {/^-?\d+(\.\d+)?$/.test(stat.value) ? (
                     <CountUp to={Number(stat.value)} separator="," duration={1.2} className="tabular-nums" />
                   ) : (
                     stat.value
                   )}
-                </CardTitle>
+                  </CardTitle>
+                </div>
+                <Icon className="mt-0.5 h-4 w-4 text-foreground/45" />
               </CardHeader>
               <CardFooter className="justify-between border-t border-border/50 pt-3 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -263,12 +267,29 @@ export default function DashboardPage() {
               <CardTitle className="text-lg">任务管理库</CardTitle>
               <CardDescription>自动化及手动触发任务状态</CardDescription>
             </div>
-            <Button variant="ghost" className="gap-2 text-foreground/70 hover:text-foreground" onClick={() => router.push("/tasks")}>
-              查看全部
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-3">
+              <span className="font-terminal text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{recordedTasks.length} records</span>
+              <Button variant="ghost" className="h-7 gap-2 px-2 text-xs text-foreground/70 hover:text-foreground" onClick={() => router.push("/tasks")}>
+                查看全部 <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="pt-0">
+            <div className="flex items-center gap-1 border-b border-border/50 pb-3 pt-1">
+              {[...["all", "pending", "running", "success", "error"] as const].map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setTaskStatusFilter(status)}
+                  className={cn(
+                    "border border-transparent px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground transition",
+                    taskStatusFilter === status && "border-border bg-accent text-foreground"
+                  )}
+                >
+                  {status === "all" ? "全部" : status === "pending" ? "待执行" : status === "running" ? "运行中" : status === "success" ? "成功" : "失败"}
+                </button>
+              ))}
+            </div>
             <Table>
               <TableHeader>
                 <TableRow className="border-border/50 hover:bg-transparent">
@@ -288,7 +309,7 @@ export default function DashboardPage() {
                   </TableRow>
                 )}
                 {filteredTasks.slice(0, 5).map((task: any) => (
-                  <TableRow key={task.id} className="border-border/50 transition-colors hover:bg-accent/40">
+                  <TableRow key={task.id} className="border-border/50 text-xs transition-colors hover:bg-accent/40">
                     <TableCell className="font-medium text-foreground">{task.title}</TableCell>
                     <TableCell>
                       <Badge className="border-border/80 bg-accent/60 text-foreground/80">{task.platform}</Badge>
@@ -299,14 +320,14 @@ export default function DashboardPage() {
                         ? `定时 · ${task.scheduledAt}`
                         : formatBeijingDateTime(task.createdAt)}
                     </TableCell>
-                    <TableCell className="text-right text-sm text-foreground/70">
-                      {task.status === "scheduled"
-                        ? "待定时"
-                        : task.status === "success"
-                          ? "已完成"
-                          : task.status === "error"
-                            ? "失败"
-                            : "排队中"}
+                    <TableCell className={cn(
+                      "text-right font-terminal text-xs",
+                      task.status === "success" && "text-emerald-400",
+                      task.status === "error" && "text-red-400",
+                      task.status !== "success" && task.status !== "error" && "text-foreground/55"
+                    )}>
+                      <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />
+                      {task.status === "scheduled" ? "待定时" : task.status === "success" ? "已完成" : task.status === "error" ? "失败" : "排队中"}
                     </TableCell>
                   </TableRow>
                 ))}

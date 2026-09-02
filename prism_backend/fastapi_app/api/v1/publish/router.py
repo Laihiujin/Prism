@@ -111,6 +111,8 @@ async def publish_batch_videos(
             random_cover=request.random_cover,
             miniprogram_link=request.miniprogram_link,
             miniprogram_title=request.miniprogram_title,
+            # 🆕 NEW: 每平台专属配置
+            platform_settings=request.platform_settings,
         )
 
         return Response(
@@ -173,6 +175,8 @@ async def publish_single_video(
             random_cover=request.random_cover,
             miniprogram_link=request.miniprogram_link,
             miniprogram_title=request.miniprogram_title,
+            # 🆕 NEW: 每平台专属配置
+            platform_settings=request.platform_settings,
         )
 
         return Response(

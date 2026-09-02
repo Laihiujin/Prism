@@ -11,7 +11,7 @@
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
-    --card: 0 0% 0%;
+    --card: 0 0% 3%;
     --card-foreground: 0 0% 100%;
 
     --popover: 0 0% 0%;
@@ -25,9 +25,9 @@
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 0%;
-    --muted-foreground: 0 0% 100%;
+    --muted-foreground: 0 0% 58%;
 
-    --accent: 0 0% 0%;
+    --accent: 0 0% 9%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive is a plain white button, no red / no gray */
@@ -42,7 +42,7 @@
     --terminal: 0 0% 100%;
     --terminal-foreground: 0 0% 0%;
 
-    --radius: 0.875rem;
+    --radius: 0.25rem;
 
     --chart-1: 0 0% 100%;
     --chart-2: 0 0% 100%;
@@ -55,7 +55,7 @@
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
-    --card: 0 0% 0%;
+    --card: 0 0% 3%;
     --card-foreground: 0 0% 100%;
 
     --popover: 0 0% 0%;
@@ -68,9 +68,9 @@
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 0%;
-    --muted-foreground: 0 0% 100%;
+    --muted-foreground: 0 0% 58%;
 
-    --accent: 0 0% 0%;
+    --accent: 0 0% 9%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 0% 100%;
@@ -149,3 +149,104 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+body {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  font-size: 13px;
+  letter-spacing: -0.012em;
+}
+
+/* Hermes-inspired console surfaces: compact, squared, and information-dense. */
+.bg-glass, .bg-glass-strong { background-color: hsl(0 0% 2% / 0.96); }
+.rounded-xl, .rounded-2xl, .rounded-lg { border-radius: 0.2rem; }
+
+/* Strict Hermes console geometry: no rounded surfaces anywhere. */
+*, *::before, *::after {
+  border-radius: 0 !important;
+}
+
+/* Match Hermes' compact console typography without shrinking page titles. */
+.text-sm { font-size: 0.8125rem; line-height: 1.2rem; }
+.text-xs { font-size: 0.6875rem; line-height: 1rem; }
+.text-lg { font-size: 1rem; }
+
+/* ── Hermes-style compact data table (small font, thin border) ────────────── */
+/* Mirrors Hermes .csv-table / .mcp-* card rows: 1px theme border, 11-12px type,
+   dense padding, no rounded corners (console geometry is forced square above). */
+.hm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.hm-table th {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid hsl(var(--border) / 0.9);
+  white-space: nowrap;
+}
+.hm-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid hsl(var(--border) / 0.45);
+  color: hsl(var(--foreground) / 0.85);
+  vertical-align: middle;
+}
+.hm-table tbody tr:hover td {
+  background-color: hsl(var(--accent) / 0.22);
+}
+.hm-table td.hm-cell-mono,
+.hm-table th.hm-cell-mono {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+}
+.hm-table .hm-dim { color: hsl(var(--muted-foreground)); }
+.hm-table .hm-num { font-variant-numeric: tabular-nums; }
+
+/* Hermes-style pill badge (transport / status / meta chips). */
+.hm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+}
+.hm-pill--active   { color: hsl(var(--terminal)); border-color: hsl(var(--terminal) / 0.4); }
+.hm-pill--warn     { color: hsl(var(--foreground)); border-color: hsl(var(--foreground) / 0.35); }
+.hm-pill--muted    { color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); }
+.hm-pill--mono     { font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace; }
+
+/* Small ghost button used inside Hermes-style rows/cards. */
+.hm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground) / 0.85);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.hm-btn:hover { background: hsl(var(--accent) / 0.5); border-color: hsl(var(--foreground) / 0.3); }
+.hm-btn--primary { color: hsl(var(--primary-foreground)); background: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+.hm-btn--primary:hover { background: hsl(var(--primary) / 0.85); }
+.hm-btn--danger { color: hsl(var(--foreground)); border-color: hsl(var(--foreground) / 0.3); }
+.hm-btn--danger:hover { background: hsl(var(--accent) / 0.5); }
+.hm-btn[disabled] { opacity: 0.45; cursor: not-allowed; }

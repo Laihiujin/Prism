@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import {
     Table,
     TableBody,
@@ -96,6 +96,10 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
         currentPage * pageSize
     )
 
+    useEffect(() => {
+        if (currentPage > Math.max(1, totalPages)) setCurrentPage(1)
+    }, [currentPage, totalPages])
+
     const handleSort = (key: keyof VideoAnalytics) => {
         setSortConfig(current => ({
             key,
@@ -116,28 +120,28 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-2">
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2 flex-1 max-w-sm">
                     <Input
                         placeholder="搜索视频标题或ID..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-card/20 border-border/70 text-foreground placeholder:text-foreground/40"
+                        className="h-8 bg-card/20 border-border/70 text-xs text-foreground placeholder:text-foreground/40"
                     />
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="outline"
-                            className="ml-auto border-border/70 bg-card/40 text-foreground/80 hover:text-foreground hover:bg-card/60 data-[state=open]:bg-black data-[state=open]:text-foreground transition-all"
+                            className="ml-auto h-8 border-border/70 bg-card/40 px-2.5 text-xs text-foreground/80 hover:text-foreground hover:bg-card/60 data-[state=open]:bg-black data-[state=open]:text-foreground transition-all"
                         >
-                            <SlidersHorizontal className="mr-2 h-4 w-4" />
+                            <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
                             显示列
                             <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-black border-border/70 text-foreground">
+                    <DropdownMenuContent align="end" className="w-44 bg-black border-border/70 p-1 text-foreground">
                         {Object.keys(visibleColumns).map((key) => {
                             const labels: Record<string, string> = {
                                 video: "视频信息",
@@ -157,7 +161,7 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
                                     onCheckedChange={(checked) =>
                                         setVisibleColumns(prev => ({ ...prev, [key]: checked }))
                                     }
-                                    className="hover:bg-accent/50 focus:bg-black cursor-pointer"
+                                    className="h-7 whitespace-nowrap py-1 pl-7 pr-2 text-xs leading-none hover:bg-accent/50 focus:bg-black cursor-pointer"
                                 >
                                     {labels[key]}
                                 </DropdownMenuCheckboxItem>
@@ -167,39 +171,39 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
                 </DropdownMenu>
             </div>
 
-            <div className="rounded-md border border-border/70 overflow-hidden">
+            <div className="border-y border-border/60 overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-black">
-                        <TableRow className="border-border/70 hover:bg-accent/40">
-                            {visibleColumns.video && <TableHead className="text-muted-foreground">视频</TableHead>}
-                            {visibleColumns.link && <TableHead className="text-muted-foreground">视频链接</TableHead>}
-                            {visibleColumns.platform && <TableHead className="text-muted-foreground">平台</TableHead>}
+                    <TableHeader className="bg-black/80">
+                        <TableRow className="h-8 border-border/70 hover:bg-transparent">
+                            {visibleColumns.video && <TableHead className="w-[28%] text-[10px] uppercase tracking-wider text-muted-foreground">视频</TableHead>}
+                            {visibleColumns.link && <TableHead className="w-16 text-[10px] uppercase tracking-wider text-muted-foreground">链接</TableHead>}
+                            {visibleColumns.platform && <TableHead className="w-24 text-[10px] uppercase tracking-wider text-muted-foreground">平台</TableHead>}
                             {visibleColumns.playCount && (
-                                <TableHead onClick={() => handleSort('playCount')} className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                                <TableHead onClick={() => handleSort('playCount')} className="w-20 cursor-pointer text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                                     <div className="flex items-center">播放量 <SortIcon column="playCount" /></div>
                                 </TableHead>
                             )}
                             {visibleColumns.likeCount && (
-                                <TableHead onClick={() => handleSort('likeCount')} className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                                <TableHead onClick={() => handleSort('likeCount')} className="w-16 cursor-pointer text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                                     <div className="flex items-center">点赞 <SortIcon column="likeCount" /></div>
                                 </TableHead>
                             )}
                             {visibleColumns.commentCount && (
-                                <TableHead onClick={() => handleSort('commentCount')} className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                                <TableHead onClick={() => handleSort('commentCount')} className="w-16 cursor-pointer text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                                     <div className="flex items-center">评论 <SortIcon column="commentCount" /></div>
                                 </TableHead>
                             )}
                             {visibleColumns.collectCount && (
-                                <TableHead onClick={() => handleSort('collectCount')} className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                                <TableHead onClick={() => handleSort('collectCount')} className="w-16 cursor-pointer text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                                     <div className="flex items-center">收藏 <SortIcon column="collectCount" /></div>
                                 </TableHead>
                             )}
                             {visibleColumns.publishDate && (
-                                <TableHead onClick={() => handleSort('publishDate')} className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                                <TableHead onClick={() => handleSort('publishDate')} className="w-32 cursor-pointer text-[10px] text-muted-foreground hover:text-foreground transition-colors">
                                     <div className="flex items-center">发布时间 <SortIcon column="publishDate" /></div>
                                 </TableHead>
                             )}
-                            {visibleColumns.action && <TableHead className="text-muted-foreground text-right">操作</TableHead>}
+                            {visibleColumns.action && <TableHead className="w-12 text-[10px] text-muted-foreground text-right">操作</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -211,20 +215,20 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
                             </TableRow>
                         ) : (
                             paginatedData.map((video) => (
-                                <TableRow key={video.id} className="border-border/70 hover:bg-accent/40 transition-colors">
+                                <TableRow key={video.id} className="h-11 border-border/60 hover:bg-white/[0.03] transition-colors">
                                     {visibleColumns.video && (
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="relative w-16 h-9 rounded overflow-hidden bg-black shrink-0 border border-border/70">
+                                        <TableCell className="py-1.5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="relative w-12 h-7 overflow-hidden bg-black shrink-0 border border-border/70">
                                                     <img
                                                         src={video.thumbnail || '/placeholder-video.png'}
                                                         alt={video.title}
                                                         className="w-full h-full object-cover"
                                                     />
                                                 </div>
-                                                <div className="max-w-[200px]">
-                                                    <p className="text-sm font-medium truncate text-foreground/90" title={video.title}>{video.title}</p>
-                                                    <p className="text-xs text-foreground/40 mt-0.5 truncate">ID: {video.videoId}</p>
+                                                <div className="min-w-0 max-w-[260px]">
+                                                    <p className="truncate text-xs font-medium text-foreground/90" title={video.title}>{video.title}</p>
+                                                    <p className="mt-0.5 truncate text-[10px] text-foreground/35">{video.videoId}</p>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -236,7 +240,7 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
                                                     href={video.videoUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-black hover:bg-accent/50 text-xs text-white hover:text-white transition-colors"
+                                                    className="inline-flex items-center gap-1 border border-border/60 bg-black px-1.5 py-0.5 text-[10px] text-white hover:bg-accent/50 hover:text-white transition-colors"
                                                 >
                                                     查看
                                                     <ExternalLink className="h-3 w-3" />
@@ -248,32 +252,32 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
                                     )}
                                     {visibleColumns.platform && (
                                         <TableCell>
-                                            <Badge variant="outline" className="bg-black border-border/70 text-foreground/70 hover:bg-accent/50">
+                                            <Badge variant="outline" className="bg-black px-1.5 py-0 text-[10px] border-border/70 text-foreground/70 hover:bg-accent/50">
                                                 {video.platform}
                                             </Badge>
                                         </TableCell>
                                     )}
                                     {visibleColumns.playCount && (
-                                        <TableCell className="font-medium text-white/90">{formatNumber(video.playCount)}</TableCell>
+                                        <TableCell className="font-mono text-xs font-medium text-white/90">{formatNumber(video.playCount)}</TableCell>
                                     )}
                                     {visibleColumns.likeCount && (
-                                        <TableCell className="text-white/90">{formatNumber(video.likeCount)}</TableCell>
+                                        <TableCell className="font-mono text-xs text-white/90">{formatNumber(video.likeCount)}</TableCell>
                                     )}
                                     {visibleColumns.commentCount && (
-                                        <TableCell className="text-white/90">{formatNumber(video.commentCount)}</TableCell>
+                                        <TableCell className="font-mono text-xs text-white/90">{formatNumber(video.commentCount)}</TableCell>
                                     )}
                                     {visibleColumns.collectCount && (
-                                        <TableCell className="text-white/90">{formatNumber(video.collectCount)}</TableCell>
+                                        <TableCell className="font-mono text-xs text-white/90">{formatNumber(video.collectCount)}</TableCell>
                                     )}
                                     {visibleColumns.publishDate && (
-                                        <TableCell className="text-sm text-muted-foreground font-mono">
+                                        <TableCell className="text-[10px] text-muted-foreground font-mono">
                                             {format(new Date(video.publishDate), 'yyyy-MM-dd HH:mm')}
                                         </TableCell>
                                     )}
                                     {visibleColumns.action && (
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-accent/50 text-muted-foreground hover:text-foreground">
-                                                <Eye className="h-4 w-4" />
+                                                <Eye className="h-3.5 w-3.5" />
                                                 <span className="sr-only">查看详情</span>
                                             </Button>
                                         </TableCell>
@@ -286,18 +290,19 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-end space-x-2 py-2">
+            <div className="flex items-center justify-between border-t border-border/60 py-2 text-xs text-muted-foreground">
+                    <span>{processedData.length} 条记录 · 每页 {pageSize} 条</span>
+                    <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="bg-transparent border-border/70 text-foreground/70 hover:text-foreground hover:bg-accent/50"
+                        className="h-7 bg-transparent border-border/70 px-2 text-xs text-foreground/70 hover:text-foreground hover:bg-accent/50"
                     >
                         上一页
                     </Button>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="min-w-14 text-center text-xs text-muted-foreground">
                         {currentPage} / {totalPages}
                     </div>
                     <Button
@@ -305,12 +310,12 @@ export function VideoDataTable({ data, isLoading }: VideoDataTableProps) {
                         size="sm"
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         disabled={currentPage === totalPages}
-                        className="bg-transparent border-border/70 text-foreground/70 hover:text-foreground hover:bg-accent/50"
+                        className="h-7 bg-transparent border-border/70 px-2 text-xs text-foreground/70 hover:text-foreground hover:bg-accent/50"
                     >
                         下一页
                     </Button>
-                </div>
-            )}
+                    </div>
+            </div>
         </div>
     )
 }

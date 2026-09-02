@@ -5,16 +5,14 @@ import { useEffect, useMemo, useState } from "react"
 import { API_ENDPOINTS } from "@/lib/env"
 import { resolveRuntimeBackendBase } from "@/lib/runtime-backend"
 
-const FALLBACK_WEBUI_URL = "http://127.0.0.1:9131"
-const WEBUI_ASSET_REV = "hermes-composer-fix-20260519"
-const STARTUP_ERROR_FALLBACK = "Hermes WebUI failed to start. Check the Hermes runtime and model configuration."
+const FALLBACK_DASHBOARD_URL = "http://127.0.0.1:9119"
+const STARTUP_ERROR_FALLBACK = "Hermes Dashboard failed to start. Check the Hermes runtime and model configuration."
 
 type HermesRuntime = {
   agent_installed?: boolean
-  webui_installed?: boolean
-  webui_running?: boolean
-  webui_url?: string
-  webui_port?: number
+  official_dashboard_installed?: boolean
+  dashboard_running?: boolean
+  dashboard_url?: string
   dashboard_port?: number
 }
 
@@ -54,7 +52,7 @@ function extractErrorMessage(payload: unknown, status: number): string {
 
 export function HermesEmbeddedHost({ active }: { active: boolean }) {
   const [backendBase, setBackendBase] = useState(API_ENDPOINTS.base)
-  const [webuiUrl, setWebuiUrl] = useState(FALLBACK_WEBUI_URL)
+  const [dashboardUrl, setDashboardUrl] = useState(FALLBACK_DASHBOARD_URL)
   const [retryToken, setRetryToken] = useState(0)
   const [ready, setReady] = useState(false)
   const [booting, setBooting] = useState(false)
@@ -64,15 +62,15 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
     let activeRequest = true
 
     const applyRuntime = (runtime: HermesRuntime | null): boolean => {
-      const runtimeUrl = String(runtime?.webui_url || "").trim()
+      const runtimeUrl = String(runtime?.dashboard_url || "").trim()
       if (runtimeUrl) {
-        setWebuiUrl(runtimeUrl)
+        setDashboardUrl(runtimeUrl)
       }
 
-      const running = Boolean(runtime?.webui_running)
+      const running = Boolean(runtime?.dashboard_running) || Boolean(runtimeUrl)
       setReady(running)
-      if (!running && runtime && (!runtime.agent_installed || !runtime.webui_installed)) {
-        setStartupError("Hermes Agent 或 WebUI 尚未安装。请先完成本地 Hermes 运行时安装。")
+      if (!running && runtime && (!runtime.agent_installed || !runtime.official_dashboard_installed)) {
+        setStartupError("Hermes Agent 或 Dashboard 尚未安装。请先完成本地 Hermes 运行时安装。")
       }
       return running
     }
@@ -162,10 +160,7 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
     }
   }, [active])
 
-  const iframeSrc = useMemo(
-    () => `${webuiUrl}${webuiUrl.includes("?") ? "&" : "?"}prism_webui_rev=${WEBUI_ASSET_REV}`,
-    [webuiUrl],
-  )
+  const iframeSrc = useMemo(() => dashboardUrl, [dashboardUrl])
 
   return (
     <div
@@ -179,13 +174,13 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
       {ready ? (
         <iframe
           src={iframeSrc}
-          title="Hermes WebUI"
+          title="Hermes Dashboard"
           className="block h-full w-full border-0 bg-card"
         />
       ) : (
         <div className="grid h-full place-items-center bg-card px-6 text-foreground">
           <div className="w-full max-w-lg rounded-2xl border border-border/70 bg-foreground/5 p-8 text-center shadow-2xl">
-            <div className="text-lg font-semibold">{booting ? "正在启动 Hermes Agent…" : "Hermes Agent 暂不可用"}</div>
+            <div className="text-lg font-semibold">{booting ? "正在启动 Hermes Dashboard…" : "Hermes Dashboard 暂不可用"}</div>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {startupError || "正在读取本地 Hermes 运行时状态。"}
             </p>

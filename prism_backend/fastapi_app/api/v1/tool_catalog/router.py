@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Body, HTTPException
 
-from fastapi_app.agent import tool_catalog
+from fastapi_app.services import tool_catalog
 from fastapi_app.core.logger import logger
 
 
@@ -46,8 +46,8 @@ async def tool_detail(name: str) -> Dict[str, Any]:
 
 
 @router.post("/{name}")
-async def call_tool(name: str, arguments: Dict[str, Any] = Body(default={}, embed=True)):
-    """调用指定工具，body 为参数 kwargs。"""
+async def call_tool(name: str, arguments: Dict[str, Any] = Body(default={})):
+    """调用指定工具，body 即参数 kwargs（直接传 JSON 对象）。"""
     spec = tool_catalog.get(name)
     if spec is None:
         raise HTTPException(status_code=404, detail=f"未知工具: {name}")

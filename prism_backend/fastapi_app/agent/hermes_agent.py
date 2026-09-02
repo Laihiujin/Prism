@@ -563,7 +563,7 @@ async def get_hermes_runtime_status(
     webui_port = (
         webui_port
         if isinstance(webui_port, int) and webui_port > 0
-        else _get_runtime_port("PRISM_HERMES_WEBUI_PORT", 9131)
+        else _get_runtime_port("PRISM_HERMES_WEBUI_PORT", 8788)
     )
 
     runtime = get_runtime_summary()
@@ -739,7 +739,7 @@ async def start_hermes_interfaces(
     resolved_webui_port = (
         webui_port
         if isinstance(webui_port, int) and webui_port > 0
-        else _get_runtime_port("PRISM_HERMES_WEBUI_PORT", 9131)
+        else _get_runtime_port("PRISM_HERMES_WEBUI_PORT", 8788)
     )
     await _start_dashboard_backend("official", resolved_dashboard_port)
     return await _start_dashboard_backend("webui", resolved_webui_port)

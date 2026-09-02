@@ -46,6 +46,7 @@ from .platforms.bilibili.router_biliup import router as bilibili_router  # 使�
 from .platforms.tasks.router import router as platform_tasks_router
 from .tools.router import router as tools_router
 from .ccswitch.router import router as ccswitch_router  # CC Switch 桥接（读取本机 cc-switch 库并应用到项目内）
+from .tool_catalog.router import router as tool_catalog_router  # 声明式工具注册中心（能力暴露为 tool）
 
 # 创建API路由器
 api_router = APIRouter()
@@ -93,6 +94,7 @@ api_router.include_router(bilibili_router)  # router 已自带 /platforms/bilibi
 api_router.include_router(platform_tasks_router)  # router 已自带 /platforms/tasks 前缀
 api_router.include_router(tools_router)  # 开发者工具 /tools 前缀
 api_router.include_router(ccswitch_router)  # /ccswitch 前缀
+api_router.include_router(tool_catalog_router)  # 声明式工具目录 /tool-catalog 前缀
 
 
 @api_router.get("/ping")

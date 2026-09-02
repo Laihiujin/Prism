@@ -28,8 +28,11 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
                     onChange={handleChange}
                     {...rest}
                 />
-                <span className="relative w-10 h-5 bg-white rounded-full transition-colors duration-200">
-                    <span className="absolute left-0 top-0 w-5 h-5 bg-foreground rounded-full shadow transform transition-transform duration-200"
+                <span
+                    className={`relative w-10 h-5 rounded-full border border-border/70 transition-colors duration-200 ${checked ? 'bg-foreground' : 'bg-black'}`}
+                    aria-hidden="true"
+                >
+                    <span className={`absolute left-0 top-0 w-5 h-5 rounded-full shadow transform transition-transform duration-200 ${checked ? 'bg-black' : 'bg-muted-foreground'}`}
                         style={{ transform: checked ? 'translateX(20px)' : 'translateX(0)' }} />
                 </span>
             </label>

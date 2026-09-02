@@ -55,7 +55,7 @@ export function DataTable<TData, TValue>({
         <Table className="table-fixed w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-border/40">
+              <TableRow key={headerGroup.id} className="border-border/50">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
@@ -95,7 +95,7 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="border-border/40">
+                <TableRow key={row.id} className="border-border/45">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
@@ -119,25 +119,25 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs text-muted-foreground">
+        <div className="text-[11px] text-muted-foreground">
           共 {data.length} 条 · 第 {table.getState().pagination.pageIndex + 1} / {table.getPageCount()} 页
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
-            className="rounded-xl border border-border/70 bg-card"
+            size="sm"
+            className="h-7 px-2.5 border border-border bg-card text-xs text-foreground/70 hover:text-foreground"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            size="sm"
           >
             上一页
           </Button>
           <Button
             variant="ghost"
-            className="rounded-xl border border-border/70 bg-card"
+            size="sm"
+            className="h-7 px-2.5 border border-border bg-card text-xs text-foreground/70 hover:text-foreground"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            size="sm"
           >
             下一页
           </Button>

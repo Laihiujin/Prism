@@ -295,18 +295,19 @@ export default function AnalyticsPage() {
     }, [accounts, selectedAccounts])
 
     return (
-        <div className="space-y-8 px-4 py-4 md:px-6 md:py-6">
+        <div className="mx-auto max-w-[1440px] space-y-3 px-3 py-3 md:px-5 md:py-4">
             <PageHeader
+                eyebrow="PRISM / TELEMETRY"
                 title="数据中心"
                 actions={
                     <div className="flex gap-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 border-border/70 bg-black hover:bg-accent/50"
+                            className="h-8 border-border/70 bg-black px-2.5 hover:bg-accent/50"
                             onClick={() => setAccountDrawerOpen(true)}
                         >
-                            <FilterIcon className="mr-2 h-4 w-4" />
+                            <FilterIcon className="mr-1.5 h-3.5 w-3.5" />
                             筛选账号
                             {selectedAccounts.length > 0 && (
                                 <Badge className="ml-2 bg-black text-primary border-primary/30">
@@ -320,7 +321,7 @@ export default function AnalyticsPage() {
                             className="h-9 border-border/70 bg-black hover:bg-accent/50"
                             onClick={() => handleExport('csv')}
                         >
-                            <Download className="mr-2 h-4 w-4" />
+                            <Download className="mr-1.5 h-3.5 w-3.5" />
                             导出CSV
                         </Button>
                         <Button
@@ -337,10 +338,10 @@ export default function AnalyticsPage() {
             />
 
             {/* Time Range Filter */}
-            <div className="flex flex-col gap-4 p-5 rounded-2xl border border-border/70 bg-card/40 backdrop-blur-sm">
+            <div className="flex flex-col gap-2 border-y border-border/60 bg-card/20 px-2 py-2">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <Label className="text-sm text-muted-foreground font-medium shrink-0">时间范围</Label>
-                    <div className="flex flex-wrap items-center gap-2 bg-card/20 p-1.5 rounded-xl border border-border/40 w-full sm:w-auto">
+                    <Label className="text-xs text-muted-foreground font-medium shrink-0">时间范围</Label>
+                    <div className="flex w-full flex-wrap items-center gap-0.5 border border-border/40 bg-card/20 p-0.5 sm:w-auto">
                         {TIME_PRESETS.map(preset => (
                             <button
                                 key={preset.value}
@@ -351,7 +352,7 @@ export default function AnalyticsPage() {
                                         setEndDate(undefined)
                                     }
                                 }}
-                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${timePreset === preset.value
+                                className={`px-2 py-1 text-[11px] font-medium transition-all ${timePreset === preset.value
                                     ? "bg-black text-primary border border-primary/30"
                                     : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
                                     }`}
@@ -370,14 +371,14 @@ export default function AnalyticsPage() {
                                 value={startDate}
                                 onChange={setStartDate}
                                 placeholder="开始日期"
-                                className="w-40 h-10 text-sm"
+                                className="w-36 h-8 text-xs"
                             />
                             <span className="text-foreground/30">至</span>
                             <DatePicker
                                 value={endDate}
                                 onChange={setEndDate}
                                 placeholder="结束日期"
-                                className="w-40 h-10 text-sm"
+                                className="w-36 h-8 text-xs"
                             />
                         </div>
                     </div>
@@ -386,7 +387,7 @@ export default function AnalyticsPage() {
 
             {/* Empty State or Data */}
             {selectedAccounts.length === 0 ? (
-                <Card className="border-border/70 bg-card/40">
+                <Card className="border-border/60 bg-card/20">
                     <CardContent className="py-16">
                         <div className="text-center space-y-4">
                             <div className="w-20 h-20 mx-auto rounded-full bg-black flex items-center justify-center">
@@ -412,7 +413,7 @@ export default function AnalyticsPage() {
             ) : (
                 <>
                     {/* Statistics Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 gap-px border border-border/60 bg-border/60 md:grid-cols-3 lg:grid-cols-5">
                         <StatsCard
                             title="播放总量"
                             value={formatNumber(summary.totalPlays)}
@@ -454,19 +455,19 @@ export default function AnalyticsPage() {
                     </div>
 
                     {/* Trend Chart */}
-                    <Card className="border-border/70 bg-card/40">
+                    <Card className="border-border/60 bg-card/20">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle>{metricConfig[chartMetric].label}趋势</CardTitle>
                                     <CardDescription>近期{metricConfig[chartMetric].label}数据变化</CardDescription>
                                 </div>
-                                <div className="flex items-center bg-card/40 rounded-lg p-1 border border-border/70">
+                                <div className="flex items-center bg-card/40 p-0.5 border border-border/70">
                                     {Object.entries(metricConfig).map(([key, config]) => (
                                         <button
                                             key={key}
                                             onClick={() => setChartMetric(key as any)}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${chartMetric === key ? "bg-black text-foreground shadow-sm" : "text-foreground/40 hover:text-foreground/80"}`}
+                                            className={`px-2 py-1 text-[11px] font-medium transition-all ${chartMetric === key ? "bg-black text-foreground" : "text-foreground/40 hover:text-foreground/80"}`}
                                         >
                                             {config.label}
                                         </button>
@@ -485,7 +486,7 @@ export default function AnalyticsPage() {
                     </Card>
 
                     {/* Video Data Table */}
-                    <Card className="border-border/70 bg-card/40">
+                    <Card className="border-border/60 bg-card/20">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>

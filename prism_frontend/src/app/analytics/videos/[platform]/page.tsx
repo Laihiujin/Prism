@@ -519,7 +519,7 @@ export default function PlatformVideosPage() {
     }
 
     return (
-        <div className="space-y-8 px-4 py-4 md:px-6 md:py-6 animate-in fade-in duration-500">
+        <div className="space-y-3 px-3 py-3 md:px-5 md:py-4 animate-in fade-in duration-500">
             <PageHeader
                 title={`${config.label} 数据分析`}
                 description={`针对 ${config.label} 平台的视频表现进行深度追踪与对比`}
@@ -528,23 +528,23 @@ export default function PlatformVideosPage() {
                         <Button
                             variant="outline"
                             onClick={() => setIsSheetOpen(true)}
-                            className="border-border bg-card/40 text-foreground hover:bg-card/60 rounded-xl"
+                            className="h-8 border-border bg-card/40 px-2.5 text-xs text-foreground hover:bg-card/60"
                         >
-                            <BarChart3 className="mr-2 h-4 w-4" />
+                            <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
                             明细表格
                         </Button>
                         <Button
                             onClick={handleCollect}
                             disabled={isCollecting}
                             className={cn(
-                                "bg-gradient-to-r text-foreground shadow-lg transition-all duration-300 hover:scale-105 rounded-xl",
+                                "h-8 bg-gradient-to-r px-2.5 text-xs text-foreground shadow-none transition-all duration-300",
                                 config.color
                             )}
                         >
                             {isCollecting ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                             ) : (
-                                <RefreshCw className="mr-2 h-4 w-4" />
+                                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                             )}
                             {isCollecting ? "同步中..." : "刷新数据"}
                         </Button>
@@ -554,38 +554,36 @@ export default function PlatformVideosPage() {
 
             {/* Platform Banner Header - Unique Design element */}
             <div className={cn(
-                "relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br border border-border shadow-2xl",
+                "relative overflow-hidden border-y border-border bg-gradient-to-br px-4 py-4",
                 config.color,
                 "opacity-90"
             )}>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                            <div className="p-3 bg-black backdrop-blur-md rounded-2xl">
-                                <Video className="h-6 w-6 text-foreground" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-foreground">矩阵数据概览</h2>
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-foreground/45">
+                            <Video className="h-3.5 w-3.5 text-foreground/70" />
+                            <span>OVERVIEW / {config.label}</span>
                         </div>
-                        <p className="text-foreground/80 max-w-md">
-                            当前已监控 {videoCount} 个视频，覆盖核心互动指标与传播趋势。
+                        <p className="text-xs text-foreground/60 max-w-md">
+                            {videoCount} 个视频 · 核心互动指标与传播趋势
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 md:flex md:gap-8">
-                        <div className="bg-black backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
-                            <p className="text-xs text-muted-foreground mb-1">今日新增播放</p>
+                    <div className="grid grid-cols-2 gap-px border border-border/50 bg-border/50 md:flex md:gap-px">
+                        <div className="bg-black/80 backdrop-blur-md px-3 py-2 min-w-[120px]">
+                            <p className="text-[10px] text-muted-foreground mb-0.5">今日新增播放</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-xl font-bold text-foreground">{formatNumber(stats.views)}</span>
-                                <Badge className="bg-white text-foreground border-0 text-[10px] h-4">
+                                <span className="text-base font-bold text-foreground">{formatNumber(stats.views)}</span>
+                                <Badge className="bg-white text-foreground border-0 text-[9px] h-3.5">
                                     <ArrowUpRight className="h-2.5 w-2.5 mr-0.5" />
                                     {videoCount}个
                                 </Badge>
                             </div>
                         </div>
-                        <div className="bg-black backdrop-blur-md rounded-2xl p-4 min-w-[120px]">
-                            <p className="text-xs text-muted-foreground mb-1">平均互动率</p>
+                        <div className="bg-black/80 backdrop-blur-md px-3 py-2 min-w-[120px]">
+                            <p className="text-[10px] text-muted-foreground mb-0.5">平均互动率</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-xl font-bold text-foreground">{stats.engagement}%</span>
+                                <span className="text-base font-bold text-foreground">{stats.engagement}%</span>
                                 <Zap className="h-3 w-3 text-white" />
                             </div>
                         </div>
@@ -598,23 +596,23 @@ export default function PlatformVideosPage() {
             </div>
 
             {/* Dynamic Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-px border border-border/60 bg-border/60 md:grid-cols-3 lg:grid-cols-5">
                 {config.stats.map((item, idx) => (
-                    <Card key={idx} className="bg-card/40 border-border group hover:border-border/80 transition-all duration-300">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                    <Card key={idx} className="bg-card/30 border-0 group hover:bg-card/50 transition-colors duration-200">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-1">
+                            <CardTitle className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                                 {item.label}
                             </CardTitle>
-                            <div className={cn("p-2 rounded-lg bg-card/60", item.color)}>
-                                <item.icon className="h-4 w-4" />
+                            <div className={cn("p-1 bg-card/60", item.color)}>
+                                <item.icon className="h-3.5 w-3.5" />
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold text-foreground">
+                        <CardContent className="p-3 pt-0">
+                            <div className="text-xl font-bold text-foreground">
                                 {formatNumber((stats as any)[item.key] || 0)}
                             </div>
-                            <p className="text-xs text-foreground/40 mt-1 flex items-center gap-1">
-                                <TrendingUp className="h-3 w-3" />
+                            <p className="text-[10px] text-foreground/40 mt-0.5 flex items-center gap-1">
+                                <TrendingUp className="h-2.5 w-2.5" />
                                 较上周期持平
                             </p>
                         </CardContent>
@@ -623,16 +621,16 @@ export default function PlatformVideosPage() {
             </div>
 
             {/* Main Content Area - 热门视频双栏布局 */}
-            <Card className="bg-card/40 border-border overflow-hidden">
-                <CardHeader className="border-b border-border/20 bg-card/20">
+            <Card className="bg-card/30 border-border overflow-hidden">
+                <CardHeader className="border-b border-border/20 bg-card/20 p-3">
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg text-foreground">热门视频排行</CardTitle>
-                            <CardDescription className="text-foreground/40">基于播放、点赞、评论、收藏、分享的综合评分</CardDescription>
+                            <CardTitle className="text-sm text-foreground">热门视频排行</CardTitle>
+                            <CardDescription className="text-xs text-foreground/40">按综合互动表现排序</CardDescription>
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-4">
+                <CardContent className="p-3">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-20">
                             <Loader2 className="h-8 w-8 animate-spin text-foreground/20" />
@@ -644,59 +642,59 @@ export default function PlatformVideosPage() {
                     ) : (
                         <>
                             {/* 双栏布局 */}
-                            <div className="grid md:grid-cols-2 gap-3 mb-4">
+                            <div className="grid md:grid-cols-2 gap-px mb-3 bg-border/50">
                                 {/* 左栏 */}
-                                <div className="space-y-2">
+                                <div className="space-y-px">
                                     {hotVideosData.leftColumn.map((video: any, idx: number) => (
-                                        <div key={idx} className="group flex items-start gap-2 p-2 rounded-lg bg-card/20 hover:bg-card/40 transition-all border border-border/20 hover:border-border/70">
+                                        <div key={idx} className="group flex items-start gap-2 p-2 bg-card/30 hover:bg-card/50 transition-colors border border-transparent hover:border-border/70">
                                             <div className="relative shrink-0">
                                                 <img
                                                     src={video.cover_url || "/placeholder-video.png"}
-                                                    className="w-24 h-32 object-cover rounded-lg border border-border"
+                                                    className="w-11 h-14 object-cover border border-border"
                                                     alt=""
                                                 />
-                                                <div className="absolute top-1 left-1 bg-card/80 backdrop-blur-md px-2 py-0.5 rounded-md text-xs text-foreground/90 font-bold">
+                                                <div className="absolute top-0 left-0 bg-black/80 px-1 py-0.5 text-[9px] text-foreground/90 font-bold">
                                                     #{(hotVideosPage - 1) * hotVideosPerPage + idx * 2 + 1}
                                                 </div>
                                             </div>
                                             <div className="flex-1 min-w-0 flex flex-col">
-                                                <h4 className="text-foreground font-medium line-clamp-2 leading-snug mb-2">
+                                                <h4 className="text-xs text-foreground font-medium line-clamp-2 leading-snug mb-1">
                                                     {video.title || "未命名视频"}
                                                 </h4>
-                                                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                                                <div className="flex items-center gap-1.5 mb-1 text-[10px] text-muted-foreground">
                                                     {video.author_avatar ? (
                                                         <img
                                                             src={video.author_avatar}
-                                                            className="h-4 w-4 rounded-full object-cover border border-border/70"
+                                                            className="h-3 w-3 rounded-full object-cover border border-border/70"
                                                             alt=""
                                                         />
                                                     ) : (
-                                                        <div className="h-4 w-4 rounded-full bg-black" />
+                                                        <div className="h-3 w-3 rounded-full bg-black" />
                                                     )}
                                                     <span className="truncate">{video.author_name || "作者未填写"}</span>
                                                 </div>
 
                                                 {/* 详细数据展示 - 横向一排 */}
-                                                <div className="flex items-center gap-3 mb-2">
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-muted-foreground">播放</span>
-                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.views)}</span>
+                                                        <span className="text-[9px] text-muted-foreground">播放</span>
+                                                        <span className="text-[11px] font-medium text-foreground">{formatNumber(video.views)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-muted-foreground">点赞</span>
-                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.likes)}</span>
+                                                        <span className="text-[9px] text-muted-foreground">赞</span>
+                                                        <span className="text-[11px] font-medium text-foreground">{formatNumber(video.likes)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-muted-foreground">评论</span>
-                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.comments)}</span>
+                                                        <span className="text-[9px] text-muted-foreground">评</span>
+                                                        <span className="text-[11px] font-medium text-foreground">{formatNumber(video.comments)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-muted-foreground">收藏</span>
-                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.collects)}</span>
+                                                        <span className="text-[9px] text-muted-foreground">藏</span>
+                                                        <span className="text-[11px] font-medium text-foreground">{formatNumber(video.collects)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-[10px] text-muted-foreground">分享</span>
-                                                        <span className="text-xs font-medium text-foreground">{formatNumber(video.shares)}</span>
+                                                        <span className="text-[9px] text-muted-foreground">享</span>
+                                                        <span className="text-[11px] font-medium text-foreground">{formatNumber(video.shares)}</span>
                                                     </div>
                                                     <Button
                                                         size="sm"
@@ -837,27 +835,6 @@ export default function PlatformVideosPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <div className="ml-auto flex items-center gap-2 text-muted-foreground">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 px-3 text-xs"
-                                    disabled={sheetPage <= 1}
-                                    onClick={() => setSheetPage((prev) => Math.max(1, prev - 1))}
-                                >
-                                    上一页
-                                </Button>
-                                <span>{sheetPage} / {sheetTotalPages}</span>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 px-3 text-xs"
-                                    disabled={sheetPage >= sheetTotalPages}
-                                    onClick={() => setSheetPage((prev) => Math.min(sheetTotalPages, prev + 1))}
-                                >
-                                    下一页
-                                </Button>
-                            </div>
                         </div>
                     </SheetHeader>
 
@@ -994,6 +971,27 @@ export default function PlatformVideosPage() {
                                 </TableBody>
                             </Table>
                         </ScrollArea>
+                        <div className="mt-2 flex shrink-0 items-center justify-center gap-2 border-t border-border/60 pt-2 text-xs text-muted-foreground">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                disabled={sheetPage <= 1}
+                                onClick={() => setSheetPage((prev) => Math.max(1, prev - 1))}
+                            >
+                                上一页
+                            </Button>
+                            <span>{sheetPage} / {sheetTotalPages}</span>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                disabled={sheetPage >= sheetTotalPages}
+                                onClick={() => setSheetPage((prev) => Math.min(sheetTotalPages, prev + 1))}
+                            >
+                                下一页
+                            </Button>
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

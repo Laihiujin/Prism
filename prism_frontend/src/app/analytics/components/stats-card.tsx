@@ -30,14 +30,14 @@ export function StatsCard({ title, value, icon, color = 'blue', onClick, isActiv
             )}
             onClick={onClick}
         >
-            <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                    <span className={cn("text-sm transition-colors", isActive ? "text-foreground" : "text-muted-foreground")}>{title}</span>
-                    <div className={cn("p-2 rounded-lg transition-all", colorClasses[color], isActive && "scale-110")}>
+            <CardContent className="p-3">
+                <div className="flex items-center justify-between mb-1">
+                    <span className={cn("font-terminal text-[10px] uppercase tracking-[0.08em] transition-colors", isActive ? "text-foreground" : "text-muted-foreground")}>{title}</span>
+                    <div className={cn("p-1 transition-all", colorClasses[color], isActive && "scale-110")}>
                         {icon}
                     </div>
                 </div>
-                <div className={cn("text-2xl font-semibold transition-colors", isActive && "text-primary")}>{value}</div>
+                <div className={cn("text-xl font-semibold transition-colors", isActive && "text-primary")}>{value}</div>
             </CardContent>
         </Card>
     )

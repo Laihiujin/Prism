@@ -9,6 +9,7 @@ nul
 _nul
 */_nul
 
+
 # Python
 __pycache__/
 *.py[cod]
@@ -218,3 +219,12 @@ LaunchScript/python-3.11.9-embed-amd64.zip
 
 # Local npm cache used when ~/.npm is unwritable
 .npm-cache-tmp/
+prism_backend/videoFile/covers/first_frame_3.png
+
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+prism_backend/logs/douyin_preview_screenshot.png
+prism_backend/logs/douyin_preview_screenshot.png

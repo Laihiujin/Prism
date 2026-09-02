@@ -6,6 +6,8 @@ import asyncio
 import time
 import logging
 import random
+import re
+from difflib import SequenceMatcher
 from pathlib import Path
 from datetime import datetime
 from utils.automation_provider import async_playwright, Page
@@ -19,6 +21,21 @@ from ..base import BasePlatform
 from ..path_utils import resolve_cookie_file, resolve_video_file
 
 logger = logging.getLogger(__name__)
+
+
+def _levenshtein_distance(a: str, b: str) -> int:
+    """Return the character edit distance without adding a network dependency."""
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            current.append(min(
+                current[-1] + 1,
+                previous[j] + 1,
+                previous[j - 1] + (ca != cb),
+            ))
+        previous = current
+    return previous[-1]
 
 # Build tag for runtime identification (helps confirm which implementation is used).
 DOUYIN_PLATFORM_UPLOAD_BUILD_TAG = "platforms/douyin/upload.py:js-evaluate-cover+version-prompt@2026-09-02"
@@ -166,6 +183,13 @@ class DouyinUpload(BasePlatform):
                     random_cover: bool = False,
                     miniprogram_link: str = "",
                     miniprogram_title: str = "",
+                    who_can_see: str = "",
+                    save_permission: str = "",
+                    hotspot: str = "",
+                    collection: str = "",
+                    cover_orientation: str = "landscape",
+                    cover_file: str = "",
+                    miniprogram_object: Optional[Dict[str, Any]] = None,
                     **kwargs) -> Dict[str, Any]:
         """
         上传并发布抖音视频
@@ -304,7 +328,9 @@ class DouyinUpload(BasePlatform):
                 # 等待视频上传完成
                 await self._wait_for_video_upload(page)
                 
-                # 设置封面（尽量设置，避免"请设置封面后再发布"）
+                # 设置封面（尽量设置，避免"请设置封面后再发布"）；cover_file 有值时回退当封面上传
+                if not thumbnail_path and cover_file:
+                    thumbnail_path = cover_file
                 await self._set_thumbnail_best_effort(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio)
 
                 # 设置地理位置（如果提供）
@@ -313,6 +339,18 @@ class DouyinUpload(BasePlatform):
 
                 # 处理浏览器位置权限弹窗（有位置→允许；未选位置→不允许）
                 await self._handle_browser_permission(page, allow_location=bool(location), has_location=bool(location))
+
+                # 新增功能（best-effort，失败不阻断）：合集 → 挂载内容 → 关联热点 → 谁可以看 → 保存权限
+                if collection:
+                    await self._set_collection(page, collection)
+                if miniprogram_object:
+                    await self._set_mount_object(page, miniprogram_object)
+                if hotspot:
+                    await self._set_hotspot(page, hotspot)
+                if who_can_see and who_can_see not in ("", "公开", "public"):
+                    await self._set_who_can_see(page, who_can_see)
+                if save_permission and save_permission not in ("", "允许"):
+                    await self._set_save_permission(page, save_permission)
 
                 # 设置商品链接（如果提供）
                 if product_link and product_title:
@@ -1147,6 +1185,172 @@ class DouyinUpload(BasePlatform):
                 except Exception as e:
                     logger.warning(f"[DouyinUpload] 推荐封面没选成功: {e}")
         return False
+
+    async def _set_who_can_see(self, page: Page, who_can_see: str) -> None:
+        """设置「谁可以看」：公开 / 好友可见 / 仅自己可见（发布设置区单选，实测 label.radio-d4zkru）。"""
+        if not who_can_see or who_can_see in ("", "公开", "public"):
+            return
+        try:
+            row = page.locator("div.content-obt4oA").filter(has_text="谁可以看").first
+            await row.wait_for(state="visible", timeout=8000)
+            target = row.locator("label.radio-d4zkru").filter(has_text=who_can_see).first
+            if not await target.count():
+                target = page.locator("label.radio-d4zkru").filter(has_text=who_can_see).first
+            if await target.count() and await target.is_visible():
+                await target.click(timeout=5000)
+                logger.info(f"[DouyinUpload] 「谁可以看」已设置「{who_can_see}」")
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 设置「谁可以看」失败（忽略）：{exc}")
+
+    async def _set_save_permission(self, page: Page, save_permission: str) -> None:
+        """设置「保存权限」：允许 / 不允许（实测 div.download-content-Lci5tL label.radio-d4zkru）。"""
+        if not save_permission or save_permission in ("", "允许", "allow"):
+            return
+        try:
+            box = page.locator("div.download-content-Lci5tL").first
+            await box.wait_for(state="visible", timeout=8000)
+            target = box.locator("label.radio-d4zkru").filter(has_text=save_permission).first
+            if not await target.count():
+                target = page.locator("label.radio-d4zkru").filter(has_text=save_permission).first
+            if await target.count() and await target.is_visible():
+                await target.click(timeout=5000)
+                logger.info(f"[DouyinUpload] 「保存权限」已设置「{save_permission}」")
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 设置「保存权限」失败（忽略）：{exc}")
+
+    async def _set_hotspot(self, page: Page, hotspot: str) -> None:
+        """关联热点：点「点击输入热点词」筛选下拉 → 输入关键词 → ArrowDown+Enter 选第一条。
+
+        实测：该筛选下拉内部有 1 个 input，打开即预载约 55 个（含隐藏项）选项，
+        故用 Semi 原生键盘交互而非点击（避免点中隐藏选项）。
+        """
+        if not hotspot:
+            return
+        try:
+            sel = page.locator("div.semi-select").filter(has_text="点击输入热点词").first
+            await sel.wait_for(state="visible", timeout=8000)
+            await sel.click(timeout=5000)
+            await page.wait_for_timeout(500)
+            inp = sel.locator("input").first
+            if await inp.count():
+                await inp.fill(hotspot)
+            else:
+                await page.keyboard.type(hotspot)
+            await page.wait_for_timeout(1200)
+            await page.keyboard.press("ArrowDown")
+            await page.wait_for_timeout(250)
+            await page.keyboard.press("Enter")
+            logger.info(f"[DouyinUpload] 关联热点已选「{hotspot}」")
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 设置「关联热点」失败（忽略）：{exc}")
+
+    async def _set_collection(self, page: Page, collection: str) -> None:
+        """添加到合集：点「请选择合集」下拉选择合集；空/找不到则选「不选择合集」。"""
+        if not collection:
+            return
+        try:
+            box = page.locator("div.semi-select.select-collection-nkL6sA").first
+            await box.wait_for(state="visible", timeout=8000)
+            await box.click(timeout=5000)
+            await page.wait_for_selector('[role="listbox"] [role="option"]', timeout=8000)
+            target = (collection or "").strip()
+            option = None
+            if target and target not in ("不选择合集", "不加入合集"):
+                option = page.locator('[role="listbox"] [role="option"]').filter(has_text=target).first
+                if not await option.count():
+                    option = page.get_by_text(target, exact=True).first
+            if not option or not await option.count():
+                option = page.locator('[role="listbox"] [role="option"]').filter(has_text="不选择合集").first
+                if not await option.count():
+                    option = page.get_by_text("不选择合集", exact=True).first
+            if await option.count() and await option.is_visible():
+                await option.click(timeout=5000)
+                logger.info(f"[DouyinUpload] 合集已设置「{target or '不选择合集'}」")
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 设置「合集」失败（忽略）：{exc}")
+
+    async def _set_mount_object(self, page: Page, mini_program) -> None:
+        """添加标签 → 挂载内容（小程序/游戏/应用）「对象」（实测选项：位置/影视演艺/小程序/标记万物）。"""
+        if not mini_program:
+            return
+        name = mini_program.get("name") if isinstance(mini_program, dict) else str(mini_program)
+        if not name:
+            return
+        try:
+            anchor = page.locator("div.anchor-container-hgj7gj div.semi-select").first
+            if not await anchor.count():
+                logger.warning("[DouyinUpload] 未找到「添加标签」下拉，跳过挂载")
+                return
+            await anchor.click(timeout=5000)
+            await page.wait_for_selector('[role="listbox"] [role="option"]', timeout=8000)
+            opt = page.locator('[role="listbox"] [role="option"]').filter(has_text="小程序").first
+            if not await opt.count():
+                opt = page.get_by_text("小程序", exact=True).first
+            if not await opt.count() or not await opt.is_visible():
+                logger.warning("[DouyinUpload] 「小程序」选项未出现，跳过挂载")
+                return
+            await opt.click(timeout=5000)
+            # 对象搜索浮层（「未确认」兜底）
+            await page.wait_for_timeout(1500)
+            # 实测当前抖音界面：选择「小程序」后显示的是链接输入框，
+            # 而不是影视演艺那种候选搜索列表。优先支持 url/link 字段。
+            mini_url = mini_program.get("url") or mini_program.get("link") if isinstance(mini_program, dict) else None
+            mini_link = page.locator('input[placeholder*="粘贴抖音小程序链接"]').first
+            if await mini_link.count():
+                if mini_url:
+                    await mini_link.fill(str(mini_url))
+                    logger.info(f"[DouyinUpload] 小程序链接已填写「{mini_url}」")
+                else:
+                    logger.warning("[DouyinUpload] 已进入小程序链接输入态，但 miniProgram 未提供 url/link，跳过填写")
+                return
+            search_input = page.locator(
+                'input[placeholder*="搜索"], input[placeholder*="小程序"], input[placeholder*="名称"]'
+            ).first
+            if await search_input.count():
+                await search_input.fill(name)
+                await page.wait_for_timeout(1200)
+                candidates = page.locator(
+                    '[role="option"], .semi-sidesheet-content [class*="option"], [class*="item"]'
+                )
+                ranked = []
+                query = str(name).strip()
+                for idx in range(await candidates.count()):
+                    item = candidates.nth(idx)
+                    if await item.is_visible():
+                        label = (await item.inner_text()).strip()
+                        if label:
+                            ranked.append((self._mount_match_score(query, label), idx, label))
+                ranked.sort(reverse=True)
+                obj = candidates.nth(ranked[0][1]) if ranked else candidates.nth(0)
+                if await obj.count() and await obj.is_visible():
+                    await obj.click(timeout=5000)
+                    logger.info(f"[DouyinUpload] 挂载内容「{name}」已选择候选「{ranked[0][2] if ranked else name}」")
+                    return
+            logger.warning(f"[DouyinUpload] 挂载内容「{name}」对象浮层未确认到，请人工核对")
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 设置挂载内容失败（忽略）：{exc}")
+
+    @staticmethod
+    def _mount_match_score(query: str, candidate: str) -> float:
+        """按字符距离、长度、前缀和 n-gram 混合评分候选。
+
+        抖音候选会随关键词长度变化，因此长度接近和编辑距离优先于热度；
+        不依赖外部 embedding 服务，避免发布链路被网络模型调用阻断。
+        """
+        q = re.sub(r"\s+", "", query).lower()
+        c = re.sub(r"\s+", "", candidate).lower()
+        if not q or not c:
+            return 0.0
+        exact = 1.0 if q == c else 0.0
+        prefix = 1.0 if c.startswith(q) else 0.0
+        seq = SequenceMatcher(None, q, c).ratio()
+        length = min(len(q), len(c)) / max(len(q), len(c))
+        distance = _levenshtein_distance(q, c)
+        edit = 1.0 - distance / max(len(q), len(c))
+        qgrams = {q[i:i + 2] for i in range(max(0, len(q) - 1))} or {q}
+        cgrams = {c[i:i + 2] for i in range(max(0, len(c) - 1))} or {c}
+        ngram = len(qgrams & cgrams) / len(qgrams)
+        return 0.40 * exact + 0.15 * prefix + 0.20 * edit + 0.10 * length + 0.10 * seq + 0.05 * ngram
 
 
 # 全局实例

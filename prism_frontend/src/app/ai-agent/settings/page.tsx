@@ -137,7 +137,7 @@ export default function HermesSettingsPage() {
   }, [])
 
   const dashboardUrl = runtime?.dashboard_url || "http://127.0.0.1:9119"
-  const webuiUrl = runtime?.webui_url || "http://127.0.0.1:9131"
+  const webuiUrl = runtime?.webui_url || "http://127.0.0.1:8788"
 
   const cliCommand = useMemo(() => {
     if (runtime?.wrapper_path) {

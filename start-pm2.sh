@@ -30,5 +30,11 @@ echo "  Worker      http://127.0.0.1:7001/health"
 echo "  Persona API http://127.0.0.1:8787"
 echo "  代理网关     http://127.0.0.1:7771-7776 (sg/jp/us/de/tw/hk)"
 
+# 明确打开 Prism 主前端，避免浏览器停留在 Persona Dashboard:5173。
+# 统一使用 localhost，避免浏览器把 localhost 与 127.0.0.1 视为两个独立站点。
+if command -v open >/dev/null 2>&1; then
+  open "http://localhost:3000/"
+fi
+
 echo
 echo "常用: PM2_HOME=$PM2_HOME $PM2 logs / restart all / stop all"

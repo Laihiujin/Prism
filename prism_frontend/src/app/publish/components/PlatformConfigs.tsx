@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Link, Gamepad2, Smartphone, Store, FileText, ImageIcon, Sparkles, CalendarClock } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -13,6 +13,24 @@ import { cn } from "@/lib/utils"
 interface ConfigProps {
     data: any
     onChange: (data: any) => void
+}
+
+/**
+ * 读取/写入某平台在 `data.platformSettings.<platform>` 下的一个配置字段。
+ * 让各平台配置面板成为受控组件，值持久化到 Plan 并随发布 payload 提交。
+ */
+function usePlatformField(data: any, onChange: (data: any) => void, platform: string, key: string, initial: any) {
+    const value = data?.platformSettings?.[platform]?.[key] ?? initial
+    const setValue = (v: any) => {
+        const settings = data?.platformSettings || {}
+        onChange({
+            platformSettings: {
+                ...settings,
+                [platform]: { ...(settings[platform] || {}), [key]: v },
+            },
+        })
+    }
+    return [value, setValue] as const
 }
 
 // 抖音小程序/游戏/应用选择对话框
@@ -73,19 +91,19 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                     <span className="text-xs">选择小程序/游戏/应用</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="bg-white border-border/70 text-foreground max-w-2xl">
+            <DialogContent className="max-w-2xl rounded-none border-border bg-black text-foreground shadow-2xl">
                 <DialogHeader>
                     <DialogTitle>选择挂载内容</DialogTitle>
                 </DialogHeader>
 
                 {/* 标签页 */}
-                <div className="flex gap-2 border-b border-border/70 pb-2">
+                <div className="flex gap-2 border-b border-border pb-2">
                     {tabs.map(tab => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
                             className={cn(
-                                "px-3 py-1 text-xs rounded-md transition-all",
+                                "px-3 py-1 text-xs transition-colors",
                                 activeTab === tab.key
                                     ? "bg-foreground text-background"
                                     : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
@@ -100,7 +118,7 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                     placeholder="搜索小程序、游戏或应用..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="bg-card/20 border-border/70"
+                    className="rounded-none bg-black border-border text-foreground placeholder:text-muted-foreground"
                 />
                 <ScrollArea className="h-[400px]">
                     <div className="grid grid-cols-2 gap-3">
@@ -110,7 +128,7 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                                 onClick={() => {
                                     onSelect(item)
                                 }}
-                                className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
+                                className="flex items-center gap-3 border border-border bg-black p-3 cursor-pointer transition-colors hover:bg-white/[0.06]"
                             >
                                 <span className="text-2xl">{item.icon}</span>
                                 <div className="flex-1 min-w-0">
@@ -137,12 +155,43 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
 // POI地点选择对话框
 function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
     const [search, setSearch] = useState("")
+    const [pois, setPois] = useState<any[]>([])
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState("")
 
-    const pois = [
-        { id: 1, name: "北京三里屯", address: "朝阳区三里屯路", distance: "1.2km" },
-        { id: 2, name: "上海外滩", address: "黄浦区中山东一路", distance: "3.5km" },
-        { id: 3, name: "广州塔", address: "海珠区阅江西路", distance: "5.8km" },
-    ]
+    useEffect(() => {
+        const query = search.trim()
+        if (!query) {
+            setPois([])
+            setError("")
+            return
+        }
+        const controller = new AbortController()
+        const timer = window.setTimeout(async () => {
+            setLoading(true)
+            setError("")
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&accept-language=zh-CN&q=${encodeURIComponent(query)}`,
+                    { signal: controller.signal, headers: { Accept: "application/json" } }
+                )
+                if (!response.ok) throw new Error("地址搜索服务暂不可用")
+                const results = await response.json()
+                setPois(results.map((item: any) => ({
+                    id: item.place_id,
+                    name: item.name || item.display_name.split(",")[0],
+                    address: item.display_name,
+                    lat: item.lat,
+                    lng: item.lon,
+                })))
+            } catch (cause) {
+                if ((cause as Error).name !== "AbortError") setError("地址搜索失败，请稍后重试")
+            } finally {
+                setLoading(false)
+            }
+        }, 350)
+        return () => { window.clearTimeout(timer); controller.abort() }
+    }, [search])
 
     return (
         <Dialog>
@@ -152,7 +201,7 @@ function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
                     <span className="text-xs">添加位置信息</span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="bg-white border-border/70 text-foreground">
+            <DialogContent className="rounded-none border-border bg-black text-foreground shadow-2xl">
                 <DialogHeader>
                     <DialogTitle>选择地点</DialogTitle>
                 </DialogHeader>
@@ -160,22 +209,24 @@ function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
                     placeholder="搜索地点..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="bg-card/20 border-border/70"
+                    className="rounded-none bg-black border-border text-foreground placeholder:text-muted-foreground"
                 />
                 <ScrollArea className="h-[300px]">
                     <div className="space-y-2">
-                        {pois
-                            .filter(poi => poi.name.toLowerCase().includes(search.toLowerCase()))
-                            .map(poi => (
+                        {loading && <div className="py-8 text-center text-sm text-muted-foreground">正在搜索地址…</div>}
+                        {!loading && error && <div className="py-8 text-center text-sm text-red-400">{error}</div>}
+                        {!loading && !error && !search.trim() && <div className="py-8 text-center text-sm text-muted-foreground">输入地点或地址开始搜索</div>}
+                        {!loading && !error && search.trim() && pois.length === 0 && <div className="py-8 text-center text-sm text-muted-foreground">没有找到匹配地址</div>}
+                        {!loading && pois.map(poi => (
                                 <div
                                     key={poi.id}
                                     onClick={() => onSelect(poi)}
-                                    className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
+                                    className="flex items-center gap-3 border border-border bg-black p-3 cursor-pointer transition-colors hover:bg-white/[0.06]"
                                 >
-                                    <MapPin className="w-5 h-5 text-primary" />
+                                    <MapPin className="w-5 h-5 text-foreground" />
                                     <div className="flex-1">
                                         <div className="text-sm font-medium">{poi.name}</div>
-                                        <div className="text-xs text-muted-foreground">{poi.address} · {poi.distance}</div>
+                                        <div className="text-xs text-muted-foreground">{poi.address}</div>
                                     </div>
                                 </div>
                             ))}
@@ -187,18 +238,18 @@ function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
 }
 
 export function DouyinConfig({ data, onChange }: ConfigProps) {
-    const [selectedMiniProgram, setSelectedMiniProgram] = useState<MountableItem | null>(null)
-    const [selectedPOI, setSelectedPOI] = useState<any>(null)
-    const [coverOrientation, setCoverOrientation] = useState<"landscape" | "portrait">("landscape")
-    const [useAIRandomCover, setUseAIRandomCover] = useState(false)
-    const [coverFile, setCoverFile] = useState<string>("")
-    const [collection, setCollection] = useState<string>("")
-    const [declaration, setDeclaration] = useState<string>("")
-    const [hotspot, setHotspot] = useState<string>("")
-    const [whoCanSee, setWhoCanSee] = useState<string>("公开")
-    const [savePermission, setSavePermission] = useState<"允许" | "不允许">("允许")
-    const [timing, setTiming] = useState<"立即发布" | "定时发布">("立即发布")
-    const [publishDatetime, setPublishDatetime] = useState<string>("")
+    const [selectedMiniProgram, setSelectedMiniProgram] = usePlatformField(data, onChange, "douyin", "miniProgram", null as MountableItem | null)
+    const [selectedPOI, setSelectedPOI] = usePlatformField(data, onChange, "douyin", "poi", null as any)
+    const [coverOrientation, setCoverOrientation] = usePlatformField(data, onChange, "douyin", "coverOrientation", "landscape" as "landscape" | "portrait")
+    const [useAIRandomCover, setUseAIRandomCover] = usePlatformField(data, onChange, "douyin", "useAIRandomCover", false)
+    const [coverFile, setCoverFile] = usePlatformField(data, onChange, "douyin", "coverFile", "" as string)
+    const [collection, setCollection] = usePlatformField(data, onChange, "douyin", "collection", "" as string)
+    const [declaration, setDeclaration] = usePlatformField(data, onChange, "douyin", "declaration", "" as string)
+    const [hotspot, setHotspot] = usePlatformField(data, onChange, "douyin", "hotspot", "" as string)
+    const [whoCanSee, setWhoCanSee] = usePlatformField(data, onChange, "douyin", "whoCanSee", "公开" as string)
+    const [savePermission, setSavePermission] = usePlatformField(data, onChange, "douyin", "savePermission", "允许" as "允许" | "不允许")
+    const [timing, setTiming] = usePlatformField(data, onChange, "douyin", "timing", "立即发布" as "立即发布" | "定时发布")
+    const [publishDatetime, setPublishDatetime] = usePlatformField(data, onChange, "douyin", "publishDatetime", "" as string)
 
     // 自主声明选项（复刻真实弹窗的单选项）
     const declarationOptions = [
@@ -326,7 +377,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                         <SelectTrigger className="w-full h-9 text-xs bg-card/20 border-border/70">
                             <SelectValue placeholder="请选择合集" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white text-foreground">
+                        <SelectContent className="rounded-none bg-black text-foreground border-border/70">
                             <SelectItem value="">不加入合集</SelectItem>
                             <SelectItem value="合集1">合集 · 生活日常</SelectItem>
                             <SelectItem value="合集2">合集 · 美食探店</SelectItem>
@@ -347,7 +398,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                                 <span className="text-xs">{declaration || "请选择自主声明"}</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-white border-border/70 text-foreground">
+                        <DialogContent className="rounded-none bg-black border-border/70 text-foreground">
                             <DialogHeader>
                                 <DialogTitle>对作品内容添加声明</DialogTitle>
                             </DialogHeader>
@@ -360,7 +411,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                                             "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
                                             declaration === opt.label
                                                 ? "border-foreground bg-accent/40"
-                                                : "border-border/70 bg-card hover:bg-accent/30"
+                                                : "border-border/70 bg-black hover:bg-white/[0.06]"
                                         )}
                                     >
                                         <span className={cn(
@@ -440,8 +491,8 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
 }
 
 export function KuaishouConfig({ data, onChange }: ConfigProps) {
-    const [selectedGame, setSelectedGame] = useState<MountableItem | null>(null)
-    const [selectedPOI, setSelectedPOI] = useState<any>(null)
+    const [selectedGame, setSelectedGame] = usePlatformField(data, onChange, "kuaishou", "game", null as MountableItem | null)
+    const [selectedPOI, setSelectedPOI] = usePlatformField(data, onChange, "kuaishou", "poi", null as any)
 
     return (
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -511,7 +562,7 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
 }
 
 export function XhsConfig({ data, onChange }: ConfigProps) {
-    const [selectedPOI, setSelectedPOI] = useState<any>(null)
+    const [selectedPOI, setSelectedPOI] = usePlatformField(data, onChange, "xiaohongshu", "poi", null as any)
 
     return (
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -556,7 +607,8 @@ export function XhsConfig({ data, onChange }: ConfigProps) {
 }
 
 export function BilibiliConfig({ data, onChange }: ConfigProps) {
-    const [selectedGame, setSelectedGame] = useState<MountableItem | null>(null)
+    const [selectedGame, setSelectedGame] = usePlatformField(data, onChange, "bilibili", "game", null as MountableItem | null)
+    const [category, setCategory] = usePlatformField(data, onChange, "bilibili", "category", "生活")
 
     // B站专属游戏列表
     const bilibiliGames: MountableItem[] = [
@@ -588,7 +640,7 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                                 <span className="text-xs">选择游戏</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-white border-border/70 text-foreground max-w-2xl">
+                        <DialogContent className="rounded-none bg-black border-border/70 text-foreground max-w-2xl">
                             <DialogHeader>
                                 <DialogTitle>选择游戏</DialogTitle>
                             </DialogHeader>
@@ -598,7 +650,7 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                                         <div
                                             key={game.id}
                                             onClick={() => setSelectedGame(game)}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
+                                            className="flex items-center gap-3 p-3 rounded-none border border-border/70 bg-black hover:bg-white/[0.06] cursor-pointer transition-all"
                                         >
                                             <span className="text-2xl">{game.icon}</span>
                                             <div className="flex-1 min-w-0">
@@ -634,11 +686,22 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                 <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">分区</Label>
                     <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary" className="cursor-pointer">生活</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">游戏</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">娱乐</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">知识</Badge>
-                        <Badge variant="outline" className="cursor-pointer border-border/70 text-muted-foreground hover:bg-accent/50">科技</Badge>
+                        {["生活", "游戏", "娱乐", "知识", "科技"].map(option => (
+                            <button
+                                key={option}
+                                type="button"
+                                aria-pressed={category === option}
+                                onClick={() => setCategory(option)}
+                                className={cn(
+                                    "cursor-pointer border px-3 py-1 text-xs transition-colors",
+                                    category === option
+                                        ? "border-foreground bg-foreground text-background"
+                                        : "border-border/70 bg-black text-muted-foreground hover:bg-white/[0.06] hover:text-foreground"
+                                )}
+                            >
+                                {option}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
@@ -659,9 +722,9 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
 }
 
 export function VideoChannelConfig({ data, onChange }: ConfigProps) {
-    const [selectedArticle, setSelectedArticle] = useState<any>(null)
-    const [selectedMiniProgram, setSelectedMiniProgram] = useState<MountableItem | null>(null)
-    const [selectedLocation, setSelectedLocation] = useState<any>(null)
+    const [selectedArticle, setSelectedArticle] = usePlatformField(data, onChange, "channels", "article", null as any)
+    const [selectedMiniProgram, setSelectedMiniProgram] = usePlatformField(data, onChange, "channels", "miniProgram", null as MountableItem | null)
+    const [selectedLocation, setSelectedLocation] = usePlatformField(data, onChange, "channels", "location", null as any)
 
     // 视频号专属小程序列表
     const wechatMiniPrograms: MountableItem[] = [
@@ -700,7 +763,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                                 <span className="text-xs">选择公众号文章</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-white border-border/70 text-foreground max-w-2xl">
+                        <DialogContent className="rounded-none bg-black border-border/70 text-foreground max-w-2xl">
                             <DialogHeader>
                                 <DialogTitle>选择公众号文章</DialogTitle>
                             </DialogHeader>
@@ -710,7 +773,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                                         <div
                                             key={article.id}
                                             onClick={() => setSelectedArticle(article)}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
+                                            className="flex items-center gap-3 p-3 rounded-none border border-border/70 bg-black hover:bg-white/[0.06] cursor-pointer transition-all"
                                         >
                                             <span className="text-2xl">{article.cover}</span>
                                             <div className="flex-1 min-w-0">
@@ -755,7 +818,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                                 <span className="text-xs">选择小程序</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-white border-border/70 text-foreground max-w-2xl">
+                        <DialogContent className="rounded-none bg-black border-border/70 text-foreground max-w-2xl">
                             <DialogHeader>
                                 <DialogTitle>选择小程序</DialogTitle>
                             </DialogHeader>
@@ -765,7 +828,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                                         <div
                                             key={mini.id}
                                             onClick={() => setSelectedMiniProgram(mini)}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-border/70 bg-card hover:bg-accent/50 cursor-pointer transition-all"
+                                            className="flex items-center gap-3 p-3 rounded-none border border-border/70 bg-black hover:bg-white/[0.06] cursor-pointer transition-all"
                                         >
                                             <span className="text-2xl">{mini.icon}</span>
                                             <div className="flex-1 min-w-0">

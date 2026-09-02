@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import { cn } from "@/lib/utils"
+import CatalogToolsSection from "./catalog-tools"
 
 interface DevTool {
     id: string
@@ -52,6 +53,7 @@ const CATEGORY_TABS = [
     { key: "mcp", label: "MCP" },
     { key: "plugin", label: "插件" },
     { key: "component", label: "组件" },
+    { key: "catalog", label: "业务工具" },
 ]
 
 export default function ToolsPage() {
@@ -343,7 +345,9 @@ export default function ToolsPage() {
                 </div>
             )}
 
-            {!isLoading && category !== "skill" && (
+            {!isLoading && category === "catalog" && <CatalogToolsSection />}
+
+            {!isLoading && category !== "skill" && category !== "catalog" && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {visibleTools.length === 0 ? (
                         <div className="col-span-full rounded-xl border border-border/70 bg-card/40 py-12 text-center text-muted-foreground">

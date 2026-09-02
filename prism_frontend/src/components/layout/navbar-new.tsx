@@ -279,11 +279,11 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
 
   return (
     <motion.header
-      initial={{ y: -20, opacity: 0 }}
+      initial={false}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={cn(
-        "sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/80 bg-glass px-6 relative",
+        "sticky top-0 z-50 flex h-[52px] items-center justify-between border-b border-border bg-glass px-5 relative",
         className
       )}
     >
@@ -307,7 +307,7 @@ export function NavbarNew({ className, onMenuClick }: NavbarProps) {
           <Input
             value={inputValue}
             placeholder="Search... 输入 / 跳转页面"
-            className="h-9 w-full rounded-xl border-border/80 bg-background/60 pl-9 pr-12 text-sm text-foreground shadow-[inset_0_1px_0_0_hsl(var(--border)/0.4)] backdrop-blur-md transition-all focus:w-[22rem] focus:border-primary/40 focus:bg-background"
+            className="h-8 w-full rounded-sm border-border bg-background/80 pl-9 pr-12 text-xs text-foreground shadow-none backdrop-blur-md transition-all focus:w-[22rem] focus:border-foreground/45 focus:bg-background"
             onChange={(event) => handleChange(event.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => {
