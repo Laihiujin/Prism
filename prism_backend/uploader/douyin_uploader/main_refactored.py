@@ -4,6 +4,7 @@ from datetime import datetime
 import asyncio
 import inspect
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -345,9 +346,39 @@ class DouYinBaseUploader(BaseVideoUploader):
         await page.keyboard.press("Delete")
 
         for tag in tags or []:
-            await page.keyboard.type(" #" + tag)
-            await page.keyboard.press("Space")
+            await page.keyboard.type("#" + tag)
+            await page.wait_for_timeout(400)  # 等话题补全下拉出现
+            if not await self._select_topic_exact(page, tag):
+                await page.keyboard.press("Space")
+            await page.wait_for_timeout(200)
         await page.keyboard.press("Escape")  # 收起话题下拉，避免浮层拦截后续点击
+
+    async def _select_topic_exact(self, page: Page, tag: str) -> bool:
+        """在话题补全下拉中选中与 tag 文本一致、且字符数一致的项；必要时下滑重试。"""
+        tag = tag.lstrip("#")
+        desired_len = len(tag)
+        for _ in range(4):
+            picked = await page.evaluate(
+                """(crit) => {
+                    const [tag, desiredLen] = crit;
+                    const sels = ['.topic-item', '.topic-list-item', '[class*="topic-item"]',
+                                  '[class*="mention"]', '[role="option"]'];
+                    for (const sel of sels) {
+                        for (const el of document.querySelectorAll(sel)) {
+                            const t = (el.innerText || el.getAttribute('aria-label') || '').replace(/^#/, '').trim();
+                            if (t && t === tag && t.length === desiredLen) { el.click(); return true; }
+                        }
+                    }
+                    return false;
+                }""",
+                [tag, desired_len],
+            )
+            if picked:
+                await page.wait_for_timeout(200)
+                return True
+            await page.keyboard.press("ArrowDown")
+            await page.wait_for_timeout(300)
+        return False
 
     async def set_location(self, page: Page, location: str = ""):
         if not location:
@@ -525,6 +556,120 @@ class DouYinBaseUploader(BaseVideoUploader):
         except Exception:
             pass
 
+    async def dismiss_version_prompt(self, page: Page) -> bool:
+        """关闭抖音「官方新版本/新增功能」提示遮挡层（best-effort，实测校准选择器）。"""
+        try:
+            # 版本提示/引导遮罩常见文案与容器；命中任一即尝试关闭。
+            dismiss_texts = ["立即体验", "我知道了", "知道了", "开始体验", "查看新功能", "跳过", "暂不"],
+            overlay_selectors = [
+                ".shepherd-element", ".shepherd-modal-overlay-container",
+                "[class*='mention-wrapper']", "[class*='version']", "[class*='guide']",
+                "[class*='new-version']", "[class*='update-popup']", "[class*='popup']",
+            ]
+            # 先移除所有遮罩容器（不依赖可见性，避免拦截后续点击）
+            await page.evaluate(
+                "() => { const sels = arguments[0]; document.querySelectorAll(sels.join(',')).forEach(e => e.remove()); }",
+                list(overlay_selectors),
+            )
+            for text in dismiss_texts:
+                try:
+                    btn = page.get_by_text(text, exact=True).first
+                    if await btn.count() and await btn.is_visible():
+                        await btn.click(timeout=2000)
+                        await page.wait_for_timeout(300)
+                        douyin_logger.info(_msg("🗑️", f"已关闭版本提示遮挡: {text}"))
+                        return True
+                except Exception:
+                    continue
+            return False
+        except Exception as exc:
+            douyin_logger.debug(_msg("🗑️", f"版本提示移除未命中/跳过：{exc}"))
+            return False
+
+    async def _handle_browser_permission(self, page: Page, allow_location: bool, has_location: bool) -> None:
+        """处理浏览器位置权限弹窗：有位置时点「本次允许」；没选位置时关闭/选择「不允许」。
+
+        抖音发布页在需要定位时会弹浏览器 navigator.permissions 询问框（允许/仅本次/不允许）。
+        有头模式会看到原生弹窗；无头 mode 一般直接授权。此处兜底：命中弹窗时按 has_location 决策。
+        """
+        try:
+            # 已授权场景（context permissions 里给了 geolocation）不会有弹窗；这里只兜底检测。
+            candidates = [
+                page.get_by_text("允许", exact=True).first,
+                page.get_by_text("仅本次", exact=True).first,
+                page.get_by_text("仅此一次", exact=True).first,
+                page.get_by_text("不允许", exact=True).first,
+                page.get_by_text("关闭", exact=True).first,
+            ]
+            for c in candidates:
+                if await c.count() and await c.is_visible():
+                    douyin_logger.info(_msg("📍", f"检测到浏览器权限弹窗，has_location={has_location}"))
+                    if has_location or allow_location:
+                        # 点「仅本次」优先；没有则「允许」
+                        pick = None
+                        for t in ("仅本次", "仅此一次", "允许"):
+                            try:
+                                pick = page.get_by_text(t, exact=True).first
+                                if await pick.count() and await pick.is_visible():
+                                    await pick.click(timeout=2000)
+                                    douyin_logger.info(_msg("📍", f"已点「{t}」"))
+                                    return
+                            except Exception:
+                                continue
+                        # 都没有则接受浏览器 dialog（交给 dialog handler 兜底）
+                    else:
+                        # 未选位置 → 关闭或不允许
+                        for t in ("不允许", "关闭"):
+                            try:
+                                pick = page.get_by_text(t, exact=True).first
+                                if await pick.count() and await pick.is_visible():
+                                    await pick.click(timeout=2000)
+                                    douyin_logger.info(_msg("📍", f"已点「{t}」以关闭位置询问"))
+                                    return
+                            except Exception:
+                                continue
+                    break
+        except Exception as exc:
+            douyin_logger.debug(_msg("📍", f"位置权限弹窗处理跳过：{exc}"))
+
+    async def set_miniprogram_link(self, page: Page, miniprogram_link: str) -> bool:
+        """添加标签 → 挂小程序（输入小程序链接）。best-effort，选择器需实测校准。"""
+        if not miniprogram_link:
+            return False
+        try:
+            await page.wait_for_timeout(2000)
+            await page.wait_for_selector("text=添加标签", timeout=10000)
+            dropdown = page.get_by_text("添加标签").locator("..").locator("..").locator("..").locator(".semi-select").first
+            if not await dropdown.count():
+                douyin_logger.error(_msg("😵", "没找到标签下拉框"))
+                return False
+            await dropdown.click()
+            await page.wait_for_selector('[role="listbox"]', timeout=5000)
+            # 小程序入口：兜底命中「小程序」选项
+            opt = page.locator('[role="option"]:has-text("小程序")').first
+            if not await opt.count():
+                opt = page.get_by_text("小程序", exact=True).first
+            if not await opt.count() or not await opt.is_visible():
+                douyin_logger.warning(_msg("😵", "未找到「小程序」标签入口"))
+                return False
+            await opt.click()
+
+            # 输入小程序链接
+            link_input = page.locator('input[placeholder*="小程序链接"], input[placeholder*="粘贴小程序"], input[placeholder*="链接"]').first
+            await link_input.wait_for(state="visible", timeout=5000)
+            await link_input.fill(miniprogram_link)
+            douyin_logger.debug(_msg("🔗", f"小程序链接已填: {miniprogram_link}"))
+
+            add_btn = page.locator('span:has-text("添加"), button:has-text("添加")').first
+            if await add_btn.count():
+                await add_btn.click()
+            await page.wait_for_timeout(1500)
+            douyin_logger.info(_msg("🥳", "小程序标签已挂载"))
+            return True
+        except Exception as exc:
+            douyin_logger.warning(_msg("😢", f"挂小程序标签失败: {exc}"))
+            return False
+
 
 class DouYinVideo(DouYinBaseUploader):
     def __init__(
@@ -543,6 +688,10 @@ class DouYinVideo(DouYinBaseUploader):
         debug: bool = DEBUG_MODE,
         headless: bool = LOCAL_CHROME_HEADLESS,
         declaration: str | None = None,
+        random_cover: bool = False,
+        miniprogramLink: str = "",
+        miniprogramTitle: str = "",
+        location: str = "",
     ):
         super().__init__(
             publish_date=publish_date,
@@ -560,6 +709,10 @@ class DouYinVideo(DouYinBaseUploader):
         self.productTitle = productTitle
         self.desc = desc or ""
         self.declaration = declaration.strip() if declaration and declaration.strip() else None
+        self.random_cover = random_cover
+        self.miniprogramLink = miniprogramLink
+        self.miniprogramTitle = miniprogramTitle
+        self.location = location
 
     async def apply_self_declaration(self, page: Page) -> None:
         if not self.declaration:
@@ -614,14 +767,18 @@ class DouYinVideo(DouYinBaseUploader):
         douyin_logger.warning(_msg("😵", "视频上传摔了一跤，小人马上重新上传"))
         await page.locator('div.progress-div [class^="upload-btn-input"]').set_input_files(self.file_path)
 
-    async def handle_auto_video_cover(self, page):
+    async def handle_auto_video_cover(self, page, random_cover: bool = False):
         if await page.get_by_text("请设置封面后再发布").first.is_visible():
             douyin_logger.info(_msg("🧍", "发布前还得先把封面弄好"))
-            recommend_cover = page.locator('[class^="recommendCover-"]').first
-            if await recommend_cover.count():
-                douyin_logger.info(_msg("🏃", "小人去选第一个推荐封面"))
+            covers = page.locator('[class^="recommendCover-"]')
+            n = await covers.count()
+            if n > 0:
+                # 勾选随机封面：在可用推荐封面里随机选一帧，降低"只取第一张"的容错率
+                idx = random.randrange(n) if random_cover and n > 1 else 0
+                target = covers.nth(idx)
+                douyin_logger.info(_msg("🏃", f"小人去选推荐封面 (random={random_cover}, 共{n}, 选第{idx + 1})"))
                 try:
-                    await recommend_cover.click()
+                    await target.click()
                     await asyncio.sleep(1)
                     confirm_text = "是否确认应用此封面？"
                     if await page.get_by_text(confirm_text).first.is_visible():
@@ -728,6 +885,7 @@ class DouYinVideo(DouYinBaseUploader):
                     await asyncio.sleep(0.5)
 
         await asyncio.sleep(1)
+        await self.dismiss_version_prompt(page)
         douyin_logger.info(_msg("✍️", "小人开始填标题、描述和话题"))
         await self.fill_title_and_description(page, self.title, self.desc or self.title, self.tags)
         douyin_logger.info(_msg("🏷️", f"小人一共贴了 {len(self.tags)} 个话题"))
@@ -751,6 +909,18 @@ class DouYinVideo(DouYinBaseUploader):
             douyin_logger.info(_msg("🛒", "小人正在设置商品链接"))
             await self.set_product_link(page, self.productLink, self.productTitle)
             douyin_logger.info(_msg("🥳", "商品链接设置完成"))
+
+        if self.miniprogramLink and self.miniprogramTitle:
+            douyin_logger.info(_msg("🧩", "小人正在挂小程序"))
+            await self.set_miniprogram_link(page, self.miniprogramLink)
+            douyin_logger.info(_msg("🥳", "小程序标签设置完成"))
+
+        if getattr(self, "location", ""):
+            douyin_logger.info(_msg("📍", "小人正在设置位置"))
+            await self.set_location(page, self.location)
+            await self._handle_browser_permission(page, allow_location=True, has_location=True)
+        else:
+            await self._handle_browser_permission(page, allow_location=False, has_location=False)
 
         await self.set_thumbnail(page)
 
@@ -809,7 +979,7 @@ class DouYinVideo(DouYinBaseUploader):
                 douyin_logger.success(_msg("🥳", "视频发布成功，小人开心收工"))
                 break
             except Exception:
-                await self.handle_auto_video_cover(page)
+                await self.handle_auto_video_cover(page, random_cover=self.random_cover)
                 douyin_logger.info(_msg("🏃", "小人正在冲刺发布视频"))
                 if self.debug:
                     await page.screenshot(full_page=True)
@@ -842,6 +1012,8 @@ class DouYinNote(DouYinBaseUploader):
         debug: bool = DEBUG_MODE,
         headless: bool = LOCAL_CHROME_HEADLESS,
         bgm: str = "",
+        declaration: str | None = None,
+        location: str = "",
     ):
         super().__init__(
             publish_date=publish_date,
@@ -855,6 +1027,8 @@ class DouYinNote(DouYinBaseUploader):
         self.title = title or (self.note[:30] if self.note else "")
         self.tags = tags or []
         self.bgm = bgm or ""
+        self.declaration = declaration.strip() if declaration and declaration.strip() else None
+        self.location = location
 
     async def validate_upload_args(self):
         await self.validate_base_args()
@@ -904,6 +1078,7 @@ class DouYinNote(DouYinBaseUploader):
                 await asyncio.sleep(0.5)
 
         await asyncio.sleep(1)
+        await self.dismiss_version_prompt(page)
         douyin_logger.info(_msg("✍️", "小人开始填标题、描述和话题"))
         await self.fill_title_and_description(page, self.title, self.note, self.tags)
         title_len = len(self.title) if self.title else 0
@@ -914,6 +1089,17 @@ class DouYinNote(DouYinBaseUploader):
 
         if self.bgm:
             await self.select_bgm(page, self.bgm)
+
+        if self.location:
+            douyin_logger.info(_msg("📍", "小人正在设置位置"))
+            await self.set_location(page, self.location)
+            await self._handle_browser_permission(page, allow_location=True, has_location=True)
+        else:
+            await self._handle_browser_permission(page, allow_location=False, has_location=False)
+
+        if self.declaration:
+            douyin_logger.info(_msg("🧾", "小人正在选择自主声明"))
+            await self.set_self_declaration(page, self.declaration)
 
         if self.publish_strategy == DOUYIN_PUBLISH_STRATEGY_SCHEDULED and self.publish_date != 0:
             await self.set_schedule_time_douyin(page, self.publish_date)

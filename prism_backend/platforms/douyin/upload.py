@@ -20,7 +20,7 @@ from ..path_utils import resolve_cookie_file, resolve_video_file
 logger = logging.getLogger(__name__)
 
 # Build tag for runtime identification (helps confirm which implementation is used).
-DOUYIN_PLATFORM_UPLOAD_BUILD_TAG = "platforms/douyin/upload.py:js-evaluate-cover@2025-12-19"
+DOUYIN_PLATFORM_UPLOAD_BUILD_TAG = "platforms/douyin/upload.py:js-evaluate-cover+version-prompt@2026-09-02"
 
 # 引导弹窗选择器
 DOUYIN_TOUR_CONTAINERS = [
