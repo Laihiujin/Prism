@@ -97,6 +97,8 @@ def add_note(actions: Any, name: str) -> None:
     command.add_argument("--schedule", type=schedule_value, help="Publish at YYYY-MM-DD HH:MM")
     if name == "douyin":
         command.add_argument("--bgm", default="")
+        command.add_argument("--declaration")
+        command.add_argument("--location", default="")
     add_runtime_flags(command)
 
 
@@ -122,6 +124,10 @@ def build_parser() -> argparse.ArgumentParser:
             video.add_argument("--product-link", default="")
             video.add_argument("--product-title", default="")
             video.add_argument("--declaration")
+            video.add_argument("--random-cover", action="store_true")
+            video.add_argument("--mini-program-link", default="")
+            video.add_argument("--mini-program-title", default="")
+            video.add_argument("--location", default="")
         add_note(actions, name)
 
     actions = roots.add_parser("bilibili").add_subparsers(dest="action", required=True)
@@ -245,7 +251,7 @@ async def upload_note(platform: str, path: Path, args: argparse.Namespace) -> No
     tags, body, images, date = parse_tags(args.tags), note_body(args), [str(item) for item in args.images], args.schedule or 0
     if platform == "douyin":
         from uploader.douyin_uploader.main_refactored import DouYinNote, DOUYIN_PUBLISH_STRATEGY_SCHEDULED
-        app = DouYinNote(images, body, tags, date, str(path), title=args.title, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, bgm=args.bgm)
+        app = DouYinNote(images, body, tags, date, str(path), title=args.title, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, bgm=args.bgm, declaration=args.declaration, location=args.location)
     elif platform == "kuaishou":
         from uploader.ks_uploader.main_refactored import KSNote, KUAISHOU_PUBLISH_STRATEGY_SCHEDULED
         app = KSNote(images, body, tags, date, str(path), title=args.title, publish_strategy=KUAISHOU_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless)
@@ -261,7 +267,7 @@ async def upload_video(platform: str, path: Path, args: argparse.Namespace) -> N
     tags, date = parse_tags(args.tags), args.schedule or 0
     if platform == "douyin":
         from uploader.douyin_uploader.main_refactored import DouYinVideo, DOUYIN_PUBLISH_STRATEGY_SCHEDULED
-        app = DouYinVideo(args.title, str(args.file), tags, date, str(path), thumbnail_landscape_path=str(args.thumbnail_landscape) if args.thumbnail_landscape else None, thumbnail_portrait_path=str(args.thumbnail_portrait or args.thumbnail) if args.thumbnail_portrait or args.thumbnail else None, productLink=args.product_link, productTitle=args.product_title, desc=args.desc, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, declaration=args.declaration)
+        app = DouYinVideo(args.title, str(args.file), tags, date, str(path), thumbnail_landscape_path=str(args.thumbnail_landscape) if args.thumbnail_landscape else None, thumbnail_portrait_path=str(args.thumbnail_portrait or args.thumbnail) if args.thumbnail_portrait or args.thumbnail else None, productLink=args.product_link, productTitle=args.product_title, desc=args.desc, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, declaration=args.declaration, random_cover=args.random_cover, miniprogramLink=args.mini_program_link, miniprogramTitle=args.mini_program_title, location=args.location)
     elif platform == "kuaishou":
         from uploader.ks_uploader.main_refactored import KSVideo, KUAISHOU_PUBLISH_STRATEGY_SCHEDULED
         app = KSVideo(args.title, str(args.file), tags, date, str(path), thumbnail_path=str(args.thumbnail) if args.thumbnail else None, desc=args.desc, publish_strategy=KUAISHOU_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless)
