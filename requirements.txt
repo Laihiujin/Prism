@@ -67,3 +67,4 @@ psutil
 pytz
 rich
 schedule
+imageio-ffmpeg==0.6.0      # 自带跨平台静态 ffmpeg 二进制,供封面截取/视频转码(find_ffmpeg)使用

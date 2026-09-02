@@ -99,14 +99,6 @@ jobs:
         working-directory: desktop-electron
         run: npm ci
 
-      - name: 内置 ffmpeg (win)
-        shell: pwsh
-        run: |
-          # find_ffmpeg() 会从 <app>/resources/.playwright-browsers/ffmpeg-*/ffmpeg.exe 找 ffmpeg
-          New-Item -ItemType Directory -Force -Path ".playwright-browsers/ffmpeg-win64" | Out-Null
-          Copy-Item "desktop-electron/node_modules/ffmpeg-static/ffmpeg.exe" ".playwright-browsers/ffmpeg-win64/ffmpeg.exe" -Force
-          Get-Item ".playwright-browsers/ffmpeg-win64/ffmpeg.exe" | Select-Object FullName, Length
-
       - name: 下载 Redis Windows 二进制 (tporadowski/redis)
         shell: pwsh
         run: |
@@ -198,15 +190,6 @@ jobs:
       - name: 安装打包依赖 (desktop-electron)
         working-directory: desktop-electron
         run: npm ci
-
-      - name: 内置 ffmpeg (mac)
-        shell: bash
-        run: |
-          # find_ffmpeg() 会从 <app>/resources/.playwright-browsers/ffmpeg-*/ffmpeg 找 ffmpeg
-          mkdir -p .playwright-browsers/ffmpeg-mac
-          cp desktop-electron/node_modules/ffmpeg-static/ffmpeg .playwright-browsers/ffmpeg-mac/ffmpeg
-          chmod +x .playwright-browsers/ffmpeg-mac/ffmpeg
-          file .playwright-browsers/ffmpeg-mac/ffmpeg
 
       - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron

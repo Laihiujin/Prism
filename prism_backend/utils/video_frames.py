@@ -13,9 +13,18 @@ def _repo_root() -> Path:
 
 def find_ffmpeg() -> str | None:
     """
-    Prefer bundled Playwright ffmpeg under repo-root `.playwright-browsers`,
+    Prefer the ffmpeg shipped inside the bundled Python env (imageio-ffmpeg),
+    then the bundled Playwright ffmpeg under repo-root `.playwright-browsers`,
     then fall back to PATH.
     """
+    try:
+        import imageio_ffmpeg
+        exe = imageio_ffmpeg.get_ffmpeg_exe()
+        if exe and Path(exe).exists():
+            return exe
+    except Exception:
+        pass
+
     root = _repo_root()
     bundled = root / ".playwright-browsers"
     if bundled.exists():
