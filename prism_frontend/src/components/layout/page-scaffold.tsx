@@ -21,11 +21,11 @@ export function PageHeader({
     <div className="flex flex-wrap items-center justify-between gap-6 px-1">
       <div className={cn("space-y-2", align === "center" && "text-center w-full")}>
         {eyebrow && (
-          <p className="text-sm uppercase tracking-[0.3em] text-primary/80">
+          <p className="font-terminal text-[10px] uppercase tracking-[0.2em] text-foreground/45">
             {eyebrow}
           </p>
         )}
-        <h1 className="text-3xl font-semibold leading-tight text-foreground">{title}</h1>
+        <h1 className="font-terminal text-[19px] font-semibold leading-tight text-foreground">{title}</h1>
         {description && (
           <p className="text-sm text-foreground/60">
             {description}

@@ -182,6 +182,8 @@ class PublishService:
         random_cover: bool = False,
         miniprogram_link: str = "",
         miniprogram_title: str = "",
+        # 🆕 NEW: 每平台专属配置（透传到发布任务，供各平台 worker 读取）
+        platform_settings: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         logger.info(
@@ -262,6 +264,7 @@ class PublishService:
                     random_cover=random_cover,
                     miniprogram_link=miniprogram_link,
                     miniprogram_title=miniprogram_title,
+                    platform_settings=platform_settings,
                 )
         else:
             # 单平台发布
@@ -333,6 +336,8 @@ class PublishService:
         random_cover: bool = False,
         miniprogram_link: str = "",
         miniprogram_title: str = "",
+        # 🆕 NEW: 每平台专属配置
+        platform_settings: Optional[Dict[str, Any]] = None,
     ):
         """创建批量发布任务的内部方法"""
         import random  # 导入 random 模块用于随机偏移
@@ -600,6 +605,7 @@ class PublishService:
                     "random_cover": bool(final_random_cover),
                     "miniprogram_link": final_miniprogram_link,
                     "miniprogram_title": final_miniprogram_title,
+                    "platform_settings": platform_settings or {},
                 }
 
                 task_id = f"publish_{batch_id}_{file_id}_{account['account_id']}"

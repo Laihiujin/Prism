@@ -26,8 +26,8 @@ powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 9119 -State List
 echo [OK] Hermes Dashboard stopped.
 
 echo.
-echo [4/8] Stopping Hermes WebUI (port 9131)...
-powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 9131 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { cmd /c taskkill /F /T /PID $_ >nul 2>&1 }"
+echo [4/8] Stopping Hermes WebUI (port 8788)...
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8788 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { cmd /c taskkill /F /T /PID $_ >nul 2>&1 }"
 echo [OK] Hermes WebUI stopped.
 
 echo.

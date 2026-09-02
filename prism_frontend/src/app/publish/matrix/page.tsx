@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
+import type { ReactNode } from "react"
 import Image from "next/image"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -34,6 +35,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Pagination } from "@/components/ui/pagination"
 // 🆕 NEW: Import new components
 import AssignmentStrategySelector from "./components/AssignmentStrategySelector"
 import IntervalTimelinePreview from "./components/IntervalTimelinePreview"
@@ -797,6 +799,7 @@ export default function PublishPage() {
 
       // 🆕 NEW: 抖音发布选项 - 仅在包含抖音平台时发送
       const isDouyin = plan.platforms.includes("douyin")
+      const dSettings = (plan.platformSettings && plan.platformSettings.douyin) || {}
 
       const payload = {
         file_ids: selectedMaterialsList.map(m => m.id),
@@ -819,13 +822,15 @@ export default function PublishPage() {
         // 🆕 NEW: Deduplication parameters
         allow_duplicate_publish: plan.allowDuplicatePublish,
         dedup_window_days: plan.dedupWindowDays,
+        // 🆕 NEW: 每平台专属配置（抖音/快手/小红书/B站/视频号面板，写入 platformSettings）
+        platform_settings: plan.platformSettings || {},
         // 🆕 NEW: 抖音发布选项 (仅抖音平台)
         ...(isDouyin ? {
-          declaration: plan.declaration,
-          location: plan.location,
-          random_cover: Boolean(plan.randomCover),
-          miniprogram_link: plan.miniprogramLink || "",
-          miniprogram_title: plan.miniprogramTitle || "",
+          declaration: dSettings.declaration ?? "",
+          location: dSettings.poi?.name ?? "",
+          random_cover: Boolean(dSettings.useAIRandomCover),
+          miniprogram_link: dSettings.miniprogramLink ?? "",
+          miniprogram_title: dSettings.miniprogramTitle ?? "",
         } : {}),
       }
 
@@ -939,18 +944,35 @@ export default function PublishPage() {
       onChange: (newData: any) => setPlan(prev => ({ ...prev, ...newData }))
     }
 
+    const titles: Partial<Record<PlatformKey, string>> = {
+      douyin: "抖音配置",
+      kuaishou: "快手配置",
+      xiaohongshu: "小红书配置",
+      bilibili: "B站配置",
+      channels: "视频号配置",
+    }
+    let config: ReactNode = null
     switch (platform) {
-      case "douyin": return <DouyinConfig key="douyin" {...commonProps} />
-      case "kuaishou": return <KuaishouConfig key="kuaishou" {...commonProps} />
-      case "xiaohongshu": return <XhsConfig key="xhs" {...commonProps} />
-      case "bilibili": return <BilibiliConfig key="bilibili" {...commonProps} />
-      case "channels": return <VideoChannelConfig key="channels" {...commonProps} />
+      case "douyin": config = <DouyinConfig key="douyin" {...commonProps} />; break
+      case "kuaishou": config = <KuaishouConfig key="kuaishou" {...commonProps} />; break
+      case "xiaohongshu": config = <XhsConfig key="xhs" {...commonProps} />; break
+      case "bilibili": config = <BilibiliConfig key="bilibili" {...commonProps} />; break
+      case "channels": config = <VideoChannelConfig key="channels" {...commonProps} />; break
       // TikTok and YouTube both use the shared metadata editor. Their server-side
       // adapters add platform-specific fields such as visibility / playlist.
       case "tiktok":
       case "youtube": return null
       default: return null
     }
+    return (
+      <details key={`config-${platform}`} className="group min-w-0">
+        <summary className="flex cursor-pointer list-none items-center justify-between border border-border/70 bg-black px-4 py-3 text-sm text-foreground [&::-webkit-details-marker]:hidden">
+          <span>{titles[platform] || platform}</span>
+          <span className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="pt-2">{config}</div>
+      </details>
+    )
   }
 
   return (
@@ -989,6 +1011,9 @@ export default function PublishPage() {
         }
       />
 
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] items-start gap-6">
+        <div className="space-y-5 min-w-0">
+
       {/* 1. 平台选择 */}
       <div className="space-y-4">
         <Label className="text-base font-medium">发布渠道</Label>
@@ -1000,76 +1025,19 @@ export default function PublishPage() {
         </div>
       </div>
 
-      {/* 🆕 NEW: 抖音发布选项（仅当选择抖音平台时显示） */}
-      {plan.platforms.includes("douyin") && (
+      {/* 各平台专属配置：为每个已选平台渲染独立配置面板 */}
+      {plan.platforms.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-base font-medium">抖音发布选项</Label>
-            <Badge variant="outline" className="rounded-full border-border/80 bg-black text-[11px] text-foreground/70">
-              仅抖音
-            </Badge>
+            <Label className="text-base font-medium">平台专属配置</Label>
+            <span className="text-[11px] text-foreground/40">已选 {plan.platforms.length} 个平台</span>
           </div>
-          <div className="rounded-2xl border border-border/70 bg-card p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 自主声明 */}
-              <div className="space-y-2">
-                <Label className="text-sm text-foreground/70">自主声明</Label>
-                <Input
-                  value={plan.declaration}
-                  onChange={(e) => setPlan(prev => ({ ...prev, declaration: e.target.value }))}
-                  placeholder="输入自主声明"
-                  className="bg-card/20 border-border/70"
-                />
-              </div>
-              {/* 位置/POI */}
-              <div className="space-y-2">
-                <Label className="text-sm text-foreground/70">位置 (POI)</Label>
-                <Input
-                  value={plan.location}
-                  onChange={(e) => setPlan(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="输入位置信息，如：上海外滩"
-                  className="bg-card/20 border-border/70"
-                />
-              </div>
-            </div>
-
-            {/* 随机封面 */}
-            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-black p-4">
-              <div className="space-y-1">
-                <Label className="text-sm text-foreground/80">随机封面</Label>
-                <p className="text-xs text-muted-foreground">开启后将为每条视频随机选择封面</p>
-              </div>
-              <Switch
-                checked={!!plan.randomCover}
-                onCheckedChange={(checked) => setPlan(prev => ({ ...prev, randomCover: checked }))}
-                className="scale-90"
-              />
-            </div>
-
-            {/* 小程序链接 + 标题 */}
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label className="text-sm text-foreground/70">小程序链接</Label>
-                <Input
-                  value={plan.miniprogramLink}
-                  onChange={(e) => setPlan(prev => ({ ...prev, miniprogramLink: e.target.value }))}
-                  placeholder="输入小程序链接"
-                  className="bg-card/20 border-border/70"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-foreground/70">小程序标题</Label>
-                <Input
-                  value={plan.miniprogramTitle}
-                  onChange={(e) => setPlan(prev => ({ ...prev, miniprogramTitle: e.target.value }))}
-                  placeholder="输入小程序标题"
-                  className="bg-card/20 border-border/70"
-                />
-              </div>
-              <p className="text-[11px] text-foreground/40">
-                提示：链接与标题需同时填写，否则小程序链接将被忽略。
-              </p>
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {plan.platforms.map((platform) => {
+              const configNode = renderPlatformConfig(platform)
+              if (!configNode) return null
+              return <div key={platform} className="min-w-0">{configNode}</div>
+            })}
           </div>
         </div>
       )}
@@ -1200,33 +1168,13 @@ export default function PublishPage() {
               })}
 
               {/* 分页控件 */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between py-2 border-t border-border/70">
-                  <div className="text-xs text-foreground/40">
-                    第 {currentPage} 页 / 共 {totalPages} 页
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="h-7 text-xs"
-                    >
-                      上一页
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="h-7 text-xs"
-                    >
-                      下一页
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Pagination
+                page={currentPage}
+                pageCount={Math.max(1, totalPages)}
+                total={selectedMaterialsList.length}
+                onPageChange={(p) => setCurrentPage(p)}
+                className="py-2 border-t border-border/70"
+              />
 
               {/* 批量操作提示 */}
               <div className="flex items-center justify-between pt-3 border-t border-border/70">
@@ -1259,6 +1207,9 @@ export default function PublishPage() {
         </div>
       </div>
 
+        </div>
+
+        <div className="space-y-5 min-w-0">
 
       {/* 4. 账号选择 */}
       <div className="space-y-4">
@@ -1376,6 +1327,9 @@ export default function PublishPage() {
           accountCount={plan.accounts.length}
         />
       )}
+
+        </div>
+      </div>
 
       {/* 5. 发布设置 */}
       <div className="space-y-4">

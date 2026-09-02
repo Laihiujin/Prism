@@ -109,8 +109,9 @@ export default function CampaignsPage() {
     }
 
     return (
-        <div className="space-y-8 px-4 py-4 md:px-6 md:py-6">
+        <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-4 md:px-6 md:py-5">
             <PageHeader
+                eyebrow="PRISM / CAMPAIGNS"
                 title="投放计划"
                 description="管理多账号、多素材、多日的矩阵投放"
                 actions={

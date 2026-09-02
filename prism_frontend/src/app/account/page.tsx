@@ -36,10 +36,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { DataTable } from "@/components/ui/data-table"
-import { fetcher } from "@/lib/api"
 import { backendBaseUrl } from "@/lib/env"
 import { type Account, type PlatformKey } from "@/lib/mock-data"
-import { accountsResponseSchema } from "@/lib/schemas"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -136,7 +134,22 @@ function AccountPageContent() {
   const queryClient = useQueryClient()
   const { data: accountResponse, isLoading, isFetching, refetch, error } = useQuery({
     queryKey: ["accounts"],
-    queryFn: () => fetcher("/api/accounts?limit=1000", accountsResponseSchema),
+    queryFn: async () => {
+      const response = await fetch("/api/v1/accounts?limit=1000", { cache: "no-store" })
+      if (!response.ok) throw new Error(`账号接口请求失败：${response.status}`)
+      const payload = await response.json()
+      const items = Array.isArray(payload?.items)
+        ? payload.items
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : []
+      return {
+        data: items.map((item: Record<string, unknown>) => ({
+          ...item,
+          id: String(item.id ?? item.account_id ?? ""),
+        })),
+      }
+    },
     refetchInterval: 10000,
   })
 
@@ -925,8 +938,9 @@ function AccountPageContent() {
   ]
 
   return (
-    <div className="space-y-8 px-4 py-4 md:px-6 md:py-6">
+    <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-4 md:px-6 md:py-5">
       <PageHeader
+        eyebrow="PRISM / ACCOUNT MATRIX"
         title="账号管理"
         // description="集中管理矩阵账号，支持扫码绑定"
         actions={
