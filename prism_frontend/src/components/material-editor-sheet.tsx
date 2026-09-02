@@ -440,7 +440,7 @@ ${userInput}
     return (
         <div className={cn("flex flex-col h-full", className)}>
             {!hideFooter && (
-                <div className="px-6 py-4 border-b border-border/70 bg-white flex justify-end">
+                <div className="px-6 py-4 border-b border-border/70 bg-black flex justify-end">
                     <Button onClick={handleSave} disabled={isSaving} className="min-w-[100px]">
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (mode === 'create' ? "确认发布" : "保存更改")}
                     </Button>
@@ -495,7 +495,7 @@ ${userInput}
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 text-xs text-white hover:text-white hover:bg-black"
+                                        className="h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-card/50"
                                         onClick={() => handleAIGenerate('title')}
                                         disabled={!!aiGenerating}
                                     >
@@ -517,7 +517,7 @@ ${userInput}
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 text-xs text-white hover:text-white hover:bg-black"
+                                        className="h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-card/50"
                                         onClick={() => handleAIGenerate('desc')}
                                         disabled={!!aiGenerating}
                                     >
@@ -539,7 +539,7 @@ ${userInput}
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-6 text-xs text-white hover:text-white hover:bg-black"
+                                        className="h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-card/50"
                                         onClick={() => handleAIGenerate('tags')}
                                         disabled={!!aiGenerating}
                                     >
@@ -566,7 +566,7 @@ ${userInput}
                                         <SelectTrigger className="bg-card border-border/70">
                                             <SelectValue placeholder="选择分组" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-white border-border/70 text-foreground">
+                                        <SelectContent className="bg-black border-border/70 text-foreground">
                                             <SelectItem value="none">无分组</SelectItem>
                                             {groupOptions.map(group => (
                                                 <SelectItem key={group} value={group}>{group}</SelectItem>
@@ -695,7 +695,7 @@ ${userInput}
                                             {referenceImage ? `参考图：${referenceImage.name}` : "参考图：未选择（可选）"}
                                         </div>
                                         <Button
-                                            className="bg-gradient-to-br from-white to-white hover:from-white hover:to-white border-0"
+                                            className="bg-foreground text-background hover:bg-foreground/90 border-0"
                                             onClick={handleGenerateCover}
                                             disabled={!!aiGenerating || coverJobStatus === "pending" || coverJobStatus === "running"}
                                         >
@@ -709,7 +709,7 @@ ${userInput}
                                     </div>
                                 </div>
                                 {coverJobError && (
-                                    <p className="text-xs text-white">{coverJobError}</p>
+                                    <p className="text-xs text-red-400">{coverJobError}</p>
                                 )}
                             </div>
                         </div>
@@ -735,7 +735,7 @@ export function MaterialEditorSheet({
 }: MaterialEditorSheetProps) {
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-full sm:max-w-[770px] border-l border-border/70 bg-white p-0 flex flex-col shadow-2xl">
+            <SheetContent side="right" className="w-full sm:max-w-[770px] border-l border-border/70 bg-black p-0 flex flex-col shadow-2xl">
                 <SheetHeader className="px-6 py-4 border-b border-border/70">
                     <SheetTitle>{mode === 'batch' ? '批量编辑素材' : '编辑素材详情'}</SheetTitle>
                     <SheetDescription>配置标题、描述与封面，支持 AI 一键生成。</SheetDescription>

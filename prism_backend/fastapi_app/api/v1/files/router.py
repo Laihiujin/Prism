@@ -116,8 +116,12 @@ async def ensure_first_frame(
     except BadRequestException as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        # ffmpeg 缺失 / 解码失败等：降级为 400 并给出可读提示（不 500 崩溃）
+        msg = str(e)
+        if "ffmpeg" in msg.lower() and "not found" in msg.lower():
+            msg = "首帧生成失败：系统未安装 ffmpeg，无法提取视频封面。请先安装 ffmpeg（brew install ffmpeg）"
         logger.error(f"生成首帧封面失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=msg)
 
 
 class AICoverRequest(BaseModel):
