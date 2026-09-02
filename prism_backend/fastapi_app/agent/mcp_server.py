@@ -37,7 +37,7 @@ SERVER_VERSION = "1.0.0"
 
 def _collect_tools() -> Dict[str, Any]:
     from . import hermes_tools, hermes_tools_extended, hermes_tools_social_api, hermes_tools_proxy_gateway, tikhub_tools
-    from .tool_catalog import all_tools as _catalog_all_tools, invoke as _catalog_invoke
+    from fastapi_app.services.tool_catalog import all_tools as _catalog_all_tools, invoke as _catalog_invoke
     from .tool_runtime import BaseTool
 
     tools: Dict[str, Any] = {}

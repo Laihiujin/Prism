@@ -20,6 +20,29 @@ from platforms.registry import get_uploader_by_platform_code
 from platforms.path_utils import resolve_cookie_file, resolve_video_file
 from fastapi_app.core.timezone_utils import now_beijing_iso
 
+# 平台 code → platform_settings 里的 key（与 platforms/registry.py 的 _UPLOADER_SPECS 对应）
+PLATFORM_SETTINGS_KEY_BY_CODE = {
+    1: "xiaohongshu",
+    2: "channels",
+    3: "douyin",
+    4: "kuaishou",
+    5: "bilibili",
+    6: "tiktok",
+    7: "youtube",
+    8: "baijiahao",
+}
+
+
+def _platform_settings_for(data: Dict, platform: int) -> Dict:
+    """从 task_data 里取对应平台的 platform_settings（返回 {} 兜底）。"""
+    try:
+        ps = (data.get("platform_settings") or {}) or {}
+        if not isinstance(ps, dict):
+            return {}
+        return ps.get(PLATFORM_SETTINGS_KEY_BY_CODE.get(platform, ""), {}) or {}
+    except Exception:
+        return {}
+
 class BatchPublishService:
     """批量发布服务（已迁移到 Celery）"""
 
@@ -104,6 +127,15 @@ class BatchPublishService:
             except Exception as e:
                 raise FileNotFoundError(f"视频文件不存在: {video_path}") from e
 
+            # P0：解包 platform_settings 里对应平台的配置，并让顶层扁平字段优先被覆盖
+            ps = _platform_settings_for(data, platform) or {}
+            poi_name = ""
+            if isinstance(ps.get("poi"), dict):
+                poi_name = ps.get("poi", {}).get("name", "")
+            elif isinstance(ps.get("location"), dict):
+                poi_name = ps.get("location", {}).get("name", "")
+            mini_program = ps.get("miniProgram") or ps.get("mini_program") or None
+
             result = await uploader.upload(
                 account_file=cookie_file,
                 title=upload_title,
@@ -118,11 +150,19 @@ class BatchPublishService:
                 description=description or "",
                 playlist=data.get("playlist"),
                 visibility=data.get("visibility", "public"),
-                location=data.get("location", ""),
-                declaration=data.get("declaration", None),
-                random_cover=bool(data.get("random_cover", False)),
+                location=data.get("location", "") or poi_name,
+                declaration=data.get("declaration", None) or ps.get("declaration", None),
+                random_cover=bool(data.get("random_cover", False) or ps.get("useAIRandomCover", False)),
                 miniprogram_link=data.get("miniprogram_link", ""),
                 miniprogram_title=data.get("miniprogram_title", ""),
+                # 新增字段（来自 platform_settings.douyin，仅上传器显式接收）
+                who_can_see=ps.get("whoCanSee", ""),
+                save_permission=ps.get("savePermission", ""),
+                hotspot=ps.get("hotspot", ""),
+                collection=ps.get("collection", ""),
+                cover_orientation=ps.get("coverOrientation", "landscape"),
+                cover_file=ps.get("coverFile", ""),
+                miniprogram_object=mini_program,
             )
 
             # 检查结果中是否包含验证码标识

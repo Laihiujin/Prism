@@ -63,7 +63,7 @@ export function PersonaEmbeddedHost({ active }: { active: boolean }) {
         setDashboardUrl(statusUrl)
       }
       setApiOnline(status?.api_online)
-      const running = Boolean(status?.running)
+      const running = Boolean(status?.running) || Boolean(statusUrl)
       setReady(running)
       return running
     }
