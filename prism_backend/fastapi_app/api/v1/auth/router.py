@@ -356,10 +356,12 @@ async def poll_login_status(session_id: str = Query(..., description="鐧诲綍�
             logger.info(f"[Login] Login confirmed via Worker: platform={platform.value} session={session_id[:8]}")
 
             # 鏋勯€犳暟鎹粨鏋勪互鍏煎鍘熶繚瀛橀€昏緫
+            # Worker 的登录结果统一放在 data 内；兼容旧 worker 的外层返回格式。
+            worker_data = result.get("data") or result
             data = {
-                "cookies": result.get("cookies", {}),
-                "user_info": result.get("user_info", {}) or {},
-                "full_state": result.get("full_state")
+                "cookies": worker_data.get("cookies", {}),
+                "user_info": worker_data.get("user_info", {}) or {},
+                "full_state": worker_data.get("full_state")
             }
 
             # 鈿狅笍 淇2: 浼樺寲 enrich_account 璋冪敤閫昏緫锛岄伩鍏嶄笉蹇呰鐨勪簩娆℃祻瑙堝櫒鍚姩

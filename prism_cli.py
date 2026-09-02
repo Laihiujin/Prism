@@ -114,6 +114,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="arguments forwarded to `prism service` (run `prism service -h`)",
     )
 
+    # 声明式工具注册中心：prism tool list / prism tool invoke <name> --json '<params>'
+    tool_cmd = roots.add_parser("tool", help="调用声明式工具注册中心里暴露的能力（自动同步 MCP/API/CLI）")
+    tool_sub = tool_cmd.add_subparsers(dest="action", required=True)
+    tool_sub.add_parser("list", help="列出所有可用工具")
+    tool_invoke = tool_sub.add_parser("invoke", help="调用指定工具（参数用 JSON 对象传）")
+    tool_invoke.add_argument("name", help="工具名（见 prism tool list）")
+    tool_invoke.add_argument("--json", default="{}", help='工具参数 JSON 对象，如 \'{"file_path":"/abs/video.mp4"}\'')
+
     for name in ("douyin", "kuaishou", "xiaohongshu"):
         actions = roots.add_parser(name).add_subparsers(dest="action", required=True)
         add_login_check(actions, name, qr_probe=True)
@@ -301,7 +309,28 @@ async def upload_video(platform: str, path: Path, args: argparse.Namespace) -> N
     await app.main()
 
 
+async def dispatch_tool(args: argparse.Namespace) -> int:
+    """prism tool list / prism tool invoke <name> --json '<params>'"""
+    from fastapi_app.services.tool_catalog import all_tools, invoke
+
+    if args.action == "list":
+        items = [{"name": t.name, "category": t.category, "description": t.description} for t in all_tools()]
+        print(json.dumps(items, ensure_ascii=False, indent=2))
+        return 0
+    if args.action == "invoke":
+        params = json.loads(args.json) if getattr(args, "json", None) else {}
+        if not isinstance(params, dict):
+            print("prism: --json 必须是 JSON 对象", file=sys.stderr)
+            return 2
+        result = await invoke(args.name, **params)
+        print(json.dumps(result, ensure_ascii=False, default=str))
+        return 0 if not (isinstance(result, dict) and result.get("error")) else 1
+    raise RuntimeError(f"Unsupported tool action: {args.action}")
+
+
 async def dispatch(args: argparse.Namespace) -> int:
+    if args.platform == "tool":
+        return await dispatch_tool(args)
     platform = {"tencent": "channels", "baijia": "baijiahao", "tk": "tiktok", "yt": "youtube"}.get(args.platform, args.platform)
     path = account_file(platform, args.account)
     if args.action == "login":

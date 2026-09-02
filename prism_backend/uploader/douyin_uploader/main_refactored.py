@@ -349,10 +349,16 @@ class DouYinBaseUploader(BaseVideoUploader):
         await page.keyboard.press("Delete")
 
         for tag in tags or []:
-            await page.keyboard.type("#" + tag)
-            await page.wait_for_timeout(400)  # 等话题补全下拉出现
-            if not await self._select_topic_exact(page, tag):
-                await page.keyboard.press("Space")
+            # 严禁把多个话题拼成一串后 paste/type_text；每个话题独立逐字输入，
+            # 再用一次 Space 确认，避免重复 ##、换行和候选浮层误选。
+            expected_topic = "#" + str(tag).lstrip("#")
+            await page.keyboard.type(expected_topic)
+            # 中文输入法/富文本异常时，禁止紧接着按空格制造孤立「#」；
+            # 必须先确认当前编辑器文本确实包含本次完整话题。
+            current_text = await description_editor.inner_text()
+            if not current_text.rstrip().endswith(expected_topic):
+                raise RuntimeError(f"话题未完整输入，停止确认空格: expected={expected_topic!r}, actual={current_text!r}")
+            await page.keyboard.press("Space")
             await page.wait_for_timeout(200)
         await page.keyboard.press("Escape")  # 收起话题下拉，避免浮层拦截后续点击
 
@@ -688,6 +694,13 @@ class DouYinVideo(DouYinBaseUploader):
         miniprogramLink: str = "",
         miniprogramTitle: str = "",
         location: str = "",
+        who_can_see: str = "",
+        save_permission: str = "",
+        hotspot: str = "",
+        collection: str = "",
+        miniProgram: dict | None = None,
+        cover_orientation: str = "landscape",
+        cover_file: str = "",
         preview_only: bool = False,
     ):
         super().__init__(
@@ -711,6 +724,13 @@ class DouYinVideo(DouYinBaseUploader):
         self.miniprogramLink = miniprogramLink
         self.miniprogramTitle = miniprogramTitle
         self.location = location
+        self.who_can_see = who_can_see
+        self.save_permission = save_permission
+        self.hotspot = hotspot
+        self.collection = collection
+        self.miniProgram = miniProgram
+        self.cover_orientation = cover_orientation
+        self.cover_file = cover_file or ""
 
     async def apply_self_declaration(self, page: Page) -> None:
         if not self.declaration:
@@ -791,37 +811,52 @@ class DouYinVideo(DouYinBaseUploader):
         return False
 
     async def _handle_cover_recommend_modal(self, page: Page, want_portrait: bool) -> bool:
-        """封面弹窗里出现「推荐竖封面」提示（暂不设置 / 设置竖封面）时按意图点击。
+        """封面弹窗出现另一方向推荐时按意图处理。
 
-        竖屏视频在「横封面界面」上传封面后，抖音会弹「推荐竖封面」提示。
-        想设竖封面 → 点「设置竖封面」；否则点「暂不设置」保留已传封面。
+        竖屏视频在横封面界面会推荐竖封面；反向场景可能推荐横封面。
+        想设推荐方向就点对应按钮，否则点「完成/暂不设置」保留用户已传封面。
         """
         try:
-            trigger = page.get_by_text("推荐竖封面", exact=False).first
-            if not (await trigger.count() and await trigger.is_visible()):
+            # 触发提示的文案（兜底多个）
+            trigger = None
+            for t in ("设置两张封面", "推荐竖封面", "推荐横封面", "获得更多曝光", "设置两张"):
+                loc = page.get_by_text(t, exact=False).first
+                if await loc.count() and await loc.is_visible():
+                    trigger = t
+                    break
+            if not trigger:
                 return False
-            douyin_logger.info(_msg("🪟", "检测到「推荐竖封面」弹窗"))
+            douyin_logger.info(_msg("��", f"检测到推荐封面弹窗: {trigger}"))
             if want_portrait:
                 for t in ("设置竖封面", "设置竖版封面"):
                     b = page.get_by_text(t, exact=False).first
                     if await b.count() and await b.is_visible():
                         await b.click(timeout=3000)
                         await page.wait_for_timeout(1000)
-                        douyin_logger.info(_msg("🍻", "已点「设置竖封面」"))
+                        douyin_logger.info(_msg("��", "已点「设置竖封面」"))
                         return True
-            for t in ("暂不设置", "暂不", "跳过"):
+            else:
+                for t in ("设置横封面", "设置横版封面"):
+                    b = page.get_by_text(t, exact=False).first
+                    if await b.count() and await b.is_visible():
+                        await b.click(timeout=3000)
+                        await page.wait_for_timeout(1000)
+                        douyin_logger.info(_msg("🖼️", "已点「设置横封面」"))
+                        return True
+            # 保持已传封面：点「完成」或「暂不设置」跳过推荐
+            for t in ("暂不设置", "完成", "暂不", "跳过"):
                 b = page.get_by_text(t, exact=True).first
                 if await b.count() and await b.is_visible():
                     await b.click(timeout=3000)
                     await page.wait_for_timeout(500)
-                    douyin_logger.info(_msg("🍻", "已点「暂不设置」保持横封面"))
+                    douyin_logger.info(_msg("🖼️", f"已点「{t}」保留当前封面方向"))
                     return True
         except Exception as exc:
-            douyin_logger.debug(_msg("🪟", f"推荐竖封面处理跳过：{exc}"))
+            douyin_logger.debug(_msg("��", f"推荐封面处理跳过：{exc}"))
         return False
 
     async def set_thumbnail(self, page: Page):
-        if not self.thumbnail_landscape_path and not self.thumbnail_portrait_path:
+        if not self.thumbnail_landscape_path and not self.thumbnail_portrait_path and not self.cover_file:
             return
 
         douyin_logger.info(_msg("🏃", "小人正在设置视频封面"))
@@ -842,22 +877,44 @@ class DouYinVideo(DouYinBaseUploader):
         # 取 input.semi-upload-hidden-input 的第 2 个（nth(1)），即真正的封面上传输入。
         cover_upload = cover_locator.locator("input.semi-upload-hidden-input").nth(1)
 
-        if self.thumbnail_portrait_path:
-            try:
-                for lbl in ("设置竖封面", "竖封面3:4", "竖封面", "竖版封面"):
-                    el = cover_locator.get_by_text(lbl, exact=False).first
-                    if await el.count() and await el.is_visible():
-                        await el.click(timeout=3000)
-                        break
-                await page.wait_for_timeout(800)
-            except Exception:
-                pass
-            await cover_upload.set_input_files(self.thumbnail_portrait_path)
-            await page.wait_for_timeout(3000)
-            douyin_logger.info(_msg("🖼️", "竖版封面已上传到预览"))
+        # cover_orientation：landscape=横封面，portrait=竖封面。按用户选择的朝向决定用哪个文件；
+        # 该朝向无文件时回退到已有的另一个朝向文件（不改变既有 7 个功能的行为）。
+        orientation = (self.cover_orientation or "landscape").strip().lower()
+        use_portrait = orientation == "portrait"
+        used_portrait = bool(self.thumbnail_portrait_path)
+        if use_portrait and self.thumbnail_portrait_path:
+            cover_path = self.thumbnail_portrait_path
+            cover_labels = ("设置竖封面", "竖封面3:4", "竖封面", "竖版封面")
+            orientation_name = "竖版封面"
+            used_portrait = True
+        elif (not use_portrait) and self.thumbnail_landscape_path:
+            cover_path = self.thumbnail_landscape_path
+            cover_labels = ("设置横封面", "横封面4:3", "横封面", "横版封面")
+            orientation_name = "横版封面"
+            used_portrait = False
+        elif self.thumbnail_portrait_path:
+            cover_path = self.thumbnail_portrait_path
+            cover_labels = ("设置竖封面", "竖封面3:4", "竖封面", "竖版封面")
+            orientation_name = "竖版封面"
+            used_portrait = True
         elif self.thumbnail_landscape_path:
+            cover_path = self.thumbnail_landscape_path
+            cover_labels = ("设置横封面", "横封面4:3", "横封面", "横版封面")
+            orientation_name = "横版封面"
+            used_portrait = False
+        else:
+            cover_path = None
+            cover_labels = ()
+            orientation_name = ""
+            used_portrait = False
+
+        if not cover_path and self.cover_file:
+            cover_path = self.cover_file
+            orientation_name = "自定义封面"
+
+        if cover_path:
             try:
-                for lbl in ("设置横封面", "横封面4:3", "横封面", "横版封面"):
+                for lbl in cover_labels:
                     el = cover_locator.get_by_text(lbl, exact=False).first
                     if await el.count() and await el.is_visible():
                         await el.click(timeout=3000)
@@ -865,13 +922,13 @@ class DouYinVideo(DouYinBaseUploader):
                 await page.wait_for_timeout(800)
             except Exception:
                 pass
-            await cover_upload.set_input_files(self.thumbnail_landscape_path)
+            await cover_upload.set_input_files(cover_path)
             await page.wait_for_timeout(3000)
-            douyin_logger.info(_msg("🖼️", "横版封面已上传到预览"))
+            douyin_logger.info(_msg("🖼️", f"{orientation_name}已上传到预览"))
 
         # 竖屏视频在「横封面界面」上传封面后，抖音会弹「推荐竖封面」（暂不设置/设置竖封面），
         # 按意图处理：要竖封面→设置竖封面；否则→暂不设置（保留已传封面）。
-        await self._handle_cover_recommend_modal(page, want_portrait=bool(self.thumbnail_portrait_path))
+        await self._handle_cover_recommend_modal(page, want_portrait=used_portrait)
 
         # 点红色主按钮“完成”应用封面（exact 避免误中“完成编辑”）
         await cover_locator.get_by_role("button", name="完成", exact=True).first.click()
@@ -924,6 +981,162 @@ class DouYinVideo(DouYinBaseUploader):
         except Exception:
             pass
         douyin_logger.debug(_msg("🖼️", "已强制清理封面弹窗遮罩"))
+
+    async def set_who_can_see(self, page: Page, who_can_see: str) -> bool:
+        """设置「谁可以看」：公开 / 好友可见 / 仅自己可见（发布设置区单选）。
+
+        实测 DOM：`label.radio-d4zkru`，三个选项文本全局唯一；`公开` 为默认选中（value=0）。
+        默认「公开」无需操作。best-effort，失败不阻断发布。
+        """
+        if not who_can_see or who_can_see in ("公开", "public"):
+            return True
+        try:
+            row = page.locator("div.content-obt4oA").filter(has_text="谁可以看").first
+            await row.wait_for(state="visible", timeout=8000)
+            target = row.locator("label.radio-d4zkru").filter(has_text=who_can_see).first
+            if not await target.count():
+                target = page.locator("label.radio-d4zkru").filter(has_text=who_can_see).first
+            if await target.count() and await target.is_visible():
+                await target.click(timeout=5000)
+                douyin_logger.info(_msg("👀", f"「谁可以看」已设置「{who_can_see}」"))
+                return True
+            douyin_logger.warning(_msg("👀", f"「谁可以看」选项「{who_can_see}」未命中"))
+        except Exception as exc:
+            douyin_logger.warning(_msg("👀", f"设置「谁可以看」失败：{exc}"))
+        return False
+
+    async def set_save_permission(self, page: Page, save_permission: str) -> bool:
+        """设置「保存权限」：允许 / 不允许（发布设置区单选）。
+
+        实测 DOM：`div.download-content-Lci5tL label.radio-d4zkru`，选项文本 `允许`/`不允许`；
+        `允许` 为默认选中（value=1）。仅当需要「不允许」时操作。
+        """
+        if not save_permission or save_permission in ("允许", "allow"):
+            return True
+        try:
+            box = page.locator("div.download-content-Lci5tL").first
+            await box.wait_for(state="visible", timeout=8000)
+            target = box.locator("label.radio-d4zkru").filter(has_text=save_permission).first
+            if not await target.count():
+                target = page.locator("label.radio-d4zkru").filter(has_text=save_permission).first
+            if await target.count() and await target.is_visible():
+                await target.click(timeout=5000)
+                douyin_logger.info(_msg("🔒", f"「保存权限」已设置「{save_permission}」"))
+                return True
+            douyin_logger.warning(_msg("🔒", f"「保存权限」选项「{save_permission}」未命中"))
+        except Exception as exc:
+            douyin_logger.warning(_msg("🔒", f"设置「保存权限」失败：{exc}"))
+        return False
+
+    async def set_hotspot(self, page: Page, hotspot: str) -> bool:
+        """关联热点：点「点击输入热点词」筛选下拉，输入关键词后选首条。best-effort。
+
+        实测 DOM：select[4]（占位 `点击输入热点词`，class `semi-select-single semi-select-filterable`），
+        点击后内部有 1 个 input（`sel.locator('input')`），打开即预载选项（~55 个，含隐藏项），
+        因此用 Semi 原生交互：fill 关键词 → ArrowDown → Enter 选第一条。
+        """
+        if not hotspot:
+            return True
+        try:
+            sel = page.locator("div.semi-select").filter(has_text="点击输入热点词").first
+            await sel.wait_for(state="visible", timeout=8000)
+            await sel.click(timeout=5000)
+            await page.wait_for_timeout(500)
+            inp = sel.locator("input").first
+            if await inp.count():
+                await inp.fill(hotspot)
+            else:
+                await page.keyboard.type(hotspot)
+            await page.wait_for_timeout(1200)
+            # Semi 筛选下拉：键盘选中第一条（兼容 55 个隐藏选项的 DOM 污染）
+            await page.keyboard.press("ArrowDown")
+            await page.wait_for_timeout(250)
+            await page.keyboard.press("Enter")
+            douyin_logger.info(_msg("🔥", f"关联热点已选「{hotspot}」"))
+            return True
+        except Exception as exc:
+            douyin_logger.warning(_msg("🔥", f"设置「关联热点」失败：{exc}"))
+            return False
+
+    async def set_collection(self, page: Page, collection: str) -> bool:
+        """添加到合集：点「请选择合集」下拉选择合集；空/找不到则选「不选择合集」。best-effort。
+
+        实测 DOM：`div.semi-select.select-collection-nkL6sA`（占位 `请选择合集`），
+        点开后 `[role="listbox"] [role="option"]`，含 `不选择合集`。
+        """
+        if not collection:
+            return True
+        try:
+            box = page.locator("div.semi-select.select-collection-nkL6sA").first
+            await box.wait_for(state="visible", timeout=8000)
+            await box.click(timeout=5000)
+            await page.wait_for_selector('[role="listbox"] [role="option"]', timeout=8000)
+            target = (collection or "").strip()
+            option = None
+            if target and target not in ("不选择合集", "不加入合集"):
+                option = page.locator('[role="listbox"] [role="option"]').filter(has_text=target).first
+                if not await option.count():
+                    option = page.get_by_text(target, exact=True).first
+            if not option or not await option.count():
+                option = page.locator('[role="listbox"] [role="option"]').filter(has_text="不选择合集").first
+                if not await option.count():
+                    option = page.get_by_text("不选择合集", exact=True).first
+            if await option.count() and await option.is_visible():
+                await option.click(timeout=5000)
+                douyin_logger.info(_msg("📁", f"合集已设置「{target or '不选择合集'}」"))
+                return True
+            douyin_logger.warning(_msg("📁", "「不选择合集」也未命中，跳过合集"))
+        except Exception as exc:
+            douyin_logger.warning(_msg("📁", f"设置「合集」失败：{exc}"))
+        return False
+
+    async def set_mount_object(self, page: Page, mini_program) -> bool:
+        """添加标签 → 挂载内容（小程序/游戏/应用）「对象」选择。best-effort。
+
+        实测 DOM：`div.anchor-container-hgj7gj div.semi-select`（class `select-lJTtRL`，当前值 `位置`），
+        点开后选项为 `位置 / 影视演艺 / 小程序 / 标记万物`（`[role="option"]`）。
+        选「小程序」后进入对象搜索浮层——**该浮层内部选择器未完整展开确认**，用兜底搜索，命不中记日志跳过。
+        """
+        if not mini_program:
+            return True
+        name = mini_program.get("name") if isinstance(mini_program, dict) else str(mini_program)
+        if not name:
+            return True
+        try:
+            anchor = page.locator("div.anchor-container-hgj7gj div.semi-select").first
+            if not await anchor.count():
+                douyin_logger.warning(_msg("🧩", "未找到「添加标签」下拉，跳过挂载"))
+                return False
+            await anchor.click(timeout=5000)
+            await page.wait_for_selector('[role="listbox"] [role="option"]', timeout=8000)
+            opt = page.locator('[role="listbox"] [role="option"]').filter(has_text="小程序").first
+            if not await opt.count():
+                opt = page.get_by_text("小程序", exact=True).first
+            if not await opt.count() or not await opt.is_visible():
+                douyin_logger.warning(_msg("🧩", "「小程序」选项未出现，跳过挂载"))
+                return False
+            await opt.click(timeout=5000)
+
+            # 对象搜索浮层（「未确认」兜底）：搜索框 + 列表项
+            await page.wait_for_timeout(1500)
+            search_input = page.locator(
+                'input[placeholder*="搜索"], input[placeholder*="小程序"], input[placeholder*="名称"]'
+            ).first
+            if await search_input.count():
+                await search_input.fill(name)
+                await page.wait_for_timeout(1200)
+                obj = page.locator(
+                    '[role="option"], .semi-sidesheet-content [class*="option"], [class*="item"]'
+                ).filter(has_text=name).first
+                if await obj.count() and await obj.is_visible():
+                    await obj.click(timeout=5000)
+                    douyin_logger.info(_msg("🧩", f"挂载内容「{name}」已选择"))
+                    return True
+            douyin_logger.warning(_msg("🧩", f"挂载内容「{name}」对象浮层未确认到，请人工核对"))
+            return False
+        except Exception as exc:
+            douyin_logger.warning(_msg("🧩", f"设置挂载内容失败：{exc}"))
+            return False
 
     async def upload(self, playwright: Playwright) -> None:
         douyin_logger.info(_msg("🧍", "小人先检查 cookie、视频文件、封面和发布时间"))
@@ -982,7 +1195,11 @@ class DouYinVideo(DouYinBaseUploader):
         douyin_logger.info(_msg("🏃", "小人正在等视频上传完成，便于后续填表"))
         awaited_upload = await self._wait_for_video_uploaded(page)
         if not awaited_upload:
-            douyin_logger.warning(_msg("😵", "未能确认视频上传完成，继续尝试填表"))
+            douyin_logger.warning(_msg("😵", "检测到视频上传失败，先重新上传再继续填表"))
+            await self.handle_upload_error(page)
+            awaited_upload = await self._wait_for_video_uploaded(page)
+            if not awaited_upload:
+                raise RuntimeError("抖音视频重新上传后仍未完成，停止填写发布表单")
 
         douyin_logger.info(_msg("✍️", "小人开始填标题、描述和话题"))
         await self.fill_title_and_description(page, self.title, self.desc or self.title, self.tags)
@@ -1021,6 +1238,14 @@ class DouYinVideo(DouYinBaseUploader):
             await self._handle_browser_permission(page, allow_location=False, has_location=False)
 
         await self.set_thumbnail(page)
+
+        # 新补功能（best-effort，失败不阻断）：合集 → 挂载内容 → 关联热点 → 谁可以看 → 保存权限
+        douyin_logger.info(_msg("🧩", "小人开始设置合集/挂载内容/热点/可见性/保存权限"))
+        await self.set_collection(page, self.collection)
+        await self.set_mount_object(page, self.miniProgram)
+        await self.set_hotspot(page, self.hotspot)
+        await self.set_who_can_see(page, self.who_can_see)
+        await self.set_save_permission(page, self.save_permission)
 
         try:
             await self.apply_self_declaration(page)
@@ -1125,6 +1350,15 @@ class DouYinNote(DouYinBaseUploader):
         bgm: str = "",
         declaration: str | None = None,
         location: str = "",
+        collection: str | None = None,
+        who_can_see: str | None = None,
+        save_permission: str | None = None,
+        hotspot: str | None = None,
+        mini_program: dict | str | None = None,
+        cover_file: str | None = None,
+        cover_orientation: str = "landscape",
+        product_link: str = "",
+        product_title: str = "",
     ):
         super().__init__(
             publish_date=publish_date,
@@ -1140,6 +1374,15 @@ class DouYinNote(DouYinBaseUploader):
         self.bgm = bgm or ""
         self.declaration = declaration.strip() if declaration and declaration.strip() else None
         self.location = location
+        self.collection = collection
+        self.who_can_see = who_can_see
+        self.save_permission = save_permission
+        self.hotspot = hotspot
+        self.miniProgram = mini_program
+        self.cover_file = cover_file or ""
+        self.cover_orientation = cover_orientation or "landscape"
+        self.productLink = product_link or ""
+        self.productTitle = product_title or ""
 
     async def validate_upload_args(self):
         await self.validate_base_args()
@@ -1211,6 +1454,17 @@ class DouYinNote(DouYinBaseUploader):
         if self.declaration:
             douyin_logger.info(_msg("🧾", "小人正在选择自主声明"))
             await self.set_self_declaration(page, self.declaration)
+
+        # 图文页与视频页的扩展配置 DOM 版本可能不同；各项均为 best-effort，
+        # 未命中只记录日志，不伪造成功，也不阻断基础图文发布。
+        await self.set_collection(page, self.collection)
+        await self.set_mount_object(page, self.miniProgram)
+        await self.set_hotspot(page, self.hotspot)
+        await self.set_who_can_see(page, self.who_can_see)
+        await self.set_save_permission(page, self.save_permission)
+
+        if self.productLink and self.productTitle:
+            await self.set_product_link(page, self.productLink, self.productTitle)
 
         if self.publish_strategy == DOUYIN_PUBLISH_STRATEGY_SCHEDULED and self.publish_date != 0:
             await self.set_schedule_time_douyin(page, self.publish_date)

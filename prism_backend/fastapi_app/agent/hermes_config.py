@@ -622,3 +622,186 @@ def delete_agent_config() -> bool:
         return False
     config_path.unlink()
     return True
+
+
+# ── MCP servers (interop with the shared Hermes config.yaml) ────────────────
+# Replicates Hermes' own /api/mcp/* semantics so the Prism console and the
+# Hermes WebUI/Dashboard stay in sync on the same config.yaml.
+
+_SECRET_NAME_SUBSTR = ("auth", "token", "key", "secret", "password", "credential")
+_MCP_MASK = "••••••"
+
+
+def _is_secret_name(name: str) -> bool:
+    folded = str(name or "").casefold()
+    return any(part in folded for part in _SECRET_NAME_SUBSTR)
+
+
+def _mask_mcp_secrets(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: (_MCP_MASK if _is_secret_name(k) else _mask_mcp_secrets(v)) for k, v in value.items()}
+    return value
+
+
+def _derive_mcp_transport(entry: Dict[str, Any]) -> str:
+    if str(entry.get("url") or "").strip():
+        return "http"
+    if str(entry.get("command") or "").strip():
+        return "stdio"
+    return "invalid"
+
+
+def _parse_mcp_status(entry: Dict[str, Any]) -> str:
+    enabled = entry.get("enabled", True)
+    if isinstance(enabled, str):
+        enabled = enabled.casefold() in {"true", "1", "yes", "on"}
+    elif isinstance(enabled, (int, float)):
+        enabled = enabled != 0
+    if not bool(enabled):
+        return "disabled"
+    if _derive_mcp_transport(entry) == "invalid":
+        return "invalid_config"
+    return "configured"
+
+
+def _read_mcp_servers() -> Dict[str, Any]:
+    data = _read_hermes_runtime_config()
+    servers = data.get("mcp_servers") or {}
+    return servers if isinstance(servers, dict) else {}
+
+
+def list_mcp_servers() -> Dict[str, Any]:
+    """Read-only MCP server inventory from the shared config.yaml.
+
+    Mirrors Hermes' ``mcp_servers`` summary (transport/status/tool_count);
+    secret env/header values are masked. Does not start or probe servers.
+    """
+    raw = _read_mcp_servers()
+    servers = []
+    for name, entry in raw.items():
+        if not isinstance(entry, dict):
+            continue
+        transport = _derive_mcp_transport(entry)
+        item: Dict[str, Any] = {
+            "name": str(name),
+            "transport": transport,
+            "status": _parse_mcp_status(entry),
+            "enabled": bool(entry.get("enabled", True)),
+            "timeout": int(entry.get("timeout") or 120),
+            "connect_timeout": int(entry.get("connect_timeout") or 60),
+        }
+        if transport == "http":
+            item["url"] = str(entry.get("url") or "")
+            if entry.get("headers"):
+                item["headers"] = _mask_mcp_secrets(entry.get("headers"))
+        elif transport == "stdio":
+            item["command"] = str(entry.get("command") or "")
+            args = entry.get("args") or []
+            item["args"] = list(args) if isinstance(args, list) else [str(args)]
+            if entry.get("env"):
+                item["env"] = _mask_mcp_secrets(entry.get("env"))
+        servers.append(item)
+    return {
+        "servers": servers,
+        "toggle_supported": True,
+        "reload_required": True,
+    }
+
+
+def set_mcp_server_enabled(name: str, enabled: bool) -> Dict[str, Any]:
+    """Toggle one MCP server on/off in the shared config.yaml."""
+    data = _read_hermes_runtime_config()
+    servers = data.get("mcp_servers") or {}
+    if not isinstance(servers, dict) or name not in servers:
+        raise ValueError(f"未知 MCP server: {name}")
+    if isinstance(servers[name], dict):
+        servers[name]["enabled"] = bool(enabled)
+    else:
+        servers[name] = {"enabled": bool(enabled)}
+    data["mcp_servers"] = servers
+    _write_hermes_runtime_config(data)
+    return {"ok": True, "name": name, "enabled": bool(enabled)}
+
+
+# ── Plugins (interop with the shared Hermes config.yaml) ────────────────────
+# Hermes persists plugin enablement under ``plugins.enabled`` / ``plugins.disabled``.
+
+def _read_plugins_config() -> Dict[str, Any]:
+    data = _read_hermes_runtime_config()
+    plugins = data.get("plugins") or {}
+    return plugins if isinstance(plugins, dict) else {}
+
+
+def _plugin_enabled_entries(plugins: Dict[str, Any]) -> set[str]:
+    raw = plugins.get("enabled") or []
+    if isinstance(raw, list):
+        return {str(x) for x in raw}
+    return set()
+
+
+def _plugin_disabled_entries(plugins: Dict[str, Any]) -> set[str]:
+    raw = plugins.get("disabled") or []
+    if isinstance(raw, list):
+        return {str(x) for x in raw}
+    return set()
+
+
+def _plugin_known_names() -> list[str]:
+    """Populate the plugin catalog from both the config and enabled/disabled lists."""
+    plugins = _read_plugins_config()
+    names = set(_plugin_enabled_entries(plugins)) | set(_plugin_disabled_entries(plugins))
+    # Hermes writes unknown plugins under plugins.enabled as dict entries too.
+    for key in ("enabled", "disabled"):
+        raw = plugins.get(key)
+        if isinstance(raw, dict):
+            names.update(str(k) for k in raw.keys())
+    return sorted(names)
+
+
+def list_plugins() -> Dict[str, Any]:
+    """Read-only plugin catalog mirrored from the shared config.yaml."""
+    plugins = _read_plugins_config()
+    enabled = _plugin_enabled_entries(plugins)
+    disabled = _plugin_disabled_entries(plugins)
+    catalog = []
+    for name in _plugin_known_names():
+        catalog.append(
+            {
+                "name": name,
+                "key": name,
+                "version": "",
+                "description": "",
+                "enabled": name in enabled,
+                "activation": "enabled" if name in enabled else "disabled",
+                "hooks": [],
+            }
+        )
+    return {
+        "plugins": catalog,
+        "empty": len(catalog) == 0,
+        "supported_hooks": ["pre_tool_call", "post_tool_call", "pre_llm_call", "post_llm_call"],
+        "read_only": False,
+    }
+
+
+def set_plugin_enabled(name: str, enabled: bool) -> Dict[str, Any]:
+    """Enable/disable a plugin in the shared config.yaml (Hermes semantics)."""
+    if not name:
+        raise ValueError("plugin name required")
+    data = _read_hermes_runtime_config()
+    plugins = data.get("plugins") or {}
+    if not isinstance(plugins, dict):
+        plugins = {}
+    enabled_list = _plugin_enabled_entries(plugins)
+    disabled_list = _plugin_disabled_entries(plugins)
+    if enabled:
+        enabled_list.add(name)
+        disabled_list.discard(name)
+    else:
+        disabled_list.add(name)
+        enabled_list.discard(name)
+    plugins["enabled"] = sorted(enabled_list)
+    plugins["disabled"] = sorted(disabled_list)
+    data["plugins"] = plugins
+    _write_hermes_runtime_config(data)
+    return {"ok": True, "name": name, "enabled": bool(enabled)}

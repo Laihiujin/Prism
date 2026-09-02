@@ -36,6 +36,46 @@ class ToolSpec:
     output_summary: str = ""
 
 
+def prism_tool(name=None, description=None, category="", parameters=None, output_summary=""):
+    """标记一个函数为「可暴露的能力」——供自动遍历扫描器发现。
+
+    用法（写在任意被扫描目录的 .py 里）::
+
+        from fastapi_app.services.tool_catalog import prism_tool
+
+        @prism_tool(description="两个数相加", category="demo")
+        def add(a: int, b: int = 1) -> dict:
+            \"\"\"加法。\\n\\n:param a: 第一个数\\n:param b: 第二个数\\n\"\"\"
+            return {"sum": a + b}
+
+    扫描器（tool_auto_scanner）会遍历代码库，自动为每个 ``@prism_tool`` 函数生成
+    ToolSpec 并注册 → 自动暴露到 MCP / API / CLI / 前端，无需手写登记。
+    装饰器参数均可选；不给 name 用函数名，不给 description/parameters 会从
+    docstring + 函数签名自动推导。
+    """
+
+    def deco(fn):
+        fn._prism_tool = {
+            "name": name or fn.__name__,
+            "description": description,
+            "category": category,
+            "parameters": parameters,
+            "output_summary": output_summary,
+            "_handler": fn,
+        }
+        return fn
+
+    return deco
+
+
+def register_auto(spec: ToolSpec) -> Optional[ToolSpec]:
+    """注册一个由自动扫描发现的工具；若与已有工具重名则跳过（手动登记优先）。"""
+    if spec.name in TOOLS:
+        return None
+    TOOLS[spec.name] = spec
+    return spec
+
+
 # ---------------------------------------------------------------------------
 # 内置轻量 handler（不依赖任何外部服务，便于验证三层链路与单测）
 # ---------------------------------------------------------------------------
@@ -57,6 +97,19 @@ async def _douyin_preview_handler(**kwargs: Any) -> Dict[str, Any]:
     if not Path(file_path).is_file():
         raise FileNotFoundError(file_path)
 
+    # 解包 platform_settings.douyin（面板新增字段：whoCanSee/savePermission/hotspot/collection/miniProgram/coverOrientation/coverFile）
+    ps = {}
+    try:
+        ps = (kwargs.get("platform_settings") or {}).get("douyin", {}) or {}
+        if not isinstance(ps, dict):
+            ps = {}
+    except Exception:
+        ps = {}
+
+    poi_name = ""
+    if isinstance(ps.get("poi"), dict):
+        poi_name = ps.get("poi", {}).get("name", "")
+
     app = DouYinVideo(
         title=kwargs.get("title") or Path(file_path).stem,
         file_path=file_path,
@@ -68,7 +121,15 @@ async def _douyin_preview_handler(**kwargs: Any) -> Dict[str, Any]:
         debug=bool(kwargs.get("debug", False)),
         headless=bool(kwargs.get("headless", True)),
         preview_only=True,          # 预览：停发布前
-        random_cover=bool(kwargs.get("random_cover", False)),
+        random_cover=bool(kwargs.get("random_cover", False) or ps.get("useAIRandomCover", False)),
+        location=kwargs.get("location") or poi_name,
+        declaration=kwargs.get("declaration") or ps.get("declaration"),
+        who_can_see=ps.get("whoCanSee", ""),
+        save_permission=ps.get("savePermission", ""),
+        hotspot=ps.get("hotspot", ""),
+        collection=ps.get("collection", ""),
+        miniProgram=ps.get("miniProgram") or None,
+        cover_orientation=ps.get("coverOrientation", "landscape"),
     )
     await app.main()                # 核心：跑到发布前停住，未真正发布
     return {
@@ -163,11 +224,17 @@ async def invoke(name: str, **kwargs: Any) -> Dict[str, Any]:
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
-# 便捷：python -m fastapi_app.agent.tool_catalog 可打印工具清单（自检用）
+# 便捷：python -m fastapi_app.services.tool_catalog 可打印工具清单（自检用）
 def _main() -> None:
     import json
 
     print(json.dumps([{"name": t.name, "category": t.category, "description": t.description} for t in all_tools()], ensure_ascii=False, indent=2))
+
+
+# —— 自动遍历：扫描代码库里的 @prism_tool 函数并注册（手动登记优先）——
+from .tool_auto_scanner import register_auto_tools  # noqa: E402
+
+register_auto_tools()
 
 
 if __name__ == "__main__":

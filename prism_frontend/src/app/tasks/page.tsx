@@ -368,10 +368,16 @@ export default function TasksPage() {
     xiaohongshu: "小红书",
     bilibili: "B站",
     channels: "视频号",
+    tiktok: "TikTok",
+    youtube: "YouTube",
     "2": "快手",
     "3": "抖音",
+    "6": "TikTok",
+    "7": "YouTube",
     "platform_2": "快手",
-    "platform_3": "抖音"
+    "platform_3": "抖音",
+    "platform_6": "TikTok",
+    "platform_7": "YouTube"
   }
 
   const renderPagination = (
@@ -442,8 +448,9 @@ export default function TasksPage() {
   }, [activeTab])
 
   return (
-    <div className="space-y-8 px-4 py-4 md:px-6 md:py-6">
+    <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-4 md:px-6 md:py-5">
       <PageHeader
+        eyebrow="PRISM / OPERATIONS"
         title="任务中心"
         actions={
           <div className="ml-auto flex flex-wrap gap-3">
@@ -566,10 +573,10 @@ export default function TasksPage() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-4">
         <Card className="bg-card border-border/70">
-          <CardHeader className="flex items-center gap-3">
-            <Clock3 className="h-8 w-8 text-foreground" />
+          <CardHeader className="flex items-center gap-3 py-3">
+            <Clock3 className="h-5 w-5 text-foreground/70" />
             <div>
               <CardTitle>定时任务</CardTitle>
               <CardDescription>{scheduledCount} 条待执行</CardDescription>
@@ -577,8 +584,8 @@ export default function TasksPage() {
           </CardHeader>
         </Card>
         <Card className="bg-card border-border/70">
-          <CardHeader className="flex items-center gap-3">
-            <CheckCircle2 className="h-8 w-8 text-white" />
+          <CardHeader className="flex items-center gap-3 py-3">
+            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             <div>
               <CardTitle>发布成功</CardTitle>
               <CardDescription>{successCount} 条已完成</CardDescription>
@@ -586,8 +593,8 @@ export default function TasksPage() {
           </CardHeader>
         </Card>
         <Card className="bg-card border-border/70">
-          <CardHeader className="flex items-center gap-3">
-            <XCircle className="h-8 w-8 text-white" />
+          <CardHeader className="flex items-center gap-3 py-3">
+            <XCircle className="h-5 w-5 text-red-400" />
             <div>
               <CardTitle>失败/异常</CardTitle>
               <CardDescription>{errorCount} 条需要关注</CardDescription>
@@ -595,8 +602,8 @@ export default function TasksPage() {
           </CardHeader>
         </Card>
         <Card className="bg-card border-border/70">
-          <CardHeader className="flex items-center gap-3">
-            <AlertCircle className="h-8 w-8 text-white" />
+          <CardHeader className="flex items-center gap-3 py-3">
+            <AlertCircle className="h-5 w-5 text-amber-300" />
             <div>
               <CardTitle>人工处理</CardTitle>
               <CardDescription>{manualStats.pending || 0} 条待处理</CardDescription>
@@ -606,7 +613,7 @@ export default function TasksPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid h-9 w-full grid-cols-2 rounded-sm border border-border bg-card">
           <TabsTrigger value="auto">自动任务</TabsTrigger>
           <TabsTrigger value="manual">
             人工处理

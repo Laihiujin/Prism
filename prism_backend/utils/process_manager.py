@@ -48,7 +48,7 @@ DEFAULT_PORTS: Dict[str, int] = {
     "frontend": 3000,
     "redis": 6379,
     "hermes-dashboard": 9119,
-    "hermes-webui": 9131,
+    "hermes-webui": 8788,
 }
 
 

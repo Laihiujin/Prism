@@ -3,6 +3,19 @@
 module.exports = {
   apps: [
     {
+      name: 'prism-redis',
+      cwd: '.',
+      script: '/opt/homebrew/bin/redis-server',
+      interpreter: 'none',
+      args: '--bind 127.0.0.1 --port 6379 --save "" --appendonly no',
+      autorestart: true,
+      watch: false,
+      restart_delay: 2000,
+      error_file: './logs/redis-error.log',
+      out_file: './logs/redis-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
       name: 'prism-backend',
       cwd: './prism_backend',
       script: '/Users/laihiujin/Documents/siuyechu/Prism/.venv/bin/python',
@@ -10,8 +23,9 @@ module.exports = {
       autorestart: true,
       // 热重载：监视代码目录，改动后自动重启（uvicorn 本身只 reload fastapi_app，
       // 这里覆盖 myUtils/utils/scripts 等全部后端代码）
-      watch: true,
-      watch_delay: 1000,
+      // 后端会持续写入日志、数据库和运行时状态；开启 watch 会触发自重启，
+      // 造成前端短暂断开。交给 PM2 守护即可，不监听运行时文件。
+      watch: false,
       ignore_watch: [
         'db', 'logs', 'data', 'storage', 'uploads', 'videoFile',
         'cookies', 'cookiesFile', 'browser_profiles', 'fingerprints',
@@ -23,6 +37,8 @@ module.exports = {
         PYTHONPATH: '/Users/laihiujin/Documents/siuyechu/Prism/prism_backend',
         PLAYWRIGHT_BROWSERS_PATH: '/Users/laihiujin/Documents/siuyechu/Prism/browsers',
         PRISM_BROWSER_BACKEND_DEFAULT: 'persona',
+        PRISM_HERMES_DASHBOARD_PORT: '9119',
+        PRISM_HERMES_WEBUI_PORT: '8788',
       },
       error_file: './logs/backend-error.log',
       out_file: './logs/backend-out.log',
@@ -100,6 +116,56 @@ module.exports = {
       watch: false,
       error_file: './logs/persona-proxy-error.log',
       out_file: './logs/persona-proxy-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      name: 'persona-dashboard',
+      cwd: './tools/persona-studio/dashboard',
+      script: 'npm',
+      args: 'run dev -- --host 127.0.0.1 --port 5173',
+      autorestart: true,
+      watch: false,
+      restart_delay: 2000,
+      error_file: './logs/persona-dashboard-error.log',
+      out_file: './logs/persona-dashboard-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      name: 'hermes-dashboard',
+      cwd: '.',
+      script: '/Users/laihiujin/Documents/siuyechu/Prism/prismenv/bin/hermes',
+      interpreter: 'none',
+      args: 'dashboard --host 127.0.0.1 --port 9119 --no-open --skip-build',
+      autorestart: true,
+      watch: false,
+      restart_delay: 2000,
+      max_restarts: 20,
+      env: {
+        PYTHONUNBUFFERED: '1',
+        PYTHONPATH: '/Users/laihiujin/Documents/siuyechu/Prism/tools/hermes-agent',
+      },
+      error_file: './logs/hermes-dashboard-error.log',
+      out_file: './logs/hermes-dashboard-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      name: 'hermes-webui',
+      cwd: './tools/hermes-webui',
+      script: '/Users/laihiujin/Documents/siuyechu/Prism/prismenv/bin/python',
+      interpreter: 'none',
+      args: 'server.py',
+      autorestart: true,
+      watch: false,
+      restart_delay: 2000,
+      env: {
+        PYTHONUNBUFFERED: '1',
+        HERMES_WEBUI_HOST: '127.0.0.1',
+        HERMES_WEBUI_PORT: '8788',
+        HERMES_WEBUI_AGENT_DIR: '/Users/laihiujin/Documents/siuyechu/Prism/tools/hermes-agent',
+        HERMES_WEBUI_STATE_DIR: '/Users/laihiujin/Documents/siuyechu/Prism/tools/hermes-home/webui',
+      },
+      error_file: './logs/hermes-webui-error.log',
+      out_file: './logs/hermes-webui-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
   ]

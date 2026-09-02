@@ -125,6 +125,13 @@ class BatchPublishRequest(BaseModel):
     miniprogram_link: Optional[str] = Field("", description="小程序链接")
     miniprogram_title: Optional[str] = Field("", description="小程序标题")
 
+    # 🆕 NEW: 每平台专属配置（前端各平台配置面板写入，透传到发布任务供各平台 worker 读取）
+    platform_settings: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="每平台专属配置（key=平台代码，如 douyin/kuaishou/xiaohongshu）",
+        validation_alias=AliasChoices("platform_settings", "platformSettings"),
+    )
+
     @field_validator('file_ids')
     @classmethod
     def validate_file_ids(cls, v):

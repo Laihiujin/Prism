@@ -19,7 +19,11 @@ from ....agent.hermes_agent import (
 from ....agent.hermes_config import (
     delete_agent_config,
     get_config_path,
+    list_mcp_servers,
+    list_plugins,
     read_agent_config,
+    set_mcp_server_enabled,
+    set_plugin_enabled,
     write_agent_config,
 )
 from ....core.logger import logger
@@ -284,3 +288,39 @@ async def stop_dashboard():
             "runtime": runtime,
         },
     )
+
+
+# ── MCP servers (mirrors Hermes /api/mcp/*, reads the shared config.yaml) ────
+
+@router.get("/hermes/mcp/servers", response_model=Response[Dict[str, Any]])
+async def get_mcp_servers():
+    """List MCP servers configured in the shared Hermes config.yaml."""
+    return Response(success=True, data=list_mcp_servers())
+
+
+@router.patch("/hermes/mcp/servers/{name}", response_model=Response[Dict[str, Any]])
+async def toggle_mcp_server(name: str, payload: Dict[str, Any]):
+    """Enable/disable a single MCP server (writes the shared config.yaml)."""
+    try:
+        result = set_mcp_server_enabled(name, bool(payload.get("enabled")))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    return Response(success=True, data=result)
+
+
+# ── Plugins (mirrors Hermes /api/plugins, reads the shared config.yaml) ──────
+
+@router.get("/hermes/plugins", response_model=Response[Dict[str, Any]])
+async def get_plugins():
+    """List plugins mirrored from the shared Hermes config.yaml."""
+    return Response(success=True, data=list_plugins())
+
+
+@router.patch("/hermes/plugins/{name}", response_model=Response[Dict[str, Any]])
+async def toggle_plugin(name: str, payload: Dict[str, Any]):
+    """Enable/disable a plugin (writes the shared Hermes config.yaml)."""
+    try:
+        result = set_plugin_enabled(name, bool(payload.get("enabled")))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return Response(success=True, data=result)
