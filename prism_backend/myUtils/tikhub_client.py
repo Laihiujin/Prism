@@ -694,14 +694,29 @@ class TikHubClient:
         return videos, pages
 
     async def resolve_youtube_channel_id(self, channel: str) -> Optional[str]:
-        """把 YouTube 频道（handle/名称/URL）解析为 channel_id。"""
+        """把 YouTube 频道（channel_id / handle / URL / 频道名）解析为 channel_id。
+
+        解析策略（免费端点优先）：
+        - 输入已是 channel_id（UCxxx）→ 直接返回；
+        - handle（@xxx）→ 拼接为频道 URL 走 get_channel_id_v2（免费）；
+        - URL → get_channel_id_v2（免费）；
+        - 其余（频道名等）→ 旧版 get_channel_id（付费，可能 402，失败返回 None）。
+        """
         channel = (channel or "").strip()
         if not channel:
             return None
         try:
-            if channel.startswith("http"):
-                payload = await self.fetch_youtube_channel_id_v2(channel_url=channel)
-                return self.parse_youtube_channel_id(payload)
+            if re.match(r"^UC[\w-]{16,}$", channel):
+                return channel
+            url = channel
+            if not url.startswith("http"):
+                # handle 形如 @xxx；频道名无 @ 时也尝试拼 handle URL
+                url = f"https://www.youtube.com/@{channel.lstrip('@')}"
+            payload = await self.fetch_youtube_channel_id_v2(channel_url=url)
+            cid = self.parse_youtube_channel_id(payload)
+            if cid:
+                return cid
+            # v2 拿不到（如纯频道名），回退旧版按名称查询（付费端点，可能失败）
             payload = await self.fetch_youtube_channel_id(channel_name=channel)
             return self.parse_youtube_channel_id(payload)
         except Exception:
