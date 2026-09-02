@@ -36,11 +36,11 @@ SERVER_VERSION = "1.0.0"
 
 
 def _collect_tools() -> Dict[str, Any]:
-    from . import hermes_tools, hermes_tools_extended, hermes_tools_social_api, tikhub_tools
+    from . import hermes_tools, hermes_tools_extended, hermes_tools_social_api, hermes_tools_proxy_gateway, tikhub_tools
     from .tool_runtime import BaseTool
 
     tools: Dict[str, Any] = {}
-    for module in (hermes_tools, hermes_tools_extended, hermes_tools_social_api, tikhub_tools):
+    for module in (hermes_tools, hermes_tools_extended, hermes_tools_social_api, hermes_tools_proxy_gateway, tikhub_tools):
         for value in vars(module).values():
             if not inspect.isclass(value):
                 continue
