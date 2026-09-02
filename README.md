@@ -182,9 +182,9 @@ Redis 每账号 Browser Runtime 分布式锁（`runtime_lock_service`）：保�
 支持抖音、B 站、TikTok（本地部署API接口读取数据）
 （YouTube、快手、小红书、视频号——支持付费 API 接口读取数据）；
 
-### 🎬 产品演示视频（纯黑白）
+### 🎬 产品演示视频（暗黑科技风）
 
-**真实交互 Walkthrough**（登录弹窗 · 素材 · 矩阵发布 · 任务 · Agent 对话，Apple 质感包装）：
+**真实交互 Walkthrough**（登录弹窗 · 素材 · 矩阵发布 · 任务 · Agent 对话，暗黑科技包装）：
 
 ![walkthrough](docs/demos/prism_wrap.gif)
 
