@@ -437,6 +437,7 @@ class CookieManager:
                             return str(uid)
 
             # 按照优先级顺序查找（先遍历id_fields，再遍历cookies）
+            id_fields = platform_id_map.get(platform, [])
             for id_field in id_fields:
                 for cookie in cookies_list:
                     if isinstance(cookie, dict):
