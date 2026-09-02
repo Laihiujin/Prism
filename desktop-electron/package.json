@@ -233,6 +233,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "artifactName": "Prism-${version}-${arch}-setup.${ext}",
       "target": [
         {
           "target": "dmg",
