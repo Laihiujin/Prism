@@ -64,6 +64,230 @@ def _build_login_result(success, status, message, account_file, current_url=""):
     }
 
 
+def _parse_youtube_account_id(account_file) -> str:
+    """从 cookie 文件名解析 account_id：youtube_account_xxx.json -> account_xxx"""
+    stem = Path(str(account_file)).stem
+    if stem.startswith("youtube_"):
+        return stem[len("youtube_"):] or stem
+    return stem
+
+
+def _register_youtube_placeholder(cookie_manager, account_id: str, cookie_file: str, user_id: str) -> None:
+    """轻量占位入库（保留原 cookie 文件名）。
+
+    反查不可用（TikHub 402/无 key）时使用：避免 add_account 把 cookie 文件改名为
+    占位符格式（youtube_youtube_xxx.json），导致 CLI 的 account_file 路径失效。
+    账号名暂用「YouTube-日期时间」占位，等 TikHub 反查可用后由 enrich-tikhub 补全
+    真实频道信息；入库后即受账号库保护，不会再被 cleanup_orphan_cookie_files 删除。
+    """
+    import sqlite3
+    from datetime import datetime
+
+    display_name = f"YouTube-{datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    conn = sqlite3.connect(cookie_manager.db_path)
+    try:
+        conn.execute(
+            """INSERT OR IGNORE INTO cookie_accounts
+               (account_id, platform, platform_code, name, status, cookie_file, last_checked, user_id, note)
+               VALUES (?, 'youtube', 7, ?, 'valid', ?, ?, ?, ?)""",
+            (account_id, display_name, cookie_file, datetime.utcnow().isoformat(), user_id, account_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+_YT_CHANNEL_ID_RE = re.compile(r"/channel/(UC[\w-]+)")
+
+
+def _extract_youtube_channel_id_from_url(url: str) -> str:
+    """从 URL 提取 YouTube channel_id（/channel/UCxxx）。"""
+    m = _YT_CHANNEL_ID_RE.search(str(url or ""))
+    return m.group(1) if m else ""
+
+
+async def _fetch_youtube_channel_id_from_session(account_file) -> str:
+    """无头用登录态打开 YouTube 上传页，从重定向 URL 自动抓取 channel_id。
+
+    www.youtube.com/upload 会自动跳转到 studio.youtube.com/channel/{channelId}/content?d=ud，
+    其 URL 内嵌 channel_id。这解决了 channel_id 需手动填的问题：
+    登录落库时即使未提供 URL/handle，也能从登录态自动拿到真实频道 ID。
+    """
+    try:
+        path = Path(str(account_file))
+        if not path.exists():
+            return ""
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(**_chrome_launch_options(headless=True))
+            try:
+                context = await browser.new_context(storage_state=str(path))
+                context = await set_init_script(context)
+                page = await context.new_page()
+                await page.goto("https://www.youtube.com/upload", wait_until="domcontentloaded", timeout=60000)
+                cid = ""
+                for _ in range(12):  # 等待重定向到带 channel_id 的 Studio URL
+                    await page.wait_for_timeout(1500)
+                    cid = _extract_youtube_channel_id_from_url(page.url)
+                    if cid:
+                        break
+                return cid
+            finally:
+                await browser.close()
+    except Exception as e:
+        youtube_logger.warning(f"[YouTube] 从登录态抓取 channel_id 异常: {e}")
+        return ""
+
+
+async def _fetch_youtube_channel_info_local(channel_id: str, handle: str = "") -> dict[str, str]:
+    """无头访问 YouTube 频道公开页（/channel/{id} 或 @handle）抓取频道名/头像。
+
+    免费方案：不依赖 TikHub（其 get_channel_info 需付费），从页面 og 元信息抓取。
+    返回 {name, avatar}；失败返回空 dict。
+    """
+    if not channel_id and not handle:
+        return {}
+    url = f"https://www.youtube.com/channel/{channel_id}" if channel_id else f"https://www.youtube.com/{handle}"
+    try:
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(**_chrome_launch_options(headless=True))
+            try:
+                context = await browser.new_context()
+                context = await set_init_script(context)
+                page = await context.new_page()
+                await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                await page.wait_for_timeout(4000)
+                name = ""
+                avatar = ""
+                for sel, key in (('meta[property="og:title"]', "name"), ('meta[property="og:image"]', "avatar")):
+                    try:
+                        v = await page.get_attribute(sel, "content")
+                    except Exception:
+                        v = None
+                    if key == "name" and v:
+                        name = v
+                    elif key == "avatar" and v:
+                        avatar = v
+                # 兜底：从 title "Laihiujin - YouTube" 提取频道名
+                if not name:
+                    try:
+                        t = await page.title()
+                        if t and " - YouTube" in t:
+                            name = t.split(" - YouTube")[0]
+                    except Exception:
+                        pass
+                return {"name": name, "avatar": avatar}
+            finally:
+                await browser.close()
+    except Exception as e:
+        youtube_logger.warning(f"[YouTube] 本地抓取频道信息异常: {e}")
+        return {}
+
+
+async def _auto_register_account(account_file, original_account=None) -> None:
+    """CLI/上传器路径登录成功后，把 YouTube 账号写入账号库。
+
+    背景：browser_login API 登录会在 /status 里 add_account 入库；但 CLI
+    `prism youtube login` 只保存 cookie 文件、不入库，账号既不在账号库，
+    文件也会被 user_info_sync_scheduler 的 cleanup_orphan_cookie_files 当孤儿删除。
+    这里补齐入库：
+
+    - 优先用 TikHub 反查真实 channel_id（免费 get_channel_id_v2：URL/handle/UCxxx
+      均可解析），文件名规范化为 youtube_{channel_id}.json；
+    - 反查不可用（未配置 key / 网络异常）时用轻量占位入库，账号名暂用
+      「YouTube-日期时间」，保留原 cookie 文件名，保证登录态不再被清理；
+    - 已在库的账号跳过（幂等），之后可通过 /accounts/{id}/enrich-tikhub 反查补全。
+
+    original_account: 登录时用户输入的原始账号名（可能是频道 URL / handle），
+    用于反查；缺省时退化为从 cookie 文件名解析的 account_id。
+    """
+    try:
+        path = Path(str(account_file))
+        if not path.exists():
+            return
+        import json as _json
+        from myUtils.cookie_manager import cookie_manager
+
+        account_id = _parse_youtube_account_id(account_file)
+        if cookie_manager.get_account_by_id(account_id):
+            return  # 已在账号库，跳过
+
+        data = _json.loads(path.read_text(encoding="utf-8"))
+        cookie_data = data if isinstance(data, dict) else {}
+
+        # 1) 尝试 TikHub 反查真实 channel_id（用原始账号名，能解析 URL/handle）
+        channel_id = None
+        try:
+            from myUtils.tikhub_client import get_tikhub_client
+            tikhub = get_tikhub_client()
+            if tikhub:
+                async with tikhub as client:
+                    channel_id = await client.resolve_youtube_channel_id(original_account or account_id)
+        except Exception as exc:
+            youtube_logger.warning(f"[YouTube] 反查 channel_id 失败: {exc}")
+
+        # 1b) TikHub 没拿到（如账号名是时间戳ID），回退从登录态自动抓取（无需手动填 id）
+        if not channel_id:
+            channel_id = await _fetch_youtube_channel_id_from_session(account_file)
+            if channel_id:
+                youtube_logger.info(f"[YouTube] 登录态自动抓取 channel_id: {channel_id}")
+
+        if channel_id:
+            # 2a) 反查成功：正常入库（文件名规范化为 youtube_{channel_id}.json）
+            from datetime import datetime
+            display_name = f"YouTube-{datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            details = {
+                "account_id": account_id,
+                "cookie": cookie_data,
+                "user_id": channel_id,
+                "name": display_name,
+                "note": original_account or account_id,
+            }
+            cookie_manager.add_account("youtube", details)
+            youtube_logger.info(f"[YouTube] 登录态已入库(反查): account_id={account_id} channel_id={channel_id}")
+
+            # 补全频道名/头像：优先本地无头抓取（免费，主方案），TikHub(需付费)兜底。
+            update = {}
+            try:
+                local = await _fetch_youtube_channel_info_local(channel_id=channel_id)
+                if local.get("name"):
+                    update["name"] = str(local["name"])
+                if local.get("avatar"):
+                    update["avatar"] = str(local["avatar"])
+                if update:
+                    youtube_logger.info(f"[YouTube] 本地抓取频道信息成功: {update}")
+            except Exception as exc:
+                youtube_logger.warning(f"[YouTube] 本地抓取频道信息失败: {exc}")
+            # 本地抓取补不到原频道名时，退回 TikHub 反查（若已配置）
+            if not update.get("name") and not update.get("original_name"):
+                try:
+                    from myUtils.tikhub_client import get_tikhub_client as _get_tikhub
+                    tikhub2 = _get_tikhub()
+                    if tikhub2:
+                        async with tikhub2 as client:
+                            profile = await client.fetch_account_profile("youtube", channel_id)
+                        if profile:
+                            if profile.get("name"):
+                                update["name"] = str(profile["name"])
+                            if profile.get("original_name"):
+                                update["original_name"] = str(profile["original_name"])
+                            if profile.get("avatar"):
+                                update["avatar"] = str(profile["avatar"])
+                except Exception as exc:
+                    youtube_logger.warning(f"[YouTube] TikHub 反查补全失败（不影响入库）: {exc}")
+            if update:
+                cookie_manager.update_account(account_id, **update)
+                youtube_logger.info(f"[YouTube] 补全频道信息: {update}")
+        else:
+            # 2b) 反查不可用：轻量占位入库，保留原文件
+            user_id = f"youtube_{account_id}"
+            _register_youtube_placeholder(cookie_manager, account_id, path.name, user_id)
+            youtube_logger.info(
+                f"[YouTube] 登录态已入库(占位): account_id={account_id} user_id={user_id} file={path.name}"
+            )
+    except Exception as exc:
+        youtube_logger.warning(f"[YouTube] 自动入库失败（不影响登录）: {exc}")
+
+
 async def cookie_auth(account_file) -> bool:
     """登录态是否仍有效：带 cookie 打开 Studio，没被踢到 Google 登录页且进入了频道页即有效。"""
     async with async_playwright() as playwright:
@@ -74,10 +298,11 @@ async def cookie_auth(account_file) -> bool:
             page = await context.new_page()
             await page.goto(STUDIO_URL, wait_until="domcontentloaded")
             await page.wait_for_timeout(3000)
-            url = page.url
-            if "accounts.google.com" in url or "/signin" in url.lower():
+            url = page.url.lower()
+            if "accounts.google.com" in url or "/signin" in url:
                 return False
-            return "/channel/" in url
+            # 已登录：停留在 Studio 首页（studio.youtube.com，不含 /channel/）或频道页/youtube 域内
+            return "youtube.com" in url
         except Exception:
             return False
         finally:
@@ -121,15 +346,20 @@ async def youtube_cookie_gen(account_file, headless: bool = False):
 
 
 async def youtube_setup(account_file, handle: bool = False, return_detail: bool = False, headless: bool = False):
-    """校验登录态，失效且 handle=True 时拉起交互式登录。"""
+    """校验登录态，失效且 handle=True 时拉起交互式登录；成功后自动入库账号库。"""
     if not Path(account_file).exists() or not await cookie_auth(account_file):
         if not handle:
             result = _build_login_result(False, "cookie_invalid", "登录态不存在或已失效", account_file)
             return result if return_detail else False
         youtube_logger.info(_msg("🥹", "YouTube 登录态不存在或失效，准备打开浏览器登录"))
         result = await youtube_cookie_gen(account_file, headless=headless)
+        if result.get("success"):
+            await _auto_register_account(account_file)
         return result if return_detail else result["success"]
     result = _build_login_result(True, "cookie_valid", "登录态有效", account_file)
+    if result.get("success"):
+        # 磁盘已有有效登录态：回收进账号库（幂等，已在库则跳过）
+        await _auto_register_account(account_file)
     return result if return_detail else True
 
 

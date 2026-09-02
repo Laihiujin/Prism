@@ -279,6 +279,16 @@ _PLATFORM_PROFILE_URL = {
     "kuaishou": "https://cp.kuaishou.com/profile",
     "xiaohongshu": "https://creator.xiaohongshu.com/new/home",
     "bilibili": "https://member.bilibili.com/platform/home",
+    "tiktok": "https://www.tiktok.com/tiktokstudio",
+    "youtube": "https://studio.youtube.com",
+}
+
+# 创作者中心「打开账号」默认定位到发布视频上传页（仅影响 creator/open）
+# 注：youtube 用 www.youtube.com/upload（会重定向到 studio 频道 content?d=ud 上传界面），
+# 直接访问 studio.youtube.com/upload 会显示 "Oops, something went wrong."
+_CREATOR_UPLOAD_URL = {
+    "tiktok": "https://www.tiktok.com/tiktokstudio/upload",
+    "youtube": "https://www.youtube.com/upload",
 }
 
 _CHANNELS_LOGIN_TEXT_MARKERS = (
@@ -455,7 +465,7 @@ async def open_creator_center(req: OpenCreatorCenterRequest):
     """
     try:
         platform_code = (req.platform or "").strip().lower()
-        profile_url = (req.url or "").strip() or _PLATFORM_PROFILE_URL.get(platform_code)
+        profile_url = (req.url or "").strip() or _CREATOR_UPLOAD_URL.get(platform_code) or _PLATFORM_PROFILE_URL.get(platform_code)
         if not profile_url:
             return JSONResponse(status_code=400, content={"success": False, "error": f"Unsupported platform: {req.platform}"})
 
@@ -603,6 +613,40 @@ async def open_creator_center(req: OpenCreatorCenterRequest):
                 with contextlib.suppress(Exception):
                     await pw.stop()
                 return JSONResponse(status_code=401, content={"success": False, "error": "Login required"})
+
+        # TikTok / YouTube 登录态检查：cookie 无效时会被踢回登录页/首页
+        if platform_code in ("tiktok", "youtube"):
+            await page.wait_for_timeout(2500)  # 等待可能的登录跳转落定
+            current_url = (page.url or "").lower()
+            redirected_to_login = False
+            if platform_code == "youtube":
+                # 有效登录态应停留在 studio.youtube.com；被踢则落到 accounts.google.com / 普通 youtube
+                redirected_to_login = (
+                    "accounts.google.com" in current_url
+                    or "/signin" in current_url
+                    or ("youtube.com" in current_url and "studio.youtube.com" not in current_url)
+                )
+            else:  # tiktok
+                # 有效登录态应停留在 tiktokstudio / creator-center；被踢则落到 login 或普通首页
+                redirected_to_login = (
+                    "login" in current_url
+                    or ("tiktok.com" in current_url and "tiktokstudio" not in current_url and "creator" not in current_url)
+                )
+            if redirected_to_login:
+                logger.warning(f"[Worker] {platform_code} redirected to login page: {page.url}")
+                with contextlib.suppress(Exception):
+                    await page.close()
+                with contextlib.suppress(Exception):
+                    await context.close()
+                with contextlib.suppress(Exception):
+                    await browser.close()
+                with contextlib.suppress(Exception):
+                    await pw.stop()
+                return JSONResponse(status_code=401, content={
+                    "success": False,
+                    "error": "Login required: cookies may be expired or invalid",
+                    "detail": f"Redirected to {page.url}",
+                })
 
         session_id = f"creator_{uuid.uuid4().hex[:12]}"
         now = asyncio.get_running_loop().time()
@@ -831,6 +875,30 @@ async def _check_batch_accounts_rotation(batch_size: int = 5) -> dict:
     return stats
 
 
+def _platform_login_state_for_url(platform: str, final_url: str) -> str:
+    """根据打开创作者中心后的最终 URL 判断登录态。
+
+    - youtube：被踢到 Google 登录页（accounts.google.com / /signin）才算掉线；
+                停留在 studio.youtube.com 域内即视为已登录。
+    - tiktok：被踢到 login 页或普通 tiktok.com 首页（非 tiktokstudio/creator）才算掉线；
+                停留在 tiktokstudio / creator 域内即视为已登录。
+    - 其它平台：最终 URL 含 "login" 视为掉线，否则已登录。
+    """
+    url = (final_url or "").lower()
+    if platform == "youtube":
+        if "accounts.google.com" in url or "/signin" in url:
+            return "session_expired"
+        # 停在 studio 频道页/内容页/上传页均视为已登录
+        return "logged_in" if ("studio.youtube.com" in url or "youtube.com" in url) else "error"
+    if platform == "tiktok":
+        if "login" in url:
+            return "session_expired"
+        if "tiktok.com" in url and "tiktokstudio" not in url and "creator" not in url and "video" not in url:
+            return "session_expired"
+        return "logged_in"
+    return "session_expired" if "login" in url else "logged_in"
+
+
 async def _check_single_account_login_worker(account_id: str, platform: str, cookie_file: str) -> dict:
     """Check a single account login status inside the worker."""
     import json
@@ -855,6 +923,8 @@ async def _check_single_account_login_worker(account_id: str, platform: str, coo
         "kuaishou": "https://cp.kuaishou.com/profile",
         "channels": "https://channels.weixin.qq.com/platform/home",
         "tencent": "https://channels.weixin.qq.com/platform/home",
+        "tiktok": "https://www.tiktok.com/tiktokstudio",
+        "youtube": "https://studio.youtube.com",
     }
 
     creator_url = creator_urls.get(platform)
@@ -909,10 +979,10 @@ async def _check_single_account_login_worker(account_id: str, platform: str, coo
             login_state, reason = await _classify_channels_login_state(page)
             result["login_status"] = "logged_in" if login_state == "logged_in" else "session_expired" if login_state == "session_expired" else "error"
             result["error"] = None if result["login_status"] == "logged_in" else reason
-        elif "login" in final_url.lower():
-            result["login_status"] = "session_expired"
         else:
-            result["login_status"] = "logged_in"
+            # 其它平台按 URL 判定登录态（tiktok/youtube 用域内精确判断，其余看是否跳转登录）
+            result["login_status"] = _platform_login_state_for_url(platform, final_url)
+            result["error"] = None if result["login_status"] == "logged_in" else "redirected to login" if result["login_status"] == "session_expired" else result.get("error")
 
         if result["login_status"] == "logged_in":
             logger.info(f"[Worker] Account {account_id} ({platform}) is logged in")

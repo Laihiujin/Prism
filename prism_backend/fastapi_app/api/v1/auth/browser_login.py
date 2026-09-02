@@ -14,6 +14,7 @@ TikTok / YouTube 交互式浏览器登录（方案 C：本机非 headless 弹出
 from __future__ import annotations
 
 import asyncio
+import re
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -33,9 +34,15 @@ _tasks_lock = asyncio.Lock()
 _BROWSER_LOGIN_PLATFORMS = {"tiktok", "youtube"}
 
 
+def _safe_account_segment(account: str) -> str:
+    """账号名安全化：URL 等含 / : ? & @ 的输入会破坏文件路径，替换为下划线。"""
+    seg = re.sub(r"[^A-Za-z0-9._-]", "_", str(account or ""))
+    return seg.strip("_") or "account"
+
+
 def _cookie_file_path(platform: str, account: str) -> Path:
     base = Path(settings.COOKIE_FILES_DIR)
-    return base / f"{platform}_{account}.json"
+    return base / f"{platform}_{_safe_account_segment(account)}.json"
 
 
 async def _import_from_chrome_profile(platform: str, account: str, cookie_path: Path) -> bool:
@@ -321,12 +328,24 @@ async def browser_login_status(login_id: str = Query(..., description="登录会
             if rec["status"] == "success":
                 # 登录成功：显式把新 cookie 文件注册为账号，再 deep_sync 补全信息。
                 # 注意：deep_sync_accounts 已关闭「自动添加磁盘新文件」，
-                # 所以这里必须用 add_account 显式入库，否则账号不会出现（未回收）。
+                # 所以这里必须显式入库，否则账号不会出现（未回收）。
                 try:
                     from myUtils.cookie_manager import cookie_manager
                     cookie_file = rec["cookie_file"]
                     if cookie_file and Path(cookie_file).exists():
-                        try:
+                        if rec["platform"] == "youtube":
+                            # YouTube：统一走 uploader 的自动入库（反查真实 channel_id /
+                            # 占位保留原文件名），避免 add_account 对占位 user_id 的
+                            # 文件名规范化（youtube_youtube_xxx.json）覆盖占位记录。
+                            try:
+                                from uploader.youtube_uploader.main_refactored import _auto_register_account
+                                await _auto_register_account(cookie_file, original_account=rec.get("account_id"))
+                                logger.info(
+                                    f"[BrowserLogin] YouTube 已自动入库: account_id={rec.get('account_id')} file={cookie_file}"
+                                )
+                            except Exception as exc:
+                                logger.warning(f"[BrowserLogin] YouTube 自动入库失败: {exc}")
+                        else:
                             import json as _json
                             data = _json.load(open(cookie_file, "r", encoding="utf-8"))
                             details = {
@@ -345,7 +364,7 @@ async def browser_login_status(login_id: str = Query(..., description="登录会
                             cookie_manager.add_account(rec["platform"], details)
                             logger.info(f"[BrowserLogin] 已注册账号: platform={rec['platform']} user_id={uid} file={cookie_file}")
 
-                            # TikHub 反查补全真实账号名/昵称/头像（TikTok/YouTube 登录后自动填入）
+                            # TikHub 反查补全真实账号名/昵称/头像（TikTok 登录后自动填入）
                             try:
                                 from myUtils.tikhub_client import get_tikhub_client
 
@@ -375,8 +394,6 @@ async def browser_login_status(login_id: str = Query(..., description="登录会
                                             )
                             except Exception as enrich_exc:
                                 logger.warning(f"[BrowserLogin] TikHub enrich failed: {enrich_exc}")
-                        except Exception as exc:
-                            logger.warning(f"[BrowserLogin] add_account 失败: {exc}")
                     await asyncio.to_thread(cookie_manager.deep_sync_accounts)
                 except Exception as exc:
                     logger.warning(f"[BrowserLogin] deep_sync failed: {exc}")

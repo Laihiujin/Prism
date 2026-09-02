@@ -24,6 +24,8 @@ PLATFORM_CREATOR_URLS = {
     "kuaishou": "https://cp.kuaishou.com/profile",
     "channels": "https://channels.weixin.qq.com/platform/home",
     "bilibili": "https://member.bilibili.com/platform/home",
+    "tiktok": "https://www.tiktok.com/tiktokstudio",
+    "youtube": "https://studio.youtube.com",
 }
 
 
