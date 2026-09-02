@@ -309,6 +309,27 @@ DEV_TOOLS: List[DevTool] = [
         install_path="persona-studio",
         check="command -v persona",
     ),
+    DevTool(
+        id="mihomo",
+        name="mihomo (Clash Meta)",
+        type="component",
+        repo="https://github.com/MetaCubeX/mihomo.git",
+        description=(
+            "本地代理网关内核（官方 v1.19.10）：订阅节点 → 每节点独立端口（8001 起），"
+            "external-controller 127.0.0.1:9093。已集成 agent 工具 proxy_gateway / mihomo_control。"
+        ),
+        install_path="",
+        install_url="https://github.com/MetaCubeX/mihomo/releases",
+        note="由 PM2 persona-proxy 托管，配置目录 tools/persona-studio/proxies/（config.yaml / gateway.json）；点「打开」进入 Prism 代理网关管理页",
+        # 二进制随 persona-studio 仓库内置，install_path 留空避免 uninstall 误删 proxies 目录；
+        # check 用绝对路径（后端进程 cwd 是 prism_backend/，相对路径解析不到）
+        check=f"test -f {REPO_ROOT / 'tools/persona-studio/proxies/mihomo'}",
+        launch_cmd={
+            "darwin": 'open "http://127.0.0.1:3000/persona-proxy"',
+            "win32": 'start "" "http://127.0.0.1:3000/persona-proxy"',
+            "linux": 'xdg-open "http://127.0.0.1:3000/persona-proxy"',
+        },
+    ),
 ]
 
 
