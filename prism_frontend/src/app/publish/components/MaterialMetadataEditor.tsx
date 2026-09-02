@@ -316,7 +316,7 @@ export function MaterialMetadataEditor({
                                 <Button
                                     onClick={handleAIGenerate}
                                     disabled={isGenerating}
-                                    className="w-full bg-gradient-to-r from-white to-white hover:from-white hover:to-white text-foreground"
+                                    className="w-full bg-foreground text-background hover:bg-foreground/90"
                                 >
                                     <Sparkles className={cn("w-4 h-4 mr-2", isGenerating && "animate-spin")} />
                                     {isGenerating ? "AI 生成中..." : "AI 智能生成"}
@@ -409,7 +409,7 @@ export function MaterialMetadataEditor({
                                     onClick={handleGenerateCover}
                                     disabled={isGeneratingCover}
                                     size="sm"
-                                    className="bg-gradient-to-r from-white to-white hover:from-white hover:to-white"
+                                    className="bg-foreground text-background hover:bg-foreground/90"
                                 >
                                     {isGeneratingCover ? (
                                         <Loader2 className="w-3 h-3 animate-spin" />
