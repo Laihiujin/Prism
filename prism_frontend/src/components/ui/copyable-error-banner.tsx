@@ -27,7 +27,7 @@ export function CopyableErrorBanner({ message, onDismiss, className }: CopyableE
   return (
     <div
       className={cn(
-        "relative flex items-center justify-between gap-3 bg-black border border-white/50 px-4 py-3 text-white dark:text-white",
+        "relative flex items-center justify-between gap-3 bg-black border border-white/17 px-4 py-3 text-white dark:text-white",
         className
       )}
     >

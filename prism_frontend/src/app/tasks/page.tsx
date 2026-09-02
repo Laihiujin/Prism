@@ -451,7 +451,7 @@ export default function TasksPage() {
               <>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
+                  className="rounded-2xl border-white/17 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Batch cancel button clicked", selectedTaskIds)
                     batchCancelMutation.mutate({ taskIds: selectedTaskIds, force: false })
@@ -463,7 +463,7 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
+                  className="rounded-2xl border-white/17 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Batch force cancel button clicked", selectedTaskIds)
                     batchCancelMutation.mutate({ taskIds: selectedTaskIds, force: true })
@@ -475,7 +475,7 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
+                  className="rounded-2xl border-white/17 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Batch retry button clicked", selectedTaskIds)
                     batchRetryMutation.mutate(selectedTaskIds)
@@ -503,7 +503,7 @@ export default function TasksPage() {
               <>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
+                  className="rounded-2xl border-white/17 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Clear failed button clicked")
                     try {
@@ -518,7 +518,7 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="rounded-2xl border-white/50 bg-black text-white hover:bg-black"
+                  className="rounded-2xl border-white/17 bg-black text-white hover:bg-black"
                   onClick={() => {
                     console.log("[Tasks] Clear success button clicked")
                     try {
@@ -642,7 +642,7 @@ export default function TasksPage() {
                   正在加载任务数据...
                 </div>
               ) : isError ? (
-                <div className="rounded-2xl border border-white/20 bg-black p-6 text-center text-sm text-white">
+                <div className="rounded-2xl border border-white/17 bg-black p-6 text-center text-sm text-white">
                   加载失败: {error?.message || "未知错误"}
                   <Button variant="outline" size="sm" className="ml-4" onClick={() => refetch()}>重试</Button>
                 </div>

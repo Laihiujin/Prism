@@ -144,11 +144,11 @@ export function AIProviderSelector() {
               className={cn(
                 "p-4 border transition-all",
                 isSuccess
-                  ? "bg-black border-white/30"
+                  ? "bg-black border-white/17"
                   : provider.status === "loading"
-                    ? "bg-black border-white/30"
+                    ? "bg-black border-white/17"
                     : provider.status === "failed"
-                      ? "bg-black border-white/30"
+                      ? "bg-black border-white/17"
                       : "bg-black border-border/70"
               )}
             >

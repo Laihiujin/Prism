@@ -193,7 +193,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground/80">抖音配置</h3>
-                <Badge variant="outline" className="text-[10px] border-white/30 text-white">抖音</Badge>
+                <Badge variant="outline" className="text-[10px] border-white/17 text-white">抖音</Badge>
             </div>
 
             <div className="grid gap-4">
@@ -205,13 +205,13 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                     </Label>
                     <MiniProgramDialog onSelect={setSelectedMiniProgram} platform="douyin" />
                     {selectedMiniProgram && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <span className="text-2xl">{selectedMiniProgram.icon}</span>
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-foreground">{selectedMiniProgram.name}</div>
                                 <div className="text-[10px] text-muted-foreground">{selectedMiniProgram.description}</div>
                             </div>
-                            <Badge variant="outline" className="text-[10px] shrink-0 border-white/50 text-white">
+                            <Badge variant="outline" className="text-[10px] shrink-0 border-white/17 text-white">
                                 {selectedMiniProgram.type}
                             </Badge>
                             <Button
@@ -234,7 +234,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                     </Label>
                     <POIDialog onSelect={setSelectedPOI} />
                     {selectedPOI && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <MapPin className="w-4 h-4 text-white" />
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs text-foreground truncate">{selectedPOI.name}</div>
@@ -264,7 +264,7 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground/80">快手配置</h3>
-                <Badge variant="outline" className="text-[10px] border-white/30 text-white">快手</Badge>
+                <Badge variant="outline" className="text-[10px] border-white/17 text-white">快手</Badge>
             </div>
 
             <div className="grid gap-4">
@@ -276,13 +276,13 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
                     </Label>
                     <MiniProgramDialog onSelect={setSelectedGame} platform="kuaishou" />
                     {selectedGame && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <span className="text-2xl">{selectedGame.icon}</span>
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-foreground">{selectedGame.name}</div>
                                 <div className="text-[10px] text-muted-foreground">{selectedGame.description}</div>
                             </div>
-                            <Badge variant="outline" className="text-[10px] shrink-0 border-white/50 text-white">
+                            <Badge variant="outline" className="text-[10px] shrink-0 border-white/17 text-white">
                                 {selectedGame.type}
                             </Badge>
                             <Button
@@ -305,7 +305,7 @@ export function KuaishouConfig({ data, onChange }: ConfigProps) {
                     </Label>
                     <POIDialog onSelect={setSelectedPOI} />
                     {selectedPOI && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <MapPin className="w-4 h-4 text-white" />
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs text-foreground truncate">{selectedPOI.name}</div>
@@ -334,7 +334,7 @@ export function XhsConfig({ data, onChange }: ConfigProps) {
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground/80">小红书配置</h3>
-                <Badge variant="outline" className="text-[10px] border-white/30 text-white">小红书</Badge>
+                <Badge variant="outline" className="text-[10px] border-white/17 text-white">小红书</Badge>
             </div>
 
             <div className="grid gap-4">
@@ -388,7 +388,7 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground/80">B站配置</h3>
-                <Badge variant="outline" className="text-[10px] border-white/30 text-white">B站</Badge>
+                <Badge variant="outline" className="text-[10px] border-white/17 text-white">B站</Badge>
             </div>
 
             <div className="space-y-4">
@@ -429,7 +429,7 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                         </DialogContent>
                     </Dialog>
                     {selectedGame && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <span className="text-2xl">{selectedGame.icon}</span>
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-foreground">{selectedGame.name}</div>
@@ -500,7 +500,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground/80">视频号配置</h3>
-                <Badge variant="outline" className="text-[10px] border-white/30 text-white">视频号</Badge>
+                <Badge variant="outline" className="text-[10px] border-white/17 text-white">视频号</Badge>
             </div>
 
             <div className="grid gap-4">
@@ -541,7 +541,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                         </DialogContent>
                     </Dialog>
                     {selectedArticle && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <FileText className="w-4 h-4 text-white" />
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-foreground truncate">{selectedArticle.title}</div>
@@ -596,7 +596,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                         </DialogContent>
                     </Dialog>
                     {selectedMiniProgram && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <span className="text-2xl">{selectedMiniProgram.icon}</span>
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs font-medium text-foreground">{selectedMiniProgram.name}</div>
@@ -622,7 +622,7 @@ export function VideoChannelConfig({ data, onChange }: ConfigProps) {
                     </Label>
                     <POIDialog onSelect={setSelectedLocation} />
                     {selectedLocation && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/30">
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-white/17">
                             <MapPin className="w-4 h-4 text-white" />
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs text-foreground truncate">{selectedLocation.name}</div>

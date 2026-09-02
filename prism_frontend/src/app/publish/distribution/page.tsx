@@ -492,7 +492,7 @@ export default function DistributionPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="rounded-xl border border-white/30 text-white hover:bg-black"
+                                                    className="rounded-xl border border-white/17 text-white hover:bg-black"
                                                     onClick={(e) => {
                                                         e.stopPropagation()
                                                         handleDelete(task.task_id)
