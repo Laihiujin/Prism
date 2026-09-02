@@ -54,6 +54,23 @@ import { cn } from "@/lib/utils"
 import { MaterialEditorSheet } from "@/components/material-editor-sheet"
 import { PageHeader } from "@/components/layout/page-scaffold"
 
+/** 限制文件名显示长度，但始终保留扩展名(如 .mp4/.jpg)，便于区分视频/图片 */
+function truncateFilename(name: string, maxLen = 24): string {
+  if (!name) return ""
+  const dot = name.lastIndexOf(".")
+  const ext = dot > 0 ? name.slice(dot) : ""
+  const base = dot > 0 ? name.slice(0, dot) : name
+  if (name.length <= maxLen) return name
+  const keepBase = Math.max(1, maxLen - 1 - ext.length)
+  if (base.length <= keepBase) return name
+  return `${base.slice(0, keepBase)}…${ext}`
+}
+
+/** 根据扩展名判断是否为图片，用于预览(图片)与视频区分 */
+function isImageFile(name: string): boolean {
+  return /\.(jpe?g|png|gif|webp|bmp|avif|heic|heif)$/i.test(name || "")
+}
+
 function MaterialsPageContent() {
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -404,18 +421,22 @@ function MaterialsPageContent() {
       accessorKey: "filename",
       header: "文件名",
       size: 420,
-      cell: ({ row }) => (
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="truncate font-medium" title={row.original.title || row.original.filename}>
-            {row.original.title || row.original.filename}
-          </div>
-          {!!row.original.title && row.original.title !== row.original.filename && (
-            <div className="text-xs text-muted-foreground truncate" title={row.original.filename}>
-              {row.original.filename}
+      cell: ({ row }) => {
+        const hasTitle = !!row.original.title && row.original.title !== row.original.filename
+        const primary = hasTitle ? row.original.title : row.original.filename
+        return (
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="truncate font-medium" title={primary}>
+              {hasTitle ? primary : truncateFilename(primary)}
             </div>
-          )}
-        </div>
-      ),
+            {hasTitle && (
+              <div className="text-xs text-muted-foreground truncate" title={row.original.filename}>
+                {truncateFilename(row.original.filename)}
+              </div>
+            )}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "filesize",
@@ -929,6 +950,15 @@ function MaterialsPageContent() {
             <div className="relative w-full h-full flex items-center justify-center bg-card">
               {(() => {
                 const previewSrc = getPreviewUrl(previewMaterial)
+                if (isImageFile(previewMaterial.filename)) {
+                  return (
+                    <img
+                      src={previewSrc}
+                      alt={previewMaterial.title || previewMaterial.filename}
+                      className="block max-w-full max-h-[80vh] object-contain bg-card shadow-2xl"
+                    />
+                  )
+                }
                 return (
                   <video
                     key={previewSrc}

@@ -29,6 +29,12 @@ class BatchTaskItem(BaseModel):
         default=None,
         description="按平台覆盖话题（key 可用平台代码/平台名）",
     )
+    # 🆕 NEW: Douyin publish options (per-item overrides, None = 未设置)
+    declaration: Optional[str] = Field(None, description="自主声明")
+    location: Optional[str] = Field(None, description="地理位置/POI")
+    random_cover: Optional[bool] = Field(None, description="随机封面")
+    miniprogram_link: Optional[str] = Field(None, description="小程序链接")
+    miniprogram_title: Optional[str] = Field(None, description="小程序标题")
 
 
 class BatchPublishRequest(BaseModel):
@@ -111,6 +117,13 @@ class BatchPublishRequest(BaseModel):
 
     priority: Optional[int] = Field(5, ge=1, le=10, description="优先级 (1-10, 越小优先级越高)")
     items: Optional[List[BatchTaskItem]] = Field(None, description="差异化配置列表")
+
+    # 🆕 NEW: Douyin publish options (top-level, per-item override via items)
+    declaration: Optional[str] = Field(None, description="自主声明")
+    location: Optional[str] = Field("", description="地理位置/POI")
+    random_cover: bool = Field(False, description="随机封面")
+    miniprogram_link: Optional[str] = Field("", description="小程序链接")
+    miniprogram_title: Optional[str] = Field("", description="小程序标题")
 
     @field_validator('file_ids')
     @classmethod

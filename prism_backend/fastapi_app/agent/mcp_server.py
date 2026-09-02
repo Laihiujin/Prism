@@ -37,6 +37,7 @@ SERVER_VERSION = "1.0.0"
 
 def _collect_tools() -> Dict[str, Any]:
     from . import hermes_tools, hermes_tools_extended, hermes_tools_social_api, hermes_tools_proxy_gateway, tikhub_tools
+    from .tool_catalog import all_tools as _catalog_all_tools, invoke as _catalog_invoke
     from .tool_runtime import BaseTool
 
     tools: Dict[str, Any] = {}
@@ -64,6 +65,34 @@ def _collect_tools() -> Dict[str, Any]:
                 "inputSchema": parameters,
                 "_cls": value,
             }
+
+    # —— 声明式工具注册中心（tool_catalog）：为每条 ToolSpec 动态包一个 BaseTool 子类 ——
+    for spec in _catalog_all_tools():
+        if spec.name in tools:
+            continue  # 避免与手写 BaseTool 重名冲突
+
+        async def _execute(spec=spec, **kw: Any) -> Any:  # noqa: ANN401
+            return await _catalog_invoke(spec.name, **kw)
+
+        cls = type(
+            f"{spec.name.title().replace('_', '')}Tool",
+            (BaseTool,),
+            {
+                "name": spec.name,
+                "description": spec.description,
+                "parameters": spec.parameters,
+                "execute": _execute,
+            },
+        )
+        parameters = spec.parameters or {}
+        parameters.setdefault("type", "object")
+        parameters.setdefault("properties", {})
+        tools[spec.name] = {
+            "name": spec.name,
+            "description": " ".join(str(spec.description).split()),
+            "inputSchema": parameters,
+            "_cls": cls,
+        }
     return tools
 
 

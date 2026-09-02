@@ -20,6 +20,8 @@ from utils.login_qrcode import print_terminal_qrcode
 from utils.login_qrcode import remove_qrcode_file
 from utils.login_qrcode import save_data_url_image
 from utils.log import xiaohongshu_logger
+from utils.browser_dom import handle_upload_error as shared_handle_upload_error
+from utils.browser_dom import select_topics_exact_with_editor
 
 XHS_DEFAULT_CREATOR_BASE_URL = "https://creator.xiaohongshu.com"
 XHS_CREATOR_BASE_URL_ENV = "SAU_XHS_CREATOR_BASE_URL"
@@ -425,26 +427,27 @@ class XiaoHongShuBaseUploader(BaseVideoUploader):
             desc = page.locator('p[data-placeholder*="输入正文描述"]')
             await desc.click()
 
-        for tag in self.tags:  # 循环处理所有 tags
-            # 话题候选下拉框依赖小红书联想接口实时返回，网络抖动/无匹配时会等不到。
-            # 标签是可选增强项：等不到候选框就跳过该标签继续，不让整条发布因此失败。
-            try:
-                await page.keyboard.type("#" + tag, delay=30)
-                await page.locator('#creator-editor-topic-container').wait_for(
-                    state="visible",
-                    timeout=6000
-                )
-                first_item = page.locator('#creator-editor-topic-container .item').first
-                await first_item.wait_for(state="visible", timeout=4000)
-                await first_item.click()
-            except Exception as exc:
-                xiaohongshu_logger.warning(
-                    _msg("🏷️", f"话题『{tag}』未出现候选，跳过该标签继续发布: {exc}")
-                )
-                # 清掉已键入但未成词的 "#tag" 文本，避免它残留进正文
-                for _ in range(len("#" + tag)):
-                    await page.keyboard.press("Backspace")
-                continue
+        # 委托共享「话题精确选择」：输入 #tag 后在补全下拉里精确命中「文本一致」的候选（含重试），
+        # 避免旧逻辑「点第一个候选」误选不相关话题。editor_selector 留空以沿用调用方已聚焦的输入框；
+        # topic_wait_selector 保留小红书「等候选容器出现」的慢速联想容错；clear_on_fail=True 清除未成词的
+        # #tag，避免其残留进正文（小红书只有选中候选才会渲染成真·话题）。
+        picked = await select_topics_exact_with_editor(
+            page,
+            self.tags,
+            editor_selector="",
+            topic_item_selectors=('#creator-editor-topic-container .item',),
+            tag_prefix="#",
+            clear_on_fail=True,
+            topic_wait_selector='#creator-editor-topic-container',
+            logger=xiaohongshu_logger,
+        )
+        picked = int(picked)
+        if picked < len(self.tags):
+            xiaohongshu_logger.warning(
+                _msg("🏷️", f"话题共 {len(self.tags)} 个，成功精确选中 {picked} 个（未命中的已清除）")
+            )
+        else:
+            xiaohongshu_logger.success(_msg("🏷️", f"话题已全部精确选中（{picked} 个）"))
 
     async def fill_meta(self, page: Page) -> None:
         await self.fill_title(page)
@@ -510,8 +513,8 @@ class XiaoHongShuVideo(XiaoHongShuBaseUploader):
             self.thumbnail_path = str(self.validate_image_file(self.thumbnail_path))
 
     async def handle_upload_error(self, page: Page):
-        xiaohongshu_logger.warning(_msg("😵", "视频上传摔了一跤，小人马上重新上传"))
-        await page.locator('div.progress-div [class^="upload-btn-input"]').set_input_files(self.file_path)
+        # 委托共享模块：上传失败触发重新上传（best-effort，默认选择器与小红书一致）
+        await shared_handle_upload_error(page, self.file_path)
 
     async def set_thumbnail(self, page: Page, thumbnail_path: str):
         if not thumbnail_path:

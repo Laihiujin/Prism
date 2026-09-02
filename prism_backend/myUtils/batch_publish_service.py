@@ -118,6 +118,11 @@ class BatchPublishService:
                 description=description or "",
                 playlist=data.get("playlist"),
                 visibility=data.get("visibility", "public"),
+                location=data.get("location", ""),
+                declaration=data.get("declaration", None),
+                random_cover=bool(data.get("random_cover", False)),
+                miniprogram_link=data.get("miniprogram_link", ""),
+                miniprogram_title=data.get("miniprogram_title", ""),
             )
 
             # 检查结果中是否包含验证码标识

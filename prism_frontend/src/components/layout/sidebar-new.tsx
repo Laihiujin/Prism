@@ -61,6 +61,18 @@ const ChannelsIcon = ({ className }: { className?: string }) => (
   </div>
 )
 
+const TikTokIcon = ({ className }: { className?: string }) => (
+  <div className={cn("relative flex shrink-0 items-center justify-center", className)}>
+    <Image src="/Tiktok.svg" alt="TikTok" width={16} height={16} className="object-contain" />
+  </div>
+)
+
+const YoutubeIcon = ({ className }: { className?: string }) => (
+  <div className={cn("relative flex shrink-0 items-center justify-center", className)}>
+    <Image src="/youtube.svg" alt="YouTube" width={16} height={16} className="object-contain" />
+  </div>
+)
+
 interface NavItem {
   label: string
   href?: string
@@ -110,8 +122,8 @@ const navSections: NavSection[] = [
           { label: "快手", href: "/analytics/videos/kuaishou", icon: KuaishouIcon },
           { label: "小红书", href: "/analytics/videos/xiaohongshu", icon: XhsIcon },
           { label: "视频号", href: "/analytics/videos/channels", icon: ChannelsIcon },
-          { label: "TikTok", href: "/analytics/videos/tiktok", icon: Video },
-          { label: "YouTube", href: "/analytics/videos/youtube", icon: Video },
+          { label: "TikTok", href: "/analytics/videos/tiktok", icon: TikTokIcon },
+          { label: "YouTube", href: "/analytics/videos/youtube", icon: YoutubeIcon },
         ],
       },
       { label: "数据趋势", href: "/analytics/trends", icon: TrendingUp },

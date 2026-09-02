@@ -297,11 +297,14 @@ class DouYinBaseUploader(BaseVideoUploader):
         publish_strategy: str = DOUYIN_PUBLISH_STRATEGY_IMMEDIATE,
         debug: bool = DEBUG_MODE,
         headless: bool = LOCAL_CHROME_HEADLESS,
+        preview_only: bool = False,
     ):
         self.publish_date = publish_date
         self.account_file = account_file
         self.publish_strategy = publish_strategy
         self.debug = debug
+        # preview_only: 完整跑上传+表单填充，但在点击「发布」前停下，用于安全调试不真正发布。
+        self.preview_only = preview_only
         self.date_format = "%Y年%m月%d日 %H:%M"
         self.local_executable_path = LOCAL_CHROME_PATH
         self.headless = headless
@@ -557,34 +560,27 @@ class DouYinBaseUploader(BaseVideoUploader):
             pass
 
     async def dismiss_version_prompt(self, page: Page) -> bool:
-        """关闭抖音「官方新版本/新增功能」提示遮挡层（best-effort，实测校准选择器）。"""
+        """关闭抖音「官方新版本/新增功能/视频预览提示」弹窗（best-effort）。
+
+        委托共享 utils.browser_dom：先点「我知道了/立即体验/跳过」等关闭按钮，再移除纯遮挡容器。
+        用保守选择器（shepherd/mention/guide），避免 [class*='popup']/[class*='version'] 误删业务 DOM
+        （否则标题输入框/编辑区会被清掉，导致后续 fill 超时）。
+        """
+        from utils.browser_dom import dismiss_version_prompt as _dismiss
         try:
-            # 版本提示/引导遮罩常见文案与容器；命中任一即尝试关闭。
-            dismiss_texts = ["立即体验", "我知道了", "知道了", "开始体验", "查看新功能", "跳过", "暂不"],
-            overlay_selectors = [
-                ".shepherd-element", ".shepherd-modal-overlay-container",
-                "[class*='mention-wrapper']", "[class*='version']", "[class*='guide']",
-                "[class*='new-version']", "[class*='update-popup']", "[class*='popup']",
-            ]
-            # 先移除所有遮罩容器（不依赖可见性，避免拦截后续点击）
-            await page.evaluate(
-                "() => { const sels = arguments[0]; document.querySelectorAll(sels.join(',')).forEach(e => e.remove()); }",
-                list(overlay_selectors),
-            )
-            for text in dismiss_texts:
-                try:
-                    btn = page.get_by_text(text, exact=True).first
-                    if await btn.count() and await btn.is_visible():
-                        await btn.click(timeout=2000)
-                        await page.wait_for_timeout(300)
-                        douyin_logger.info(_msg("🗑️", f"已关闭版本提示遮挡: {text}"))
-                        return True
-                except Exception:
-                    continue
-            return False
+            return await _dismiss(page)
         except Exception as exc:
             douyin_logger.debug(_msg("🗑️", f"版本提示移除未命中/跳过：{exc}"))
             return False
+
+    async def _wait_for_video_uploaded(self, page: Page, max_polls: int = 120) -> bool:
+        """等视频上传完成（出现「重新上传」即完成；出现「上传失败」返回 False）。"""
+        from utils.browser_dom import wait_upload_complete
+        try:
+            return await wait_upload_complete(page, logger=douyin_logger, poll_interval=2.0, max_polls=max_polls)
+        except Exception as exc:
+            douyin_logger.debug(_msg("🧍", f"等待视频上传完成异常：{exc}"))
+            return True
 
     async def _handle_browser_permission(self, page: Page, allow_location: bool, has_location: bool) -> None:
         """处理浏览器位置权限弹窗：有位置时点「本次允许」；没选位置时关闭/选择「不允许」。
@@ -692,6 +688,7 @@ class DouYinVideo(DouYinBaseUploader):
         miniprogramLink: str = "",
         miniprogramTitle: str = "",
         location: str = "",
+        preview_only: bool = False,
     ):
         super().__init__(
             publish_date=publish_date,
@@ -699,6 +696,7 @@ class DouYinVideo(DouYinBaseUploader):
             publish_strategy=publish_strategy,
             debug=debug,
             headless=headless,
+            preview_only=preview_only,
         )
         self.title = title
         self.file_path = file_path
@@ -792,14 +790,45 @@ class DouYinVideo(DouYinBaseUploader):
                     douyin_logger.warning(_msg("😵", f"推荐封面没选成功: {e}"))
         return False
 
+    async def _handle_cover_recommend_modal(self, page: Page, want_portrait: bool) -> bool:
+        """封面弹窗里出现「推荐竖封面」提示（暂不设置 / 设置竖封面）时按意图点击。
+
+        竖屏视频在「横封面界面」上传封面后，抖音会弹「推荐竖封面」提示。
+        想设竖封面 → 点「设置竖封面」；否则点「暂不设置」保留已传封面。
+        """
+        try:
+            trigger = page.get_by_text("推荐竖封面", exact=False).first
+            if not (await trigger.count() and await trigger.is_visible()):
+                return False
+            douyin_logger.info(_msg("🪟", "检测到「推荐竖封面」弹窗"))
+            if want_portrait:
+                for t in ("设置竖封面", "设置竖版封面"):
+                    b = page.get_by_text(t, exact=False).first
+                    if await b.count() and await b.is_visible():
+                        await b.click(timeout=3000)
+                        await page.wait_for_timeout(1000)
+                        douyin_logger.info(_msg("🍻", "已点「设置竖封面」"))
+                        return True
+            for t in ("暂不设置", "暂不", "跳过"):
+                b = page.get_by_text(t, exact=True).first
+                if await b.count() and await b.is_visible():
+                    await b.click(timeout=3000)
+                    await page.wait_for_timeout(500)
+                    douyin_logger.info(_msg("🍻", "已点「暂不设置」保持横封面"))
+                    return True
+        except Exception as exc:
+            douyin_logger.debug(_msg("🪟", f"推荐竖封面处理跳过：{exc}"))
+        return False
+
     async def set_thumbnail(self, page: Page):
         if not self.thumbnail_landscape_path and not self.thumbnail_portrait_path:
             return
 
         douyin_logger.info(_msg("🏃", "小人正在设置视频封面"))
         # 先清掉 shepherd 新手引导浮层，否则它会拦截“选择封面”点击导致弹窗打不开
+        # 只删明确引导层（shepherd），不要用 [class*="mention-wrapper"] 等宽泛词——会误删业务 DOM。
         await page.evaluate(
-            "() => { document.querySelectorAll('.shepherd-element, .shepherd-modal-overlay-container, [class*=\"mention-wrapper\"]').forEach(e => e.remove()); }"
+            "() => { document.querySelectorAll('.shepherd-element, .shepherd-modal-overlay-container, [class*=\"coachmark\"]').forEach(e => e.remove()); }"
         )
         await page.get_by_text("选择封面", exact=True).first.click(force=True)
         cover_locator_str = 'div.dy-creator-content-modal'
@@ -814,9 +843,12 @@ class DouYinVideo(DouYinBaseUploader):
         cover_upload = cover_locator.locator("input.semi-upload-hidden-input").nth(1)
 
         if self.thumbnail_portrait_path:
-            # 弹窗默认就在“设置竖封面”页；防御性点一下 tab（已激活则忽略）
             try:
-                await cover_locator.get_by_text("设置竖封面", exact=True).first.click(timeout=3000)
+                for lbl in ("设置竖封面", "竖封面3:4", "竖封面", "竖版封面"):
+                    el = cover_locator.get_by_text(lbl, exact=False).first
+                    if await el.count() and await el.is_visible():
+                        await el.click(timeout=3000)
+                        break
                 await page.wait_for_timeout(800)
             except Exception:
                 pass
@@ -825,7 +857,11 @@ class DouYinVideo(DouYinBaseUploader):
             douyin_logger.info(_msg("🖼️", "竖版封面已上传到预览"))
         elif self.thumbnail_landscape_path:
             try:
-                await cover_locator.get_by_text("设置横封面", exact=True).first.click(timeout=3000)
+                for lbl in ("设置横封面", "横封面4:3", "横封面", "横版封面"):
+                    el = cover_locator.get_by_text(lbl, exact=False).first
+                    if await el.count() and await el.is_visible():
+                        await el.click(timeout=3000)
+                        break
                 await page.wait_for_timeout(800)
             except Exception:
                 pass
@@ -833,16 +869,70 @@ class DouYinVideo(DouYinBaseUploader):
             await page.wait_for_timeout(3000)
             douyin_logger.info(_msg("🖼️", "横版封面已上传到预览"))
 
+        # 竖屏视频在「横封面界面」上传封面后，抖音会弹「推荐竖封面」（暂不设置/设置竖封面），
+        # 按意图处理：要竖封面→设置竖封面；否则→暂不设置（保留已传封面）。
+        await self._handle_cover_recommend_modal(page, want_portrait=bool(self.thumbnail_portrait_path))
+
         # 点红色主按钮“完成”应用封面（exact 避免误中“完成编辑”）
         await cover_locator.get_by_role("button", name="完成", exact=True).first.click()
         douyin_logger.info(_msg("🥳", "视频封面设置完成"))
-        await cover_locator.wait_for(state="detached", timeout=20000)
+        # 关键：竖屏视频会触发「设置竖封面获更多流量」弹窗，点「完成」后弹窗**不自动关闭**，
+        # 残留遮罩（dy-creator-content-modal-wrap）会拦截后续「自主声明」等点击导致超时。
+        # 因此这里必须确保封面弹窗真正关闭：等待 hidden，若还在则主动关闭/移遮罩。
+        try:
+            await cover_locator.wait_for(state="hidden", timeout=6000)
+        except Exception:
+            await self._force_close_cover_modal(page, cover_locator)
+
+    async def _force_close_cover_modal(self, page: Page, cover_locator) -> None:
+        """确保封面弹窗真正关闭（弹窗残留会遮罩后续点击）。best-effort。
+
+        竖屏视频在「横封面界面」上传封面后，抖音会弹「设置竖封面获更多流量」推荐弹窗，
+        含「暂不设置 / 设置竖封面」两个按钮。这里优先点「暂不设置」跳过推荐，
+        保留用户已传入的封面并关闭弹窗；无法命中则继续关闭/删遮罩。
+        """
+        # 0) 优先处理「推荐竖封面」弹窗：点「暂不设置」跳过（保留已传封面，避免改用户选择）
+        for t in ("暂不设置", "暂不", "跳过", "暂不使用"):
+            try:
+                btn = page.get_by_text(t, exact=True).first
+                if await btn.count() and await btn.is_visible():
+                    await btn.click(timeout=3000)
+                    await page.wait_for_timeout(800)
+                    return
+            except Exception:
+                continue
+        # 1) 尝试点弹窗右上角关闭按钮（Semi modal 通常是 X）
+        try:
+            close_btn = page.locator(".dy-creator-content-modal-close, .semi-modal-close, .semi-modal-close-icon").first
+            if await close_btn.count() and await close_btn.is_visible():
+                await close_btn.click(timeout=3000)
+                await page.wait_for_timeout(600)
+                return
+        except Exception:
+            pass
+        # 2) 按 ESC
+        try:
+            await page.keyboard.press("Escape")
+            await page.wait_for_timeout(600)
+        except Exception:
+            pass
+        # 3) 兜底：移除弹窗遮罩与容器（含 mask，只删该弹窗，不用宽泛选择器）
+        try:
+            await page.evaluate(
+                "() => { document.querySelectorAll('.dy-creator-content-modal-wrap, .dy-creator-content-modal-content, .dy-creator-content-modal-mask').forEach(e => e.remove()); }"
+            )
+        except Exception:
+            pass
+        douyin_logger.debug(_msg("🖼️", "已强制清理封面弹窗遮罩"))
 
     async def upload(self, playwright: Playwright) -> None:
         douyin_logger.info(_msg("🧍", "小人先检查 cookie、视频文件、封面和发布时间"))
         await self.validate_upload_args()
         douyin_logger.info(_msg("🥳", "上传前检查通过"))
 
+        # 抖音为大陆平台：强制走本地直连，不设任何代理。这里**故意不传 proxy**（patchright 默认直连，
+        # 不读系统/环境代理），确保不吃 mihomo 等梯子代理；若未来有系统 HTTP 代理启用，也因 launch
+        # 未设 proxy 而绕开。macOS 当前无系统代理（scutil --proxy 仅 FTPPassive），大陆直连 0.13s 可达。
         launch_kwargs = {"headless": self.headless}
         if LOCAL_CHROME_PATH:
             launch_kwargs["executable_path"] = LOCAL_CHROME_PATH
@@ -886,6 +976,14 @@ class DouYinVideo(DouYinBaseUploader):
 
         await asyncio.sleep(1)
         await self.dismiss_version_prompt(page)
+
+        # version_2 发布页要等视频上传完成后才渲染表单（标题/描述/话题）。因此：
+        # 先等「重新上传」/上传完成，再填表，否则标题框未渲染导致 fill 超时。
+        douyin_logger.info(_msg("🏃", "小人正在等视频上传完成，便于后续填表"))
+        awaited_upload = await self._wait_for_video_uploaded(page)
+        if not awaited_upload:
+            douyin_logger.warning(_msg("😵", "未能确认视频上传完成，继续尝试填表"))
+
         douyin_logger.info(_msg("✍️", "小人开始填标题、描述和话题"))
         await self.fill_title_and_description(page, self.title, self.desc or self.title, self.tags)
         douyin_logger.info(_msg("🏷️", f"小人一共贴了 {len(self.tags)} 个话题"))
@@ -948,9 +1046,10 @@ class DouYinVideo(DouYinBaseUploader):
         sms_prompt_logged = False
         while True:
             try:
-                # 移除会拦截发布按钮点击的新手引导/话题下拉浮层
+                # 移除会拦截发布按钮点击的新手引导浮层（只删明确引导层 shepherd/coachmark，
+                # 避免 [class*="mention-wrapper"] 等宽泛词误删业务 DOM）
                 await page.evaluate(
-                    "() => { document.querySelectorAll('.shepherd-element, .shepherd-modal-overlay-container, [class*=\"mention-wrapper\"]').forEach(e => e.remove()); }"
+                    "() => { document.querySelectorAll('.shepherd-element, .shepherd-modal-overlay-container, [class*=\"coachmark\"]').forEach(e => e.remove()); }"
                 )
                 # 检测并处理短信验证码弹窗
                 sms_input = page.locator('input[placeholder*="验证码"], input[type="tel"], input[placeholder*="短信"], input[placeholder*="手机号"]').first
@@ -969,6 +1068,18 @@ class DouYinVideo(DouYinBaseUploader):
                     elif not sms_prompt_logged:
                         douyin_logger.warning(_msg("⏳", f"等待验证码输入；可在交互终端直接输入，或写入文件: {code_file}"))
                         sms_prompt_logged = True
+                if self.preview_only:
+                    # 预览/调试模式：所有前置步骤（上传、标题/话题/描述、封面、定位、商品/小程序、自查声明）都已跑完，
+                    # 只差最后点「发布」。此处停下，绝不真正发布，便于安全调试观察每一步结果。
+                    douyin_logger.warning(_msg("🛑", "preview_only 预览模式：已到发布按钮前，跳过最终「发布」点击"))
+                    if self.debug:
+                        shot = os.path.join(BASE_DIR, "logs", "douyin_preview_screenshot.png")
+                        try:
+                            await page.screenshot(full_page=True, path=shot)
+                            douyin_logger.info(_msg("📸", f"预览页已截图: {shot}"))
+                        except Exception:
+                            pass
+                    return
                 publish_button = page.get_by_role("button", name="发布", exact=True)
                 if await publish_button.count():
                     await publish_button.click(force=True)

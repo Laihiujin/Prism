@@ -21,8 +21,10 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 const PLATFORMS = [
-    { value: "douyin", label: "抖音", icon: "/Tiktok.svg" },
+    { value: "douyin", label: "抖音", icon: "/douYin.svg" },
     { value: "bilibili", label: "B站", icon: "/Bilibili.svg" },
+    { value: "tiktok", label: "TikTok", icon: "/Tiktok.svg" },
+    { value: "youtube", label: "YouTube", icon: "/youtube.svg" },
 ]
 
 const TIME_PRESETS = [

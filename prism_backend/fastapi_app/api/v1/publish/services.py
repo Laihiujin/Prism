@@ -176,6 +176,12 @@ class PublishService:
         # 🆕 NEW: Deduplication parameters
         allow_duplicate_publish: bool = False,
         dedup_window_days: int = 7,
+        # 🆕 NEW: Douyin publish options
+        declaration: Optional[str] = None,
+        location: str = "",
+        random_cover: bool = False,
+        miniprogram_link: str = "",
+        miniprogram_title: str = "",
     ) -> Dict[str, Any]:
         """
         logger.info(
@@ -250,6 +256,12 @@ class PublishService:
                     per_platform_overrides=per_platform_overrides,
                     allow_duplicate_publish=allow_duplicate_publish,
                     dedup_window_days=dedup_window_days,
+                    # 🆕 Douyin publish options
+                    declaration=declaration,
+                    location=location,
+                    random_cover=random_cover,
+                    miniprogram_link=miniprogram_link,
+                    miniprogram_title=miniprogram_title,
                 )
         else:
             # 单平台发布
@@ -273,6 +285,12 @@ class PublishService:
                 per_platform_overrides=per_platform_overrides,
                 allow_duplicate_publish=allow_duplicate_publish,
                 dedup_window_days=dedup_window_days,
+                # 🆕 Douyin publish options
+                declaration=declaration,
+                location=location,
+                random_cover=random_cover,
+                miniprogram_link=miniprogram_link,
+                miniprogram_title=miniprogram_title,
             )
 
         logger.info(
@@ -309,6 +327,12 @@ class PublishService:
         # 🆕 NEW: Deduplication parameters
         allow_duplicate_publish: bool = False,
         dedup_window_days: int = 7,
+        # 🆕 NEW: Douyin publish options
+        declaration: Optional[str] = None,
+        location: str = "",
+        random_cover: bool = False,
+        miniprogram_link: str = "",
+        miniprogram_title: str = "",
     ):
         """创建批量发布任务的内部方法"""
         import random  # 导入 random 模块用于随机偏移
@@ -406,6 +430,16 @@ class PublishService:
                 parts = [p for p in re.split(r"[\s,，]+", value) if p and p.strip()]
                 return [p.lstrip("#").strip() for p in parts if p.lstrip("#").strip()]
             return []
+
+        def _item_value(item: Any, name: str) -> Any:
+            """从 item_config（Pydantic 模型或 dict）读取字段；未设置返回 None。"""
+            if item is None:
+                return None
+            if hasattr(item, name):
+                return getattr(item, name)
+            if isinstance(item, dict):
+                return item.get(name)
+            return None
 
         # 为每个分配的任务创建实际发布任务
         for assignment in task_assignments:
@@ -530,6 +564,22 @@ class PublishService:
                 logger.info(f"[PublishService] file_id={file_id}, raw_path={raw_file_path}, portable_path={portable_path}")
                 logger.info(f"[PublishService] Path exists: {Path(portable_path).exists() if portable_path else False}")
 
+                # 🆕 Douyin publish options: per-item override 优先于 top-level 值
+                item_declaration = _item_value(item_config, "declaration")
+                final_declaration = item_declaration if item_declaration is not None else declaration
+
+                item_location = _item_value(item_config, "location")
+                final_location = item_location if item_location is not None else location
+
+                item_random_cover = _item_value(item_config, "random_cover")
+                final_random_cover = item_random_cover if item_random_cover is not None else random_cover
+
+                item_miniprogram_link = _item_value(item_config, "miniprogram_link")
+                final_miniprogram_link = item_miniprogram_link if item_miniprogram_link is not None else miniprogram_link
+
+                item_miniprogram_title = _item_value(item_config, "miniprogram_title")
+                final_miniprogram_title = item_miniprogram_title if item_miniprogram_title is not None else miniprogram_title
+
                 # 创建任务数据，使用格式化后的元数据
                 task_data = {
                     "batch_id": batch_id,
@@ -544,6 +594,12 @@ class PublishService:
                     "tags": formatted_metadata.get("tags", final_topics),
                     "publish_date": (timer_config or {}).get("scheduled_time") or 0,
                     "thumbnail_path": final_cover or "",
+                    # 🆕 Douyin publish options
+                    "declaration": final_declaration,
+                    "location": final_location,
+                    "random_cover": bool(final_random_cover),
+                    "miniprogram_link": final_miniprogram_link,
+                    "miniprogram_title": final_miniprogram_title,
                 }
 
                 task_id = f"publish_{batch_id}_{file_id}_{account['account_id']}"

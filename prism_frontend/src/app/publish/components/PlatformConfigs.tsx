@@ -2,11 +2,12 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Link, Gamepad2, Smartphone, Store, FileText } from "lucide-react"
+import { MapPin, Link, Gamepad2, Smartphone, Store, FileText, ImageIcon, Sparkles, CalendarClock } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 interface ConfigProps {
@@ -188,6 +189,32 @@ function POIDialog({ onSelect }: { onSelect: (poi: any) => void }) {
 export function DouyinConfig({ data, onChange }: ConfigProps) {
     const [selectedMiniProgram, setSelectedMiniProgram] = useState<MountableItem | null>(null)
     const [selectedPOI, setSelectedPOI] = useState<any>(null)
+    const [coverOrientation, setCoverOrientation] = useState<"landscape" | "portrait">("landscape")
+    const [useAIRandomCover, setUseAIRandomCover] = useState(false)
+    const [coverFile, setCoverFile] = useState<string>("")
+    const [collection, setCollection] = useState<string>("")
+    const [declaration, setDeclaration] = useState<string>("")
+    const [hotspot, setHotspot] = useState<string>("")
+    const [whoCanSee, setWhoCanSee] = useState<string>("公开")
+    const [savePermission, setSavePermission] = useState<"允许" | "不允许">("允许")
+    const [timing, setTiming] = useState<"立即发布" | "定时发布">("立即发布")
+    const [publishDatetime, setPublishDatetime] = useState<string>("")
+
+    // 自主声明选项（复刻真实弹窗的单选项）
+    const declarationOptions = [
+        { key: "不涉及", label: "不涉及（无需声明）" },
+        { key: "AI生成", label: "使用AI工具生成" },
+        { key: "二创", label: "二次创作/剪辑" },
+        { key: "演绎", label: "剧情演绎/表演" },
+        { key: "广告", label: "含广告/推广" },
+        { key: "知识科普", label: "知识科普" },
+    ]
+
+    const segBtn = (active: boolean) => cn(
+        "flex-1 px-2 py-1.5 text-xs rounded-md border transition-all",
+        active ? "bg-foreground text-background border-foreground"
+               : "text-muted-foreground border-border/70 hover:bg-accent/40 hover:text-foreground"
+    )
 
     return (
         <div className="space-y-4 p-5 bg-card rounded-2xl border border-border/70 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -249,6 +276,162 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                                 ×
                             </Button>
                         </div>
+                    )}
+                </div>
+
+                {/* 封面：横/竖 + 上传 + AI 智能推荐随机 */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                        <ImageIcon className="w-3 h-3" />
+                        封面
+                    </Label>
+                    <div className="flex gap-2">
+                        <button className={segBtn(coverOrientation === "landscape")} onClick={() => setCoverOrientation("landscape")}>
+                            横封面 4:3
+                        </button>
+                        <button className={segBtn(coverOrientation === "portrait")} onClick={() => setCoverOrientation("portrait")}>
+                            竖封面 3:4
+                        </button>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-border/70 bg-card/20 px-3 py-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Sparkles className="w-3 h-3 text-primary" />
+                            AI 智能推荐封面（随机）
+                        </div>
+                        <Switch checked={useAIRandomCover} onCheckedChange={setUseAIRandomCover} />
+                    </div>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        id="douyin-cover-upload"
+                        className="hidden"
+                        onChange={e => setCoverFile(e.target.files?.[0]?.name || "")}
+                    />
+                    <label
+                        htmlFor="douyin-cover-upload"
+                        className="inline-flex items-center justify-center gap-2 w-full h-9 px-3 text-xs rounded-md border border-border/70 bg-card/20 text-muted-foreground hover:bg-accent/40 hover:text-foreground cursor-pointer transition-all"
+                    >
+                        <ImageIcon className="w-3 h-3" />
+                        {coverFile || "上传封面图片"}
+                    </label>
+                </div>
+
+                {/* 合集 */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                        <FileText className="w-3 h-3" />
+                        合集
+                    </Label>
+                    <Select value={collection} onValueChange={setCollection}>
+                        <SelectTrigger className="w-full h-9 text-xs bg-card/20 border-border/70">
+                            <SelectValue placeholder="请选择合集" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white text-foreground">
+                            <SelectItem value="">不加入合集</SelectItem>
+                            <SelectItem value="合集1">合集 · 生活日常</SelectItem>
+                            <SelectItem value="合集2">合集 · 美食探店</SelectItem>
+                            <SelectItem value="合集3">合集 · 旅行日记</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* 自主声明：弹窗单选 */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                        <FileText className="w-3 h-3" />
+                        自主声明
+                    </Label>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start text-muted-foreground border-border/70 bg-card/20 h-9 hover:bg-accent/40 hover:text-foreground">
+                                <span className="text-xs">{declaration || "请选择自主声明"}</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-white border-border/70 text-foreground">
+                            <DialogHeader>
+                                <DialogTitle>对作品内容添加声明</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-2 mt-2">
+                                {declarationOptions.map(opt => (
+                                    <div
+                                        key={opt.key}
+                                        onClick={() => setDeclaration(opt.label)}
+                                        className={cn(
+                                            "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                                            declaration === opt.label
+                                                ? "border-foreground bg-accent/40"
+                                                : "border-border/70 bg-card hover:bg-accent/30"
+                                        )}
+                                    >
+                                        <span className={cn(
+                                            "w-4 h-4 rounded-full border flex items-center justify-center text-[9px]",
+                                            declaration === opt.label ? "border-foreground bg-foreground text-background" : "border-border"
+                                        )}>
+                                            {declaration === opt.label ? "✓" : ""}
+                                        </span>
+                                        <span className="text-sm">{opt.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <DialogClose asChild>
+                                <Button className="w-full mt-3">确定</Button>
+                            </DialogClose>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                {/* 关联热点 */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                        <Link className="w-3 h-3" />
+                        关联热点
+                    </Label>
+                    <Input
+                        placeholder="点击输入热点词"
+                        value={hotspot}
+                        onChange={e => setHotspot(e.target.value)}
+                        className="bg-card/20 border-border/70 h-9 text-xs"
+                    />
+                </div>
+
+                {/* 谁可以看 */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">谁可以看</Label>
+                    <div className="flex gap-2">
+                        {["公开", "好友可见", "仅自己可见"].map(opt => (
+                            <button key={opt} className={segBtn(whoCanSee === opt)} onClick={() => setWhoCanSee(opt)}>
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* 保存权限 */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">保存权限</Label>
+                    <div className="flex items-center justify-between rounded-lg border border-border/70 bg-card/20 px-3 py-2">
+                        <span className="text-xs text-muted-foreground">允许他人保存作品</span>
+                        <Switch checked={savePermission === "允许"} onCheckedChange={v => setSavePermission(v ? "允许" : "不允许")} />
+                    </div>
+                </div>
+
+                {/* 发布时间 */}
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                        <CalendarClock className="w-3 h-3" />
+                        发布时间
+                    </Label>
+                    <div className="flex gap-2">
+                        <button className={segBtn(timing === "立即发布")} onClick={() => setTiming("立即发布")}>立即发布</button>
+                        <button className={segBtn(timing === "定时发布")} onClick={() => setTiming("定时发布")}>定时发布</button>
+                    </div>
+                    {timing === "定时发布" && (
+                        <Input
+                            placeholder="YYYY-MM-DD HH:MM"
+                            value={publishDatetime}
+                            onChange={e => setPublishDatetime(e.target.value)}
+                            className="bg-card/20 border-border/70 h-9 text-xs"
+                        />
                     )}
                 </div>
             </div>
