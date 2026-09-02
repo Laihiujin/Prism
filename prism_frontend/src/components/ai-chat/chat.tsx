@@ -199,7 +199,7 @@ export function Chat() {
                     <Badge
                         variant="outline"
                         className={`gap-1 text-xs font-normal ${isConnected
-                            ? "border-white/20 bg-black text-white"
+                            ? "border-white/17 bg-black text-white"
                             : "border-border/70 bg-black text-foreground/40"
                             }`}
                     >

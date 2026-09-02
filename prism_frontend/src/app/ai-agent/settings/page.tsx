@@ -227,7 +227,7 @@ export default function HermesSettingsPage() {
               <div>上次更新：{updateStatus?.last_updated_at ? new Date(updateStatus.last_updated_at).toLocaleString() : "从未"}</div>
               <div className="md:col-span-2">保留配置目录：{updateStatus?.preserved_home_path || runtime?.home_path || "未检测"}</div>
             </div>
-            {updateStatus?.last_error && <div className="rounded-lg border border-white/30 bg-black p-3 text-white">{updateStatus.last_error}</div>}
+            {updateStatus?.last_error && <div className="rounded-lg border border-white/17 bg-black p-3 text-white">{updateStatus.last_error}</div>}
             <div className="flex flex-wrap items-center gap-3">
               <Button variant="outline" disabled={updateBusy} onClick={() => void updateAction("check")}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${updateBusy ? "animate-spin" : ""}`} />检查更新

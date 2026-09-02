@@ -40,10 +40,10 @@ interface DevTool {
 }
 
 const TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
-    skill: { label: "Skill", icon: Sparkles, color: "bg-black text-white border-white/30" },
-    mcp: { label: "MCP", icon: Server, color: "bg-black text-white border-white/30" },
-    plugin: { label: "插件", icon: Puzzle, color: "bg-black text-white border-white/30" },
-    component: { label: "组件", icon: Component, color: "bg-black text-white border-white/30" },
+    skill: { label: "Skill", icon: Sparkles, color: "bg-black text-white border-white/17" },
+    mcp: { label: "MCP", icon: Server, color: "bg-black text-white border-white/17" },
+    plugin: { label: "插件", icon: Puzzle, color: "bg-black text-white border-white/17" },
+    component: { label: "组件", icon: Component, color: "bg-black text-white border-white/17" },
 }
 
 const CATEGORY_TABS = [
@@ -179,8 +179,8 @@ export default function ToolsPage() {
                     <Badge
                         variant="secondary"
                         className={cn("text-xs shrink-0",
-                            isSkill ? (enabled ? "bg-black text-white border-white/30" : "bg-muted text-muted-foreground")
-                                : (tool.installed ? "bg-black text-white border-white/30" : "bg-muted text-muted-foreground"))}
+                            isSkill ? (enabled ? "bg-black text-white border-white/17" : "bg-muted text-muted-foreground")
+                                : (tool.installed ? "bg-black text-white border-white/17" : "bg-muted text-muted-foreground"))}
                     >
                         {isSkill ? (enabled ? "已启用" : "已停用") : (tool.installed ? "已安装" : "未安装")}
                     </Badge>

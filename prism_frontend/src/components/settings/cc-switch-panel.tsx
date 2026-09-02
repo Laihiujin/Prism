@@ -325,7 +325,7 @@ export function CcSwitchPanel() {
                 key={provider.id}
                 className={cn(
                   "rounded-2xl border p-4 transition-all",
-                  provider.is_current ? "border-white/30 bg-black" : "border-border/70 bg-card/30"
+                  provider.is_current ? "border-white/17 bg-black" : "border-border/70 bg-card/30"
                 )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">

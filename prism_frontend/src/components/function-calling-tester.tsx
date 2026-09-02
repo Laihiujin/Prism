@@ -197,7 +197,7 @@ export function FunctionCallingTester() {
                     <CardContent className="space-y-4">
                         {/* 状态信息 */}
                         <div className="flex items-center gap-4 text-sm text-foreground/70">
-                            <Badge variant="outline" className={result.success ? "bg-black text-white border-white/30" : "bg-black text-white border-white/30"}>
+                            <Badge variant="outline" className={result.success ? "bg-black text-white border-white/17" : "bg-black text-white border-white/17"}>
                                 {result.success ? "成功" : "失败"}
                             </Badge>
                             <span>迭代次数: {result.iterations}</span>
@@ -222,7 +222,7 @@ export function FunctionCallingTester() {
                                         className="p-4 bg-black rounded-lg border border-border/70"
                                     >
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Badge variant="outline" className="bg-black text-white border-white/30">
+                                            <Badge variant="outline" className="bg-black text-white border-white/17">
                                                 {index + 1}
                                             </Badge>
                                             <span className="font-mono text-sm text-primary">{call.name}</span>

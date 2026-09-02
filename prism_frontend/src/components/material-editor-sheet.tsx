@@ -454,7 +454,7 @@ ${userInput}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">内容设置</h3>
-                            <Badge variant="secondary" className="bg-black text-white border-white/20">
+                            <Badge variant="secondary" className="bg-black text-white border-white/17">
                                 <Sparkles className="w-3 h-3 mr-1" /> AI Ready
                             </Badge>
                         </div>
@@ -642,7 +642,7 @@ ${userInput}
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">封面工坊</h3>
                             {(coverJobStatus === "pending" || coverJobStatus === "running") && (
-                                <Badge variant="secondary" className="bg-black text-white border-white/20">
+                                <Badge variant="secondary" className="bg-black text-white border-white/17">
                                     <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 生成中
                                 </Badge>
                             )}

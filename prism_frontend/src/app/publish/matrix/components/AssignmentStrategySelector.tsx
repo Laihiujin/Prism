@@ -257,7 +257,7 @@ export default function AssignmentStrategySelector({
 
           {/* 策略特定选项 */}
           {config.assignmentStrategy === "one_per_account" && (
-            <div className="p-4 rounded-xl border border-white/20 bg-black space-y-3">
+            <div className="p-4 rounded-xl border border-white/17 bg-black space-y-3">
               <Label className="text-sm font-medium text-white">分配方式</Label>
               <div className="grid grid-cols-3 gap-2">
                 {[
@@ -271,7 +271,7 @@ export default function AssignmentStrategySelector({
                     className={cn(
                       "px-3 py-2 rounded-lg text-xs transition",
                       config.onePerAccountMode === mode.key
-                        ? "bg-black border border-white/50 text-white"
+                        ? "bg-black border border-white/17 text-white"
                         : "bg-black border border-border/70 text-muted-foreground hover:border-border"
                     )}
                   >
