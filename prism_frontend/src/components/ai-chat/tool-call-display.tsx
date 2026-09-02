@@ -84,17 +84,17 @@ export function ToolCallDisplay({
   const getStatusColor = () => {
     switch (status) {
       case "pending":
-        return "border-white/30 bg-black"
+        return "border-white/17 bg-black"
       case "running":
-        return "border-white/30 bg-black animate-pulse"
+        return "border-white/17 bg-black animate-pulse"
       case "success":
-        return "border-white/30 bg-black"
+        return "border-white/17 bg-black"
       case "error":
-        return "border-white/30 bg-black"
+        return "border-white/17 bg-black"
       case "rejected":
-        return "border-white/30 bg-black"
+        return "border-white/17 bg-black"
       default:
-        return "border-white/30 bg-black"
+        return "border-white/17 bg-black"
     }
   }
 
@@ -153,7 +153,7 @@ export function ToolCallDisplay({
             {toolCall.error && (
               <div>
                 <div className="text-xs font-medium text-white mb-1">错误:</div>
-                <pre className="text-xs bg-black rounded p-2 overflow-x-auto text-white border border-white/30 max-h-40">
+                <pre className="text-xs bg-black rounded p-2 overflow-x-auto text-white border border-white/17 max-h-40">
                   {toolCall.error}
                 </pre>
               </div>
@@ -174,7 +174,7 @@ export function ToolCallDisplay({
                   size="sm"
                   variant="outline"
                   onClick={() => onReject(toolCall)}
-                  className="flex-1 border-white/30 hover:bg-black text-white"
+                  className="flex-1 border-white/17 hover:bg-black text-white"
                 >
                   <X className="mr-1 h-3 w-3" />
                   拒绝
@@ -202,7 +202,7 @@ export function ThinkingProcess({
   return (
     <div
       className={cn(
-        "rounded-lg border border-white/30 bg-black p-3 backdrop-blur-sm",
+        "rounded-lg border border-white/17 bg-black p-3 backdrop-blur-sm",
         isThinking && "animate-pulse",
         className
       )}

@@ -52,7 +52,7 @@ export function AIChatMessage({
           className={cn(
             "p-3 rounded-lg",
             isUser
-              ? "bg-white text-foreground border-white/50"
+              ? "bg-white text-foreground border-white/17"
               : "bg-black border-border/80 text-foreground backdrop-blur-sm"
           )}
         >

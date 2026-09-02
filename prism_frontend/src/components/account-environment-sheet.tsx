@@ -54,13 +54,13 @@ function FieldRow({ label, value, mono }: { label: string; value: React.ReactNod
 function ProxyStatusBadge({ status }: { status?: string }) {
     if (!status) return <Badge variant="outline" className="text-xs">未知</Badge>
     const map: Record<string, string> = {
-        available: "bg-black text-white border-white/30",
-        in_use: "bg-black text-white border-white/30",
-        degraded: "bg-black text-white border-white/30",
-        failed: "bg-black text-white border-white/30",
-        banned: "bg-black text-white border-white/30",
-        auth_failed: "bg-black text-white border-white/30",
-        checking: "bg-black text-white border-white/30",
+        available: "bg-black text-white border-white/17",
+        in_use: "bg-black text-white border-white/17",
+        degraded: "bg-black text-white border-white/17",
+        failed: "bg-black text-white border-white/17",
+        banned: "bg-black text-white border-white/17",
+        auth_failed: "bg-black text-white border-white/17",
+        checking: "bg-black text-white border-white/17",
     }
     const label: Record<string, string> = {
         available: "健康",
@@ -151,7 +151,7 @@ export function AccountEnvironmentSheet({
                 )}
 
                 {error && !loading && (
-                    <div className="rounded-xl border border-white/30 bg-black p-4 text-sm text-white">
+                    <div className="rounded-xl border border-white/17 bg-black p-4 text-sm text-white">
                         {error}
                     </div>
                 )}
@@ -185,9 +185,9 @@ export function AccountEnvironmentSheet({
                                 <div className="flex items-start justify-between gap-4 py-2 border-b border-border/50 last:border-0">
                                     <span className="text-xs text-muted-foreground shrink-0">Persona 服务</span>
                                     {browser.persona_online ? (
-                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/30">在线</Badge>
+                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/17">在线</Badge>
                                     ) : (
-                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/30">
+                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/17">
                                             离线 · 回退 Patchright
                                         </Badge>
                                     )}
@@ -230,11 +230,11 @@ export function AccountEnvironmentSheet({
                                 <div className="flex items-start justify-between gap-4 py-2 border-b border-border/50 last:border-0">
                                     <span className="text-xs text-muted-foreground shrink-0">状态</span>
                                     {runtime.locked ? (
-                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/30">
+                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/17">
                                             {runtimeLabel(runtime.operation)}
                                         </Badge>
                                     ) : (
-                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/30">
+                                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/17">
                                             空闲
                                         </Badge>
                                     )}
