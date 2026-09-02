@@ -71,7 +71,7 @@ def _stringify_context(context: Optional[Dict[str, Any]]) -> str:
 
 
 def _get_agent_api_base_url() -> str:
-    candidate = os.getenv("AGENT_API_BASE_URL") or os.getenv("MANUS_API_BASE_URL") or "http://127.0.0.1:9200/api/v1"
+    candidate = os.getenv("AGENT_API_BASE_URL") or os.getenv("MANUS_API_BASE_URL") or "http://127.0.0.1:7000/api/v1"
     return str(candidate).rstrip("/")
 
 
@@ -80,13 +80,13 @@ def _collect_project_tool_catalog() -> List[Dict[str, Any]]:
     if _project_tool_catalog_cache is not None:
         return _project_tool_catalog_cache
 
-    from . import hermes_tools, hermes_tools_extended, hermes_tools_social_api, tikhub_tools
+    from . import hermes_tools, hermes_tools_extended, hermes_tools_social_api, hermes_tools_proxy_gateway, tikhub_tools
     from .tool_runtime import BaseTool
 
     catalog: List[Dict[str, Any]] = []
     seen: set[str] = set()
 
-    for module in (hermes_tools, hermes_tools_extended, hermes_tools_social_api, tikhub_tools):
+    for module in (hermes_tools, hermes_tools_extended, hermes_tools_social_api, hermes_tools_proxy_gateway, tikhub_tools):
         for value in vars(module).values():
             if not inspect.isclass(value):
                 continue
@@ -122,7 +122,7 @@ def _build_project_capabilities_block() -> str:
         "Project capabilities:",
         f"- Workspace root: {get_workspace_root()}",
         f"- Backend API base: {api_base}",
-        "- API docs: http://127.0.0.1:9200/api/docs",
+        "- API docs: http://127.0.0.1:7000/api/docs",
         "- Frontend app: http://127.0.0.1:3000",
         "- Scripts directory: scripts/ and prism_backend/scripts/",
         "- Tool modules: prism_backend/fastapi_app/agent/hermes_tools*.py and tikhub_tools.py",
