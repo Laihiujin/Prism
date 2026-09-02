@@ -134,6 +134,12 @@ interface PublishPlan {
   dedupWindowDays: number
   // 扩展字段，用于存储各平台特有配置（暂未持久化到后端）
   platformSettings?: Record<string, any>
+  // 🆕 NEW: 抖音发布选项
+  declaration?: string
+  location?: string
+  randomCover?: boolean
+  miniprogramLink?: string
+  miniprogramTitle?: string
 }
 
 export default function PublishPage() {
@@ -248,7 +254,13 @@ export default function PublishPage() {
     // 🆕 NEW: Deduplication defaults
     allowDuplicatePublish: false,
     dedupWindowDays: 7,
-    platformSettings: {}
+    platformSettings: {},
+    // 🆕 NEW: 抖音发布选项 默认值
+    declaration: "",
+    location: "",
+    randomCover: false,
+    miniprogramLink: "",
+    miniprogramTitle: "",
   })
 
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false)
@@ -783,6 +795,9 @@ export default function PublishPage() {
         }
       }
 
+      // 🆕 NEW: 抖音发布选项 - 仅在包含抖音平台时发送
+      const isDouyin = plan.platforms.includes("douyin")
+
       const payload = {
         file_ids: selectedMaterialsList.map(m => m.id),
         accounts: plan.accounts,
@@ -804,6 +819,14 @@ export default function PublishPage() {
         // 🆕 NEW: Deduplication parameters
         allow_duplicate_publish: plan.allowDuplicatePublish,
         dedup_window_days: plan.dedupWindowDays,
+        // 🆕 NEW: 抖音发布选项 (仅抖音平台)
+        ...(isDouyin ? {
+          declaration: plan.declaration,
+          location: plan.location,
+          random_cover: Boolean(plan.randomCover),
+          miniprogram_link: plan.miniprogramLink || "",
+          miniprogram_title: plan.miniprogramTitle || "",
+        } : {}),
       }
 
       // 调试日志
@@ -976,6 +999,80 @@ export default function PublishPage() {
           />
         </div>
       </div>
+
+      {/* 🆕 NEW: 抖音发布选项（仅当选择抖音平台时显示） */}
+      {plan.platforms.includes("douyin") && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-base font-medium">抖音发布选项</Label>
+            <Badge variant="outline" className="rounded-full border-border/80 bg-black text-[11px] text-foreground/70">
+              仅抖音
+            </Badge>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-card p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 自主声明 */}
+              <div className="space-y-2">
+                <Label className="text-sm text-foreground/70">自主声明</Label>
+                <Input
+                  value={plan.declaration}
+                  onChange={(e) => setPlan(prev => ({ ...prev, declaration: e.target.value }))}
+                  placeholder="输入自主声明"
+                  className="bg-card/20 border-border/70"
+                />
+              </div>
+              {/* 位置/POI */}
+              <div className="space-y-2">
+                <Label className="text-sm text-foreground/70">位置 (POI)</Label>
+                <Input
+                  value={plan.location}
+                  onChange={(e) => setPlan(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="输入位置信息，如：上海外滩"
+                  className="bg-card/20 border-border/70"
+                />
+              </div>
+            </div>
+
+            {/* 随机封面 */}
+            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-black p-4">
+              <div className="space-y-1">
+                <Label className="text-sm text-foreground/80">随机封面</Label>
+                <p className="text-xs text-muted-foreground">开启后将为每条视频随机选择封面</p>
+              </div>
+              <Switch
+                checked={!!plan.randomCover}
+                onCheckedChange={(checked) => setPlan(prev => ({ ...prev, randomCover: checked }))}
+                className="scale-90"
+              />
+            </div>
+
+            {/* 小程序链接 + 标题 */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm text-foreground/70">小程序链接</Label>
+                <Input
+                  value={plan.miniprogramLink}
+                  onChange={(e) => setPlan(prev => ({ ...prev, miniprogramLink: e.target.value }))}
+                  placeholder="输入小程序链接"
+                  className="bg-card/20 border-border/70"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm text-foreground/70">小程序标题</Label>
+                <Input
+                  value={plan.miniprogramTitle}
+                  onChange={(e) => setPlan(prev => ({ ...prev, miniprogramTitle: e.target.value }))}
+                  placeholder="输入小程序标题"
+                  className="bg-card/20 border-border/70"
+                />
+              </div>
+              <p className="text-[11px] text-foreground/40">
+                提示：链接与标题需同时填写，否则小程序链接将被忽略。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. 通用内容配置 */}
       <div className="space-y-6">

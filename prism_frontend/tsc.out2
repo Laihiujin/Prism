@@ -1,0 +1,19 @@
+src/app/analytics/trends/page.tsx(53,33): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/components/ai-agent-chat.tsx(481,21): error TS2339: Property 'isComposing' does not exist on type 'KeyboardEvent<HTMLTextAreaElement>'.
+src/components/ai-chat/chat-input.tsx(21,15): error TS2339: Property 'isComposing' does not exist on type 'KeyboardEvent<HTMLTextAreaElement>'.
+src/components/ai-chat/chat.tsx(235,25): error TS2322: Type '{ messages: any[]; isLoading: false; showTypingIndicator: false; showAvatars: boolean; }' is not assignable to type 'IntrinsicAttributes & ChatListProps'.
+  Property 'showAvatars' does not exist on type 'IntrinsicAttributes & ChatListProps'.
+src/components/ai-chatbot.tsx(347,25): error TS2339: Property 'isComposing' does not exist on type 'KeyboardEvent<HTMLInputElement>'.
+src/components/layout/navbar-new.tsx(367,41): error TS2322: Type 'string' is not assignable to type 'never'.
+src/components/layout/sidebar-new.tsx(231,33): error TS2322: Type 'string' is not assignable to type 'never'.
+src/components/layout/sidebar-new.tsx(231,71): error TS2322: Type 'true' is not assignable to type 'never'.
+src/components/layout/sidebar-new.tsx(283,37): error TS2322: Type 'string' is not assignable to type 'never'.
+src/components/layout/sidebar-new.tsx(287,37): error TS2322: Type 'true' is not assignable to type 'never'.
+src/components/layout/sidebar-new.tsx(313,27): error TS2322: Type 'string' is not assignable to type 'never'.
+src/components/layout/sidebar-new.tsx(317,27): error TS2322: Type 'true' is not assignable to type 'never'.
+src/components/ui/breadcrumb.tsx(50,7): error TS2322: Type 'ForwardedRef<HTMLAnchorElement> | undefined' is not assignable to type '((((instance: HTMLAnchorElement | null) => void | (() => VoidOrUndefinedOnly)) | RefObject<HTMLAnchorElement | null>) & (((instance: FragmentInstance | null) => void | (() => VoidOrUndefinedOnly)) | RefObject<...>)) | null | undefined'.
+  Type 'RefObject<HTMLAnchorElement | null>' is not assignable to type '((((instance: HTMLAnchorElement | null) => void | (() => VoidOrUndefinedOnly)) | RefObject<HTMLAnchorElement | null>) & (((instance: FragmentInstance | null) => void | (() => VoidOrUndefinedOnly)) | RefObject<...>)) | null | undefined'.
+    Type 'RefObject<HTMLAnchorElement | null>' is not assignable to type 'RefObject<HTMLAnchorElement | null> & RefObject<FragmentInstance | null>'.
+      Type 'RefObject<HTMLAnchorElement | null>' is not assignable to type 'RefObject<FragmentInstance | null>'.
+        Type 'HTMLAnchorElement | null' is not assignable to type 'FragmentInstance | null'.
+          Type 'HTMLAnchorElement' is missing the following properties from type 'FragmentInstance': focusLast, observeUsing, unobserveUsing

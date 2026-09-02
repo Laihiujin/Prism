@@ -128,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
             video.add_argument("--mini-program-link", default="")
             video.add_argument("--mini-program-title", default="")
             video.add_argument("--location", default="")
+            video.add_argument("--preview", action="store_true", help="预览模式：跑完上传+填表后停在发布前，绝不真正发布")
         add_note(actions, name)
 
     actions = roots.add_parser("bilibili").add_subparsers(dest="action", required=True)
@@ -267,7 +268,7 @@ async def upload_video(platform: str, path: Path, args: argparse.Namespace) -> N
     tags, date = parse_tags(args.tags), args.schedule or 0
     if platform == "douyin":
         from uploader.douyin_uploader.main_refactored import DouYinVideo, DOUYIN_PUBLISH_STRATEGY_SCHEDULED
-        app = DouYinVideo(args.title, str(args.file), tags, date, str(path), thumbnail_landscape_path=str(args.thumbnail_landscape) if args.thumbnail_landscape else None, thumbnail_portrait_path=str(args.thumbnail_portrait or args.thumbnail) if args.thumbnail_portrait or args.thumbnail else None, productLink=args.product_link, productTitle=args.product_title, desc=args.desc, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, declaration=args.declaration, random_cover=args.random_cover, miniprogramLink=args.mini_program_link, miniprogramTitle=args.mini_program_title, location=args.location)
+        app = DouYinVideo(args.title, str(args.file), tags, date, str(path), thumbnail_landscape_path=str(args.thumbnail_landscape) if args.thumbnail_landscape else None, thumbnail_portrait_path=str(args.thumbnail_portrait or args.thumbnail) if args.thumbnail_portrait or args.thumbnail else None, productLink=args.product_link, productTitle=args.product_title, desc=args.desc, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, declaration=args.declaration, random_cover=args.random_cover, miniprogramLink=args.mini_program_link, miniprogramTitle=args.mini_program_title, location=args.location, preview_only=args.preview)
     elif platform == "kuaishou":
         from uploader.ks_uploader.main_refactored import KSVideo, KUAISHOU_PUBLISH_STRATEGY_SCHEDULED
         app = KSVideo(args.title, str(args.file), tags, date, str(path), thumbnail_path=str(args.thumbnail) if args.thumbnail else None, desc=args.desc, publish_strategy=KUAISHOU_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless)
