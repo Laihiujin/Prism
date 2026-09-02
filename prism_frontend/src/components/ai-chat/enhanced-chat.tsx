@@ -1020,8 +1020,8 @@ export function EnhancedAIChat({
                 className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
                   isConnected
                     ? connectionError
-                      ? "border-white/35 bg-black text-white"
-                      : "border-white/35 bg-black text-white"
+                      ? "border-white/17 bg-black text-white"
+                      : "border-white/17 bg-black text-white"
                     : "border-border/70 bg-black text-muted-foreground"
                 }`}
               >

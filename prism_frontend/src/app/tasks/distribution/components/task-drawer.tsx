@@ -408,7 +408,7 @@ export function TaskDrawer({ task, open, onOpenChange, onTaskUpdate }: TaskDrawe
                         </Button>
 
                         {boundAccount && (
-                            <div className="rounded-xl border border-white/40 bg-black p-3 text-sm text-white">
+                            <div className="rounded-xl border border-white/17 bg-black p-3 text-sm text-white">
                                 已绑定派发账号：{boundAccount}
                             </div>
                         )}

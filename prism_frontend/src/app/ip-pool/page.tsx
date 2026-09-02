@@ -460,7 +460,7 @@ export default function IPPoolPage() {
                 <span className="font-medium">Browser Identity</span>
                 {personaStatus?.result?.online ? (
                     <>
-                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/30">
+                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/17">
                             Persona Studio 在线
                         </Badge>
                         <span className="text-xs text-muted-foreground">
@@ -469,7 +469,7 @@ export default function IPPoolPage() {
                     </>
                 ) : (
                     <>
-                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/30">
+                        <Badge variant="secondary" className="text-xs bg-black text-white border-white/17">
                             Persona Studio 离线
                         </Badge>
                         <span className="text-xs text-muted-foreground">
@@ -539,10 +539,10 @@ export default function IPPoolPage() {
                                                 variant="secondary"
                                                 className={cn(
                                                     "text-xs",
-                                                    ip.status === 'available' && "bg-black text-white border-white/30",
-                                                    ip.status === 'in_use' && "bg-black text-white border-white/30",
-                                                    ip.status === 'failed' && "bg-black text-white border-white/30",
-                                                    ip.status === 'banned' && "bg-black text-white border-white/30",
+                                                    ip.status === 'available' && "bg-black text-white border-white/17",
+                                                    ip.status === 'in_use' && "bg-black text-white border-white/17",
+                                                    ip.status === 'failed' && "bg-black text-white border-white/17",
+                                                    ip.status === 'banned' && "bg-black text-white border-white/17",
                                                 )}
                                             >
                                                 {ip.status === 'available' ? '可用' :
@@ -657,7 +657,7 @@ export default function IPPoolPage() {
                     </DialogHeader>
 
                     {/* Quick Action for Local Direct */}
-                    <div className="bg-black border border-white/20 rounded-lg p-3 mb-4 flex items-center justify-between">
+                    <div className="bg-black border border-white/17 rounded-lg p-3 mb-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="h-5 w-5 text-white" />
                             <div className="text-sm">
