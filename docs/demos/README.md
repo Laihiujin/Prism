@@ -1,18 +1,18 @@
 # Prism 产品演示视频
 
-本目录存放 Prism 产品演示的最终成品(暗黑科技风)。
+本目录存放 Prism 产品演示的最终成品(纯黑白)。
 
 | 文件 | 说明 | 规格 |
 |---|---|---|
 | `prism_demo.mp4` | 14 页功能巡览(仪表盘 / 账号管理 / 素材 / 代理 / 矩阵发布 / 任务 / 数据 / Agent / 工具 / 设置 …) | 1280×720 · 24fps · 32s |
 | `prism_hyperframes_demo.gif` | 同上,循环 GIF | 720×405 · 256 帧 · 循环 |
-| `prism_wrap.mp4` | 真实交互 walkthrough(登录弹窗 / Agent 对话),暗黑科技包装(标题卡 + 页面字幕 + 段间转场),基于新 UI 录屏 | 1280×720 · 24fps · 59.4s |
+| `prism_wrap.mp4` | 真实交互 walkthrough(登录弹窗 / Agent 对话),纯黑白包装(标题卡 + 页面字幕 + 段间转场),基于新 UI 录屏 | 1280×720 · 24fps · 59.4s |
 | `prism_wrap.gif` | 同上,循环 GIF | 720×405 · 475 帧 · 循环 |
 
 - 均由 HyperFrames 确定性合成(SMPTE 帧级寻址,`window.__timelines["master"]` 驱动)。
-- 统一 **暗黑科技** 风格(纯黑底 + 青色 `#22d3ee`/`#67e8f9` 高光 + 细网格 + 冷灰文字),对应新 UI 的纯黑单色界面并叠加青色科技高光。
+- 统一 **纯黑白** 单色风格:黑底 + 白色文字/高光,仅用中性灰做层次,无任何彩色;标题/页码用白色→浅灰渐变,配淡白辉光与细网格(动画用 HyperFrames 支持的 opacity/x/y/scale/width 属性 + expo/back 缓动,含图片 Ken Burns)。
 - 账号管理场景使用「账户页实拍」图片(含 7 平台账号),作为宣传展示,未做脱敏。
-- walkthrough 为真实交互录屏:账号登录弹窗(添加账号 → 选抖音 → 扫码)+ Hermes Agent 终端实时对话。
+- walkthrough 为真实交互录屏:账号登录弹窗(添加账号 → 选抖音 → 扫码)+ Hermes Agent 终端实时对话;背景视频已灰度化以保持纯黑白。
 
 ## 生成与再生成
 源合成与脚本在 `output/hf-prism/`:
@@ -22,7 +22,7 @@
 
 再生成示例:
 ```bash
-bash output/hf-prism/render_demo_v3.sh     # 重渲 prism_demo(暗黑科技, 无模糊/无去饱和)
+bash output/hf-prism/render_demo_v3.sh     # 重渲 prism_demo(纯黑白, 无彩色/无模糊)
 bash output/hf-prism/render_final_wrap.sh  # 重渲 prism_wrap
 ```
 
