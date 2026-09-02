@@ -307,6 +307,27 @@ _CHANNELS_LOGGED_IN_TEXT_MARKERS = (
     "视频号助手",
 )
 
+# 快手创作者中心：未登录时页面仍停在 cp.kuaishou.com/profile（URL 不含 login），
+# 需靠 DOM 文本识别（"立即登录"），否则会被误判为在线。
+_KUAISHOU_LOGIN_TEXT_MARKERS = (
+    "立即登录",
+    "扫码登录",
+    "请登录",
+    "登录后继续",
+    "打开快手App扫码",
+)
+
+_KUAISHOU_LOGGED_IN_TEXT_MARKERS = (
+    "作品管理",
+    "内容管理",
+    "数据中心",
+    "发布作品",
+    "粉丝",
+    "作品数",
+    "昨日播放",
+    "创作者服务",
+)
+
 
 async def _safe_page_text(page, max_chars: int = 1200) -> str:
     try:
@@ -349,6 +370,27 @@ async def _classify_channels_login_state(page) -> tuple[str, str]:
         return "logged_in", f"Detected creator console text on page: {final_url}"
 
     return "error", f"Unable to classify channels login state: {final_url}"
+
+
+async def _classify_kuaishou_login_state(page) -> tuple[str, str]:
+    """判断快手创作者中心登录态（靠 DOM 文本，而非仅 URL）。
+
+    快手未登录时 URL 仍为 cp.kuaishou.com/profile 且不含 "login"，
+    但页面含「立即登录」等标记；已登录则出现「作品管理/数据中心」等。
+    """
+    final_url = page.url or ""
+    page_text = await _safe_page_text(page)
+
+    if "login" in final_url.lower() or any(m in page_text for m in ("扫描登录", "扫码登录", "立即登录")):
+        return "session_expired", f"Detected login prompt on kuaishou page: {final_url}"
+
+    if any(m in page_text for m in _KUAISHOU_LOGGED_IN_TEXT_MARKERS):
+        return "logged_in", f"Reached kuaishou creator console: {final_url}"
+
+    if any(m in page_text for m in _KUAISHOU_LOGIN_TEXT_MARKERS):
+        return "session_expired", f"Detected kuaishou login entry: {final_url}"
+
+    return "error", f"Unable to classify kuaishou login state: {final_url}"
 
 
 def _append_sec_uid_log(message: str) -> None:
@@ -977,6 +1019,11 @@ async def _check_single_account_login_worker(account_id: str, platform: str, coo
 
         if platform in {"channels", "tencent"}:
             login_state, reason = await _classify_channels_login_state(page)
+            result["login_status"] = "logged_in" if login_state == "logged_in" else "session_expired" if login_state == "session_expired" else "error"
+            result["error"] = None if result["login_status"] == "logged_in" else reason
+        elif platform == "kuaishou":
+            # 快手未登录时 URL 仍为 cp.kuaishou.com/profile（无 login），需 DOM 文本判断
+            login_state, reason = await _classify_kuaishou_login_state(page)
             result["login_status"] = "logged_in" if login_state == "logged_in" else "session_expired" if login_state == "session_expired" else "error"
             result["error"] = None if result["login_status"] == "logged_in" else reason
         else:
