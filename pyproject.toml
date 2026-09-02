@@ -37,3 +37,6 @@ prism = "prism_cli:main"
 
 [tool.setuptools]
 py-modules = ["prism_cli"]
+
+[tool.vercel]
+entrypoint = "prism_backend.fastapi_app.main:app"
