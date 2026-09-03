@@ -210,7 +210,13 @@ class BatchPublishService:
                     "published_at": now_beijing_iso()
                 }
             else:
-                error = result.get('error', '未知错误') if result else '发布函数返回空'
+                # 上传器通常返回 {success: False, message: <真实原因>}，但这里原实现只读 'error'，
+                # 拿不到时会退化成「未知错误」（2026-09-03 抖音发布失败即因此被吞真实原因）。
+                error = (
+                    result.get('error')
+                    or result.get('message')
+                    or '未知错误'
+                ) if result else '发布函数返回空'
                 raise Exception(error)
 
         except CaptchaRequiredException:

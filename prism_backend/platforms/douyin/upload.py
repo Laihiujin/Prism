@@ -56,6 +56,20 @@ DOUYIN_TOUR_BTNS = [
     'button:has-text("关闭")',
 ]
 
+# 自主声明值归一化：前端/旧预设的文案 -> 抖音发布页「对作品内容添加声明」弹窗的真实单选项。
+# 与 docs/douyin-publish-features.md §5.12 的实测枚举一一对应。
+# 必须归一化后再去匹配，否则文案不一致会匹配不到选项 -> 弹窗残留 -> 发布按钮超时。
+DOUYIN_DECLARATION_MAP = {
+    # 前端/历史配置里可能出现的旧文案
+    "不涉及（无需声明）": "无需添加自主声明",
+    "不涉及": "无需添加自主声明",
+    "使用AI工具生成": "内容由AI生成",
+    "二次创作/剪辑": "内容为个人观点或见解",
+    "剧情演绎/表演": "虚构演绎，仅供娱乐",
+    "含广告/推广": "内容含营销推广信息",
+    "知识科普": "内容为个人观点或见解",
+}
+
 # New UI XPaths (as of 2025-12) - best-effort (dynamic ids may change).
 DOUYIN_COVER_CLICK_XPATH = "/html/body/div[@id='root']/div[@class='container-box']/div[@class='content-qNoE6N']/div[@class='micro-wrapper-OGvOEm']/div[@id='micro']/div[@id='garfish_app_for_douyin_creator_content_6fue1nrv']/div/div[2]/div[@id='root']/div[@class='card-container-creator-layout micro-LlzqtC new-layout']/div[@id='DCPF']/div[@class='container-pSH0u4']/div[@class='content-left-F3wKrk']/div[@class='form-container-MDtobK new-laytout']/div[@class='container-EMGgQp'][1]/div[2]/div[@class='content-obt4oA new-layout-sLYOT6'][1]/div[@class='content-child-V0CB7w content-limit-width-zybqBW']/div/div[@class='content-upload-new']/div[@class='wrapper-NN3Jh1']/div[@class='coverControl-CjlzqC'][1]/div[@class='cover-Jg3T4p']/div[@class='filter-k_CjvJ']"
 DOUYIN_TITLE_INPUT_XPATH = "/html/body/div[@id='root']/div[@class='container-box']/div[@class='content-qNoE6N']/div[@class='micro-wrapper-OGvOEm']/div[@id='micro']/div[@id='garfish_app_for_douyin_creator_content_6fue1nrv']/div/div[2]/div[@id='root']/div[@class='card-container-creator-layout micro-LlzqtC new-layout']/div[@id='DCPF']/div[@class='container-pSH0u4']/div[@class='content-left-F3wKrk']/div[@class='form-container-MDtobK new-laytout']/div[@class='container-EMGgQp'][1]/div[2]/div[@class='publish-mention-wrapper-LWv5ed']/div[@class='content-obt4oA new-layout-sLYOT6']/div[@class='content-child-V0CB7w content-limit-width-zybqBW']/div/div[@class='editor-container-zRPSAi']/div[@class='editor-comp-publish-container-d4oeQI']/div[@class='editor-kit-root-container']/div[1]/div[@class='container-sGoJ9f']/div[@class='semi-input-wrapper semiInput-EyEyPL semi-input-wrapper__with-suffix semi-input-wrapper-default']/input[@class='semi-input semi-input-default']"
@@ -629,6 +643,17 @@ class DouyinUpload(BasePlatform):
 
             except Exception as e:
                 logger.warning(f"[DouyinUpload] 完成按钮点击失败: {e}")
+                # 兜底：CSS-Module 哈希 class 随版本变化，改用文本语义点「完成/确定/保存」
+                try:
+                    btn = page.locator(
+                        "button:visible:has-text('完成'), button:visible:has-text('确定'), button:visible:has-text('保存')"
+                    ).first
+                    if await btn.count() and await btn.is_visible() and await btn.is_enabled():
+                        await btn.click(timeout=3000)
+                        await page.wait_for_timeout(500)
+                        logger.info("[DouyinUpload] ✅ 已用文本语义点击完成按钮")
+                except Exception as e2:
+                    logger.warning(f"[DouyinUpload] 文本语义点完成失败: {e2}")
 
             # 步骤6: 等待弹窗关闭
             try:
@@ -956,6 +981,28 @@ class DouyinUpload(BasePlatform):
         max_wait = 60
         start = time.monotonic()
 
+        # best-effort：点发布前确保封面弹窗已关闭，避免 modal 遮罩(pointer-events 拦截)挡住发布按钮
+        try:
+            await self._wait_cover_modal_closed(page, timeout_ms=8000)
+        except Exception as e:
+            logger.warning(f"[DouyinUpload] 封面弹窗未自动关闭({e})，强制移除遮罩")
+            try:
+                await page.evaluate(
+                    "() => document.querySelectorAll('div.dy-creator-content-modal-wrap, "
+                    "div.dy-creator-content-modal, div.dy-creator-content-portal, "
+                    "canvas.upper-canvas.cloudImage').forEach(e => e.remove())"
+                )
+                await page.wait_for_timeout(300)
+            except Exception:
+                pass
+
+        # best-effort：同样关闭「对作品内容添加声明」自主声明弹窗。
+        # 该弹窗若残留（.semi-modal 遮罩）同样会挡住发布按钮（实测 2026-09-03 16:20 即因此超时）。
+        try:
+            await self._force_close_declaration_modal(page, timeout_ms=5000)
+        except Exception as e:
+            logger.warning(f"[DouyinUpload] 自主声明弹窗未自动关闭({e})")
+
         while time.monotonic() - start < max_wait:
             try:
                 publish_button = page.get_by_role("button", name="发布", exact=True).first
@@ -1130,8 +1177,49 @@ class DouyinUpload(BasePlatform):
             logger.warning(f"[DouyinUpload] 挂小程序标签失败: {exc}")
             return False
 
+    async def _force_close_declaration_modal(self, page: Page, timeout_ms: int = 5000) -> None:
+        """尽力关闭「对作品内容添加声明」弹窗（.semi-modal-content）。
+
+        与 _wait_cover_modal_closed 同理：该弹窗若残留，其遮罩（dy-creator-content-modal-mask）
+        会拦截 `发布` 按钮的 pointer-events，导致 _publish_video 60s 超时。
+        """
+        start = time.monotonic()
+        # 先点「取消」优先（不会误触发提交），再点右上角关闭
+        for sel in [
+            '.semi-modal-content button:has-text("取消")',
+            '.semi-modal-content button:has-text("关闭")',
+            '.semi-modal-content .semi-modal-close',
+        ]:
+            if time.monotonic() - start > timeout_ms / 1000:
+                break
+            try:
+                btn = page.locator(sel).first
+                if await btn.count() and await btn.is_visible():
+                    await btn.click(timeout=2000)
+                    await page.wait_for_timeout(300)
+            except Exception:
+                continue
+
+        # 若仍可见（点关闭失败或超时），直接移除 DOM，避免遮罩残留
+        if await page.locator(".semi-modal-content").filter(has_text="对作品内容添加声明").first.is_visible():
+            try:
+                await page.evaluate(
+                    "() => document.querySelectorAll('.semi-modal-wrap, .semi-modal, "
+                    ".semi-modal-content, .dy-creator-content-modal-wrap, "
+                    ".dy-creator-content-modal-mask').forEach(e => e.remove())"
+                )
+                await page.wait_for_timeout(300)
+            except Exception:
+                pass
+
     async def set_self_declaration(self, page: Page, declaration: str) -> bool:
-        """按调用方给出的平台原文选择自主声明；失败返回 False。"""
+        """按调用方给出的平台原文选择自主声明；失败返回 False。
+
+        关键：无论成功失败都必须关闭「对作品内容添加声明」弹窗。
+        若该弹窗残留（.semi-modal-content 遮罩），会挡发布按钮导致 _publish_video 60s 超时。
+        """
+        # 归一化调用方/旧预设文案 -> 平台真实单选项（见 DOUYIN_DECLARATION_MAP）
+        declaration = DOUYIN_DECLARATION_MAP.get((declaration or "").strip(), declaration or "")
         try:
             # 发布页底部「自主声明」行，未选时显示占位文案「请选择自主声明」
             entry = page.get_by_text("请选择自主声明").first
@@ -1155,6 +1243,11 @@ class DouyinUpload(BasePlatform):
             return True
         except Exception as exc:
             logger.warning(f"[DouyinUpload] 自主声明设置失败：{exc}")
+            # 失败后仍要尽力关闭弹窗，避免其遮罩残留挡住后续「发布」按钮
+            try:
+                await self._force_close_declaration_modal(page)
+            except Exception as close_exc:
+                logger.warning(f"[DouyinUpload] 关闭自主声明弹窗失败：{close_exc}")
             return False
 
     async def _pick_recommend_cover(self, page: Page, random_cover: bool = False) -> bool:

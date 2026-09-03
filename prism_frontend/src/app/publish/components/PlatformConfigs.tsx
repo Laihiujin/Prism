@@ -251,14 +251,16 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
     const [timing, setTiming] = usePlatformField(data, onChange, "douyin", "timing", "立即发布" as "立即发布" | "定时发布")
     const [publishDatetime, setPublishDatetime] = usePlatformField(data, onChange, "douyin", "publishDatetime", "" as string)
 
-    // 自主声明选项（复刻真实弹窗的单选项）
+    // 自主声明选项 —— 文案须与抖音发布页「对作品内容添加声明」弹窗的真实单选项一致
+    // （实测见 docs/douyin-publish-features.md §5.12：内容由AI生成/个人观点/转载信息/营销推广/虚构演绎/无需添加自主声明）。
+    // 若此处文案与平台不匹配，set_self_declaration 会匹配不到 → 弹窗残留 → 发布按钮超时。
     const declarationOptions = [
-        { key: "不涉及", label: "不涉及（无需声明）" },
-        { key: "AI生成", label: "使用AI工具生成" },
-        { key: "二创", label: "二次创作/剪辑" },
-        { key: "演绎", label: "剧情演绎/表演" },
-        { key: "广告", label: "含广告/推广" },
-        { key: "知识科普", label: "知识科普" },
+        { key: "不涉及", label: "无需添加自主声明" },
+        { key: "AI生成", label: "内容由AI生成" },
+        { key: "个人观点", label: "内容为个人观点或见解" },
+        { key: "转载", label: "内容为转载信息" },
+        { key: "广告", label: "内容含营销推广信息" },
+        { key: "演绎", label: "虚构演绎，仅供娱乐" },
     ]
 
     const segBtn = (active: boolean) => cn(
