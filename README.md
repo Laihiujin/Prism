@@ -1,406 +1,173 @@
-# Prism 棱镜/映射
-> 创作一次，映射全平台。
+<div align="center">
 
-Prism一个 AI 驱动的多平台内容编排与自动化发布系统；
-面向多账号、多素材、多平台的内容分发场景，提供从计划生成、任务调度到执行监控与数据回收的全链路能力；
+# Prism
 
----
+**面向 MCN、短视频创作者的多账号多平台自动化矩阵分发**\
+**内嵌 Agentic Development Runtime —— 多 AI Agent 协同 Computer Use 自我迭代与闭环**\
+**支持异步高并发任务调度、分布式账号锁，实现单账号互斥/多账号并行**
 
-## 目录
-- [项目定位](#项目定位)
-- [核心能力（矩阵投放闭环）](#核心能力矩阵投放闭环)
-- [新功能集成](#新功能集成)
-- [功能](#功能)
-- [支持平台](#支持平台)
-- [架构概览](#架构概览)
-- [部署开始](#部署开始)
-  - [Windows 本地部署](#windows-本地部署)
-  - [macOS（PM2）部署](#macospm2部署)
-- [命令行](#命令行)
-- [矩阵投放流程（SOP）](#矩阵投放流程sop)
-- [API 示例](#api-示例)
-- [目录结构](#目录结构)
-- [合规提示](#合规提示)
-- [项目支持与采用](#项目支持与采用)
-- [许可](#许可)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Celery](https://img.shields.io/badge/Celery-37814A?style=flat-square&logo=celery&logoColor=white)](https://docs.celeryq.dev/)
+[![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io/)
+[![Patchright](https://img.shields.io/badge/Patchright-2E3440?style=flat-square)](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright-python)
+[![Persona Studio](https://img.shields.io/badge/Persona%20Studio-7C3AED?style=flat-square)](https://github.com/TechQaiser/persona-studio)
+[![HermesAgent](https://img.shields.io/badge/HermesAgent-111827?style=flat-square)](https://github.com/NousResearch/hermes-agent)
+
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Python](https://img.shields.io/badge/python-3.11-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+
+**[English](README_EN.md)** | **简体中文**
+
+</div>
 
 ---
 
-## 项目定位
+## 关键词（便于搜索）/ Keywords
 
-Prism 是一个“矩阵投放 / 分发中台”，把「账号、素材、计划、排期、执行、监控、回收」统一到可编排的任务系统中：
-- 适合多平台、多账号的规模化分发与运营底座；
-- 不强行覆盖剪辑/混剪/内容工厂，可作为外部生产链路的对接层；
-- 设计参考行业常见“编-投-管-回”闭环，但项目更聚焦于“投 + 管 + 回”；
+**中文**：抖音自动发布、小红书发布助手、快手、视频号、B站、TikTok 自动化、YouTube 上传、短视频矩阵发布、多账号内容分发、跨平台发布、定时发布、批量上传、自媒体矩阵、账号身份隔离、浏览器指纹、代理池、矩阵投放、AI 智能体、MCP
 
----
-
-## 核心能力（矩阵投放闭环）
-
-### 投：矩阵发布与调度
-- 多平台、多账号、多素材组合发布；
-- 批量生成任务、统一入队、并发调度；
-- 定时发布、结果回传、失败重试；
-
-### 管：账号与任务运营
-- 账号绑定、状态监控、异常提醒；
-- 任务队列看板、执行日志可视化；
-- 每账号固定身份绑定（账号 → 浏览器身份 → 固定代理 → 浏览器执行）；
-
-### 回：数据回收（复盘输入）
-- 当前支持：抖音、B 站、TikTok、YouTube；
-- 预留可扩展：快手、小红书、视频号等（按平台适配器扩展）；
-
-### 编：AI 编排加速（投前准备）
-- 内置 HermesAgent AiAgent 助手(装备Computeruse、各类mcp、skill、长记忆、多Agent）
-- 自然语言生成/润色标题、标签、话题等投放配置；
-- 支持“一句话投放”（示例见下）；
-
-### 可扩展 / 可自托管
-- FastAPI + Next.js + Celery/Redis + Patchright + Persona Studio；
-- 平台适配器模块化扩展；
-- Web 控制台 + Electron 桌面端，可本地或私有化部署；
-- 浏览器身份层、代理层均可在「直连 / 内置后台 / 自托管」间按需开关；
+**English**：Douyin uploader、Xiaohongshu publishing、Kuaishou、WeChat Channels、Bilibili、TikTok automation、YouTube uploader、matrix publishing、multi-account content distribution、cross-platform publishing、scheduled publishing、browser fingerprint isolation、proxy pool、AI agent、MCP server
 
 ---
 
-## 新功能集成
+## 🟟 产品演示 / Product Demo
 
-> 最近一轮优化的核心是把“账号的**固定身份环境**”落成可编排、可切换、可一键维护的组件：
-> **账号 → Persona 浏览器身份 → 固定代理 → Patchright 执行**，并补齐运行时管理、开发者工具中心与后台配置。
-
-### 1) Persona Studio —— 浏览器身份 / 指纹 / Profile 层
-
-集成 [Persona Studio](https://github.com/TechQaiser/persona-studio)（MIT，开源自托管反检测浏览器与 Profile 管理器）作为 Prism 的 **Browser Identity / Fingerprint / Profile 层**：
-
-- **相干指纹生成**：OS / UA / GPU / 屏幕 / 时区 / 语言彼此一致，避免“macOS UA 配 NVIDIA GPU”这类一眼假组合；
-- **Profile 持久化**：Cookie / LocalStorage / IndexedDB 随 Profile 留存，登录一次、下次启动仍在；
-- **持久会话**：账号登录态跨任务复用，无需重复扫码；
-- **引擎可选**：`cloak`(CloakBrowser) / `camoufox` / `patchright` / `playwright`（默认与 Prism 运行时一致的 `patchright`）；
-- **代理注入 + 出口 IP / 泄漏检测**。
-
-Prism **不自研**指纹、Profile 存储、指纹伪造，全部交给 Persona Studio；不安装时自动回退 **Patchright 直连模式**（每账号独立 `data/browser_profiles/<account>/` persistent context），功能不中断，仅少相干指纹/持久会话增强。
-
-- 账号表 `cookie_accounts` 增加 `persona_profile_id`（默认 = account_id）、`browser_backend`（patchright / persona）、`proxy_id`；
-- 一个 Prism 账号 ↔ 一个 Persona Profile；
-- Persona serve：`http://127.0.0.1:8787`（`PERSONA_API_URL`）。
-
-### 2) per-country 代理网关 + 每账号代理绑定
-
-独立的官方 **mihomo** 网关（`tools/persona-studio/proxies/`）提供 **将订阅遍历映射为 HTTP/SOCKS mixed 端口，各路由到一个地区节点：
-如：
-| 地区 | 端口 | locale / 时区对齐 |
-|---|---|---|
-| 直连 | — | 本机网络 + 本机 locale/时区 |
-| 🇸🇬 新加坡 (sg) | 7771 | en-SG / Asia/Singapore |
-| 🇯🇵 日本 (jp) | 7772 | ja-JP / Asia/Tokyo |
-| 🇺🇸 美国 (us) | 7773 | en-US / America/New_York |
-| 🇩🇪 德国 (de) | 7774 | de-DE / Europe/Berlin |
-| 🇹🇼 台湾 (tw) | 7775 | zh-TW / Asia/Taipei |
-| 🇭🇰 香港 (hk) | 7776 | zh-HK / Asia/Hong_Kong |
-
-- 账号通过 `GET/PUT /api/v1/accounts/{id}/persona-proxy` 绑定地区；
-- 进程启动浏览器时，按绑定注入对应代理，并按 country 对齐 **locale / 时区 / 国家**，让指纹更真实；
-- 未绑定地区（direct）或未勾选时，回退到 **IP 池代理**（Proxy Manager 的 sticky 绑定）。
-
-### 3) 代理管理（Proxy Manager / IP 池）
-
-Prism 自研的代理管理：
-- 登记标准 HTTP/SOCKS5 endpoint，自动健康检测（延迟 / 可用性）；
-- **sticky 固定绑定**：`proxy_id` 权威落账号表，同一账号始终走同一代理；
-- 批量导入 / 导出、自动绑定（从空闲池按 region 匹配）、`max_bindings` 上限；
-- 每账号环境视图（`GET /api/v1/accounts/{id}/environment`）：展示 Browser + Proxy + Runtime 状态。
-
-> 3Proxy / gluetun / sing-box 等只产出标准 HTTP/SOCKS5 endpoint 登记进 Proxy Manager，不进入 Prism 核心业务。
-
-### 4) 浏览器运行时管理（系统 Chrome / 无头 / 运行时切换）
-
-设置页「浏览器管理」提供：
-- **运行时检测**：Patchright 是否安装、当前采用哪种运行时；
-- **浏览器资源**：Chromium / Firefox 的安装、卸载与版本识别，可一键 `patchright install`；
-- **系统 Chrome 优先**：倾向于使用本机 Chrome，而非下载的 Chromium；
-- **无头/有人头运行**：写入 `.env` 的 `PLAYWRIGHT_HEADLESS`，web 设置页可切换；
-- **进程管理**：重启、停止与退出 Supervisord / PM2 管理的进程；
-- **数据清理**：素材、账号与 Cookies、浏览器数据、缓存；
-- **应急工具**：系统自检、日志导出、强制停止。
-
-### 5) 开发者工具中心（一键安装 / 技能管理）
-
-`/tools` 页面统一管理可一键安装的开发工具，按 **skill / MCP / 插件 / 组件** 分类：
-- 已收录：`deepseek-harness`、`ccswitch`、`computer-use-linux`、`hermes-agent`、`persona-studio`；
-- **一键安装 / 卸载**：克隆 + 构建（如 persona dashboard 构建）；
-- **启动 / 调用**：已装桌面应用（如 CC Switch）可从 Prism 直接打开；
-- **Hermes 技能软启用 / 停用**：技能（`SKILL.md`）在 `active` 与 `_disabled` 目录间移动，**不物理删除**；
-- 后端：`GET /api/v1/tools`、`/{id}/install`、`/{id}/uninstall`、`/{id}/launch`、`/{id}/build`、`/{id}/toggle`。
-
-### 6) CMS 隐藏后台
-
-`/cms` 隐藏管理后台，集中控制运行开关（修改后需重启后端生效）：
-- **抖音登录模式**：`browser`（正式 / 当前模拟）↔ `http`（逆向 HTTP 测试）；
-- **浏览器后端**：`patchright` / `persona`；
-- **无头模式**：`PLAYWRIGHT_HEADLESS`；
-- 相关 `.env`：`PRISM_DOUYIN_LOGIN_MODE`、`PRISM_BROWSER_BACKEND_DEFAULT`。
-
-### 7) 账号登录体验改进
-
-- **二维码登录**：支持取消（停止连接/轮询）与重试；支持从本机 Chrome 导入已登录账号；
-- **从本机 Chrome 导入**：复制本机 Chrome 的 Cookies/Local State 到 Prism 专用 profile（非无痕），无需关闭 Chrome，若平台已登录则直接读取登录态入库；
-- **TikTok / YouTube**：恢复上游 SAU 交互式登录，修复 `--no-sandbox` 崩溃、cookie 抓取与账号入库（user_id 兜底 + account_id）；
-- **Toast 自动关闭**：修复 Radix 暂停态导致通知不自动关闭的问题。
-
-### 8) 每账号运行时锁
-
-Redis 每账号 Browser Runtime 分布式锁（`runtime_lock_service`）：保证同一账号的浏览器任务串行执行，避免并发互踩；心跳续期，异常自动释放。
-
-### 9) TikTok / YouTube 数据采集 + TikHub 账号信息自动回填
-
-- **TikTok 视频数据采集**：通过 TikHub Web API 自动把账号数字 uid 解析为完整 secUid，拉取作品列表（视频 ID / 标题 / 封面 / 播放 / 点赞 / 评论 / 分享 / 收藏 / 发布时间），无需浏览器；
-- **YouTube 视频数据采集**：通过 TikHub 频道 API 拉取频道视频列表（视频 ID / 标题 / 封面 / 播放 / 点赞 / 评论 / 时长）；
-- **账号信息自动回填**：TikTok / YouTube 浏览器登录成功后，自动用 TikHub 反查账号真实资料（账号名 uniqueId、昵称、头像）并写回账号库，账号列表页直接显示真实名字和头像，无需手动补录；已有账号也可在账号列表点击「补全」手动触发反查（`POST /accounts/{id}/enrich-tikhub`）；
-- **YouTube 频道注册解析**：添加 YouTube 账号时支持直接填频道名 / @handle / 频道链接，一键解析出 channel_id、频道名、头像并预填（`POST /accounts/resolve/youtube-channel`）；
-- 依赖 TikHub API Key（`ai_model_configs` 表配置），充值后即可使用全部接口。
-
----
-
-## 功能
-
-### 1) 账号管理——登录账号
-支持平台「抖音、快手、小红书、视频号、B 站」扫码登录；
-「TikTok、YouTube」则是patchright调用本机浏览器登录后，账号自动入库并回源账号信息；
-
-### 2) 素材管理——AI 标题/标签润色 + 批量上传
-支持 AI 自动补全标题、标签，支持批量拖拽上传；
-
-### 3) 多平台多账号同步发布
-支持「抖音、快手、小红书、视频号、B 站」同步发布；支持 AI 一句话发布：
-“帮我把素材库刚上传的视频，生成标题、标签并定时发布 23:55，发布到所有平台；”
-
-### 4) 访问不同平台/账号的创作者后台
-支持 每个账号有独立浏览器身份 + 固定代理，可访问对应创作者后台；
-
-### 5) 视频数据回收与复盘
-支持抖音、B 站、TikTok（本地部署API接口读取数据）
-（YouTube、快手、小红书、视频号——支持付费 API 接口读取数据）；
-
-### 🎬 产品演示视频（纯黑白）
-
-**真实交互 Walkthrough**（登录弹窗 · 素材 · 矩阵发布 · 任务 · Agent 对话，纯黑白包装）：
+**真实交互演示 / Real Interaction Walkthrough**
 
 ![walkthrough](docs/demos/prism_wrap.gif)
 
-**14 页功能巡览**（仪表盘 / 账号管理 / 矩阵发布 / 数据 / Agent …，HyperFrames 合成）：
+**14 页功能巡览 / 14-Screen Feature Tour**
 
 ![tour](docs/demos/prism_hyperframes_demo.gif)
 
 ---
 
-## 支持平台
+[快速开始](#快速开始) · [架构设计](#架构设计) · [命令行](#命令行) · [API](#api) · [目录结构](#目录结构) · [参与贡献](#参与贡献) — [English Version ↑](README_EN.md)
 
-内置平台适配器（可扩展）：
-- 抖音
-- 快手
-- 小红书
-- 视频号
-- B 站
-- TikTok（本机浏览器登录）
-- YouTube（本机浏览器登录）
+## Prism 是什么
 
-### 登录运行时状态
+Prism 是一个**前后端分离**的自托管系统，用于在多个平台（抖音、快手、小红书、视频号、B 站、TikTok、YouTube）上批量运营多个创作者账号，且账号之间彼此隔离、互不牵连。核心架构基于 **Celery + Redis** 承载异步高并发任务，并通过**账号级 Redis 分布式锁**（`SET NX` + 心跳续期）保证同一账号同时只有一个活跃 Browser Runtime，互不争抢。
 
-- 支持抖音、快手、小红书、视频号、B 站、Tiktok、Youtube 账号掉线检测；
+它不是剪辑工具，也不生产素材，定位在内容生产链路的下游，只做四件事：
 
----
+- **账号身份隔离**——每个账号拥有独立的浏览器指纹、持久化登录会话和固定出口代理，让同一台机器上的十个账号在平台侧不会被识别为同一个操作者。
+- **调度与执行**——素材 → 矩阵任务 → 队列化、并发、可失败重试的跨账号跨平台执行。
+- **可观测性**——每账号运行时状态、任务日志与异常提醒。
+- **数据回收**——发布后拉回数据指标，形成复盘闭环。
 
-## 架构概览
+上游的内容生产（剪辑、素材生成）Prism 自己不碰，但可以通过内置的 **Hermes** 接进来：把开源项目集成进组件库与插件库（含 skill 库），让生产段的能力作为组件接入，拼成完整链路。
 
-技术栈：FastAPI、Next.js、Celery/Redis、Patchright、Persona Studio、Electron、mihomo（代理网关）；
+如果你在评估这个仓库，最值得先弄清楚的两件事是下面的[身份/执行链路](#账号执行链路)，以及 AI 层（`HermesAgent`）是发布链路之上的可选工具，而不是发布流程的依赖项。
+
+## 功能概览
+
+| 模块 | 已实现内容 |
+|---|---|
+| 账号管理 | 抖音/快手/小红书/视频号/B 站扫码登录，TikTok/YouTube 本机浏览器登录，Chrome 已登录 Profile 导入，掉线检测 |
+| 身份层 | 通过集成 Persona Studio 生成相干指纹（OS/UA/GPU/时区/语言一致），未安装 Persona 时自动回退到独立的 Patchright Profile |
+| 网络层 | 自研 Proxy Manager（健康检测、sticky 固定绑定、空闲池自动分配）+ 可选的 per-country mihomo 代理网关（新加坡/日本/美国/德国/台湾/香港） |
+| 调度 | N 账号 × M 平台 × K 素材的矩阵任务生成，Celery/Redis 队列，定时发布，失败重试，每账号 Redis 分布式执行锁 |
+| 监控 | 任务队列看板、执行日志、账号环境视图（一次调用返回浏览器 × 代理 × 运行时状态） |
+| 数据回收 | 抖音/B 站本地采集，TikTok/YouTube 通过 TikHub API 采集，并自动反查回填账号资料（头像/昵称） |
+| AI 编排 | 内置 Agent（HermesAgent）支持自然语言发布指令、标题标签生成，以及一键安装的技能/工具市场（`/tools`） |
+| 接入方式 | Web 控制台（Next.js）、Electron 桌面客户端、`prism` 命令行、面向外部 AI Agent 的 stdio MCP 服务 |
+
+## 架构设计
+
+### 账号执行链路
+
+所有自动化浏览器操作——登录、发布、数据采集——都走同一条固定链路：
 
 ```text
-prism_frontend/    # Next.js 控制台（计划/任务/看板/工具/CMS）
-prism_backend/     # FastAPI 后端（矩阵调度 + AI 服务 + 账号/代理/运行时）
-scripts/           # 启动与运维脚本
-desktop-electron/  # Electron 客户端与打包
-tools/             # 自托管组件（hermes-agent / hermes-webui / persona-studio）
+账号
+  │
+  ▼
+Persona Profile          （指纹 + 持久化 Cookie/LocalStorage/IndexedDB）
+  │
+  ▼
+Sticky Proxy             （Proxy Manager 固定绑定，可选按地区经 mihomo 路由）
+  │
+  ▼
+Patchright（CDP）        （反检测浏览器驱动，connect_over_cdp）
+  │
+  ▼
+平台适配器               （各平台的登录 / 发布 / 采集逻辑）
 ```
 
-职责边界：
+职责边界清晰地分给两个系统，而不是塞进一个单体：
 
 | 层 | 归属 |
 |---|---|
 | 账号 / 平台 / 任务 / Celery / Redis | Prism |
-| 代理网关（per-country 端口 7771–7776） | mihomo（Persona proxies） |
-| Proxy Manager（proxies、sticky 绑定、健康检测） | Prism |
-| Browser Identity / Fingerprint / Profile | Persona Studio |
-| 浏览器执行（平台 Adapter 驱动） | Prism Patchright（`connect_over_cdp`） |
+| 代理注册、健康检测、sticky 绑定 | Prism（`services/ip_pool_service.py`） |
+| per-country 代理网关（端口 7771–7776） | mihomo，通过 Persona Studio 的代理工具 |
+| 浏览器指纹 / Profile 持久化 | Persona Studio（可选组件，MIT 协议，作为子模块引入） |
+| 浏览器执行 | Prism，通过 Patchright `connect_over_cdp` |
 
-固定链路：
+如果未安装 Persona Studio，身份层会降级为每账号独立的 Patchright `persistent_context`（存于 `data/browser_profiles/<account>/`）——发布功能不受影响，只是失去跨会话的指纹一致性增强。
+
+### 系统组件
 
 ```text
-Account
-  → persona_profile_id（Prism 账号表）
-  → Persona Profile（指纹 + 持久会话）
-  → Sticky Proxy（Proxy Manager 注入 / per-country 代理）
-  → Patchright（connect_over_cdp 驱动）
-  → Platform Adapter（发布 / 登录 / 数据回收）
+prism_frontend/     Next.js 控制台 —— 计划、矩阵任务、看板、/tools、/cms
+prism_backend/      FastAPI 后端 —— REST API、矩阵调度、AI 服务、平台适配器
+  ├── fastapi_app/    API 路由、服务层、SQLAlchemy 模型、Celery 任务
+  ├── platforms/      各平台适配器（登录/发布/采集）
+  ├── automation_worker/  独立执行 Worker
+  ├── ai_service/     基于 LLM 的标题/标签生成、function calling
+  └── douyin_tiktok_api/  内置的解析/数据 API（来自 Douyin_TikTok_Download_API）
+desktop-electron/    包装 Web 控制台的桌面客户端
+scripts/             启动、部署、运维、代理池脚本
+tools/               自托管组件：hermes-agent、persona-studio、代理网关
 ```
 
----
+### 进程拓扑（自托管部署）
 
-## 部署开始
+| 进程 | 作用 | 默认地址 |
+|---|---|---|
+| `prism-backend` | FastAPI API + 矩阵调度 | `:7000` |
+| `prism-worker` | 自动化 Worker（浏览器执行） | `:7001` |
+| `prism-celery` | Celery 任务消费者 | 经由 Redis |
+| `prism-frontend` | Next.js 控制台 | `:3000` |
+| `persona-api` | Persona Studio 身份服务（可选） | `:8787` |
+| `persona-proxy` | mihomo per-country 网关（可选） | `:7771`–`:7776` |
+| HermesAgent | 内置 AI Agent 面板/WebUI | `:9119` / `:9131` |
 
-### Windows 本地部署
+所有进程由 PM2（macOS）或内置 Supervisor（Windows）统一托管，目的是让进程缺失"显性报错"而不是"静默降级"——比如后端在跑、Worker 没起，控制台依然能打开，但任务调度会悄悄失效，因此启动脚本默认整套一起拉起。
 
-采用本地部署：适合开发、调试，可单独查看 Redis / Celery / Automation Worker / FastAPI / HermesAgent 的运行状态。
+## 快速开始
 
-#### 1) 安装依赖
-
-方式 A：`prismenv`（默认推荐）
-
-```powershell
-python -m venv prismenv
-prismenv\Scripts\activate
-pip install -r requirements.txt
-
-cd prism_frontend
-npm install
-cd ..
-```
-
-也可以直接运行 `start.bat`。它会优先检测 `prismenv`，不存在时自动创建并安装根 `requirements.txt`。
-
-方式 B：`conda`
-
-```powershell
-conda create -n prism python=3.11.4
-conda activate prism
-
-pip install -r requirements.txt
-cd prism_frontend
-npm install
-cd ..
-```
-
-#### 2) 配置环境
-
-必须检查两类配置：
-
-- 根目录 `.env`：端口、Redis、浏览器路径、前后端连接地址、`PLAYWRIGHT_HEADLESS`、`PRISM_BROWSER_BACKEND_DEFAULT`、`PRISM_DOUYIN_LOGIN_MODE`。
-- `prism_backend\config\hermes_agent.toml`：HermesAgent 的 provider / model / api_key / base_url。
-
-浏览器依赖：
-
-```powershell
-scripts\launchers\setup_browser.bat
-```
-
-桌面版支持在“系统设置”页管理 `Chromium` / `Firefox`；所有平台自动化统一由 `Patchright` 执行。
-
-#### 3) 启动方式
-
-方式 A：一键拉起完整本地栈
-
-```powershell
-start.bat
-```
-
-等价于默认 `prismenv` 模式，会按顺序启动：
-
-1. Redis
-2. Celery Worker
-3. Automation Worker
-4. FastAPI Backend
-5. Frontend
-
-重要说明：
-
-- 本地后端进程缺一不可。少起任意一个进程，前端页面可能能打开，但任务调度、浏览器执行、异步回调、HermesAgent 调用链都会不完整。
-- HermesAgent Dashboard / WebUI 由 FastAPI 在非 Supervisor 模式下自动托管；前提是 `prism_backend\config\hermes_agent.toml` 已正确配置，且本地 Hermes 运行时已通过 `scripts\hermes\setup-local-hermes.ps1` 安装完成。
-
-方式 B：Supervisor 模式
-
-```powershell
-start.bat supervisor
-```
-
-该模式会启动：
-
-- Redis
-- Supervisor
-- Frontend
-
-再由 Supervisor 托管：
-
-- FastAPI Backend
-- Celery Worker
-- Automation Worker
-- HermesAgent 相关界面与网关
-
-方式 C：手动逐个进程启动（仅调试时使用）
-
-```powershell
-scripts\launchers\start_redis.bat
-scripts\launchers\start_celery_prismenv.bat
-scripts\launchers\start_worker_prismenv.bat
-scripts\launchers\start_backend_prismenv.bat
-scripts\launchers\start_frontend.bat
-```
-
-#### 4) Windows 访问地址
-
-- 控制台：http://localhost:3000
-- 后端 API：http://localhost:7000/api/docs
-- Automation Worker：http://localhost:7001
-- Supervisor API：http://localhost:7002（仅 `start.bat supervisor`）
-- Persona serve：http://localhost:8787
-- per-country 代理网关：http://localhost:7771-7776
-- HermesAgent Dashboard：http://localhost:9119
-- HermesAgent WebUI：http://localhost:9131
-
----
-
-### macOS（PM2）部署
-
-macOS 推荐用 **PM2** 统一管理全套进程，避免 nohup 多进程难维护的问题：
+依赖：Python 3.11、Node 18+、Redis。
 
 ```bash
+git clone https://github.com/Laihiujin/Prism.git
+cd Prism
+
+python -m venv prismenv && source prismenv/bin/activate   # Windows: prismenv\Scripts\activate
+pip install -r requirements.txt
+
+cd prism_frontend && npm install && cd ..
+
+cp env.example .env   # 按需配置 REDIS_URL、浏览器路径、API Key
+```
+
+一键启动：
+
+```bash
+# Windows
+start.bat
+
+# macOS（推荐用 PM2 管理）
 ./start-pm2.sh
 ```
 
-`ecosystem-mac.config.js` 会拉起：
-
-| 进程 | 说明 | 地址 |
-|---|---|---|
-| `prism-backend` | FastAPI 后端（run.py，使用 `.venv` python） | http://127.0.0.1:7000 |
-| `prism-worker` | Automation Worker | http://127.0.0.1:7001 |
-| `prism-celery` | Celery Worker（threads pool） | Redis |
-| `prism-frontend` | Next.js 控制台 | http://localhost:3000 |
-| `persona-api` | Persona serve（`persona --data-dir ... serve`） | http://127.0.0.1:8787 |
-| `persona-proxy` | 独立官方 mihomo 网关 | http://127.0.0.1:7771-7776 |
-
-> `start-pm2.sh` 会先清理残留进程避免端口占用，再启动并打印 `pm2 list`。
-> `ecosystem-mac.config.js` 显式设置 `PRISM_BROWSER_BACKEND_DEFAULT=persona`，即 macOS 默认走 Persona 身份层。
-
-常用命令：
-
-```bash
-PM2_HOME=./runtime-data/pm2 ./prism_frontend/node_modules/.bin/pm2 logs
-PM2_HOME=./runtime-data/pm2 ./prism_frontend/node_modules/.bin/pm2 restart all
-PM2_HOME=./runtime-data/pm2 ./prism_frontend/node_modules/.bin/pm2 stop all
-```
-
-也可以使用 `start-mac.sh`（nohup 拉起 Redis + Backend + Worker + Celery + Frontend，等价 Windows 的 `start.bat`）：
-
-```bash
-./start-mac.sh
-```
-
-macOS 访问地址与 Windows 相同（见上）。
-
----
+启动顺序为 Redis → Celery Worker → Automation Worker → FastAPI 后端 → 前端。控制台地址 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
 
 ## 命令行
 
-安装项目后可以直接使用 `prism` 命令。CLI 与 Web、桌面端共用同一套平台适配器、账号文件和 Patchright 运行时：
+`prism` CLI 与 Web 控制台、桌面端共用同一套平台适配器、账号存储和 Patchright 运行时——从任一入口发起的任务，在其他入口都能看到。
 
 ```bash
 pip install -e .
@@ -413,55 +180,30 @@ prism douyin upload-video \
   --title "示例标题" \
   --description "示例简介" \
   --tags "Prism,自动发布"
-```
 
-定时发布使用本地时间，格式为 `YYYY-MM-DD HH:MM`：
+# 定时发布（本地时间）
+prism xiaohongshu upload-video --account creator --file ./video.mp4 \
+  --title "示例" --schedule "2026-08-18 20:30"
 
-```bash
-prism xiaohongshu upload-video \
-  --account creator \
-  --file ./video.mp4 \
-  --title "示例标题" \
-  --schedule "2026-08-18 20:30"
-```
-
-国际平台首次使用需在运行 Prism 的本机浏览器中完成账号登录；登录态会以 storage state 保存并供任务队列复用：
-
-```bash
+# 无原生扫码登录的平台（首次需真实浏览器登录一次）
 prism tiktok login --account creator
 prism youtube login --account creator
-prism youtube upload-video --account creator --file ./video.mp4 --title "Example" \
-  --description "Video description" --tags "Prism,automation" --visibility unlisted
+
+prism accounts            # 列出所有账号（JSON）
+prism history             # 查询发布历史（JSON）
+prism mcp                 # 以 MCP stdio 服务方式启动，供外部 AI Agent 接入
 ```
 
-### Gemini Computer Use 受控恢复（可选）
+## API
 
-Gemini Computer Use 仅用于在 Patchright 定位失败时收集截图与候选动作，辅助生成可审查的平台适配器代码补丁；
-它不在正式发布任务中执行点击、填写或提交。正式发布始终使用版本化、可测试的 Patchright 平台适配器。
+REST API 统一挂载在 `/api/v1` 下，按业务域分组（`accounts`、`matrix`、`publish`、`persona`、`persona_proxy`、`ip_pool`、`analytics`、`tools`、`agent` 等）。交互式文档自动生成于 `/api/docs`（Swagger）与 `/api/redoc`。
 
----
-
-## 矩阵投放流程（SOP）
-
-1. 绑定账号（多平台账号矩阵，可绑定浏览器身份 + 固定代理 + per-country 代理地区）；
-2. 素材入库（批量上传 / AI 标题标签润色）；
-3. 创建矩阵计划（平台、账号、素材、话题、封面、定时策略）；
-4. 生成矩阵任务并调度执行（队列化、并发、失败重试、每账号运行时锁）；
-5. 看板监控与日志审计（异常提醒 / 人工介入点）；
-6. 数据回收（抖音、B 站）并复盘迭代；
-
----
-
-## API 示例
-
-生成矩阵任务：
+生成矩阵发布任务：
 
 ```http
 POST /api/v1/matrix/generate_tasks
 Content-Type: application/json
-```
 
-```json
 {
   "platforms": ["xiaohongshu", "douyin"],
   "accounts": {
@@ -474,65 +216,77 @@ Content-Type: application/json
 }
 ```
 
-账号固定身份绑定（Persona 代理地区）：
+将账号绑定到某个代理地区：
 
 ```http
-GET  /api/v1/accounts/{account_id}/persona-proxy   # 读取绑定地区 + 可用地区列表
-PUT  /api/v1/accounts/{account_id}/persona-proxy   # 设置地区（direct/sg/jp/us/de/tw/hk）
+GET  /api/v1/accounts/{account_id}/persona-proxy
+PUT  /api/v1/accounts/{account_id}/persona-proxy
 ```
 
-账号环境视图：
+单次调用获取账号完整环境快照（浏览器后端 + 代理 + 运行时状态）：
 
 ```http
 GET /api/v1/accounts/{account_id}/environment
 ```
 
-开发者工具：
-
-```http
-GET  /api/v1/tools                      # 工具目录（skill/mcp/plugin/component）
-POST /api/v1/tools/{tool_id}/install    # 一键安装
-POST /api/v1/tools/{tool_id}/uninstall  # 卸载
-POST /api/v1/tools/{tool_id}/launch     # 打开本地应用
-POST /api/v1/tools/{tool_id}/build      # 构建（如 Persona dashboard）
-POST /api/v1/tools/{tool_id}/toggle     # 软启用/停用技能
-```
-
----
-
 ## 目录结构
 
-- `prism_backend/fastapi_app`：API、矩阵调度、任务队列与服务逻辑；
-- `prism_frontend/`：矩阵投放控制台（Next.js，含 `/tools`、`/cms`）；
-- `desktop-electron/`：桌面客户端与打包脚本；
-- `scripts/`：启动、调试、维护脚本；
-- `tools/`：自托管组件（`hermes-agent` / `hermes-webui` / `persona-studio` 及 `proxies` 代理网关）；
-- `runtime-data/`：运行时数据（PM2 的 `pm2` 目录、Hermes 技能等）；
-- `scripts/tests/`：手动与集成验证脚本（原 `Test/` 目录已收纳至此）；
----
+```text
+prism_backend/fastapi_app/
+  api/v1/         30+ 个业务域路由（accounts、matrix、publish、persona、ip_pool、tikhub…）
+  services/       业务逻辑层 —— matrix_scheduler、ip_pool_service、runtime_lock_service、persona_client…
+  models/         SQLAlchemy 模型
+  tasks/          Celery 任务定义
+  agent/          HermesAgent 集成 + MCP 工具桥接
+prism_backend/platforms/     各平台登录/发布/采集适配器
+prism_frontend/src/app/       Next.js 路由 —— dashboard、matrix、accounts、ip-pool、persona、tools、cms
+desktop-electron/            Electron 封装与安装包构建
+scripts/                     launchers/、deploy/、maintenance/、ip_pool/、hermes/
+```
 
-## 合规提示
+## 配置
 
-本项目用于自动化流程与效率提升，请在合法合规、遵守平台规则的前提下使用；
-涉及账号体系与内容发布的规模化运营，建议建立团队内部内容审核与风险控制流程；
+两个文件决定能否正常跑起来：
 
----
+- **`.env`**——端口、Redis 地址、浏览器路径、前后端互联地址、`PLAYWRIGHT_HEADLESS`、`PRISM_BROWSER_BACKEND_DEFAULT`（`patchright` / `persona`）、`PRISM_DOUYIN_LOGIN_MODE`（`browser` / `http`）。
+- **`prism_backend/config/llm_config.toml`**——HermesAgent 及 AI 标题/标签生成所用的 LLM provider / model / api_key / base_url。
 
 ## 项目支持与采用
 
-Prism 的能力建设受益于开源生态；下列项目的代码、架构或实现思路被采用、移植或作为实现参考：
+Prism 在几个关键难点上选择集成而非重复造轮子，各自是独立的上游项目，遵循各自许可证（详见 [`NOTICE.txt`](./NOTICE.txt)）：
 
-- [social-auto-upload](https://github.com/dreammis/social-auto-upload)：上游 CLI 自动发布基础；MIT License。
-- [Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)：抖音 / TikTok 解析与数据能力参考；Apache License 2.0。
-- [HermesAgent](https://github.com/nousresearch/hermes-agent)：本地 AI Agent 运行时与集成参考；MIT License。
-- [Persona Studio](https://github.com/TechQaiser/persona-studio)：浏览器身份 / 指纹 / Profile 层；MIT License。
+| 组件 | 上游项目 | 许可证 |
+|---|---|---|
+| CLI / 发布适配器基础 | [social-auto-upload](https://github.com/dreammis/social-auto-upload) | MIT |
+| 抖音 / TikTok 解析与数据 API | [Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API) | Apache-2.0 |
+| 本地 AI Agent 运行时 | [HermesAgent](https://github.com/nousresearch/hermes-agent) | MIT |
+| 浏览器身份/指纹层 | [Persona Studio](https://github.com/TechQaiser/persona-studio) | MIT |
 
-对应第三方归属和许可证说明保留在 [NOTICE.txt](NOTICE.txt)。
+Prism 自身代码基于 Apache-2.0 开源；引入的 MIT 组件保留原始许可证与署名要求。
 
----
+## 已知局限
+
+如实列出现状，而不是回避：
+
+- **默认存储为 SQLite**——单机自托管场景下没问题；如果要在 Celery 上跑真正的高并发写入，需要提前规划迁移到服务端数据库。
+- **表结构变更靠手写脚本**，不是标准迁移框架——在共享环境里改表结构前建议先看一遍 `prism_backend/db/`。
+- **CORS 默认 `allow_origins=["*"]`**（`fastapi_app/main.py`）——如果要把 API 暴露到本机之外，务必先收紧这项配置。
+
+## 合规声明 / Compliance
+
+请仅在**授权 / 自有账号场景**下使用，并遵守各平台用户协议。
+
+- 请勿提交 cookie、登录态、浏览器 profile、设备指纹、代理凭证、API key 到仓库（详见 [`AGENT.md`](./AGENT.md) 与 [`.gitignore`](./.gitignore)）。
+
+本项目**仅限测试、学术研究与技术交流使用**，请勿用于任何违反法律法规、平台服务条款的恶意攻击用途，因违规使用产生的后果由使用者自行承担。
+
+## 参与贡献
+
+欢迎提交 Issue 和 PR。如果你在用 AI 编程助手协作本仓库，请先看 [`AGENT.md`](./AGENT.md) 里的仓库卫生规则（不要提交 cookie、浏览器 profile、指纹、代理数据）。
 
 ## 许可
-Prism 自身代码基于 Apache License 2.0 开源。项目中保留的 MIT 与 Apache-2.0 上游组件继续分别适用其原始许可证；Apache-2.0 与 MIT 组件可共同分发，但必须保留上游版权、许可证和 NOTICE 归属。
+
+Apache License 2.0，详见 [`LICENSE`](./LICENSE)。项目中引入的 MIT / Apache-2.0 上游组件继续适用各自原始许可证，署名要求见 [`NOTICE.txt`](./NOTICE.txt)。
 
 ## Community
 
@@ -545,3 +299,9 @@ Prism 自身代码基于 Apache License 2.0 开源。项目中保留的 MIT 与 
 | | | |
 |-|-|-|
 | ![1d1114b7-9c71-4c18-91df-0a462bed5405](https://github.com/user-attachments/assets/f0c38071-f69a-4262-a339-182c090d4c41) | ![dac9dc35-e027-42e8-b6aa-81f3211906da](https://github.com/user-attachments/assets/761ae5f1-8350-49d6-bba6-de2f01f1b73e) | ![Prism 交流群二维码](docs/prism-qq-group-qr.jpg) |
+
+<div align="right">
+
+[⬆ 回到顶部](#prism) · [English Version ↑](README_EN.md)
+
+</div>

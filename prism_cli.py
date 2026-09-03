@@ -19,6 +19,13 @@ if str(BACKEND_ROOT) not in sys.path:
 SCHEDULE_FORMAT = "%Y-%m-%d %H:%M"
 PLATFORMS = ("douyin", "kuaishou", "xiaohongshu", "bilibili", "channels", "baijiahao", "tiktok", "youtube")
 
+# 退出码契约（对齐 MatrixMedia / 通用 AI 工具约定）：
+#   0 = 成功 / 1 = 一般异常 / 2 = 参数或用法错误 / 3 = 业务失败（登录失败、上传失败、后端不可达）
+EXIT_OK = 0
+EXIT_ERROR = 1
+EXIT_USAGE = 2
+EXIT_BUSINESS = 3
+
 
 def runtime_home() -> Path:
     return Path(os.getenv("PRISM_DATA_DIR", str(BACKEND_ROOT))).expanduser().resolve()
@@ -122,6 +129,18 @@ def build_parser() -> argparse.ArgumentParser:
     tool_invoke.add_argument("name", help="工具名（见 prism tool list）")
     tool_invoke.add_argument("--json", default="{}", help='工具参数 JSON 对象，如 \'{"file_path":"/abs/video.mp4"}\'')
 
+    # 跨平台查询（类似 MatrixMedia 的 `cli accounts --json` / `cli history --json`）
+    accounts_cmd = roots.add_parser("accounts", help="列出所有平台账号（JSON）")
+    accounts_cmd.add_argument("--count", type=int, default=100, help="最多返回条数（默认 100）")
+
+    history_cmd = roots.add_parser("history", help="查询发布历史（JSON）")
+    history_cmd.add_argument("--platform", dest="platform_code", type=int, help="平台代码（1 小红书/2 视频号/3 抖音/4 快手/5 B站/6 TikTok/7 YouTube/8 百家号）")
+    history_cmd.add_argument("--status", default=None, help="状态过滤（success/failed/running/pending/cancelled/scheduled）")
+    history_cmd.add_argument("--limit", type=int, default=100, help="返回条数上限（默认 100）")
+
+    # MCP 服务（stdio）：prism mcp —— 供 AI 工具直接接入
+    roots.add_parser("mcp", help="启动 Prism MCP 服务（stdio，供 AI 工具/智能体接入）")
+
     for name in ("douyin", "kuaishou", "xiaohongshu"):
         actions = roots.add_parser(name).add_subparsers(dest="action", required=True)
         add_login_check(actions, name, qr_probe=True)
@@ -136,6 +155,14 @@ def build_parser() -> argparse.ArgumentParser:
             video.add_argument("--mini-program-link", default="")
             video.add_argument("--mini-program-title", default="")
             video.add_argument("--location", default="")
+            video.add_argument("--who-can-see", default="", help="谁可以看: 公开/好友可见/仅自己可见")
+            video.add_argument("--save-permission", default="", help="保存权限: 允许/不允许")
+            video.add_argument("--hotspot", default="", help="关联热点词")
+            video.add_argument("--collection", default="", help="合集名/不选择合集")
+            video.add_argument("--cover-orientation", default="landscape", choices=["landscape", "portrait"], help="封面朝向")
+            video.add_argument("--cover-file", type=existing_file, default=None, help="自定义封面文件")
+            video.add_argument("--mini-program-name", default="", help="挂载小程序/对象名")
+            video.add_argument("--mini-program-type", default="", help="挂载对象类型")
             video.add_argument("--preview", action="store_true", help="预览模式：跑完上传+填表后停在发布前，绝不真正发布")
         add_note(actions, name)
 
@@ -276,7 +303,7 @@ async def upload_video(platform: str, path: Path, args: argparse.Namespace) -> N
     tags, date = parse_tags(args.tags), args.schedule or 0
     if platform == "douyin":
         from uploader.douyin_uploader.main_refactored import DouYinVideo, DOUYIN_PUBLISH_STRATEGY_SCHEDULED
-        app = DouYinVideo(args.title, str(args.file), tags, date, str(path), thumbnail_landscape_path=str(args.thumbnail_landscape) if args.thumbnail_landscape else None, thumbnail_portrait_path=str(args.thumbnail_portrait or args.thumbnail) if args.thumbnail_portrait or args.thumbnail else None, productLink=args.product_link, productTitle=args.product_title, desc=args.desc, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, declaration=args.declaration, random_cover=args.random_cover, miniprogramLink=args.mini_program_link, miniprogramTitle=args.mini_program_title, location=args.location, preview_only=args.preview)
+        app = DouYinVideo(args.title, str(args.file), tags, date, str(path), thumbnail_landscape_path=str(args.thumbnail_landscape) if args.thumbnail_landscape else None, thumbnail_portrait_path=str(args.thumbnail_portrait or args.thumbnail) if args.thumbnail_portrait or args.thumbnail else None, productLink=args.product_link, productTitle=args.product_title, desc=args.desc, publish_strategy=DOUYIN_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless, declaration=args.declaration, random_cover=args.random_cover, miniprogramLink=args.mini_program_link, miniprogramTitle=args.mini_program_title, location=args.location, preview_only=args.preview, who_can_see=args.who_can_see, save_permission=args.save_permission, hotspot=args.hotspot, collection=args.collection, cover_orientation=args.cover_orientation, cover_file=(args.cover_file or ""), miniProgram=({"name": args.mini_program_name, "type": args.mini_program_type} if args.mini_program_name else None))
     elif platform == "kuaishou":
         from uploader.ks_uploader.main_refactored import KSVideo, KUAISHOU_PUBLISH_STRATEGY_SCHEDULED
         app = KSVideo(args.title, str(args.file), tags, date, str(path), thumbnail_path=str(args.thumbnail) if args.thumbnail else None, desc=args.desc, publish_strategy=KUAISHOU_PUBLISH_STRATEGY_SCHEDULED if args.schedule else "immediate", debug=args.debug, headless=args.headless)
@@ -320,27 +347,63 @@ async def dispatch_tool(args: argparse.Namespace) -> int:
     if args.action == "invoke":
         params = json.loads(args.json) if getattr(args, "json", None) else {}
         if not isinstance(params, dict):
-            print("prism: --json 必须是 JSON 对象", file=sys.stderr)
-            return 2
+            print(json.dumps({"ok": False, "message": "--json 必须是 JSON 对象", "data": None}, ensure_ascii=False))
+            return EXIT_USAGE
         result = await invoke(args.name, **params)
-        print(json.dumps(result, ensure_ascii=False, default=str))
-        return 0 if not (isinstance(result, dict) and result.get("error")) else 1
+        # 统一输出为 {"ok","message","data"} 信封：
+        if isinstance(result, dict) and "error" in result:
+            print(json.dumps({"ok": False, "message": result["error"], "data": None}, ensure_ascii=False, default=str))
+            return EXIT_BUSINESS
+        if isinstance(result, dict) and "ok" in result and "data" in result:
+            print(json.dumps(result, ensure_ascii=False, default=str))
+            return EXIT_OK if result.get("ok") else EXIT_BUSINESS
+        print(json.dumps({"ok": True, "message": "", "data": result}, ensure_ascii=False, default=str))
+        return EXIT_OK
     raise RuntimeError(f"Unsupported tool action: {args.action}")
+
+
+async def dispatch_accounts(args: argparse.Namespace) -> int:
+    """prism accounts [--count N] -> JSON（复用 platform_api，与 MCP / tool 目录同构）"""
+    from fastapi_app.services.platform_api import fetch_accounts
+    result = await fetch_accounts(count=args.count)
+    print(json.dumps(result, ensure_ascii=False))
+    return EXIT_OK if result.get("ok") else EXIT_BUSINESS
+
+
+async def dispatch_history(args: argparse.Namespace) -> int:
+    """prism history [--platform N] [--status S] [--limit N] -> JSON（复用 platform_api）"""
+    from fastapi_app.services.platform_api import fetch_history
+    result = await fetch_history(platform=args.platform_code, status=args.status, limit=args.limit)
+    print(json.dumps(result, ensure_ascii=False))
+    return EXIT_OK if result.get("ok") else EXIT_BUSINESS
+
+
+async def dispatch_mcp(args: argparse.Namespace) -> int:
+    """prism mcp -> 启动 MCP stdio 服务（阻塞直到客户端断开）"""
+    from mcp_server import server
+    await server.run_stdio_async()
+    return EXIT_OK
 
 
 async def dispatch(args: argparse.Namespace) -> int:
     if args.platform == "tool":
         return await dispatch_tool(args)
+    if args.platform == "accounts":
+        return await dispatch_accounts(args)
+    if args.platform == "history":
+        return await dispatch_history(args)
+    if args.platform == "mcp":
+        return await dispatch_mcp(args)
     platform = {"tencent": "channels", "baijia": "baijiahao", "tk": "tiktok", "yt": "youtube"}.get(args.platform, args.platform)
     path = account_file(platform, args.account)
     if args.action == "login":
         result = await login(platform, path, args)
         print(json.dumps(result, ensure_ascii=False, default=str))
-        return 0 if result.get("success") else 1
+        return EXIT_OK if result.get("success") else EXIT_BUSINESS
     if args.action == "check":
         valid = await check(platform, path)
         print(json.dumps({"success": valid, "account_file": str(path)}, ensure_ascii=False))
-        return 0 if valid else 1
+        return EXIT_OK if valid else EXIT_BUSINESS
     if not path.exists():
         raise FileNotFoundError(f"Account not found: {path}; run prism {platform} login first.")
     if args.action == "upload-note":
@@ -362,9 +425,16 @@ def main() -> int:
         return service_main(args.service_args)
     try:
         return asyncio.run(dispatch(args))
-    except (FileNotFoundError, RuntimeError, ValueError) as exc:
+    except ValueError as exc:
         print(f"prism: {exc}", file=sys.stderr)
-        return 2
+        return EXIT_USAGE
+    except (FileNotFoundError, RuntimeError) as exc:
+        # 账号未登录 / 上传失败 等业务错误
+        print(f"prism: {exc}", file=sys.stderr)
+        return EXIT_BUSINESS
+    except Exception as exc:  # noqa: BLE001
+        print(f"prism: {exc}", file=sys.stderr)
+        return EXIT_ERROR
 
 
 if __name__ == "__main__":

@@ -234,3 +234,11 @@ prism_backend/logs/douyin_preview_screenshot.png
 prism_backend/logs/douyin_preview_screenshot.png
 prism_backend/logs/douyin_preview_screenshot.png
 prism_backend/logs/douyin_preview_screenshot.png
+
+#本地/业务敏感数据（账号指纹/Cookie、运行时日志、抓取诊断脚本，不入库）
+/prism_backend/fingerprints/
+/prism_backend/logs/
+/prism_backend/_edu_obs/
+
+#爬虫登录态配置(cookie/ttwid,运行时写入,不入库)
+prism_backend/douyin_tiktok_api/crawlers/**/config.yaml

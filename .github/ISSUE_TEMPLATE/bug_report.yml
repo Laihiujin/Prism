@@ -1,0 +1,56 @@
+name: 🐛 Bug 报告 / Bug report
+description: 提交一个可复现的问题（发布失败、登录异常、任务卡住等）
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢报告问题！请尽量填全以下信息。**不要粘贴 Cookie、登录态、浏览器 profile、指纹、代理凭证或 API Key。**
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 先确认 / Pre-checks
+      options:
+        - label: 已在 [Issues](https://github.com/Laihiujin/Prism/issues) 中搜索，没有重复
+          required: true
+        - label: 在最新 `main` 上仍可复现
+        - label: 日志已脱敏（不含任何账号凭证）
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境 / Environment
+      description: 操作系统、Python/Node 版本、后端身份模式（`patchright`/`persona`）、是否 headless、对应 commit
+      placeholder: |
+        macOS 14 / Python 3.11 / Node 20
+        PRISM_BROWSER_BACKEND_DEFAULT=persona
+        commit 8ab8b75
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      placeholder: |
+        1. 启动后端与 worker
+        2. prism douyin login --account xxx
+        3. 看到……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为 / Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为 / Actual behavior（含报错日志）
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志 / 截图（脱敏后）
+      render: text

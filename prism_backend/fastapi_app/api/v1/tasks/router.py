@@ -17,6 +17,74 @@ def _get_task_manager(request: Request):
     return tm
 
 
+def _publish_tasks_delete(task_id: str) -> bool:
+    """从 publish_tasks 历史表删除任务记录（按 task_id 或 celery_task_id 匹配）"""
+    from fastapi_app.db.session import main_db_pool
+    from fastapi_app.db.runtime import mysql_enabled, sa_connection
+    from sqlalchemy import text
+
+    if not task_id:
+        return False
+    try:
+        if mysql_enabled():
+            with sa_connection() as conn:
+                res = conn.execute(
+                    text("DELETE FROM publish_tasks WHERE CAST(task_id AS TEXT) = :tid OR celery_task_id = :tid"),
+                    {"tid": task_id},
+                )
+                conn.commit()
+                return (getattr(res, "rowcount", 0) or 0) > 0
+        with main_db_pool.get_connection() as db:
+            cursor = db.cursor()
+            cursor.execute(
+                "DELETE FROM publish_tasks WHERE CAST(task_id AS TEXT) = ? OR celery_task_id = ?",
+                (task_id, task_id),
+            )
+            db.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        logger.error(f"[Tasks] Failed to delete publish history task {task_id}: {e}")
+        return False
+
+
+def _publish_tasks_cancel(task_id: str) -> bool:
+    """将 publish_tasks 中的待处理/运行中任务状态更新为 cancelled"""
+    from fastapi_app.db.session import main_db_pool
+    from fastapi_app.db.runtime import mysql_enabled, sa_connection
+    from sqlalchemy import text
+
+    if not task_id:
+        return False
+    try:
+        if mysql_enabled():
+            with sa_connection() as conn:
+                res = conn.execute(
+                    text(
+                        "UPDATE publish_tasks SET status='cancelled', "
+                        "completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP "
+                        "WHERE (CAST(task_id AS TEXT) = :tid OR celery_task_id = :tid) "
+                        "AND status IN ('pending','running','retry','scheduled')"
+                    ),
+                    {"tid": task_id},
+                )
+                conn.commit()
+                return (getattr(res, "rowcount", 0) or 0) > 0
+        with main_db_pool.get_connection() as db:
+            cursor = db.cursor()
+            cursor.execute(
+                "UPDATE publish_tasks SET status='cancelled', "
+                "completed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP "
+                "WHERE (CAST(task_id AS TEXT) = ? OR celery_task_id = ?) "
+                "AND status IN ('pending','running','retry','scheduled')",
+                (task_id, task_id),
+            )
+            db.commit()
+            return cursor.rowcount > 0
+    except Exception as e:
+        logger.error(f"[Tasks] Failed to cancel publish history task {task_id}: {e}")
+        return False
+
+
 def _summarize_tasks(tasks: List[Dict[str, Any]]) -> Dict[str, int]:
     summary = {
         "pending": 0,
@@ -269,6 +337,9 @@ async def task_cancel(
     tm = _get_task_manager(request)
     task_status = tm.get_task_status(task_id)
     if not task_status:
+        # 尝试从 publish_tasks 历史表取消（历史任务不经过 Redis/task_queue）
+        if _publish_tasks_cancel(task_id):
+            return {"success": True, "message": "任务已取消"}
         raise HTTPException(status_code=404, detail="任务不存在")
 
     ok = tm.cancel_task(task_id, force=force) if hasattr(tm, 'cancel_task') else False
@@ -497,6 +568,9 @@ async def delete_task(task_id: str, request: Request):
     tm = _get_task_manager(request)
     task_status = tm.get_task_status(task_id)
     if not task_status:
+        # 尝试从 publish_tasks 历史表删除（历史任务不经过 Redis/task_queue）
+        if _publish_tasks_delete(task_id):
+            return {"success": True, "message": "任务已删除"}
         raise HTTPException(status_code=404, detail="任务不存在")
 
     # 如果任务正在运行，先取消
@@ -682,8 +756,12 @@ async def batch_delete_tasks(req: BatchTaskRequest, request: Request):
                 else:
                     failed_count += 1
                     errors.append(f"删除任务 {task_id} 失败")
+            elif _publish_tasks_delete(task_id):
+                # 历史任务（publish_tasks 表）
+                success_count += 1
+                logger.info(f"[Tasks] Deleted task from publish history: {task_id}")
             else:
-                # 回退到 SQLite
+                # 回退到 SQLite task_queue
                 tm = _get_task_manager(request)
                 import sqlite3
 
@@ -824,6 +902,10 @@ async def batch_cancel_tasks(
                 else:
                     failed_count += 1
                     errors.append(f"无法取消任务 {task_id}")
+            elif _publish_tasks_cancel(task_id):
+                # 历史任务（publish_tasks 表）
+                success_count += 1
+                logger.info(f"[Tasks] Cancelled task from publish history: {task_id}")
             else:
                 # 回退到 SQLite
                 tm = _get_task_manager(request)

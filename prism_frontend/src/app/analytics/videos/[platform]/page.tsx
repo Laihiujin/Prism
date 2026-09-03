@@ -574,7 +574,7 @@ export default function PlatformVideosPage() {
                             <p className="text-[10px] text-muted-foreground mb-0.5">今日新增播放</p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-base font-bold text-foreground">{formatNumber(stats.views)}</span>
-                                <Badge className="bg-white text-foreground border-0 text-[9px] h-3.5">
+                                <Badge className="bg-black text-foreground border-0 text-[9px] h-3.5">
                                     <ArrowUpRight className="h-2.5 w-2.5 mr-0.5" />
                                     {videoCount}个
                                 </Badge>

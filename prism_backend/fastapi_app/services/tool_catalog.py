@@ -279,6 +279,149 @@ from .tool_auto_scanner import register_auto_tools  # noqa: E402
 
 register_auto_tools()
 
+# —— 每平台发布/登录/校验工具（每平台独立模块，自动暴露到 MCP + API + CLI）——
+# 覆盖 8 个平台：publish_video_to_<p> / publish_note_to_<p> / login_to_<p> /
+# check_account_<p>。每个平台一个模块（publish_tools/<platform>.py），改单平台
+# 不影响其他平台。注册时跳过已存在同名（手动/自动登记优先）。
+from .publish_tools import build_publish_tool_specs  # noqa: E402
+
+for _publish_spec in build_publish_tool_specs():
+    if _publish_spec.name not in TOOLS:
+        TOOLS[_publish_spec.name] = _publish_spec
+
+
+# ---------------------------------------------------------------------------
+# 跨平台查询/发布工具（经后端 HTTP，供 AI 工具一并发现）
+# 覆盖：list_accounts / list_history / publish_video / publish_article
+# ---------------------------------------------------------------------------
+
+async def _list_accounts_handler(count: int = 100) -> Dict[str, Any]:
+    from fastapi_app.services.platform_api import fetch_accounts
+    return await fetch_accounts(count=count)
+
+
+async def _list_history_handler(
+    platform: Optional[int] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+) -> Dict[str, Any]:
+    from fastapi_app.services.platform_api import fetch_history
+    return await fetch_history(platform=platform, status=status, limit=limit)
+
+
+async def _publish_video_handler(
+    file_ids: List[int],
+    accounts: List[str],
+    title: str,
+    platform: Optional[int] = None,
+    description: Optional[str] = None,
+    topics: Optional[List[str]] = None,
+    scheduled_time: Optional[str] = None,
+) -> Dict[str, Any]:
+    from fastapi_app.services.platform_api import publish_batch
+    return await publish_batch(
+        file_ids=file_ids,
+        accounts=accounts,
+        title=title,
+        platform=platform,
+        description=description,
+        topics=topics,
+        scheduled_time=scheduled_time,
+    )
+
+
+async def _publish_article_handler(
+    file_ids: List[int],
+    accounts: List[str],
+    title: str,
+    content: str,
+    platform: Optional[int] = None,
+    scheduled_time: Optional[str] = None,
+) -> Dict[str, Any]:
+    from fastapi_app.services.platform_api import publish_batch
+    return await publish_batch(
+        file_ids=file_ids,
+        accounts=accounts,
+        title=title,
+        platform=platform,
+        description=content,
+        scheduled_time=scheduled_time,
+    )
+
+
+def build_platform_api_tool_specs() -> List[ToolSpec]:
+    """跨平台查询/发布能力（与 MCP 服务 mcp_server.py 同构）。"""
+    return [
+        ToolSpec(
+            name="list_accounts",
+            description="列出所有平台账号（id / 名称 / 平台 / 状态）。",
+            category="publish",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "count": {"type": "integer", "default": 100, "description": "最多返回条数（默认 100）"},
+                },
+            },
+            handler=_list_accounts_handler,
+        ),
+        ToolSpec(
+            name="list_history",
+            description="查询发布历史记录，可按平台/状态筛选。",
+            category="publish",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "platform": {"type": "integer", "description": "平台代码（1 小红书/2 视频号/3 抖音/4 快手/5 B站/6 TikTok/7 YouTube/8 百家号）"},
+                    "status": {"type": "string", "description": "状态过滤（success/failed/running/pending/cancelled/scheduled）"},
+                    "limit": {"type": "integer", "default": 100, "description": "返回条数上限（默认 100，最大 500）"},
+                },
+            },
+            handler=_list_history_handler,
+        ),
+        ToolSpec(
+            name="publish_video",
+            description="把素材批量发布到账号（视频/图文均可，平台为空则按账号分组）。",
+            category="publish",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "file_ids": {"type": "array", "items": {"type": "integer"}, "description": "素材文件 id 列表（至少 1 个）"},
+                    "accounts": {"type": "array", "items": {"type": "string"}, "description": "目标账号 id 列表"},
+                    "title": {"type": "string", "description": "统一标题"},
+                    "platform": {"type": "integer", "description": "平台代码（可选）"},
+                    "description": {"type": "string", "description": "统一描述"},
+                    "topics": {"type": "array", "items": {"type": "string"}, "description": "话题标签列表"},
+                    "scheduled_time": {"type": "string", "description": "定时发布时间 YYYY-MM-DD HH:MM（可选）"},
+                },
+                "required": ["file_ids", "accounts", "title"],
+            },
+            handler=_publish_video_handler,
+        ),
+        ToolSpec(
+            name="publish_article",
+            description="把图文/素材作为内容发布（Prism 以文件为内容载体，content 写入描述）。",
+            category="publish",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "file_ids": {"type": "array", "items": {"type": "integer"}, "description": "素材文件 id 列表（图文用图片 id）"},
+                    "accounts": {"type": "array", "items": {"type": "string"}, "description": "目标账号 id 列表"},
+                    "title": {"type": "string", "description": "标题"},
+                    "content": {"type": "string", "description": "正文/描述"},
+                    "platform": {"type": "integer", "description": "平台代码（可选）"},
+                    "scheduled_time": {"type": "string", "description": "定时发布时间 YYYY-MM-DD HH:MM（可选）"},
+                },
+                "required": ["file_ids", "accounts", "title", "content"],
+            },
+            handler=_publish_article_handler,
+        ),
+    ]
+
+
+for _host_spec in build_platform_api_tool_specs():
+    if _host_spec.name not in TOOLS:
+        TOOLS[_host_spec.name] = _host_spec
+
 
 if __name__ == "__main__":
     _main()
