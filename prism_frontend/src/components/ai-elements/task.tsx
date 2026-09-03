@@ -65,19 +65,19 @@ export function Task({
       icon: Clock,
       color: "text-white",
       bgColor: "bg-black",
-      borderColor: "border-white/17"
+      borderColor: "border-border"
     },
     completed: {
       icon: CheckCircle2,
       color: "text-white",
       bgColor: "bg-black",
-      borderColor: "border-white/17"
+      borderColor: "border-border"
     },
     failed: {
       icon: XCircle,
       color: "text-white",
       bgColor: "bg-black",
-      borderColor: "border-white/17"
+      borderColor: "border-border"
     }
   }
 

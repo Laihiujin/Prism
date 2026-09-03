@@ -171,7 +171,7 @@ export function AIProviderSetupDialog({ onProviderAdded }: AIProviderSetupDialog
 
           {/* 提示信息 */}
           {provider && (
-            <div className="bg-black border border-white/17 rounded-lg p-3">
+            <div className="bg-black border border-border rounded-lg p-3">
               <p className="text-xs text-white">
                 💡 请确保 API Key 有足够的配额。首次使用建议先执行健康检查测试连接。
               </p>

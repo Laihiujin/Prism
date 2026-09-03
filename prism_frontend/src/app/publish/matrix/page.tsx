@@ -106,9 +106,9 @@ const INTERVAL_OPTIONS: {
 
 const PREVIEW_ACCOUNTS = ["A账号", "B账号", "C账号"]
 const PREVIEW_COLORS = [
-  "bg-black border-white/17 text-white",
-  "bg-black border-white/17 text-white",
-  "bg-black border-white/17 text-white"
+  "bg-black border-border text-white",
+  "bg-black border-border text-white",
+  "bg-black border-border text-white"
 ]
 
 interface PublishPlan {
@@ -1185,7 +1185,7 @@ export default function PublishPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs border-white/17 text-white hover:bg-black"
+                  className="h-7 text-xs border-border text-white hover:bg-black"
                   onClick={handleBatchAIGenerate}
                   disabled={isGeneratingAI}
                 >
@@ -1786,7 +1786,7 @@ export default function PublishPage() {
                         <div className="relative w-10 h-10">
                           <div className={cn(
                             "w-10 h-10 rounded-full bg-black flex items-center justify-center border overflow-hidden",
-                            isExpired ? "border-white/17" : "border-border/70"
+                            isExpired ? "border-border" : "border-border/70"
                           )}>
                             {account.avatar ? (
                               <img
@@ -1828,7 +1828,7 @@ export default function PublishPage() {
                             variant={statusVariant}
                             className={cn(
                               "text-[10px] h-5 px-1.5",
-                              statusVariant === "outline" && "bg-black border-white/17 text-white"
+                              statusVariant === "outline" && "bg-black border-border text-white"
                             )}
                           >
                             {statusText}
