@@ -26,17 +26,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from .core import settings, logger, setup_logging, AppException
 from .schemas.common import ErrorResponse, HealthResponse
 from .api.v1.router import api_router
-from .api.v1.ai.router import set_ai_client
 # Removed: old login router - now using V2 auth router in api.v1.auth
 # from .api.login import router as login_router
-
-# AI Service Imports
-try:
-    from ai_service import AIClient, ModelManager, AILogger
-    AI_SERVICE_AVAILABLE = True
-except ImportError:
-    AI_SERVICE_AVAILABLE = False
-    logger.warning("AI Service modules not found")
 
 
 # 初始化日志
@@ -287,25 +278,8 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"批量发布服务初始化失败: {e}")
 
-    # 初始化AI服务（可选）
-    if AI_SERVICE_AVAILABLE:
-        try:
-            logger.info("Initializing AI service...")
-            ai_logger = AILogger(db_path=settings.AI_LOGS_DB_PATH)
-
-            config_path = settings.BASE_DIR / "ai_service" / "config.json"
-            ai_model_manager = ModelManager(config_path=str(config_path))
-
-            logger.info(f"AI model manager initialized with {len(ai_model_manager.providers)} providers")
-            ai_client = AIClient(ai_model_manager, ai_logger)
-
-            # Set global AI client for router
-            set_ai_client(ai_client)
-            logger.info("AI服务初始化成功")
-        except Exception as e:
-            logger.warning(f"AI服务初始化失败（可选功能）: {e}")
-    else:
-        logger.warning("AI服务模块未找到，跳过初始化")
+    # AI 服务配置统一走 `/api/v1/ai` 的 model-configs（ai_model_configs 表）按需加载，
+    # 不再在启动时初始化独立的 AIClient / ModelManager（旧的 ai_service/config.json 已废弃）。
 
 
     # Initialize OpenClaw/Hermes agent

@@ -538,10 +538,10 @@ async def system_health_check():
         except Exception:
             health_status["browser"] = "unhealthy"
         
-        # 检查 AI 服务
+        # 检查 AI 服务（统一走 model-configs 配置源）
         try:
-            from ai_service import AIClient
-            health_status["ai_service"] = "healthy"
+            from fastapi_app.api.v1.ai.router import get_ai_config
+            health_status["ai_service"] = "healthy" if get_ai_config("chat") else "not_available"
         except Exception:
             health_status["ai_service"] = "not_available"
         
