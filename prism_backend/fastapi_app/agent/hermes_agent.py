@@ -36,13 +36,13 @@ from .hermes_config import (
 
 _ANSI_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
-# Project skill preloaded into every Hermes session by default. The skill lives
-# at tools/hermes-home/skills/software-development/prism-project-layout/SKILL.md
-# (docs/hermes-skills/prism-project-layout/SKILL.md is the repo source) and
-# describes the Prism layout, all backend API routes, the prism CLI, and the
-# Hermes MCP tool catalog. Passing --skills makes it active guidance for the
-# whole session instead of only being discoverable on demand.
-DEFAULT_PRELOAD_SKILL = "prism-project-layout"
+# Project skills preloaded into every Hermes session by default. They live at
+# tools/hermes-home/skills/software-development/<name>/SKILL.md (the docs/
+# hermes-skills/<name>/SKILL.md is the repo source) and describe the Prism
+# layout/routes/CLI/MCP tools plus the platform 网感 title-topic copywriting
+# rules. Passing --skills makes them active guidance for the whole session
+# instead of only being discoverable on demand. Accepts a comma-separated list.
+DEFAULT_PRELOAD_SKILL = "prism-project-layout,prism-copywrite"
 
 _dashboard_process: Optional[asyncio.subprocess.Process] = None
 _dashboard_log_task: Optional[asyncio.Task[None]] = None
