@@ -21,7 +21,6 @@ import {
   Boxes,
   Network,
   MessageCircle,
-  Server,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -133,7 +132,6 @@ const navSections: NavSection[] = [
     label: "智能",
     items: [
       { label: "Hermes Agent", href: "/ai-agent", icon: HermesLogoIcon },
-      { label: "模型 / MCP / 插件", href: "/ai-agent/interop", icon: Server },
       { label: "HermesChat", href: "/hermes-chat", icon: MessageCircle },
       { label: "开发者工具", href: "/tools", icon: Boxes },
     ],
