@@ -7,7 +7,8 @@
 | `prism_demo.mp4` | 14 页功能巡览(仪表盘 / 账号管理 / 素材 / 代理 / 矩阵发布 / 任务 / 数据 / Agent / 工具 / 设置 …) | 1280×720 · 24fps · 32s |
 | `prism_hyperframes_demo.gif` | 同上,循环 GIF | 720×405 · 256 帧 · 循环 |
 | `prism_wrap.mp4` | 真实交互 walkthrough(登录弹窗 / Agent 对话),纯黑白包装(标题卡 + 页面字幕 + 段间转场),基于新 UI 录屏 | 1280×720 · 24fps · 59.4s |
-| `prism_wrap.gif` | 同上,循环 GIF | 720×405 · 475 帧 · 循环 |
+| `prism_wrap.gif` | 同上,循环 GIF(包装版,README 推荐使用) | 720×405 · 475 帧 · 循环 |
+| `prism_walkthrough.gif` | 同一交互的**原始录屏** GIF(无标题/字幕/转场叠加) | 720×405 · 475 帧 · 循环 |
 
 - 均由 HyperFrames 确定性合成(SMPTE 帧级寻址,`window.__timelines["master"]` 驱动)。
 - 统一 **纯黑白** 单色风格:黑底 + 白色文字/高光,仅用中性灰做层次,无任何彩色;标题/页码用白色→浅灰渐变,配淡白辉光与细网格(动画用 HyperFrames 支持的 opacity/x/y/scale/width 属性 + expo/back 缓动,含图片 Ken Burns)。
