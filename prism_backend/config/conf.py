@@ -95,6 +95,10 @@ def _find_preferred_local_chrome() -> str | None:
         APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win64" / "chrome.exe",
         APP_ROOT / "browsers" / "chromium" / "chromium-*" / "chrome-win" / "chrome.exe",
         APP_ROOT / "browsers" / "chrome-for-testing" / "chrome-*" / "chrome-win64" / "chrome.exe",
+        # tools 组件目录（跨平台；patchright 布局）
+        APP_ROOT / "prism_backend" / "tools" / "browsers" / "chromium-*" / "chrome-mac" / "Chromium.app" / "Contents" / "MacOS" / "Chromium",
+        APP_ROOT / "prism_backend" / "tools" / "browsers" / "chromium-*" / "chrome-win64" / "chrome.exe",
+        APP_ROOT / "prism_backend" / "tools" / "browsers" / "chromium-*" / "chrome-linux" / "chrome",
     ):
         matches = sorted(glob.glob(str(pattern)))
         if matches:

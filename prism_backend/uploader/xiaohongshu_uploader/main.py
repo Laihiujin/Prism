@@ -7,7 +7,7 @@ import asyncio
 
 from config.conf import LOCAL_CHROME_PATH
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
-from myUtils.browser_context import build_context_options
+from myUtils.browser_context import build_context_options, launch_optional_browser
 from myUtils.close_guide import try_close_guide
 from utils.log import xiaohongshu_logger
 
@@ -105,7 +105,7 @@ async def dismiss_xhs_tour(page, max_attempts: int = 6):
 
 async def cookie_auth(account_file):
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=HEADLESS_FLAG)
+        browser = await launch_optional_browser(playwright, platform="xiaohongshu", headless=HEADLESS_FLAG)
         context = await browser.new_context(**build_context_options(storage_state=account_file))
         context = await set_init_script(context)
         # 创建一个新的页面
@@ -148,7 +148,7 @@ async def xiaohongshu_cookie_gen(account_file):
             'headless': HEADLESS_FLAG
         }
         # Make sure to run headed.
-        browser = await playwright.chromium.launch(**options)
+        browser = await launch_optional_browser(playwright, platform="xiaohongshu", **options)
         # Setup context however you like.
         context = await browser.new_context(**build_context_options())  # Pass any options
         context = await set_init_script(context)
@@ -158,6 +158,100 @@ async def xiaohongshu_cookie_gen(account_file):
         await page.pause()
         # 点击调试器的继续，保存cookie
         await context.storage_state(path=account_file)
+
+
+# ---------------------------------------------------------------------------
+# 小红书发布可靠化：绕过本机 fake-IP(TUN) DNS + 只应用账号指纹 UA（不注入指纹 init script）
+# 实测（2026-09）：
+#   - creator.xiaohongshu.com 若被 TUN(utun6) 用 fake-IP(198.18.x.x) 劫持 DNS，Chromium 直连会被
+#     ERR_CONNECTION_REFUSED（curl 通、Chromium 不通）。用 --host-resolver-rules 把域映射到真实
+#     公网 IP（DoH 解析）即可直连。
+#   - get_init_script(指纹) 注入 canvas/webgl/navigator 伪装会让该域连接被拒，因此只应用指纹 UA。
+# ---------------------------------------------------------------------------
+def _ip_is_fake(ip: str) -> bool:
+    """198.18.0.0/15 是代理 TUN/假地址保留段（RFC 2544 测试网段）。"""
+    try:
+        import ipaddress
+        n = int(ipaddress.ip_address(ip))
+        return 198 * 65536 <= n < 200 * 65536
+    except Exception:
+        return False
+
+
+def _resolve_public_ip(host: str, timeout: float = 8.0) -> str:
+    """用 DoH 解析真实公网 IP，绕过本机被污染的 DNS。"""
+    import json as _json
+    import urllib.request
+    for template in (
+        "https://dns.google/resolve?name={}&type=A",
+        "https://cloudflare-dns.com/dns-query?name={}&type=A",
+    ):
+        url = template.format(host)
+        req = urllib.request.Request(url, headers={"Accept": "application/dns-json"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = _json.loads(resp.read().decode("utf-8"))
+            for ans in data.get("Answer", []):
+                ip = ans.get("data", "")
+                if ip and ip.count(".") == 3:
+                    return ip
+        except Exception:
+            continue
+    return ""
+
+
+def _build_xhs_browser_args() -> list[str]:
+    """返回直连的浏览器 args：无代理 + 禁 QUIC + （检测到 fake-IP 时）host-resolver 直连真实 IP。"""
+    args = [
+        "--no-sandbox", "--disable-setuid-sandbox",
+        "--disable-blink-features=AutomationControlled",
+        "--no-proxy-server", "--proxy-bypass-list=*",
+        "--disable-quic",
+    ]
+    host = "creator.xiaohongshu.com"
+    try:
+        import socket
+        infos = socket.getaddrinfo(host, 443)
+        ips = {str(info[4][0]) for info in infos}
+        if any(_ip_is_fake(ip) for ip in ips):
+            real = _resolve_public_ip(host)
+            if real:
+                args.append(f"--host-resolver-rules=MAP {host} {real}")
+                print(f"[xhs] 检测到 fake-IP DNS，直连真实 IP: {host} -> {real}")
+    except Exception as exc:
+        print(f"[xhs] DNS 检测跳过: {exc}")
+    return args
+
+
+def _derive_xhs_user_id(account_file: str) -> str:
+    """从账号 storage_state 的 user_info 提取 user_id（兜底用文件名）。"""
+    try:
+        import json as _json
+        with open(account_file, encoding="utf-8") as f:
+            data = _json.load(f)
+        uid = (data.get("user_info") or {}).get("user_id", "")
+        if uid:
+            return uid
+    except Exception:
+        pass
+    base = os.path.basename(account_file)
+    head = base.split(".", 1)[0]
+    return head.split("_", 1)[-1] if "_" in head else head
+
+
+def _apply_fingerprint_ua(account_file: str, context_opts: dict) -> None:
+    """给 context 应用账号指纹 UA（不注入指纹 init script——实测会触发该域连接被拒）。"""
+    try:
+        from myUtils.device_fingerprint import device_fingerprint_manager
+        uid = _derive_xhs_user_id(account_file)
+        fp = device_fingerprint_manager.get_or_create_fingerprint(
+            account_id=uid, user_id=uid, platform="xiaohongshu", policy=None)
+        ua = fp.get("user_agent")
+        if ua:
+            context_opts["user_agent"] = ua
+            print(f"[xhs] 已应用账号指纹 UA: {uid}")
+    except Exception as exc:
+        print(f"[xhs] 指纹 UA 应用失败（回退默认）: {exc}")
 
 
 class XiaoHongShuVideo(object):
@@ -210,25 +304,29 @@ class XiaoHongShuVideo(object):
         }
         if self.local_executable_path:
             launch_kwargs["executable_path"] = self.local_executable_path
-        
+
         if self.proxy:
             launch_kwargs["proxy"] = self.proxy
             xiaohongshu_logger.info(f"Using Proxy: {self.proxy.get('server')}")
+        else:
+            # 直连：绕开本机代理/TUN，若 DNS 被 fake-IP 污染则 host-resolver 直连真实 IP
+            launch_kwargs["args"] = _build_xhs_browser_args()
 
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="xiaohongshu", **launch_kwargs)
         # 创建一个浏览器上下文，使用指定的 cookie 文件
-        context = await browser.new_context(
-            **build_context_options(
-                viewport={"width": 1600, "height": 900},
-                storage_state=f"{self.account_file}"
-            )
+        ctx_opts = build_context_options(
+            viewport={"width": 1600, "height": 900},
+            storage_state=f"{self.account_file}"
         )
+        # 应用账号指纹 UA（不注入指纹 init script，避免触发该域连接被拒）
+        _apply_fingerprint_ua(self.account_file, ctx_opts)
+        context = await browser.new_context(**ctx_opts)
         context = await set_init_script(context)
 
         # 创建一个新的页面
         page = await context.new_page()
-        # 访问指定的 URL
-        await page.goto("https://creator.xiaohongshu.com/publish/publish?from=homepage&target=video")
+        # 访问指定的 URL（用 domcontentloaded，避免 CDN 子域 fake-IP 导致 load 卡死）
+        await page.goto("https://creator.xiaohongshu.com/publish/publish?from=homepage&target=video", wait_until="domcontentloaded")
         await dismiss_xhs_tour(page)
         xiaohongshu_logger.info(f'[+]正在上传-------{self.title}.mp4')
         # 等待页面跳转到指定的 URL，没进入，则自动等待到超时
@@ -238,6 +336,8 @@ class XiaoHongShuVideo(object):
         await page.locator("div[class^='upload-content'] input[class='upload-input']").set_input_files(self.file_path)
 
         # 等待页面跳转到指定的 URL 2025.01.08修改在原有基础上兼容两种页面
+        # 健壮的上传成功检测：兼容多种上传成功标识（文案关键词 + stage 组件 + 标题框出现兜底）
+        _UPLOAD_SUCCESS_KEYWORDS = ('上传成功', '分辨率', '重新上传', '编辑封面', '已上传', '已选择', '100%')
         while True:
             try:
                 # 等待upload-input元素出现
@@ -246,20 +346,33 @@ class XiaoHongShuVideo(object):
                 preview_new = await upload_input.query_selector(
                     'xpath=following-sibling::div[contains(@class, "preview-new")]')
                 if preview_new:
-                    # 在preview-new元素中查找包含"上传成功"的stage元素
-                    stage_elements = await preview_new.query_selector_all('div.stage')
-                    upload_success = False
-                    for stage in stage_elements:
-                        text_content = await page.evaluate('(element) => element.textContent', stage)
-                        if '上传成功' in text_content:
-                            upload_success = True
-                            break
+                    # 第一步：读取整个预览区文本，命中任意关键词即视为上传成功
+                    all_text = await preview_new.inner_text()
+                    upload_success = any(kw in all_text for kw in _UPLOAD_SUCCESS_KEYWORDS)
+
+                    # 第二步：旧结构兜底——检查 stage 组件文本
+                    if not upload_success:
+                        stage_elements = await preview_new.query_selector_all('div.stage')
+                        for stage in stage_elements:
+                            text_content = await page.evaluate('(element) => element.textContent', stage)
+                            if '上传成功' in text_content or '分辨率' in text_content:
+                                upload_success = True
+                                break
+
                     if upload_success:
                         xiaohongshu_logger.info("[+] 检测到上传成功标识!")
                         break  # 成功检测到上传成功后跳出循环
-                    else:
-                        print("  [-] 未找到上传成功标识，继续等待...")
+
+                    xiaohongshu_logger.info(
+                        f"  [-] 未找到上传成功标识，继续等待... 当前预览区: {all_text.strip()[:60]!r}"
+                    )
+                    await asyncio.sleep(2)
                 else:
+                    # 兜底：标题框出现即视为上传完成并进入编辑态
+                    title_container = page.locator('input[placeholder*="填写标题"]')
+                    if await title_container.count() > 0 and await title_container.is_visible():
+                        xiaohongshu_logger.info("[+] 未看到预览区，但标题框已出现，继续")
+                        break
                     print("  [-] 未找到预览元素，继续等待...")
                     await asyncio.sleep(1)
             except Exception as e:
@@ -349,6 +462,12 @@ class XiaoHongShuVideo(object):
                         # 按 Enter 选择第一个推荐项（将 <span class="suggestion"> 转换为 <a class="tiptap-topic">）
                         await page.press(selector, "Enter")
                         await asyncio.sleep(0.3)
+
+                        # 话题后补一个空格分隔（对齐抖音发布 skill：一次性输入完整 #关键词 后按空格确认，
+                        # 避免多个话题/正文粘连成「#话题1#话题2」）。Enter 已把 #tag 转成话题链接，
+                        # 这里再补一个 space 把话题彼此、以及话题与后续正文隔开。
+                        await page.keyboard.press("Space")
+                        await asyncio.sleep(0.1)
 
                         # 验证标签是否成功转换为链接
                         try:

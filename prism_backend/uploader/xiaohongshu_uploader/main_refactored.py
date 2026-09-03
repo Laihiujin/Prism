@@ -22,6 +22,7 @@ from utils.login_qrcode import save_data_url_image
 from utils.log import xiaohongshu_logger
 from utils.browser_dom import handle_upload_error as shared_handle_upload_error
 from utils.browser_dom import select_topics_exact_with_editor
+from myUtils.browser_context import launch_optional_browser
 
 XHS_DEFAULT_CREATOR_BASE_URL = "https://creator.xiaohongshu.com"
 XHS_CREATOR_BASE_URL_ENV = "SAU_XHS_CREATOR_BASE_URL"
@@ -162,9 +163,9 @@ async def cookie_auth(account_file):
 
     async with async_playwright() as playwright:
         if LOCAL_CHROME_PATH:
-            browser = await playwright.chromium.launch(headless=True, executable_path=LOCAL_CHROME_PATH)
+            browser = await launch_optional_browser(playwright, platform="xiaohongshu", headless=True, executable_path=LOCAL_CHROME_PATH)
         else:
-            browser = await playwright.chromium.launch(headless=True, channel="chromium")
+            browser = await launch_optional_browser(playwright, platform="xiaohongshu", headless=True, channel="chromium")
         try:
             context = await browser.new_context(storage_state=account_file)
             context = await set_init_script(context)
@@ -240,7 +241,7 @@ async def xiaohongshu_cookie_gen(
             launch_kwargs["executable_path"] = LOCAL_CHROME_PATH
         else:
             launch_kwargs["channel"] = "chromium"
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="xiaohongshu", **launch_kwargs)
         context = await browser.new_context()
         context = await set_init_script(context)
         qrcode_path = None
@@ -632,7 +633,7 @@ class XiaoHongShuVideo(XiaoHongShuBaseUploader):
             launch_kwargs["executable_path"] = LOCAL_CHROME_PATH
         else:
             launch_kwargs["channel"] = "chromium"
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="xiaohongshu", **launch_kwargs)
         context = await browser.new_context(
             permissions=["geolocation"],
             storage_state=self.account_file,
@@ -760,7 +761,7 @@ class XiaoHongShuNote(XiaoHongShuBaseUploader):
             launch_kwargs["executable_path"] = LOCAL_CHROME_PATH
         else:
             launch_kwargs["channel"] = "chromium"
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="xiaohongshu", **launch_kwargs)
         context = await browser.new_context(
             permissions=["geolocation"],
             storage_state=self.account_file,

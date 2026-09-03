@@ -343,6 +343,100 @@ def check_browser_availability() -> dict:
     return result
 
 
+def _repo_root() -> Path:
+    """项目根目录（Prism）。chrome_detector.py 位于 prism_backend/utils/ 下。"""
+    return Path(__file__).resolve().parents[2]
+
+
+def _scan_repo_browsers() -> list:
+    """
+    遍历仓库工具浏览器目录下真实存在的浏览器可执行文件（按当前平台）。
+    Prism 现在的浏览器组件装到 prism_backend/tools/browsers/（tools 组件），
+    同时兼容历史仓库根目录 browsers/。
+    返回 dict 列表：{name, kind, path, source='repo'}；找不到返回 []。
+    （目录只含 DEPENDENCIES_VALIDATED/INSTALLATION_COMPLETE 等标记而无 exe 的视为未安装，不返回。）
+    """
+    browsers_root = _repo_root() / "browsers"
+    tools_root = _repo_root() / "prism_backend" / "tools" / "browsers"
+    roots = [r for r in (tools_root, browsers_root) if r.exists()]
+    found: list = []
+    if not roots:
+        return found
+
+    patterns = {
+        "Mozilla Firefox": (
+            "firefox",
+            [
+                "firefox-*/firefox/Nightly.app/Contents/MacOS/firefox",
+                "firefox-*/firefox/Contents/MacOS/firefox",
+                "firefox-*/firefox/firefox",
+                "firefox-*/firefox/firefox.exe",
+                "firefox/Contents/MacOS/firefox",
+            ],
+        ),
+        "Chromium": (
+            "chromium",
+            [
+                "chromium-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+                "chromium-*/chrome-mac/Chromium",
+                "chromium-*/chrome-win64/chrome.exe",
+                "chromium-*/chrome-win/chrome.exe",
+                "chromium-*/chrome-linux/chrome",
+                "chrome-for-testing/chrome-*/chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+                "chrome-for-testing/chrome-*/chrome-win64/chrome.exe",
+                "chrome-for-testing/chrome-*/chrome-linux/chrome",
+            ],
+        ),
+    }
+
+    seen_paths: set = set()
+    for root in roots:
+        for name, (kind, pats) in patterns.items():
+            for pat in pats:
+                matches = sorted(glob.glob(str(root / pat)))
+                for p in matches:
+                    p = str(Path(p).resolve())
+                    if os.path.isfile(p) and p not in seen_paths:
+                        found.append({
+                            "name": name,
+                            "kind": kind,
+                            "path": p,
+                            "source": "repo",
+                        })
+                        seen_paths.add(p)
+                        break  # 每个浏览器每目录只取一个（glob 已按版本名排序取最新）
+    return found
+
+
+def list_detected_browsers() -> list:
+    """
+    选择性遍历：仓库内(browsers/) + 外机(系统安装) 的所有浏览器候选。
+    返回 dict 列表：{name, kind, path, source('system'|'repo'), available}。
+    detect_browser() 仍返回「一个」最佳选择；本函数返回全部候选，供 UI/调用方按 source 区分选择。
+    """
+    env_info = load_runtime_env()
+    platform_key = "mac" if env_info["is_mac"] else ("win" if env_info["is_windows"] else "linux")
+
+    system = []
+    for name, spec in BROWSER_BINARIES.items():
+        path = _find_browser_on_platform(name, platform_key)
+        if path:
+            system.append({
+                "name": name,
+                "kind": spec["kind"],
+                "path": path,
+                "source": "system",
+                "available": True,
+            })
+
+    repo = []
+    for b in _scan_repo_browsers():
+        b["available"] = True
+        repo.append(b)
+
+    return [*system, *repo]
+
+
 if __name__ == "__main__":
     from utils.runtime_env import get_env_info
 

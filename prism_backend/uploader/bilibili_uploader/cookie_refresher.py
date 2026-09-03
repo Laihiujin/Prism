@@ -7,7 +7,7 @@ import json
 import os
 from utils.automation_provider import async_playwright
 from utils.log import bilibili_logger
-from myUtils.browser_context import build_context_options, build_browser_args
+from myUtils.browser_context import build_context_options, build_browser_args, launch_optional_browser
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
 
 
@@ -86,7 +86,7 @@ async def refresh_bilibili_cookies(cookie_data: dict, proxy: dict = None) -> dic
                  launch_kwargs["proxy"] = proxy
                  bilibili_logger.info(f"Using Proxy: {proxy.get('server')}")
 
-            browser = await playwright.chromium.launch(**launch_kwargs)
+            browser = await launch_optional_browser(playwright, platform="bilibili", **launch_kwargs)
             
             # 创建上下文并注入 Cookie
             context = await browser.new_context(**build_context_options())
