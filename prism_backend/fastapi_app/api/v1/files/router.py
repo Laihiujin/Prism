@@ -1061,148 +1061,21 @@ async def batch_generate_ai_metadata(
 ):
     """批量生成AI元数据"""
     try:
-        from ai_service.model_manager import get_model_manager
+        from ai_service.metadata_generation_service import generate_metadata_for_files
 
-        cursor = db.cursor()
-        results = []
-        success_count = 0
-        failed_count = 0
-
-        # 获取AI模型管理器
-        model_manager = get_model_manager()
-
-        for file_id in request.file_ids:
-            try:
-                # 查询文件信息
-                cursor.execute("""
-                    SELECT id, filename, file_path, title, tags, ai_title, ai_description, ai_tags
-                    FROM file_records
-                    WHERE id = ?
-                """, (file_id,))
-
-                row = cursor.fetchone()
-                if not row:
-                    results.append({
-                        "file_id": file_id,
-                        "status": "failed",
-                        "error": "文件不存在"
-                    })
-                    failed_count += 1
-                    continue
-
-                (
-                    file_id_val,
-                    filename,
-                    file_path,
-                    user_title,
-                    user_tags,
-                    existing_ai_title,
-                    existing_ai_desc,
-                    existing_ai_tags,
-                ) = row
-
-                # 检查是否已有AI内容且不强制重新生成
-                if not request.force_regenerate and existing_ai_title:
-                    results.append({
-                        "file_id": file_id,
-                        "status": "skipped",
-                        "message": "已有AI内容，跳过生成"
-                    })
-                    continue
-
-                # 使用AI生成元数据
-                prompt = f"""请基于「文件名」以及「用户已有标题/标签」，生成适合短视频平台的 AI 标题、描述和标签，并尽量做“改编优化”而不是完全重写。
-
-输入：
-- 文件名：{filename}
-- 用户标题（可为空）：{user_title or ""}
-- 用户标签（可为空，可能为 JSON 数组/空格分隔/逗号分隔）：{user_tags or ""}
-
-输出要求（严格 JSON，禁止 markdown/解释/多余文本）：
-{{
-  "title": "标题（<=30字，中文优先）",
-  "description": "描述（50-120字，中文优先）",
-  "tags": ["标签1", "标签2", "标签3"]
-}}
-
-约束：
-1) 如果用户标题/标签存在：保持主题一致、保留核心意思，在其基础上润色优化即可
-2) 如出现英文词：翻译为中文（专有名词可保留原文并加中文释义）
-3) tags 输出 1-4 个，去重，不要带 # 符号（系统会自动加 #）
-4) title/description/tags 全部用中文表达为主，不要表情符号
-"""
-
-                # 调用AI模型
-                response = await model_manager.call_current_model(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7,
-                    max_tokens=500
-                )
-
-                if response["status"] != "success":
-                    raise Exception(response.get("error", "AI调用失败"))
-
-                # 解析AI返回的JSON
-                import json
-                import re
-
-                content = response["content"]
-                # 尝试提取JSON
-                json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
-                if json_match:
-                    metadata = json.loads(json_match.group())
-                else:
-                    metadata = json.loads(content)
-
-                ai_title = str(metadata.get("title", "") or "").strip()
-                ai_description = str(metadata.get("description", "") or "").strip()
-                raw_tags = metadata.get("tags", [])
-                if isinstance(raw_tags, str):
-                    # tolerate accidental "tag1 tag2" output
-                    raw_tags = [t for t in re.split(r"[\s,，]+", raw_tags) if t and t.strip()]
-                ai_tags = []
-                if isinstance(raw_tags, list):
-                    for t in raw_tags:
-                        s = str(t).strip()
-                        if not s:
-                            continue
-                        s = s.lstrip("#").strip()
-                        if s and s not in ai_tags:
-                            ai_tags.append(s)
-                ai_tags = ai_tags[:4]
-
-                # 保存到数据库
-                cursor.execute("""
-                    UPDATE file_records
-                    SET ai_title = ?, ai_description = ?, ai_tags = ?, ai_generated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                """, (ai_title, ai_description, json.dumps(ai_tags, ensure_ascii=False), file_id))
-                db.commit()
-
-                results.append({
-                    "file_id": file_id,
-                    "status": "success",
-                    "ai_title": ai_title,
-                    "ai_description": ai_description,
-                    "ai_tags": ai_tags
-                })
-                success_count += 1
-
-                logger.info(f"AI metadata generated for file {file_id}: {ai_title}")
-
-            except Exception as e:
-                logger.error(f"Failed to generate AI metadata for file {file_id}: {e}")
-                results.append({
-                    "file_id": file_id,
-                    "status": "failed",
-                    "error": str(e)
-                })
-                failed_count += 1
+        summary = await generate_metadata_for_files(
+            db=db,
+            file_ids=request.file_ids,
+            force_regenerate=request.force_regenerate,
+            platform=request.platform,
+            language=request.language,
+            logger=logger,
+        )
 
         return AIMetadataGenerateResponse(
-            success_count=success_count,
-            failed_count=failed_count,
-            results=results
+            success_count=summary["success_count"],
+            failed_count=summary["failed_count"],
+            results=summary["results"],
         )
 
     except Exception as e:

@@ -131,7 +131,8 @@ Hermes 通过 `tools/hermes-home/config.yaml` 的 `mcp_servers.prism` 注册了�
 **账号/素材/发布（hermes_tools.py）**
 - `list_accounts` — 列出可用账号（platform/status 筛选）
 - `list_files` / `get_file_detail` — 素材视频列表 / 详情
-- `generate_ai_metadata` — AI 生成标题/标签
+- `generate_ai_metadata` — AI 生成标题/标签（可传 `platform` 启用平台网感文案规则 + 字数/话题红线，见 `prism-copywrite`）
+- `POST /api/v1/ai/chat`（设置页"标题生成 / 对话模型"）— 请求体可带 `platform`（`douyin`/`xiaohongshu`/`kuaishou`/`bilibili`/`video_account`/`tiktok`）与 `language`（`zh`/`en`/`bilingual`，TikTok 默认双语），生成结果按平台红线截断。
 - `publish_batch_videos` — 批量发布视频
 - `create_publish_preset` / `list_publish_presets` / `use_preset_to_publish` — 发布预设
 - `get_task_status` / `list_tasks_status` — 任务状态查询

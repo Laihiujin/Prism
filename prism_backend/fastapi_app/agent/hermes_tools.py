@@ -273,7 +273,8 @@ class GenerateAIMetadataTool(BaseTool):
     name: str = "generate_ai_metadata"
     description: str = (
         "⭐ 基于视频文件名自动生成标题和标签\n"
-        "在发布前使用此工具，可以为视频生成合适的标题和 4 个标签。"
+        "在发布前使用此工具，可以为视频生成合适的标题和标签（按平台字数/个数红线截断，"
+        "可传 platform/language 走平台网感规则，TikTok 默认中英双语）。"
     )
     parameters: dict = {
         "type": "object",
@@ -287,6 +288,16 @@ class GenerateAIMetadataTool(BaseTool):
                 "type": "boolean",
                 "description": "是否强制重新生成（即使已有AI内容）",
                 "default": False
+            },
+            "platform": {
+                "type": "string",
+                "description": "目标平台 douyin/xiaohongshu/kuaishou/bilibili/video_account；为空则通用生成（启用平台网感文案规则）",
+                "default": ""
+            },
+            "language": {
+                "type": "string",
+                "description": "输出语言 zh/en/bilingual；TikTok 默认 bilingual（中英双语）",
+                "default": ""
             }
         },
         "required": ["file_ids"]
@@ -296,6 +307,8 @@ class GenerateAIMetadataTool(BaseTool):
         self,
         file_ids: List[int],
         force_regenerate: bool = False,
+        platform: str = "",
+        language: str = "",
         **kwargs
     ) -> ToolResult:
         """生成AI元数据"""
@@ -305,7 +318,9 @@ class GenerateAIMetadataTool(BaseTool):
                     f"{API_BASE_URL}/files/batch-generate-metadata",
                     json={
                         "file_ids": file_ids,
-                        "force_regenerate": force_regenerate
+                        "force_regenerate": force_regenerate,
+                        "platform": platform or None,
+                        "language": language or None,
                     }
                 )
                 response.raise_for_status()
