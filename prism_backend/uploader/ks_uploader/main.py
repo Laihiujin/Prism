@@ -7,7 +7,7 @@ import asyncio
 
 from config.conf import LOCAL_CHROME_PATH
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
-from myUtils.browser_context import build_context_options
+from myUtils.browser_context import build_context_options, launch_optional_browser
 from myUtils.close_guide import try_close_guide
 from utils.files_times import get_absolute_path
 from utils.log import kuaishou_logger
@@ -316,11 +316,10 @@ async def _fill_title_and_topics(page, title: str, topics: list) -> bool:
         kuaishou_logger.warning("标题为空，跳过填充")
         return False
 
-    # 清理标签（去重、去#、限制3个）
+    # 快手需要填标签：按「标题 + 换行 + #标签」组合；有标签才追加标签行
     cleaned_topics = [str(t).strip().lstrip("#") for t in (topics or []) if str(t).strip()]
     cleaned_topics = list(dict.fromkeys(cleaned_topics))[:3]  # 去重 + 限制3个
 
-    # 组合内容：标题 + 换行 + 标签
     combined_content = title_value
     if cleaned_topics:
         tags_line = " ".join([f"#{tag}" for tag in cleaned_topics])
@@ -400,7 +399,7 @@ async def _fill_title_and_topics(page, title: str, topics: list) -> bool:
 
 async def cookie_auth(account_file):
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=HEADLESS_FLAG)
+        browser = await launch_optional_browser(playwright, platform="kuaishou", headless=HEADLESS_FLAG)
         context = await browser.new_context(**build_context_options(storage_state=account_file))
         context = await set_init_script(context)
         page = await context.new_page()
@@ -467,7 +466,7 @@ async def get_ks_cookie(account_file):
             'headless': HEADLESS_FLAG,  # Set headless option here
         }
         # Make sure to run headed.
-        browser = await playwright.chromium.launch(**options)
+        browser = await launch_optional_browser(playwright, platform="kuaishou", **options)
         # Setup context however you like.
         context = await browser.new_context(**build_context_options())  # Pass any options
         context = await set_init_script(context)
@@ -506,7 +505,7 @@ class KSVideo(object):
             launch_kwargs["proxy"] = self.proxy
             kuaishou_logger.info(f"Using Proxy: {self.proxy.get('server')}")
 
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="kuaishou", **launch_kwargs)
         context = await browser.new_context(**build_context_options(storage_state=f"{self.account_file}"))
         context = await set_init_script(context)
 
