@@ -37,6 +37,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { DataTable } from "@/components/ui/data-table"
 import { backendBaseUrl } from "@/lib/env"
+import { formatBeijingDateTime } from "@/lib/time"
 import { type Account, type PlatformKey } from "@/lib/mock-data"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Progress } from "@/components/ui/progress"
@@ -144,10 +145,19 @@ function AccountPageContent() {
           ? payload.data
           : []
       return {
-        data: items.map((item: Record<string, unknown>) => ({
-          ...item,
-          id: String(item.id ?? item.account_id ?? ""),
-        })),
+        data: items.map((item: Record<string, unknown>) => {
+          // 后端 /api/v1/accounts 返回 last_checked 而非 boundAt；
+          // 这里回填 boundAt，避免「绑定时间」列显示为 "-"（与旧 /api/accounts 路由行为一致）
+          const lastChecked =
+            typeof item.last_checked === "string" || typeof item.last_checked === "number"
+              ? (item.last_checked as string | number)
+              : null
+          return {
+            ...item,
+            id: String(item.id ?? item.account_id ?? ""),
+            boundAt: formatBeijingDateTime(lastChecked ?? Date.now()),
+          }
+        }),
       }
     },
     refetchInterval: 10000,
