@@ -42,7 +42,7 @@ _ANSI_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 # layout/routes/CLI/MCP tools plus the platform 网感 title-topic copywriting
 # rules. Passing --skills makes them active guidance for the whole session
 # instead of only being discoverable on demand. Accepts a comma-separated list.
-DEFAULT_PRELOAD_SKILL = "prism-project-layout,prism-copywrite"
+DEFAULT_PRELOAD_SKILL = "prism-project-layout,prism-title-topic"
 
 _dashboard_process: Optional[asyncio.subprocess.Process] = None
 _dashboard_log_task: Optional[asyncio.Task[None]] = None

@@ -1,5 +1,5 @@
 ---
-name: prism-copywrite
+name: prism-title-topic
 description: "Prism 标题/话题生成技能：给出各平台（抖音/小红书）的「网感」标题与话题规则、生成调用方式与自检标准，让发布标题更符合平台调性。"
 version: 1.0.0
 author: Prism
@@ -7,7 +7,7 @@ license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
-    tags: [Prism, copywrite, title, 标题, topic, 话题, douyin, xiaohongshu]
+    tags: [Prism, title, 标题, topic, 话题, douyin, xiaohongshu]
     related_skills: [prism-project-layout]
 prerequisites:
   commands: [prism]
@@ -27,22 +27,23 @@ Prism 是多平台内容编排与发布项目。本技能给出 **抖音** 与 *
 
 - **后端 API**：`POST /api/v1/files/batch-generate-metadata`
   - body：`{ "file_ids": [..], "force_regenerate": false, "platform": "douyin" | "xiaohongshu" | "tiktok" | 空, "language": "zh" | "en" | "bilingual" | 空 }`
-  - 返回每条的 `ai_title` / `ai_description` / `ai_tags`。
+  - 返回每条的 `ai_title` / `ai_tags`（**只出标题+标签，无描述**；描述是发布时独立字段）。
 - **Hermes MCP 工具**：`generate_ai_metadata`（`file_ids` + `force_regenerate` + `platform` + `language`），
   平台与语言通过同名字段透传。
-- **交互生成**：`POST /api/v1/ai/chat`（`generate_title` / `generate_tags` / `generate_title_tags`），
-  在 `platform` slot 传入平台。
+- **交互生成**：`POST /api/v1/ai/chat`，请求体带 `platform`（`douyin`/`xiaohongshu`/`kuaishou`/`bilibili`/`video_account`/`tiktok`）与
+  `language`（`zh`/`en`/`bilingual`，TikTok 默认 bilingual）。生成走**设置页「标题生成 / 对话模型」**（`config/llm_config.toml`，
+  即 `订阅-deepseek-v4-flash-vision-exp`），与 `/files` 批量同一配置源。
 
 `platform` 传空时走通用生成；传 `douyin` / `xiaohongshu` / `tiktok` 时启用本技能的平台规则。
 `language` 控制输出语言：`zh` 中文 / `en` 英文 / `bilingual` 中英双语；**TikTok 默认 bilingual**。
 
-## 2. 平台速查表（红线：字数/个数不可超）
+## 2. 平台速查表（红线：字数/个数不可超；只出标题+话题）
 
 | 平台 | 标题字数(红线) | 话题个数(红线) | 字段布局 | 语气基调 |
 |---|---|---|---|---|
-| 抖音 douyin | 10–20 字 | 最多 4 个 | 标题 + 描述（描述带 #话题） | 短促强钩子，情绪/反差优先，口语 |
-| 小红书 xiaohongshu | 10–20 字 | 最多 10 个 | 标题 + 描述（描述带 #话题） | 笔记标题，关键词清晰，审美克制 |
-| TikTok | caption（不单独卡标题） | 最多 5 个 | 标题/描述合并（caption + #话题） | 面向海外，简洁、开头即钩子，**默认中英双语** |
+| 抖音 douyin | 10–20 字 | 最多 4 个 | 标题 + #话题标签 | 短促强钩子，情绪/反差优先，口语 |
+| 小红书 xiaohongshu | 10–20 字 | 最多 10 个 | 标题 + #话题标签 | 笔记标题，关键词清晰，审美克制 |
+| TikTok | 标题 ≤30 字（bilingual 更长） | 最多 5 个 | 标题 + #话题标签（caption 合并） | 面向海外，简洁、开头即钩子，**默认中英双语** |
 
 > 红线取自**生产上传器的硬上限**（超过会卡发布）：抖音标题 `len>20` 抛错、小红书标题填空取
 > `[:20]` 且标签 `max_tags=10`、快手标签 `[:3]`；B站/YouTube 等用

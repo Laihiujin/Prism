@@ -426,8 +426,8 @@ _PROJECT_SKILLS: tuple[dict, ...] = (
         "category": "software-development",
     },
     {
-        "name": "prism-copywrite",
-        "source_rel": Path("docs") / "hermes-skills" / "prism-copywrite" / "SKILL.md",
+        "name": "prism-title-topic",
+        "source_rel": Path("docs") / "hermes-skills" / "prism-title-topic" / "SKILL.md",
         "category": "software-development",
     },
 ) + tuple(

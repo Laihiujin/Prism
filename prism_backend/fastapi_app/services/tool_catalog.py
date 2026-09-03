@@ -234,8 +234,8 @@ _register(ToolSpec(
         "required": ["file_ids"],
     },
     handler=_generate_ai_metadata_handler,
-    category="copywrite",
-    output_summary="返回每条素材的 ai_title / ai_description / ai_tags（按平台落地）",
+    category="title_topic",
+    output_summary="返回每条素材的 ai_title / ai_tags（按平台落地）",
 ))
 
 
