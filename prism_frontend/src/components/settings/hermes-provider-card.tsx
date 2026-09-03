@@ -155,7 +155,7 @@ export function HermesProviderCard() {
 
       await hydrate()
       toast({
-        title: "Hermes 模型已保存",
+        title: "模型配置已保存",
         description: "系统页已经恢复独立的模型提供商配置入口。",
       })
     } catch (error) {
@@ -210,7 +210,7 @@ export function HermesProviderCard() {
       setForm(DEFAULT_FORM)
       await hydrate()
       toast({
-        title: "Hermes 配置已清除",
+        title: "模型配置已清除",
         description: "模型提供商已从本地运行时中移除。",
       })
     } catch (error) {
@@ -233,10 +233,10 @@ export function HermesProviderCard() {
     <Card className="border-border/70 bg-transparent">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-foreground">
-          Hermes 模型提供商
+          大语言模型配置
         </CardTitle>
         <CardDescription className="text-muted-foreground">
-          在系统页直接维护 Hermes Agent 的 provider、模型、API Key 和最大轮次，不再依赖旧的 Agent 设置页。
+          系统大语言模型（项目与 Hermes 共用）的 provider、模型、API Key 与最大轮次。此配置独立于上方 CC Switch 导入的 Hermes 提供商，自成一体。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

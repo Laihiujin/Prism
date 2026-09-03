@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTable } from "@/components/ui/data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { fetcher } from "@/lib/api"
 import { backendBaseUrl } from "@/lib/env"
@@ -17,6 +17,7 @@ import { tasksResponseSchema, type TasksResponse } from "@/lib/schemas"
 import { formatBeijingDateTime } from "@/lib/time"
 import { useToast } from "@/components/ui/use-toast"
 import { PageHeader } from "@/components/layout/page-scaffold"
+import { type ColumnDef } from "@tanstack/react-table"
 
 const statusTabs = [
   { label: "全部", value: "all" },
@@ -30,8 +31,6 @@ const statusTabs = [
 
 type StatusFilter = (typeof statusTabs)[number]["value"]
 
-const ITEMS_PER_PAGE = 10
-
 export default function TasksPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -39,8 +38,6 @@ export default function TasksPage() {
   const [activeTab, setActiveTab] = useState("auto")
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
   const [selectedManualIds, setSelectedManualIds] = useState<string[]>([])
-  const [autoPage, setAutoPage] = useState(1)
-  const [manualPage, setManualPage] = useState(1)
 
   const {
     data: tasksResponse,
@@ -343,21 +340,6 @@ export default function TasksPage() {
     return tasks.filter((task) => task.status === statusFilter)
   }, [tasks, statusFilter])
 
-  const autoTotalPages = Math.max(1, Math.ceil(filteredTasks.length / ITEMS_PER_PAGE))
-  const manualTotalPages = Math.max(1, Math.ceil(manualTasks.length / ITEMS_PER_PAGE))
-  const safeAutoPage = Math.min(autoPage, autoTotalPages)
-  const safeManualPage = Math.min(manualPage, manualTotalPages)
-
-  const paginatedTasks = useMemo(() => {
-    const start = (safeAutoPage - 1) * ITEMS_PER_PAGE
-    return filteredTasks.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredTasks, safeAutoPage])
-
-  const paginatedManualTasks = useMemo(() => {
-    const start = (safeManualPage - 1) * ITEMS_PER_PAGE
-    return manualTasks.slice(start, start + ITEMS_PER_PAGE)
-  }, [manualTasks, safeManualPage])
-
   const scheduledCount = summary?.scheduled ?? tasks.filter((task) => task.status === "scheduled").length
   const successCount = summary?.success ?? tasks.filter((task) => task.status === "success").length
   const errorCount = summary?.error ?? tasks.filter((task) => task.status === "error").length
@@ -380,72 +362,300 @@ export default function TasksPage() {
     "platform_7": "YouTube"
   }
 
-  const renderPagination = (
-    currentPage: number,
-    totalPages: number,
-    totalItems: number,
-    onChange: (page: number) => void
-  ) => {
-    if (totalItems <= ITEMS_PER_PAGE) return null
-    return (
-      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-        <div>共 {totalItems} 条 · 第 {currentPage} / {totalPages} 页</div>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="border border-border/70 bg-black"
-          >
-            上一页
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            className="border border-border/70 bg-black"
-          >
-            下一页
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   const getManualId = (task: any) => {
     const raw = task?.task_id || task?.id || task?.taskId || task?.taskID
     return raw ? String(raw) : ""
   }
 
   useEffect(() => {
-    setAutoPage(1)
     setSelectedTaskIds([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])
 
   useEffect(() => {
-    setAutoPage(prev => Math.min(prev, autoTotalPages))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoTotalPages])
-
-  useEffect(() => {
-    setManualPage(1)
     setSelectedManualIds([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualTasks.length])
-
-  useEffect(() => {
-    setManualPage(prev => Math.min(prev, manualTotalPages))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manualTotalPages])
 
   useEffect(() => {
     setSelectedTaskIds([])
     setSelectedManualIds([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
+
+  const statusLabel = (status: string) => {
+    if (status === "scheduled") return "已定时"
+    if (status === "success") return "成功"
+    if (status === "error") return "失败"
+    if (status === "running") return "运行中"
+    return "等待中"
+  }
+
+  const statusBadgeClass = (status: string) => {
+    if (["success", "error", "scheduled", "running"].includes(status)) return "bg-black text-white"
+    return "bg-black text-foreground"
+  }
+
+  // ── 自动任务列（与素材/账号管理一致的可收窄数据表） ──
+  const autoColumns: ColumnDef<any>[] = [
+    {
+      id: "select",
+      size: 56,
+      header: () => (
+        <div className="flex items-center">
+          <Checkbox
+            checked={filteredTasks.length > 0 && filteredTasks.every(t => selectedTaskIds.includes(t.id))}
+            onCheckedChange={(checked) => {
+              const allIds = filteredTasks.map(t => t.id)
+              if (checked) setSelectedTaskIds(Array.from(new Set([...selectedTaskIds, ...allIds])))
+              else setSelectedTaskIds(selectedTaskIds.filter(id => !allIds.includes(id)))
+            }}
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center">
+          <Checkbox
+            checked={selectedTaskIds.includes(row.original.id)}
+            onCheckedChange={(checked) => {
+              if (checked) setSelectedTaskIds(Array.from(new Set([...selectedTaskIds, row.original.id])))
+              else setSelectedTaskIds(selectedTaskIds.filter(id => id !== row.original.id))
+            }}
+          />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "title",
+      header: "标题",
+      size: 340,
+      cell: ({ row }) => (
+        <div className="min-w-0 max-w-[340px]">
+          <div className="truncate font-medium" title={row.original.title}>{row.original.title}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "platform",
+      header: "平台",
+      size: 110,
+      cell: ({ row }) => <Badge className="border-border/70 bg-black">{row.original.platform}</Badge>,
+    },
+    {
+      accessorKey: "account",
+      header: "账号",
+      size: 180,
+      cell: ({ row }) => (
+        <div className="min-w-0 max-w-[180px]">
+          <div className="truncate" title={row.original.account}>{row.original.account}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "material",
+      header: "素材",
+      size: 180,
+      cell: ({ row }) => (
+        <div className="min-w-0 max-w-[180px]">
+          <div className="truncate" title={row.original.material}>{row.original.material}</div>
+        </div>
+      ),
+    },
+    {
+      id: "time",
+      header: "时间",
+      size: 180,
+      cell: ({ row }) => (
+        row.original.scheduledAt
+          ? <span className="text-xs text-foreground/70">定时 · {row.original.scheduledAt}</span>
+          : <span className="text-xs text-foreground/70">{formatBeijingDateTime(row.original.createdAt)}</span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "状态",
+      size: 110,
+      cell: ({ row }) => (
+        <Badge className={statusBadgeClass(row.original.status)}>{statusLabel(row.original.status)}</Badge>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">操作</div>,
+      size: 200,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-2">
+          {row.original.status === "error" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => retryTaskMutation.mutate(row.original.id)}
+              disabled={retryTaskMutation.isPending}
+              title="重试任务"
+            >
+              <RefreshCcw className="h-4 w-4 text-white" />
+            </Button>
+          )}
+          {(row.original.status === "pending" || row.original.status === "scheduled") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (confirm("确定取消此任务吗？")) {
+                  cancelTaskMutation.mutate({ taskId: row.original.id, force: false })
+                }
+              }}
+              disabled={cancelTaskMutation.isPending}
+              title="取消任务"
+            >
+              <Ban className="h-4 w-4 text-white" />
+            </Button>
+          )}
+          {row.original.status === "running" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (confirm("⚠️ 确定强制取消正在运行的任务吗？")) {
+                  cancelTaskMutation.mutate({ taskId: row.original.id, force: true })
+                }
+              }}
+              disabled={cancelTaskMutation.isPending}
+              title="强制取消运行中的任务"
+            >
+              <Ban className="h-4 w-4 text-white" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => deleteTaskMutation.mutate({ id: row.original.id, source: row.original.source })}
+            disabled={deleteTaskMutation.isPending}
+            title="删除记录"
+          >
+            <Trash2 className="h-4 w-4 text-white hover:text-white" />
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  // ── 人工处理任务列 ──
+  const manualColumns: ColumnDef<any>[] = [
+    {
+      id: "select",
+      size: 56,
+      header: () => (
+        <div className="flex items-center">
+          <Checkbox
+            checked={
+              manualTasks.length > 0 &&
+              manualTasks.every((t: any) => {
+                const id = getManualId(t)
+                return id ? selectedManualIds.includes(id) : false
+              })
+            }
+            onCheckedChange={(checked) => {
+              const pageIds = manualTasks.map((t: any) => getManualId(t)).filter(Boolean)
+              if (checked) setSelectedManualIds(Array.from(new Set([...selectedManualIds, ...pageIds])))
+              else setSelectedManualIds(selectedManualIds.filter(id => !pageIds.includes(id)))
+            }}
+          />
+        </div>
+      ),
+      cell: ({ row }) => {
+        const manualId = getManualId(row.original)
+        return (
+          <div className="flex items-center">
+            <Checkbox
+              checked={manualId ? selectedManualIds.includes(manualId) : false}
+              onCheckedChange={(checked) => {
+                if (!manualId) return
+                if (checked) setSelectedManualIds(Array.from(new Set([...selectedManualIds, manualId])))
+                else setSelectedManualIds(selectedManualIds.filter(id => id !== manualId))
+              }}
+            />
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "reason",
+      header: "原因",
+      size: 220,
+      cell: ({ row }) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-white" />
+          <div className="min-w-0 max-w-[200px]">
+            <div className="truncate" title={row.original.reason}>{row.original.reason}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "platform",
+      header: "平台",
+      size: 110,
+      cell: ({ row }) => <Badge variant="outline">{platformLabels[row.original.platform] || row.original.platform}</Badge>,
+    },
+    {
+      accessorKey: "account",
+      header: "账号",
+      size: 180,
+      cell: ({ row }) => (
+        <div className="min-w-0 max-w-[180px]">
+          <div className="truncate">{row.original.account_name || row.original.account_id}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "material",
+      header: "素材",
+      size: 180,
+      cell: ({ row }) => (
+        <div className="min-w-0 max-w-[180px]">
+          <div className="truncate">{row.original.material_name || row.original.material_id || "-"}</div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "created_at",
+      header: "创建时间",
+      size: 160,
+      cell: ({ row }) => (
+        <span className="text-xs text-foreground/70">{new Date(row.original.created_at).toLocaleString()}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">操作</div>,
+      size: 140,
+      cell: ({ row }) => {
+        const manualId = getManualId(row.original)
+        return (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => manualId && retryMutation.mutate(manualId)}
+              disabled={retryMutation.isPending}
+            >
+              <Play className="h-4 w-4 mr-1" />
+              重试
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => manualId && deleteMutation.mutate(manualId)}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )
+      },
+    },
+  ]
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-4 md:px-6 md:py-5">
@@ -655,175 +865,12 @@ export default function TasksPage() {
                 </div>
               ) : (
                 <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border/70">
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={
-                              paginatedTasks.length > 0 &&
-                              paginatedTasks.every(t => selectedTaskIds.includes(t.id))
-                            }
-                            onCheckedChange={(checked) => {
-                              const pageIds = paginatedTasks.map(t => t.id)
-                              if (checked) {
-                                setSelectedTaskIds(Array.from(new Set([...selectedTaskIds, ...pageIds])))
-                                return
-                              }
-                              setSelectedTaskIds(selectedTaskIds.filter(id => !pageIds.includes(id)))
-                            }}
-                          />
-                        </TableHead>
-                        <TableHead className="text-muted-foreground">标题</TableHead>
-                        <TableHead className="text-muted-foreground">平台</TableHead>
-                        <TableHead className="text-muted-foreground">账号</TableHead>
-                        <TableHead className="text-muted-foreground">素材</TableHead>
-                        <TableHead className="text-muted-foreground">时间</TableHead>
-                        <TableHead className="text-muted-foreground">状态</TableHead>
-                        <TableHead className="text-right text-muted-foreground">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTasks.length === 0 && (
-                        <TableRow className="border-border/40">
-                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
-                            暂无符合条件的任务
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {paginatedTasks.map((task) => (
-                        <TableRow key={task.id} className="border-border/70">
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedTaskIds.includes(task.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedTaskIds([...selectedTaskIds, task.id])
-                                } else {
-                                  setSelectedTaskIds(selectedTaskIds.filter(id => id !== task.id))
-                                }
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{task.title}</TableCell>
-                          <TableCell>
-                            <Badge className="border-border/70 bg-black">{task.platform}</Badge>
-                          </TableCell>
-                          <TableCell>{task.account}</TableCell>
-                          <TableCell>{task.material}</TableCell>
-                          <TableCell>
-                            {task.scheduledAt ? (
-                              <span className="text-xs text-foreground/70">定时 · {task.scheduledAt}</span>
-                            ) : (
-                              <span className="text-xs text-foreground/70">{formatBeijingDateTime(task.createdAt)}</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge
-                              className={
-                                task.status === "success"
-                                  ? "bg-black text-white"
-                                  : task.status === "error"
-                                    ? "bg-black text-white"
-                                    : task.status === "scheduled"
-                                      ? "bg-black text-white"
-                                      : task.status === "running"
-                                        ? "bg-black text-white"
-                                        : "bg-black text-foreground"
-                              }
-                            >
-                              {task.status === "scheduled"
-                                ? "已定时"
-                                : task.status === "success"
-                                  ? "成功"
-                                  : task.status === "error"
-                                    ? "失败"
-                                    : task.status === "running"
-                                      ? "运行中"
-                                      : "等待中"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              {task.status === "error" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    console.log("[Tasks] Single retry clicked", task.id, task)
-                                    retryTaskMutation.mutate(task.id)
-                                  }}
-                                  disabled={retryTaskMutation.isPending}
-                                  title="重试任务"
-                                >
-                                  <RefreshCcw className="h-4 w-4 text-white" />
-                                </Button>
-                              )}
-                              {(task.status === "pending" || task.status === "scheduled") && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    console.log("[Tasks] Single cancel clicked", task.id, task)
-                                    if (confirm("确定取消此任务吗？")) {
-                                      cancelTaskMutation.mutate({ taskId: task.id, force: false })
-                                    }
-                                  }}
-                                  disabled={cancelTaskMutation.isPending}
-                                  title="取消任务"
-                                >
-                                  <Ban className="h-4 w-4 text-white" />
-                                </Button>
-                              )}
-                              {task.status === "running" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    console.log("[Tasks] Force cancel clicked", task.id, task)
-                                    console.log("[Tasks] cancelTaskMutation object:", cancelTaskMutation)
-                                    console.log("[Tasks] About to call mutate")
-                                    try {
-                                      cancelTaskMutation.mutate({ taskId: task.id, force: true })
-                                      console.log("[Tasks] mutate called successfully")
-                                    } catch (err) {
-                                      console.error("[Tasks] Error calling mutate:", err)
-                                    }
-                                    // Temporarily removed confirm for testing
-                                    // const confirmed = confirm("⚠️ 确定强制取消正在运行的任务吗？")
-                                    // console.log("[Tasks] Confirm result:", confirmed)
-                                    // if (confirmed) {
-                                    //   console.log("[Tasks] Calling cancelTaskMutation with force=true", task.id)
-                                    //   cancelTaskMutation.mutate({ taskId: task.id, force: true })
-                                    // } else {
-                                    //   console.log("[Tasks] User cancelled force cancel action")
-                                    // }
-                                  }}
-                                  disabled={cancelTaskMutation.isPending}
-                                  title="强制取消运行中的任务（测试版-无确认）"
-                                >
-                                  <Ban className="h-4 w-4 text-white" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  console.log("[Tasks] Single delete clicked", task.id, task)
-                                  deleteTaskMutation.mutate({ id: task.id, source: task.source })
-                                }}
-                                disabled={deleteTaskMutation.isPending}
-                                title="删除记录（无确认-测试版）"
-                              >
-                                <Trash2 className="h-4 w-4 text-white hover:text-white" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  {renderPagination(safeAutoPage, autoTotalPages, filteredTasks.length, setAutoPage)}
+                  <DataTable
+                    columns={autoColumns}
+                    data={filteredTasks}
+                    pageSize={10}
+                    emptyText="暂无符合条件的任务"
+                  />
                 </>
               )}
             </CardContent>
@@ -852,107 +899,13 @@ export default function TasksPage() {
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border/40">
-                      <TableHead className="w-12">
-                        <Checkbox
-                          checked={
-                            paginatedManualTasks.length > 0 &&
-                            paginatedManualTasks.every((task: any) => selectedManualIds.includes(getManualId(task)))
-                          }
-                          onCheckedChange={(checked) => {
-                            const pageIds = paginatedManualTasks.map((task: any) => getManualId(task)).filter(Boolean)
-                            if (checked) {
-                              setSelectedManualIds(Array.from(new Set([...selectedManualIds, ...pageIds])))
-                              return
-                            }
-                            setSelectedManualIds(selectedManualIds.filter(id => !pageIds.includes(id)))
-                          }}
-                        />
-                      </TableHead>
-                      <TableHead className="text-muted-foreground">原因</TableHead>
-                      <TableHead className="text-muted-foreground">平台</TableHead>
-                      <TableHead className="text-muted-foreground">账号</TableHead>
-                      <TableHead className="text-muted-foreground">素材</TableHead>
-                      <TableHead className="text-muted-foreground">创建时间</TableHead>
-                      <TableHead className="text-right text-muted-foreground">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedManualTasks.map((task: any, index: number) => {
-                      const manualId = getManualId(task)
-                      return (
-                        <TableRow key={manualId || `manual-${index}`} className="border-border/40">
-                          <TableCell>
-                            <Checkbox
-                              checked={manualId ? selectedManualIds.includes(manualId) : false}
-                              onCheckedChange={(checked) => {
-                                if (!manualId) return
-                                if (checked) {
-                                  setSelectedManualIds(Array.from(new Set([...selectedManualIds, manualId])))
-                                } else {
-                                  setSelectedManualIds(selectedManualIds.filter(id => id !== manualId))
-                                }
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4 text-white" />
-                              <span>{task.reason}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {platformLabels[task.platform] || task.platform}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{task.account_name || task.account_id}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">
-                            {task.material_name || task.material_id || "-"}
-                          </TableCell>
-                          <TableCell className="text-xs text-foreground/70">
-                            {new Date(task.created_at).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  console.log("[Tasks] Manual retry clicked", manualId)
-                                  if (manualId) {
-                                    retryMutation.mutate(manualId)
-                                  }
-                                }}
-                                disabled={retryMutation.isPending}
-                              >
-                                <Play className="h-4 w-4 mr-1" />
-                                重试
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  console.log("[Tasks] Manual delete clicked", manualId)
-                                  if (manualId) {
-                                    deleteMutation.mutate(manualId)
-                                  }
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable
+                  columns={manualColumns}
+                  data={manualTasks}
+                  pageSize={10}
+                  emptyText="暂无待处理任务"
+                />
               )}
-              {renderPagination(safeManualPage, manualTotalPages, manualTasks.length, setManualPage)}
             </CardContent>
           </Card>
         </TabsContent>

@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { API_ENDPOINTS } from "@/lib/env"
 import { cn } from "@/lib/utils"
 
-type ServiceType = "cover_generation" | "video_generation" | "speech_recognition"
+type ServiceType = "chat" | "cover_generation" | "video_generation" | "speech_recognition"
 
 type ProviderOption = {
   value: string
@@ -54,6 +54,12 @@ type AIServiceProviderCardProps = {
 }
 
 const DEFAULT_BASE_URLS: Record<ServiceType, Partial<Record<string, string>>> = {
+  chat: {
+    siliconflow: "https://api.siliconflow.cn/v1",
+    volcengine: "https://ark.cn-beijing.volces.com/api/v3",
+    openai: "https://api.openai.com/v1",
+    openai_compatible: "https://api.openai.com/v1",
+  },
   cover_generation: {
     siliconflow: "https://api.siliconflow.cn/v1",
     volcengine: "https://ark.cn-beijing.volces.com/api/v3",

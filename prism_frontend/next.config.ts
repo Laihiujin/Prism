@@ -48,7 +48,15 @@ const localhostPatterns: Array<{ protocol: "http" | "https"; hostname: string; p
 ]
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // `output: "standalone"` is required by the desktop packaging pipeline
+  // (desktop-electron copies `.next/standalone`), but Next 16.3 breaks on
+  // Vercel when an adapter is injected (NEXT_ADAPTER_PATH) while standalone
+  // output is enabled: the adapter build no longer emits
+  // `.next/next-server.js.nft.json`, yet `copyTracedFiles` still reads it
+  // unconditionally -> ENOENT in "Running onBuildComplete from Vercel".
+  // See vercel/next.js#96646 (fixed upstream in canary only, #97287).
+  // Vercel sets `VERCEL=1`; drop standalone there and keep it elsewhere.
+  output: process.env.VERCEL ? undefined : "standalone",
   typescript: {
     // Skip type-checking during desktop packaging builds.
     ignoreBuildErrors: true,

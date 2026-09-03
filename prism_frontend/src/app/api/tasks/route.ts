@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import crypto from "crypto"
 
 import { backendBaseUrl } from "@/lib/env"
@@ -10,6 +10,9 @@ const platformDisplay: Record<string, string> = {
   "3": "抖音",
   "4": "快手",
   "5": "B站",
+  "6": "TikTok",
+  "7": "YouTube",
+  "8": "百家号",
 }
 
 const normalizeStatus = (value: unknown, hasSchedule: boolean): TaskStatus => {
@@ -31,6 +34,9 @@ const resolvePlatformName = (value: unknown): string => {
   if (lower.includes("hongshu") || lower.includes("redbook") || lower.includes("xhs")) return "小红书"
   if (lower.includes("bili")) return "B站"
   if (lower.includes("video") || lower.includes("channel") || lower.includes("shipin")) return "视频号"
+  if (lower.includes("tiktok")) return "TikTok"
+  if (lower.includes("youtube") || lower.includes("yt")) return "YouTube"
+  if (lower.includes("baijiahao")) return "百家号"
   return key || "未知平台"
 }
 
