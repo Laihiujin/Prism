@@ -285,7 +285,7 @@ cd ..
 必须检查两类配置：
 
 - 根目录 `.env`：端口、Redis、浏览器路径、前后端连接地址、`PLAYWRIGHT_HEADLESS`、`PRISM_BROWSER_BACKEND_DEFAULT`、`PRISM_DOUYIN_LOGIN_MODE`。
-- `prism_backend\config\hermes_agent.toml`：HermesAgent 的 provider / model / api_key / base_url。
+- `prism_backend\config\llm_config.toml`：HermesAgent 的 provider / model / api_key / base_url。
 
 浏览器依赖：
 
@@ -314,7 +314,7 @@ start.bat
 重要说明：
 
 - 本地后端进程缺一不可。少起任意一个进程，前端页面可能能打开，但任务调度、浏览器执行、异步回调、HermesAgent 调用链都会不完整。
-- HermesAgent Dashboard / WebUI 由 FastAPI 在非 Supervisor 模式下自动托管；前提是 `prism_backend\config\hermes_agent.toml` 已正确配置，且本地 Hermes 运行时已通过 `scripts\hermes\setup-local-hermes.ps1` 安装完成。
+- HermesAgent Dashboard / WebUI 由 FastAPI 在非 Supervisor 模式下自动托管；前提是 `prism_backend\config\llm_config.toml` 已正确配置，且本地 Hermes 运行时已通过 `scripts\hermes\setup-local-hermes.ps1` 安装完成。
 
 方式 B：Supervisor 模式
 

@@ -31,7 +31,7 @@ Prism/
 │   │   │   └── agent/      # Hermes/OpenClaw Agent API + config 路由
 │   │   ├── agent/          # Hermes 集成层
 │   │   │   ├── hermes_agent.py        # CLI 桥接 + Dashboard/WebUI 进程托管
-│   │   │   ├── hermes_config.py       # hermes_agent.toml ↔ hermes-home/config.yaml 同步
+│   │   │   ├── hermes_config.py       # llm_config.toml ↔ hermes-home/config.yaml 同步
 │   │   │   ├── hermes_update.py       # 更新调度器
 │   │   │   ├── mcp_server.py          # stdio MCP server（暴露 BaseTool 目录）
 │   │   │   ├── hermes_tools*.py       # BaseTool 工具实现
@@ -41,7 +41,7 @@ Prism/
 │   │   └── services/        # 业务服务（含 tool_registry.py：/tools 技能管理）
 │   ├── config/              # 配置目录
 │   │   ├── conf.py
-│   │   └── hermes_agent.toml          # Hermes 模型/provider/api_key 配置（用户编辑）
+│   │   └── llm_config.toml          # Hermes 模型/provider/api_key 配置（用户编辑）
 │   ├── db/                  # 数据库（本地数据，不提交）
 │   └── uploader/            # 各平台上传统一封装（douyin/ks/xiaohongshu/tencent/bilibili/baijiahao/tk/youtube）
 ├── prism_frontend/          # Next.js 控制台（端口 3000）
@@ -168,7 +168,7 @@ Hermes 通过 `tools/hermes-home/config.yaml` 的 `mcp_servers.prism` 注册了�
 
 ## 6. Hermes 集成点
 
-- 模型配置：`prism_backend/config/hermes_agent.toml`（`[llm]` provider/model/api_key/base_url，`[runtime]` max_turns）。
+- 模型配置：`prism_backend/config/llm_config.toml`（`[llm]` provider/model/api_key/base_url，`[runtime]` max_turns）。
   保存时由 `hermes_config.py::sync_agent_config_to_runtime` 同步到 `tools/hermes-home/config.yaml`，
   并写入 `mcp_servers.prism`（指向 `python -m fastapi_app.agent.mcp_server`）。
 - Agent 执行：`POST /api/v1/agent/hermes-run`（一次性）、`/agent/hermes-stream`（SSE 流式）、
