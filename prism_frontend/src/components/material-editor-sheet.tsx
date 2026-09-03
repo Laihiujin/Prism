@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, Sparkles, Wand2, ImageIcon } from "lucide-react"
+import { Loader2, Sparkles, Wand2, ImageIcon, X, UploadCloud } from "lucide-react"
 import { backendBaseUrl } from "@/lib/env"
 import { cn } from "@/lib/utils"
 
@@ -86,6 +86,7 @@ export function MaterialEditorContent({
     const [coverJobError, setCoverJobError] = useState("")
     const coverPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [referenceImage, setReferenceImage] = useState<File | null>(null)
+    const [refPreviewSrc, setRefPreviewSrc] = useState("")
 
     const inferredCoverAspect = useMemo<"3:4" | "4:3">(() => {
         const o = material?.orientation
@@ -96,6 +97,19 @@ export function MaterialEditorContent({
         if (w > 0 && h > 0) return w >= h ? "4:3" : "3:4"
         return "3:4"
     }, [material?.id, material?.orientation, material?.video_width, material?.video_height])
+
+    // 预览框：保留素材真实比例，但用 max-width 反向约束高（<= maxH），避免大盒子占满
+    const coverBoxStyle = useMemo(() => {
+        const isPortrait = inferredCoverAspect === "3:4"
+        const ratio = isPortrait ? 3 / 4 : 4 / 3 // width / height
+        const maxH = 280
+        return {
+            aspectRatio: isPortrait ? "3 / 4" : "4 / 3",
+            maxWidth: `min(100%, ${Math.round(maxH * ratio)}px)`,
+            marginLeft: "auto",
+            marginRight: "auto",
+        }
+    }, [inferredCoverAspect])
 
     const [editForm, setEditForm] = useState({
         filename: "",
@@ -136,10 +150,6 @@ export function MaterialEditorContent({
         if (raw.startsWith("http")) return raw
         return `${backendBaseUrl}/getFile?filename=${encodeURIComponent(raw)}`
     }, [editForm.cover_image])
-
-    const coverAspectStyle = useMemo(() => {
-        return { aspectRatio: inferredCoverAspect === "4:3" ? "4 / 3" : "3 / 4" }
-    }, [inferredCoverAspect])
 
     const coverJobStorageKey = useMemo(() => {
         return material?.id ? `aiCoverJob:${material.id}` : ""
@@ -224,6 +234,17 @@ export function MaterialEditorContent({
             return () => clearTimeout(timer)
         }
     }, [editForm, onChange])
+
+    // 为上传的参考图生成可预览的 Object URL（并在变更/卸载时释放）
+    useEffect(() => {
+        if (!referenceImage) {
+            setRefPreviewSrc("")
+            return
+        }
+        const url = URL.createObjectURL(referenceImage)
+        setRefPreviewSrc(url)
+        return () => URL.revokeObjectURL(url)
+    }, [referenceImage])
 
     const handleAIGenerate = async (field: 'title' | 'desc' | 'tags') => {
         setAiGenerating(field)
@@ -448,7 +469,7 @@ ${userInput}
             )}
 
             <ScrollArea className="flex-1 px-6 py-6">
-                <div className="space-y-8 pb-10">
+                <div className="space-y-8 pb-20">
 
                     {/* Content Info - 内容设置 */}
                     <div className="space-y-4">
@@ -578,87 +599,36 @@ ${userInput}
                         </div>
                     </div>
 
-                    {/* Reference image uploader */}
-                    <div className="space-y-2">
+                    {/* AI 封面工坊 · 图生图（参考图 → 封面） */}
+                    <div className="space-y-4 rounded-xl border border-border/50 bg-card/40 p-4">
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs text-muted-foreground">上传/拖拽参考图（可选）</Label>
-                            {referenceImage && (
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-card/10"
-                                    onClick={() => setReferenceImage(null)}
-                                >
-                                    移除
-                                </Button>
-                            )}
-                        </div>
-                        <div
-                            className="relative w-full mt-2 max-w-xl mx-auto"
-                            onDragOver={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                            }}
-                            onDrop={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                const file = e.dataTransfer.files?.[0]
-                                if (!file) return
-                                if (!file.type.startsWith("image/")) {
-                                    toast({ variant: "destructive", title: "文件类型不支持", description: "请上传图片（jpg/png/webp）" })
-                                    return
-                                }
-                                setReferenceImage(file)
-                            }}
-                            onClick={() => {
-                                const input = document.getElementById(`ai-cover-ref-upload-${material?.id ?? "temp"}`) as HTMLInputElement | null
-                                input?.click()
-                            }}
-                        >
-                            <div className="relative group-hover/file:shadow-2xl z-40 bg-card dark:bg-black flex items-center justify-center h-32 mt-1 w-full mx-auto rounded-md shadow-[0px_10px_50px_rgba(0,0,0,0.1)]">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="tabler-icon tabler-icon-upload h-4 w-4 text-white dark:text-white">
-                                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path>
-                                    <path d="M7 9l5 -5l5 5"></path>
-                                    <path d="M12 4l0 12"></path>
-                                </svg>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">封面工坊 · 图生图</h3>
+                                <Badge variant="secondary" className="bg-black text-white border-white/17">
+                                    <Sparkles className="w-3 h-3 mr-1" /> AI
+                                </Badge>
                             </div>
-                            <div className="absolute opacity-0 border border-dashed border-border inset-0 z-30 bg-transparent flex items-center justify-center h-32 mt-4 w-full mx-auto rounded-md" />
-                            <input
-                                id={`ai-cover-ref-upload-${material?.id ?? "temp"}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0]
-                                    if (!file) return
-                                    setReferenceImage(file)
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Cover Generator - AI 封面工坊 */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">封面工坊</h3>
                             {(coverJobStatus === "pending" || coverJobStatus === "running") && (
                                 <Badge variant="secondary" className="bg-black text-white border-white/17">
                                     <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 生成中
                                 </Badge>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Left: AI cover preview */}
-                            <div className="space-y-2">
+
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            {/* 左侧：AI 封面结果预览 */}
+                            <div className="md:col-span-2 space-y-2">
+                                <Label className="text-xs text-muted-foreground">AI 封面</Label>
                                 <div
-                                    className="w-full rounded-lg border border-border/70 bg-card overflow-hidden relative group"
-                                    style={coverAspectStyle}
+                                    className="relative w-full rounded-lg border border-border/70 bg-card overflow-hidden group"
+                                    style={coverBoxStyle}
                                 >
                                     {coverSrc ? (
-                                        <Image src={coverSrc} alt="Cover" fill className="object-cover" unoptimized />
+                                        <Image src={coverSrc} alt="AI 封面预览" fill className="object-contain" unoptimized />
                                     ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center text-foreground/20">
-                                            <ImageIcon className="w-8 h-8" />
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-foreground/20">
+                                            <ImageIcon className="w-7 h-7" />
+                                            <span className="text-[11px]">生成后在此预览</span>
                                         </div>
                                     )}
                                     {!!coverSrc && (
@@ -674,47 +644,117 @@ ${userInput}
                                         </div>
                                     )}
                                 </div>
-                                <div className="text-center text-xs text-foreground/40">{inferredCoverAspect} 预览</div>
+                                <div className="text-center text-xs text-foreground/40">{inferredCoverAspect} · 封面预览</div>
                             </div>
 
-                            {/* Right: prompt box (same height as preview) */}
-                            <div className="space-y-2">
-                                <div
-                                    className="flex flex-col rounded-lg border border-border/70 bg-card p-3"
-                                    style={coverAspectStyle}
-                                >
-                                    <Label className="text-xs text-muted-foreground">AI 封面 Prompt</Label>
+                            {/* 右侧：参考图（图生图输入）+ 提示词 */}
+                            <div className="md:col-span-3 space-y-3">
+                                {/* 参考图上传（带缩略图预览） */}
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs text-muted-foreground">参考图（图生图，可选）</Label>
+                                        {referenceImage && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-6 text-xs text-muted-foreground hover:text-foreground hover:bg-card/10"
+                                                onClick={() => setReferenceImage(null)}
+                                            >
+                                                移除
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {referenceImage ? (
+                                        <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card p-2">
+                                            <img
+                                                src={refPreviewSrc}
+                                                alt="参考图预览"
+                                                className="h-12 w-12 rounded-md object-cover shrink-0"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs text-foreground/80 truncate">{referenceImage.name}</p>
+                                                <p className="text-[10px] text-muted-foreground">将作为图生图参考</p>
+                                            </div>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-7 w-7 text-foreground/40 hover:text-foreground"
+                                                onClick={() => setReferenceImage(null)}
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="flex items-center justify-center gap-2 w-full h-14 rounded-lg border border-dashed border-border/70 bg-card cursor-pointer hover:border-border/90 transition-colors"
+                                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+                                            onDrop={(e) => {
+                                                e.preventDefault()
+                                                e.stopPropagation()
+                                                const file = e.dataTransfer.files?.[0]
+                                                if (!file) return
+                                                if (!file.type.startsWith("image/")) {
+                                                    toast({ variant: "destructive", title: "文件类型不支持", description: "请上传图片（jpg/png/webp）" })
+                                                    return
+                                                }
+                                                setReferenceImage(file)
+                                            }}
+                                            onClick={() => {
+                                                const input = document.getElementById(`ai-cover-ref-upload-${material?.id ?? "temp"}`) as HTMLInputElement | null
+                                                input?.click()
+                                            }}
+                                        >
+                                            <UploadCloud className="h-4 w-4 text-foreground/40" />
+                                            <span className="text-xs text-muted-foreground">点击或拖拽上传参考图</span>
+                                            <input
+                                                id={`ai-cover-ref-upload-${material?.id ?? "temp"}`}
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0]
+                                                    if (!file) return
+                                                    setReferenceImage(file)
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 提示词 */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">AI 封面提示词</Label>
                                     <Textarea
                                         value={coverPrompt}
                                         onChange={e => setCoverPrompt(e.target.value)}
-                                        className="mt-2 flex-1 bg-transparent border-border/70 text-sm resize-none"
-                                        placeholder="描述想要的封面画面..."
+                                        className="bg-card border-border/70 text-sm resize-none min-h-[80px]"
+                                        placeholder="描述想要的封面画面，可结合参考图风格..."
                                     />
-                                    <div className="mt-3 flex items-center justify-between gap-2">
-                                        <div className="text-xs text-foreground/40 truncate">
-                                            {referenceImage ? `参考图：${referenceImage.name}` : "参考图：未选择（可选）"}
-                                        </div>
-                                        <Button
-                                            className="bg-foreground text-background hover:bg-foreground/90 border-0"
-                                            onClick={handleGenerateCover}
-                                            disabled={!!aiGenerating || coverJobStatus === "pending" || coverJobStatus === "running"}
-                                        >
-                                            {(coverJobStatus === "pending" || coverJobStatus === "running") ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Wand2 className="w-4 h-4" />
-                                            )}
-                                            <span className="ml-2 text-sm">生成</span>
-                                        </Button>
-                                    </div>
                                 </div>
+
+                                {/* 生成按钮 + 状态 */}
+                                <Button
+                                    className="w-full bg-foreground text-background hover:bg-foreground/90 border-0"
+                                    onClick={handleGenerateCover}
+                                    disabled={!!aiGenerating || coverJobStatus === "pending" || coverJobStatus === "running"}
+                                >
+                                    {(coverJobStatus === "pending" || coverJobStatus === "running") ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Wand2 className="w-4 h-4" />
+                                    )}
+                                    <span className="ml-2 text-sm">
+                                        {(coverJobStatus === "pending" || coverJobStatus === "running") ? "生成中..." : "生成封面"}
+                                    </span>
+                                </Button>
                                 {coverJobError && (
                                     <p className="text-xs text-red-400">{coverJobError}</p>
                                 )}
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    上传参考图后，AI 将结合提示词生成图生图封面，完成后自动回填到封面预览。
+                                </p>
                             </div>
                         </div>
-
-
                     </div>
 
                 </div>

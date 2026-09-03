@@ -420,7 +420,7 @@ function MaterialsPageContent() {
     {
       accessorKey: "filename",
       header: "文件名",
-      size: 420,
+      size: 210,
       cell: ({ row }) => {
         const hasTitle = !!row.original.title && row.original.title !== row.original.filename
         const primary = (hasTitle ? row.original.title : row.original.filename) ?? ""
@@ -441,13 +441,13 @@ function MaterialsPageContent() {
     {
       accessorKey: "filesize",
       header: "大小",
-      size: 110,
+      size: 70,
       cell: ({ row }) => <span className="text-muted-foreground">{(row.original.filesize || 0).toFixed(2)} MB</span>,
     },
     {
       accessorKey: "duration",
       header: "时长",
-      size: 90,
+      size: 70,
       cell: ({ row }) => <span className="text-muted-foreground">{formatDuration(row.original.duration)}</span>,
     },
     {
@@ -478,7 +478,7 @@ function MaterialsPageContent() {
     {
       accessorKey: "group",
       header: "分组",
-      size: 140,
+      size: 70,
       cell: ({ row }) => (
         row.original.group ? (
           <Badge variant="outline" className="rounded-md text-xs border-border/70 text-foreground/70">
