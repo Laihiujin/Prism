@@ -1,20 +1,8 @@
 """
-AI 服务集成模块
-支持多平台 AI API：硅基流动、火山引擎、通义万象等。
-模型配置统一走 `/api/v1/ai` 的 model-configs（ai_model_configs 表），
-不再依赖独立的 ModelManager / AIClient（旧的 config.json 已废弃）。
+AI 服务集成模块。
+
+模型配置统一走 `/api/v1/ai` 的 model-configs（`ai_model_configs` 表），
+通过 `ai_service.llm` / `ai_service.title_topic_generator` /
+`metadata_generation_service` 等子模块按需加载；不再在包的
+`__init__` 里导出任何被删除的 ModelManager / AIClient / providers。
 """
-
-from .providers import (
-    SiliconFlowProvider,
-    VolcanoEngineProvider,
-    TongyiProvider,
-)
-from .ai_logger import AILogger
-
-__all__ = [
-    "SiliconFlowProvider",
-    "VolcanoEngineProvider",
-    "TongyiProvider",
-    "AILogger",
-]
