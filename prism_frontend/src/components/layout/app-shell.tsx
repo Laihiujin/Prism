@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Desktop sidebar */}
       <div className="hidden sm:flex relative z-20">
-          <SidebarNew collapsed={false} setCollapsed={setCollapsed} className="z-20" />
+          <SidebarNew collapsed={collapsed} setCollapsed={setCollapsed} className="z-20" />
       </div>
 
       {/* Mobile sidebar (sheet) */}
