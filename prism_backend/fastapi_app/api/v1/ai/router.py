@@ -309,57 +309,6 @@ class GenerateCoverRequest(BaseModel):
     model: Optional[str] = "jimeng-4.0"
 
 
-@router.get("/status")
-async def get_status():
-    """Get AI status（基于 model-configs 单一配置源）"""
-    try:
-        services: Dict[str, Any] = {}
-        for st in ("chat", "cover_generation", "speech", "video_generation", "function_calling"):
-            cfg = get_ai_config(st)
-            if cfg and cfg.get("model_name"):
-                services[st] = {
-                    "model_name": cfg.get("model_name"),
-                    "provider": cfg.get("provider"),
-                    "base_url": cfg.get("base_url"),
-                }
-        return {
-            "status": "success",
-            "connected": bool(services),
-            "current_status": {"services": services},
-            "connection_error": None,
-        }
-    except Exception as e:
-        return {
-            "status": "success",
-            "connected": False,
-            "current_status": {},
-            "connection_error": str(e),
-        }
-
-
-@router.get("/models")
-async def get_models():
-    """Get available models（来自 model-configs 单一配置源）"""
-    providers: Dict[str, Any] = {}
-    for st in ("chat", "cover_generation", "speech", "video_generation", "function_calling"):
-        cfg = get_ai_config(st)
-        if cfg and cfg.get("model_name"):
-            key = cfg.get("provider") or st
-            provider_entry = providers.setdefault(key, {"name": key, "models": []})
-            provider_entry["models"].append({
-                "id": cfg["model_name"],
-                "model_name": cfg["model_name"],
-                "name": cfg["model_name"],
-            })
-    current_chat = get_ai_config("chat")
-    return {
-        "status": "success",
-        "providers": providers,
-        "current_provider": None,
-        "current_model": (current_chat or {}).get("model_name"),
-    }
-
-
 @router.post("/chat")
 async def chat(request: ChatRequest):
     """
