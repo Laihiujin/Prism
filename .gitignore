@@ -193,6 +193,8 @@ tools/deepseek-harness/
 
 # 项目内 Hermes 运行时配置（含 API key，不入库）
 prism_backend/config/hermes_agent.toml
+# 项目内 LLM 配置（含 API key，不入库）
+prism_backend/config/llm_config.toml
 
 LaunchScript/python-3.11.9-embed-amd64.zip
 
@@ -226,5 +228,9 @@ prism_backend/videoFile/covers/first_frame_3.png
 *.jpeg
 *.webp
 *.gif
+prism_backend/logs/douyin_preview_screenshot.png
+prism_backend/logs/douyin_preview_screenshot.png
+prism_backend/logs/douyin_preview_screenshot.png
+prism_backend/logs/douyin_preview_screenshot.png
 prism_backend/logs/douyin_preview_screenshot.png
 prism_backend/logs/douyin_preview_screenshot.png
