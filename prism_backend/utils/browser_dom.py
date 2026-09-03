@@ -238,6 +238,11 @@ async def select_topics_exact_with_editor(
                     pass
             if await _pick_topic_item_exact(page, tag, topic_item_selectors):
                 picked += 1
+                # 话题选中后补一个空格分隔（对齐抖音发布 skill：一次性输入完整 #关键词 后按空格确认，
+                # 避免多个话题/正文粘连成「#话题1#话题2」）。候选点击已把 #tag 变成话题节点/链接，
+                # 这里再补一个 space 把话题与下一个话题或后续正文隔开。
+                await page.keyboard.press("Space")
+                await page.wait_for_timeout(150)
             elif clear_on_fail:
                 for _ in range(len(tag_prefix + tag)):
                     await page.keyboard.press("Backspace")
