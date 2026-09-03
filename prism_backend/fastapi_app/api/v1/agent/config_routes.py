@@ -18,7 +18,7 @@ from ....agent.hermes_agent import (
 )
 from ....agent.hermes_config import (
     delete_agent_config,
-    get_config_path,
+    get_hermes_runtime_config_path,
     list_mcp_servers,
     list_plugins,
     read_agent_config,
@@ -141,7 +141,7 @@ async def delete_config():
         success=True,
         data={
             "message": "Hermes Agent 配置已删除。" if deleted else "Hermes Agent 配置不存在。",
-            "config_path": str(get_config_path()),
+            "config_path": str(get_hermes_runtime_config_path()),
             "runtime": await get_hermes_runtime_status(),
         },
     )

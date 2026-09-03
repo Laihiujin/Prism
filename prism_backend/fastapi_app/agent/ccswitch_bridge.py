@@ -3,7 +3,7 @@
 设计约束（用户明确要求）：
 - 不克隆、不集成 cc-switch 源码（它是 Tauri 桌面 GUI，无 CLI），本项目只**读取**它的数据；
 - 只**读** `~/.cc-switch/cc-switch.db`，绝不写本机任何配置（~/.claude、~/.hermes 等）；
-- 应用的目标只落在**项目内**：prism_backend/config/hermes_agent.toml + tools/hermes-home/config.yaml。
+- 应用的目标只落在**项目内**：tools/hermes-home/config.yaml（Hermes 运行时配置）。
 
 cc-switch providers 表核心字段：
   id, app_type(如 hermes/claude/codex...), name, settings_config(JSON),
@@ -609,7 +609,7 @@ async def apply_provider_to_hermes(
     """把 cc-switch 中的 provider 应用到项目内的 Hermes Agent。
 
     provider_id 为空时优先用 cc-switch 当前选中(is_current=1)的 provider；
-    仍没有则取第一个。应用只写项目内配置(hermes_agent.toml + hermes-home/config.yaml)。
+    仍没有则取第一个。应用只写项目内配置(tools/hermes-home/config.yaml)。
     app_type 支持 cc-switch 全部类型（claude/codex/gemini/…），来源 provider
     的 base_url/api_key 会按各自 settings_config 结构解析后映射成 Hermes llm 配置。
     """

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
     Boxes,
@@ -21,7 +21,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { PageHeader } from "@/components/layout/page-scaffold"
+import { McpPanel, PluginPanel } from "@/components/hermes/hermes-config-panels"
 import { cn } from "@/lib/utils"
+import { API_ENDPOINTS } from "@/lib/env"
+import { resolveRuntimeBackendBase } from "@/lib/runtime-backend"
 import CatalogToolsSection from "./catalog-tools"
 
 interface DevTool {
@@ -56,9 +59,43 @@ const CATEGORY_TABS = [
     { key: "catalog", label: "业务工具" },
 ]
 
+function DevToolsGrid({
+    visibleTools,
+    renderToolCard,
+}: {
+    visibleTools: DevTool[]
+    renderToolCard: (tool: DevTool) => ReactNode
+}) {
+    return (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {visibleTools.length === 0 ? (
+                <div className="col-span-full rounded-xl border border-border/70 bg-card/40 py-12 text-center text-muted-foreground">
+                    该分类下暂无可用工具
+                </div>
+            ) : (
+                visibleTools.map(renderToolCard)
+            )}
+        </div>
+    )
+}
+
 export default function ToolsPage() {
     const queryClient = useQueryClient()
     const { toast } = useToast()
+    const [base, setBase] = useState(API_ENDPOINTS.base)
+    const [hermesRefreshKey, setHermesRefreshKey] = useState(0)
+
+    useEffect(() => {
+        let active = true
+        resolveRuntimeBackendBase()
+            .catch(() => API_ENDPOINTS.base)
+            .then((url) => {
+                if (active) setBase(url)
+            })
+        return () => {
+            active = false
+        }
+    }, [])
 
     const { data, isLoading, refetch } = useQuery({
         queryKey: ["tools"],
@@ -300,7 +337,10 @@ export default function ToolsPage() {
                     <Button
                         variant="outline"
                         className="rounded-xl border-border/70 bg-black hover:bg-accent/50"
-                        onClick={() => refetch()}
+                        onClick={() => {
+                            refetch()
+                            setHermesRefreshKey((k) => k + 1)
+                        }}
                     >
                         <RefreshCcw className="mr-2 h-4 w-4" />
                         刷新
@@ -347,16 +387,22 @@ export default function ToolsPage() {
 
             {!isLoading && category === "catalog" && <CatalogToolsSection />}
 
-            {!isLoading && category !== "skill" && category !== "catalog" && (
+            {!isLoading && category === "mcp" && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {visibleTools.length === 0 ? (
-                        <div className="col-span-full rounded-xl border border-border/70 bg-card/40 py-12 text-center text-muted-foreground">
-                            该分类下暂无可用工具
-                        </div>
-                    ) : (
-                        visibleTools.map(renderToolCard)
-                    )}
+                    <McpPanel baseUrl={base} refreshKey={hermesRefreshKey} toast={toast} />
+                    {visibleTools.map(renderToolCard)}
                 </div>
+            )}
+
+            {!isLoading && category === "plugin" && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <PluginPanel baseUrl={base} refreshKey={hermesRefreshKey} toast={toast} />
+                    {visibleTools.map(renderToolCard)}
+                </div>
+            )}
+
+            {!isLoading && category !== "skill" && category !== "catalog" && category !== "mcp" && category !== "plugin" && (
+                <DevToolsGrid visibleTools={visibleTools} renderToolCard={renderToolCard} />
             )}
 
             {!isLoading && category === "skill" && skillGroups.length === 0 && (
