@@ -1,0 +1,43 @@
+name: ✨ 功能建议 / Feature request
+description: 提议一个新功能或改进（新平台、新能力、体验优化）
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你的建议！请说明**使用场景**，这样维护者能判断优先级与实现成本。
+  - type: textarea
+    id: motivation
+    attributes:
+      label: 动机 / 使用场景
+      description: 你在什么场景下需要这个功能？现在怎么绕过？
+      placeholder: 我需要批量给视频号也做定时发布……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望的功能 / Expected behavior
+      description: 描述你想要的交互或接口形态（CLI 参数、API、前端页面……）
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案 / Alternatives
+      description: 你考虑过的其他实现方式
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及模块 / Area
+      multiple: true
+      options:
+        - 后端 API / 调度
+        - 平台适配器（登录/发布/采集）
+        - 前端控制台
+        - CLI / MCP / Agent 集成
+        - 文档
+        - 其他
+    validations:
+      required: true
