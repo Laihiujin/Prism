@@ -410,15 +410,37 @@ def _build_prism_mcp_server_entry() -> Dict[str, Any]:
     }
 
 
-# Skill that is preloaded into every Hermes session (see DEFAULT_PRELOAD_SKILL
+# Project skills preloaded into every Hermes session (see DEFAULT_PRELOAD_SKILL
 # in hermes_agent.py). The repo source lives under docs/; the two runtime roots
 # are the Hermes skills dir (tools/hermes-home/skills) and the /tools skill
 # management root (runtime-data/app/hermes-home/skills). Keep them in sync so
 # editing the doc is enough to update what Hermes actually loads.
-_PROJECT_SKILL_SOURCE_REL = Path("docs") / "hermes-skills" / "prism-project-layout" / "SKILL.md"
-_PROJECT_SKILL_TARGET_RELS = (
-    Path("tools") / "hermes-home" / "skills" / "software-development" / "prism-project-layout" / "SKILL.md",
-    Path("runtime-data") / "app" / "hermes-home" / "skills" / "software-development" / "prism-project-layout" / "SKILL.md",
+# Each entry: name, docs source, and the skills category dir to install under.
+# 发布 skill 按平台拆分（每平台一个）：改一个平台的 skill 不影响其他平台。
+_PUBLISH_PLATFORMS = ("douyin", "kuaishou", "xiaohongshu", "bilibili", "channels", "baijiahao", "tiktok", "youtube")
+
+_PROJECT_SKILLS: tuple[dict, ...] = (
+    {
+        "name": "prism-project-layout",
+        "source_rel": Path("docs") / "hermes-skills" / "prism-project-layout" / "SKILL.md",
+        "category": "software-development",
+    },
+    {
+        "name": "prism-copywrite",
+        "source_rel": Path("docs") / "hermes-skills" / "prism-copywrite" / "SKILL.md",
+        "category": "software-development",
+    },
+) + tuple(
+    {
+        "name": f"prism-publish-{platform}",
+        "source_rel": Path("docs") / "hermes-skills" / f"prism-publish-{platform}" / "SKILL.md",
+        "category": "software-development",
+    }
+    for platform in _PUBLISH_PLATFORMS
+)
+_PROJECT_SKILL_ROOTS = (
+    Path("tools") / "hermes-home" / "skills",
+    Path("runtime-data") / "app" / "hermes-home" / "skills",
 )
 
 
@@ -440,22 +462,32 @@ def _sync_project_skill_file(source: Path, target: Path) -> bool:
         return False
 
 
-def sync_prism_project_skill() -> Path:
-    """Copy the project-layout skill from docs/ into the Hermes runtime roots.
+def _skill_source_path(source_rel: Path) -> Path:
+    candidate = get_repo_root() / source_rel
+    if not candidate.is_file():
+        candidate = get_source_repo_root() / source_rel
+    return candidate
 
-    Runs on every Hermes session setup (see _ensure_runtime_home) so editing
-    docs/hermes-skills/prism-project-layout/SKILL.md is enough to update what
-    Hermes preloads; no manual copy needed. No-op when the source is missing
-    (e.g. a packaged build without the docs tree).
+
+def sync_prism_project_skill() -> Path:
+    """Copy each project skill from docs/ into the Hermes runtime roots.
+
+    Runs on every Hermes session setup (see _ensure_runtime_home) so editing a
+    docs/hermes-skills/.../SKILL.md is enough to update what Hermes preloads or
+    discovers; no manual copy needed. No-op when a source is missing (e.g. a
+    packaged build without the docs tree). Returns the project-layout source path
+    for backwards compatibility.
     """
-    source = get_repo_root() / _PROJECT_SKILL_SOURCE_REL
-    if not source.is_file():
-        source = get_source_repo_root() / _PROJECT_SKILL_SOURCE_REL
-    if not source.is_file():
-        return source
-    for rel in _PROJECT_SKILL_TARGET_RELS:
-        _sync_project_skill_file(source, get_repo_root() / rel)
-    return source
+    layout_source = Path()
+    for skill in _PROJECT_SKILLS:
+        source = _skill_source_path(skill["source_rel"])
+        if not source.is_file():
+            continue
+        if skill["name"] == "prism-project-layout":
+            layout_source = source
+        for root in _PROJECT_SKILL_ROOTS:
+            _sync_project_skill_file(source, get_repo_root() / root / skill["category"] / skill["name"] / "SKILL.md")
+    return layout_source
 
 
 def _apply_runtime_ui_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
