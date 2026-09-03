@@ -1106,12 +1106,12 @@ function AccountPageContent() {
                           </div>
                         )}
                         {bindingStatus === "success" && (
-                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/17 bg-black p-3 text-sm text-white">
+                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-black p-3 text-sm text-white">
                             <span>已完成扫码，可点击下一步完成绑定</span>
                           </div>
                         )}
                         {bindingStatus === "error" && (
-                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/17 bg-black p-3 text-sm text-white">
+                          <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-black p-3 text-sm text-white">
                             <span>连接出错，请重新获取二维码</span>
                             <Button size="sm" variant="ghost" className="rounded-xl bg-black" onClick={startBinding}>
                               重新获取

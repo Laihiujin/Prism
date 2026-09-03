@@ -398,7 +398,7 @@ export default function DashboardPage() {
             {alertsToShow.map((alert) => (
               <div
                 key={alert.id}
-                className="rounded-xl border border-white/17 bg-black p-4 text-sm text-white"
+                className="rounded-xl border border-border bg-black p-4 text-sm text-white"
               >
                 <p className="font-semibold">{alert.title}</p>
                 <p className="text-xs text-white">{alert.action}</p>

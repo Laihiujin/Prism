@@ -159,7 +159,7 @@ function CatalogToolCard({ tool }: { tool: CatalogTool }) {
                     </div>
                 </div>
                 {tool.category && (
-                    <Badge variant="outline" className="bg-black text-white border-white/17 text-xs shrink-0">
+                    <Badge variant="outline" className="bg-black text-white border-border text-xs shrink-0">
                         {tool.category}
                     </Badge>
                 )}
