@@ -269,6 +269,57 @@ def _apply_system_prompt(messages: List[Dict[str, Any]], system_prompt: str) -> 
     return [{"role": "system", "content": system_prompt}] + cleaned
 
 
+def _enforce_platform_limits_json(content: str, platform: Optional[str]) -> Optional[str]:
+    """Clamp a JSON metadata object from chat output to the platform red lines.
+
+    Parses a title/description/tags (+ optional best_title/candidates) JSON object
+    and truncates/caps it to the platform ceilings via ``apply_platform_limits``.
+    Returns the re-serialized JSON, or ``None`` when ``content`` is not the
+    expected JSON object (so general chat is left untouched).
+    """
+    import json
+    import re
+
+    from ai_service.title_topic_generator import apply_platform_limits, PLATFORM_META
+
+    if not platform:
+        return None
+    text = (content or "").strip()
+    if not text:
+        return None
+    try:
+        match = re.search(r"\{[^}]+\}", text, re.DOTALL)
+        data = json.loads(match.group()) if match else json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    title, tags, desc = apply_platform_limits(
+        platform=platform,
+        title=str(data.get("title", "") or ""),
+        tags=data.get("tags", []) if isinstance(data.get("tags", []), list) else [],
+        description=str(data.get("description", "") or ""),
+    )
+    if "tags" in data:
+        data["tags"] = tags
+    if "title" in data:
+        data["title"] = title
+    if "description" in data:
+        data["description"] = desc
+
+    # 交互式标题候选（best_title / candidates）同样压制到平台上限
+    title_max = (PLATFORM_META.get(platform) or {}).get("title_max")
+    if title_max:
+        if data.get("best_title"):
+            data["best_title"] = str(data["best_title"]).strip()[:title_max]
+        cands = data.get("candidates")
+        if isinstance(cands, list):
+            data["candidates"] = [str(c).strip()[:title_max] for c in cands]
+
+    return json.dumps(data, ensure_ascii=False)
+
+
 class ChatRequest(BaseModel):
     messages: Optional[List[Dict[str, Any]]] = Field(default=None)
     model: Optional[str] = Field(default=None)
@@ -278,6 +329,9 @@ class ChatRequest(BaseModel):
     context: Optional[List[Dict[str, Any]]] = Field(default=None)
     role: Optional[str] = Field(default="default")
     max_iterations: Optional[int] = Field(default=None)
+    # 平台红线：目标平台 + 输出语言（用于标题/话题生成的平台差异化与字数/个数硬上限）
+    platform: Optional[str] = Field(default=None, description="目标平台 douyin/xiaohongshu/kuaishou/bilibili/video_account/tiktok")
+    language: Optional[str] = Field(default=None, description="输出语言 zh/en/bilingual；TikTok 默认 bilingual")
 
 
 
@@ -443,6 +497,15 @@ async def chat(request: ChatRequest):
             intent = default_intent
 
         system_prompt = _get_system_prompt_for_intent(prompts_config, intent)
+
+        # 平台红线：标题/话题生成的平台差异化 + 字数/个数硬上限
+        if request.platform:
+            from ai_service.title_topic_generator import build_platform_constraint_notes
+
+            notes = build_platform_constraint_notes(request.platform, request.language)
+            if notes:
+                system_prompt = f"{system_prompt}\n\n{notes}" if system_prompt else notes
+
         messages = _apply_system_prompt(messages, system_prompt)
 
         # 调用模型
@@ -454,9 +517,18 @@ async def chat(request: ChatRequest):
                 stream=False
             )
 
+            content = response.choices[0].message.content
+            # 平台红线兜底：解析 JSON 结果并截断/去重到平台上限（非 JSON 则原样返回）
+            if request.platform and content:
+                from ai_service.title_topic_generator import apply_platform_limits, resolve_platform
+
+                enforced = _enforce_platform_limits_json(content, resolve_platform(request.platform))
+                if enforced is not None:
+                    content = enforced
+
             return {
                 "status": "success",
-                "content": response.choices[0].message.content,
+                "content": content,
                 "role": "assistant"
             }
         else:

@@ -196,6 +196,49 @@ _register(ToolSpec(
 ))
 
 
+async def _generate_ai_metadata_handler(**kwargs: Any) -> Dict[str, Any]:
+    """AI 生成标题+话题并按平台落地（网感规则 + 平台字数/话题上限 + 可选语言）。"""
+    from fastapi_app.db.session import main_db_pool
+    from ai_service.metadata_generation_service import generate_metadata_for_files
+
+    file_ids = kwargs.get("file_ids") or []
+    if not file_ids:
+        raise ValueError("file_ids is required")
+
+    with main_db_pool.get_connection() as conn:
+        summary = await generate_metadata_for_files(
+            db=conn,
+            file_ids=file_ids,
+            force_regenerate=bool(kwargs.get("force_regenerate", False)),
+            platform=kwargs.get("platform"),
+            language=kwargs.get("language"),
+        )
+    return {"success": True, "data": summary}
+
+
+_register(ToolSpec(
+    name="generate_ai_metadata",
+    description=(
+        "AI 生成视频标题+标签并写入素材，支持平台网感文案规则与中英双语。\n"
+        "传 platform=douyin/xiaohongshu/kuaishou/bilibili/video_account/tiktok 时启用对应平台规则；"
+        "language=zh/en/bilingual 控制输出语言（TikTok 默认 bilingual）。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "file_ids": {"type": "array", "items": {"type": "integer"}, "description": "视频文件ID列表"},
+            "force_regenerate": {"type": "boolean", "description": "是否强制重新生成（即使已有AI内容）", "default": False},
+            "platform": {"type": "string", "description": "目标平台 douyin/xiaohongshu/kuaishou/bilibili/video_account/tiktok；为空则通用生成", "default": ""},
+            "language": {"type": "string", "description": "输出语言 zh/en/bilingual；TikTok 默认 bilingual（中英双语）", "default": ""},
+        },
+        "required": ["file_ids"],
+    },
+    handler=_generate_ai_metadata_handler,
+    category="copywrite",
+    output_summary="返回每条素材的 ai_title / ai_description / ai_tags（按平台落地）",
+))
+
+
 # ---------------------------------------------------------------------------
 # 访问与调用
 # ---------------------------------------------------------------------------

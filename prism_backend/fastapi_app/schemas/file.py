@@ -83,6 +83,8 @@ class AIMetadataGenerateRequest(BaseModel):
     """AI元数据生成请求"""
     file_ids: List[int] = Field(..., description="文件ID列表")
     force_regenerate: bool = Field(False, description="强制重新生成（即使已有AI内容）")
+    platform: Optional[str] = Field(None, description="目标平台（douyin/xiaohongshu/kuaishou/bilibili/video_account 等）；为空则通用生成")
+    language: Optional[str] = Field(None, description="输出语言（zh/en/bilingual）；TikTok 默认 bilingual，留空则按平台默认")
 
 
 class AIMetadataGenerateResponse(BaseModel):
