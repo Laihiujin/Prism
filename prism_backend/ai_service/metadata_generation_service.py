@@ -5,8 +5,7 @@ Shared by the HTTP batch endpoint (fastapi_app/api/v1/files/router.py) and the
 produce identical platform-aware results. Pure prompt/limit logic lives in
 ``ai_service.title_topic_generator``; here we wrap DB lookup, model call, JSON
 parsing and persistence for one or more file_ids. The model call goes through
-``ai_service.llm.call_chat_model`` (the same chat config as /api/v1/ai/chat),
-NOT the old ``model_manager`` (which reads a separate config and can be broken).
+``ai_service.llm.call_chat_model`` (the same chat config as /api/v1/ai/chat).
 """
 
 from __future__ import annotations

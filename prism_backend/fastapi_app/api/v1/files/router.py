@@ -1133,7 +1133,6 @@ async def transcribe_audio(
 
         # 使用OpenAI Whisper API进行转录
         # 这里需要提取音频并调用Whisper
-        from ai_service.model_manager import get_model_manager
         import tempfile
         import subprocess
 
@@ -1151,33 +1150,25 @@ async def transcribe_audio(
                 "-y"
             ], check=True, capture_output=True)
 
-            # 调用Whisper API
-            model_manager = get_model_manager()
-
-            # 使用当前配置的AI提供商调用Whisper
+            # 调用Whisper API（配置统一走 model-configs 单一配置源，service_type=speech，缺省回退 chat）
             # 注意：需要支持Whisper的提供商（如OpenAI兼容接口）
             from openai import OpenAI
+            from fastapi_app.api.v1.ai.router import get_ai_config
 
-            # 获取当前配置的API密钥和基础URL
-            import json
-            config_file = Path(__file__).parent.parent.parent.parent / "ai_service" / "config.json"
-            with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-
-            current_provider = config.get("current_provider", "siliconflow")
-            provider_config = config["providers"].get(current_provider, {})
+            speech_cfg = get_ai_config("speech") or get_ai_config("chat") or {}
 
             client = OpenAI(
-                api_key=provider_config.get("api_key"),
-                base_url=provider_config.get("base_url")
+                api_key=speech_cfg.get("api_key") or settings.AI_API_KEY,
+                base_url=speech_cfg.get("base_url") or settings.AI_BASE_URL or "https://api.openai.com/v1"
             )
+            transcribe_model = speech_cfg.get("model_name") or request.model
 
             # 读取音频文件并转录
             with open(temp_audio_path, "rb") as audio_file:
                 transcript_response = await asyncio.get_event_loop().run_in_executor(
                     None,
                     lambda: client.audio.transcriptions.create(
-                        model=request.model,
+                        model=transcribe_model,
                         file=audio_file,
                         language=request.language
                     )
