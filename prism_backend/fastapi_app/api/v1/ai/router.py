@@ -13,9 +13,6 @@ from sqlalchemy import text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-# Global AI client reference
-_ai_client = None
-
 
 def _normalize_images_base_url(value: Optional[str]) -> Optional[str]:
     """
@@ -31,33 +28,6 @@ def _normalize_images_base_url(value: Optional[str]) -> Optional[str]:
     if s.endswith("/images/generations"):
         s = s[: -len("/images/generations")].rstrip("/")
     return s
-
-
-def set_ai_client(ai_client):
-    """Set global AI client"""
-    global _ai_client
-    _ai_client = ai_client
-
-
-def get_ai_client():
-    """Get AI client or raise error"""
-    if not _ai_client:
-        raise HTTPException(status_code=400, detail="AI client not configured")
-    return _ai_client
-
-
-def _refresh_ai_model_manager() -> None:
-    try:
-        from ai_service.model_manager import get_model_manager
-
-        get_model_manager().reload()
-    except Exception:
-        pass
-    try:
-        if _ai_client and hasattr(_ai_client, "model_manager"):
-            _ai_client.model_manager.reload()
-    except Exception:
-        pass
 
 
 def get_ai_config(service_type: str) -> Optional[Dict[str, Any]]:
@@ -333,32 +303,6 @@ class ChatRequest(BaseModel):
 
 
 
-class SwitchProviderRequest(BaseModel):
-    provider: str
-
-
-class SwitchModelRequest(BaseModel):
-    model: str
-
-
-class AddProviderRequest(BaseModel):
-    provider: str
-    api_key: str
-    base_url: Optional[str] = None
-
-
-class FetchModelsRequest(BaseModel):
-    provider: str
-    api_key: str
-    base_url: Optional[str] = None
-    type: Optional[str] = None
-    sub_type: Optional[str] = None
-
-
-class RemoveProviderRequest(BaseModel):
-    provider: str
-
-
 class GenerateCoverRequest(BaseModel):
     prompt: str
     aspect_ratio: Optional[str] = "3:4"
@@ -366,63 +310,53 @@ class GenerateCoverRequest(BaseModel):
 
 
 @router.get("/status")
-async def get_status(ai_client=Depends(get_ai_client)):
-    """Get AI status"""
-    current_status = ai_client.model_manager.get_status()
-    
-    # Check if any provider is configured
-    current_provider_name = current_status.get("current_provider")
-    is_connected = False
-    connection_error = None
-    
-    if current_provider_name:
-        provider = ai_client.model_manager.get_current_provider()
-        if provider:
-            # We report "connected" if a provider is configured, 
-            # so the input box stays enabled and UI looks alive.
-            is_connected = True
-            
-            # STILL try a quick connection test but don't let it block "online" status entirely
-            try:
-                # Set a very short timeout for test
-                test_result = await asyncio.wait_for(provider.test_connection(), timeout=5.0)
-                if test_result.get("status") != "success":
-                    connection_error = test_result.get("error", "Unknown connection error")
-                    # Optionally we could set is_connected = False here if we want strict mode,
-                    # but we keep it True to satisfy the requirement of fixing "Offline" block.
-            except asyncio.TimeoutError:
-                connection_error = "Connection test timed out"
-            except Exception as e:
-                connection_error = str(e)
-    
-    return {
-        "status": "success",
-        "connected": is_connected,
-        "current_status": current_status,
-        "connection_error": connection_error,
-        "statistics": ai_client.get_statistics(),
-        "health": ai_client.get_health_status(),
-    }
+async def get_status():
+    """Get AI status（基于 model-configs 单一配置源）"""
+    try:
+        services: Dict[str, Any] = {}
+        for st in ("chat", "cover_generation", "speech", "video_generation", "function_calling"):
+            cfg = get_ai_config(st)
+            if cfg and cfg.get("model_name"):
+                services[st] = {
+                    "model_name": cfg.get("model_name"),
+                    "provider": cfg.get("provider"),
+                    "base_url": cfg.get("base_url"),
+                }
+        return {
+            "status": "success",
+            "connected": bool(services),
+            "current_status": {"services": services},
+            "connection_error": None,
+        }
+    except Exception as e:
+        return {
+            "status": "success",
+            "connected": False,
+            "current_status": {},
+            "connection_error": str(e),
+        }
 
 
 @router.get("/models")
-async def get_models(ai_client=Depends(get_ai_client)):
-    """Get available models"""
-    providers = {}
-    for provider_name, provider in ai_client.model_manager.get_all_providers().items():
-        models = []
-        for model in provider.models.values():
-            models.append(model.to_dict())
-        providers[provider_name] = {
-            "name": provider.provider_name,
-            "models": models
-        }
-
+async def get_models():
+    """Get available models（来自 model-configs 单一配置源）"""
+    providers: Dict[str, Any] = {}
+    for st in ("chat", "cover_generation", "speech", "video_generation", "function_calling"):
+        cfg = get_ai_config(st)
+        if cfg and cfg.get("model_name"):
+            key = cfg.get("provider") or st
+            provider_entry = providers.setdefault(key, {"name": key, "models": []})
+            provider_entry["models"].append({
+                "id": cfg["model_name"],
+                "model_name": cfg["model_name"],
+                "name": cfg["model_name"],
+            })
+    current_chat = get_ai_config("chat")
     return {
         "status": "success",
         "providers": providers,
-        "current_provider": ai_client.model_manager.current_provider,
-        "current_model": ai_client.model_manager.current_model,
+        "current_provider": None,
+        "current_model": (current_chat or {}).get("model_name"),
     }
 
 
@@ -603,153 +537,6 @@ async def agent_chat(request: ChatRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent 执行失败: {str(e)}")
-
-
-@router.post("/switch-provider")
-async def switch_provider(request: SwitchProviderRequest, ai_client=Depends(get_ai_client)):
-    """Switch provider"""
-    success = ai_client.model_manager.switch_provider(request.provider)
-    if success:
-        status = ai_client.model_manager.get_status()
-        return {
-            "status": "success",
-            "message": f"Switched to {request.provider}",
-            "current_status": status
-        }
-    else:
-        raise HTTPException(status_code=400, detail=f"Provider {request.provider} not found")
-
-
-@router.post("/switch-model")
-async def switch_model(request: SwitchModelRequest, ai_client=Depends(get_ai_client)):
-    """Switch model"""
-    success = ai_client.model_manager.switch_model(request.model)
-    if success:
-        status = ai_client.model_manager.get_status()
-        return {
-            "status": "success",
-            "message": f"Switched to model {request.model}",
-            "current_status": status
-        }
-    else:
-        raise HTTPException(status_code=400, detail=f"Model {request.model} not found")
-
-
-@router.post("/add-provider")
-async def add_provider(request: AddProviderRequest, ai_client=Depends(get_ai_client)):
-    """Add provider"""
-    success = ai_client.model_manager.add_provider(
-        request.provider, 
-        request.api_key,
-        request.base_url
-    )
-    if success:
-        status = ai_client.model_manager.get_status()
-        return {
-            "status": "success",
-            "message": f"Added provider {request.provider}",
-            "current_status": status
-        }
-    else:
-        raise HTTPException(status_code=400, detail=f"Failed to add provider {request.provider}")
-
-
-@router.post("/fetch-models")
-async def fetch_models(request: FetchModelsRequest):
-    """Fetch models from provider without saving config"""
-    try:
-        from ai_service.providers import OpenAICompatibleProvider, SiliconFlowProvider, VolcanoEngineProvider, TongyiProvider
-        
-        provider = None
-        if request.provider == "openai_compatible":
-            if not request.base_url:
-                raise HTTPException(status_code=400, detail="Base URL is required for OpenAI Compatible provider")
-            provider = OpenAICompatibleProvider(request.api_key, request.base_url)
-        elif request.provider == "siliconflow":
-            provider = SiliconFlowProvider(request.api_key)
-        elif request.provider == "volcanoengine":
-            provider = VolcanoEngineProvider(request.api_key)
-        elif request.provider == "tongyi":
-            provider = TongyiProvider(request.api_key)
-            
-        if not provider:
-            raise HTTPException(status_code=400, detail=f"Unknown provider {request.provider}")
-            
-        result = await provider.test_connection()
-        
-        if result.get("status") == "success":
-            # 如果是 openai_compatible，我们显式调用 get_available_models 以支持筛选
-            if request.provider == "openai_compatible":
-                models = await provider.get_available_models(type=request.type, sub_type=request.sub_type)
-                result["models"] = [m.to_dict() for m in models]
-            elif "models" not in result:
-                 models = await provider.get_available_models()
-                 result["models"] = [m.to_dict() for m in models]
-            return result
-        else:
-             raise HTTPException(status_code=400, detail=result.get("error", "Connection failed"))
-             
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/remove-provider")
-async def remove_provider(request: RemoveProviderRequest, ai_client=Depends(get_ai_client)):
-    """Remove provider"""
-    success = ai_client.model_manager.remove_provider(request.provider)
-    if success:
-        status = ai_client.model_manager.get_status()
-        return {
-            "status": "success",
-            "message": f"Removed provider {request.provider}",
-            "current_status": status
-        }
-    else:
-        raise HTTPException(status_code=400, detail=f"Provider {request.provider} not found")
-
-
-@router.post("/health-check")
-async def health_check(ai_client=Depends(get_ai_client)):
-    """Execute health check"""
-    results = await ai_client.health_check()
-    return {
-        "status": "success",
-        "health_check_results": results
-    }
-
-
-@router.get("/statistics")
-async def get_statistics(
-    provider: Optional[str] = None,
-    model: Optional[str] = None,
-    hours: int = Query(24),
-    ai_client=Depends(get_ai_client)
-):
-    """Get statistics"""
-    stats = ai_client.logger.get_statistics(
-        provider=provider,
-        model_id=model,
-        hours=hours
-    )
-
-    return {
-        "status": "success",
-        "statistics": stats
-    }
-
-
-@router.get("/recent-calls")
-async def get_recent_calls(
-    limit: int = Query(20),
-    ai_client=Depends(get_ai_client)
-):
-    """Get recent call records"""
-    calls = ai_client.logger.get_recent_calls(limit=limit)
-
-    return {
-        "status": "success",
-        "recent_calls": calls
-    }
 
 
 # ============================================
@@ -1426,7 +1213,6 @@ async def upsert_model_config(request: AIModelConfigRequest):
             conn.commit()
             conn.close()
         
-        _refresh_ai_model_manager()
         return {
             "status": "success",
             "message": f"配置已{'更新' if existing else '创建'}"
@@ -1458,7 +1244,6 @@ async def delete_model_config(service_type: str):
         if affected == 0:
             raise HTTPException(status_code=404, detail="配置不存在")
 
-        _refresh_ai_model_manager()
         return {
             "status": "success",
             "message": "配置已删除"

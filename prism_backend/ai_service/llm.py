@@ -2,9 +2,8 @@
 
 All title/topic (and other text) generation funnels through the SAME model
 config that ``/api/v1/ai/chat`` uses: the active ``chat`` row in
-``ai_model_configs`` (mirrored from ``config/llm_config.toml``). This avoids the
-old ``model_manager`` path, which reads a *separate* config file and can be left
-with 0 providers (and hence silently broken).
+``ai_model_configs``. The old ``model_manager`` path (a separate ``config.json``
+that could sit at 0 providers) has been removed in favor of this single source.
 
 Only non-streaming completions are needed so far. ``get_ai_chat_config`` is a
 plain (sync) reader; ``call_chat_model`` awaits the OpenAI-compatible client.

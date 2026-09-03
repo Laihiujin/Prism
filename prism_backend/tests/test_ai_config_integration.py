@@ -8,7 +8,6 @@ _BASE_DIR = Path(__file__).resolve().parent.parent
 if str(_BASE_DIR) not in sys.path:
     sys.path.append(str(_BASE_DIR))
 
-from ai_service.model_manager import ModelManager
 from fastapi_app.api.v1.ai.router import get_ai_config
 
 DB_PATH = os.getenv("PRISM_DATABASE_PATH") or str(_BASE_DIR / "db" / "database.db")
@@ -43,19 +42,17 @@ def test_get_ai_config():
         raise AssertionError("cover_generation config not found")
 
 
-def test_model_manager():
-    print("\n--- Test ModelManager ---")
-    manager = ModelManager()
-    print(f"Current Provider: {manager.current_provider}")
-    print(f"Current Model: {manager.current_model}")
-    assert manager.current_provider == "siliconflow"
-    assert manager.current_model == "deepseek-ai/DeepSeek-V2.5"
-
-    provider = manager.get_current_provider()
-    if provider:
-        print(f"Provider instance ready: {provider.provider_name}, API Key: {provider.api_key[:5]}...")
+def test_get_ai_config_chat():
+    print("\n--- Test get_ai_config(chat) ---")
+    config = get_ai_config("chat")
+    if config:
+        print(f"Loaded chat config: provider={config['provider']}, model={config.get('model_name')}")
+        assert config["provider"] == "siliconflow"
+        assert config["api_key"] == "sk-test-chat-key"
+        assert config["base_url"] == "https://api.siliconflow.cn/v1"
+        assert config.get("model_name") == "deepseek-ai/DeepSeek-V2.5"
     else:
-        raise AssertionError("Provider instance was not created")
+        raise AssertionError("chat config not found")
 
 
 async def test_openclaw_agent_config():
@@ -82,5 +79,5 @@ async def test_openclaw_agent_config():
 if __name__ == "__main__":
     setup_test_db()
     test_get_ai_config()
-    test_model_manager()
+    test_get_ai_config_chat()
     asyncio.run(test_openclaw_agent_config())
