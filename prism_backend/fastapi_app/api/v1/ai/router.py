@@ -270,12 +270,13 @@ def _apply_system_prompt(messages: List[Dict[str, Any]], system_prompt: str) -> 
 
 
 def _enforce_platform_limits_json(content: str, platform: Optional[str]) -> Optional[str]:
-    """Clamp a JSON metadata object from chat output to the platform red lines.
+    """Clamp a JSON title/tags object from chat output to the platform red lines.
 
-    Parses a title/description/tags (+ optional best_title/candidates) JSON object
-    and truncates/caps it to the platform ceilings via ``apply_platform_limits``.
+    Parses a title/tags (`+ optional best_title/candidates`) JSON object and
+    truncates/caps it to the platform ceilings via ``apply_platform_limits``.
     Returns the re-serialized JSON, or ``None`` when ``content`` is not the
-    expected JSON object (so general chat is left untouched).
+    expected JSON object (so general chat is left untouched). No description:
+    title/topic generation produces only title + tags.
     """
     import json
     import re
@@ -295,18 +296,15 @@ def _enforce_platform_limits_json(content: str, platform: Optional[str]) -> Opti
     if not isinstance(data, dict):
         return None
 
-    title, tags, desc = apply_platform_limits(
+    title, tags = apply_platform_limits(
         platform=platform,
         title=str(data.get("title", "") or ""),
         tags=data.get("tags", []) if isinstance(data.get("tags", []), list) else [],
-        description=str(data.get("description", "") or ""),
     )
     if "tags" in data:
         data["tags"] = tags
     if "title" in data:
         data["title"] = title
-    if "description" in data:
-        data["description"] = desc
 
     # 交互式标题候选（best_title / candidates）同样压制到平台上限
     title_max = (PLATFORM_META.get(platform) or {}).get("title_max")

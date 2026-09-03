@@ -21,21 +21,25 @@ except ImportError:  # pragma: no cover - yaml is a project dependency
 
 # Per-platform limits. Title caps come from myUtils/platform_metadata_adapter.py;
 # max_tags comes from config/ai_prompts_unified.yaml tags_generation.platform_rules.
-# Per-platform RED-LINE limits (must never be exceeded). These mirror the hard
-# caps enforced by the production uploaders (the ones that would otherwise break
-# publishing), taking precedence over the generic rules in ai_prompts_unified.yaml:
+# Per-platform RED-LINE limits for the title+tags generation. These mirror the
+# hard caps enforced by the production uploaders (the ones that would otherwise
+# break publishing) and take precedence over the generic rules in
+# ai_prompts_unified.yaml:
 #   - douyin title: >20 chars raises  (uploader/douyin_uploader/main_refactored.py)
 #   - xiaohongshu title: filled to [20]; tags capped at 10 (fill_tags max_tags)
-#   - kuaishou: combined field; tags[:3]
+#   - kuaishou: tags[:3]
 #   - bilibili / youtube / others: platform_metadata_adapter caps
+# Note: title/topic generation produces ONLY title + tags (no description).
+# title_max for the combined-caption platforms (kuaishou/tiktok/video_account) is
+# a sensible hook-length default, not a hard publisher cap.
 PLATFORM_META: Dict[str, Dict[str, Any]] = {
-    "douyin": {"code": 3, "label": "抖音", "title_max": 20, "max_tags": 4, "desc_max": 2000},
-    "xiaohongshu": {"code": 1, "label": "小红书", "title_max": 20, "max_tags": 10, "desc_max": 1000},
-    "kuaishou": {"code": 4, "label": "快手", "title_max": None, "max_tags": 3, "desc_max": None},
-    "bilibili": {"code": 5, "label": "B站", "title_max": 80, "max_tags": 12, "desc_max": 2000},
-    "video_account": {"code": 2, "label": "视频号", "title_max": None, "max_tags": None, "desc_max": None},
-    "tiktok": {"code": 6, "label": "TikTok", "title_max": None, "max_tags": 5, "desc_max": 2200},
-    "youtube": {"code": 7, "label": "YouTube", "title_max": 100, "max_tags": 15, "desc_max": 5000},
+    "douyin": {"code": 3, "label": "抖音", "title_max": 20, "max_tags": 4},
+    "xiaohongshu": {"code": 1, "label": "小红书", "title_max": 20, "max_tags": 10},
+    "kuaishou": {"code": 4, "label": "快手", "title_max": 30, "max_tags": 3},
+    "bilibili": {"code": 5, "label": "B站", "title_max": 80, "max_tags": 12},
+    "video_account": {"code": 2, "label": "视频号", "title_max": 30, "max_tags": 4},
+    "tiktok": {"code": 6, "label": "TikTok", "title_max": 30, "max_tags": 5},
+    "youtube": {"code": 7, "label": "YouTube", "title_max": 100, "max_tags": 15},
 }
 
 # Default output language per platform. TikTok targets an international audience, so
@@ -134,13 +138,14 @@ def build_metadata_prompt(
     config: Optional[Dict[str, Any]] = None,
     language: Optional[str] = None,
 ) -> str:
-    """Build a platform-aware AI metadata prompt.
+    """Build a platform-aware AI title+tags prompt (NO description).
 
     When ``platform`` is None/unknown this behaves like the legacy generic
     prompt (title <= 30, tags 1-4). Otherwise it injects the platform 网感
     style, title cap and topic cap so the returned title/topics actually fit
     that platform. ``language`` (zh/en/bilingual) overrides the output language;
-    TikTok defaults to bilingual when not provided.
+    TikTok defaults to bilingual when not provided. Output is ONLY title + tags
+    (the description is a separate field at publish time).
     """
     config = config if config is not None else load_ai_prompts_config()
     meta = (PLATFORM_META or {}).get(platform) if platform else None
@@ -149,21 +154,18 @@ def build_metadata_prompt(
     if meta is None:
         title_max = 30
         max_tags = 4
-        desc_max = 2000
         platform_block = ""
-        tags_block = "3) tags 输出 1-4 个，去重，不要带 # 符号（系统会自动加 #）"
+        tags_block = "2) tags 输出 1-4 个，去重，不要带 # 符号（系统会自动加 #）"
     else:
         label = meta["label"]
         title_max = meta.get("title_max")
         max_tags = meta.get("max_tags", 4)
-        desc_max = meta.get("desc_max")
         style = _platform_style(config, platform) or meta["label"]
         guidance = PLATFORM_GUIDANCE.get(platform, "")
         caps = "；".join(
             c for c in [
                 f"标题 {title_max} 字以内" if title_max else "",
                 f"话题不超过 {max_tags} 个" if max_tags else "",
-                f"描述 {desc_max} 字以内" if desc_max else "",
             ] if c
         )
         platform_block = (
@@ -172,29 +174,27 @@ def build_metadata_prompt(
             f"执行：{caps}。"
         )
         tags_block = (
-            f"3) tags 输出最多 {max_tags} 个，去重，不要带 # 符号（系统会自动加 #）"
+            f"2) tags 输出最多 {max_tags} 个，去重，不要带 # 符号（系统会自动加 #）"
         )
 
     title_hint = f"{title_max}字以内" if title_max else "合理长度"
-    desc_hint = f"{desc_max}字以内" if desc_max else "50-120字"
     language_block = ""
-    final_lang_note = "4) title/description/tags 全部用中文表达为主，不要表情符号"
+    final_lang_note = "3) title/tags 全部用中文表达为主，不要表情符号"
     if lang:
         language_block = f"\n{LANGUAGE_GUIDANCE[lang]}"
         # Bilingual/en relax the strict 中文-first rule for language tags only.
-        final_lang_note = "4) 不要表情符号；避免英文引号包裹标题"
+        final_lang_note = "3) 不要表情符号；避免英文引号包裹标题"
 
-    return f"""请基于「文件名」以及「用户已有标题/标签」，生成适合短视频平台的 AI 标题、描述和标签，并尽量做"改编优化"而不是完全重写。{platform_block}{language_block}
+    return f"""请基于「文件名」以及「用户已有标题/标签」，生成适合短视频平台的 AI 标题和话题标签，并尽量做"改编优化"而不是完全重写。{platform_block}{language_block}
 
 输入：
 - 文件名：{filename}
 - 用户标题（可为空）：{user_title or ""}
 - 用户标签（可为空，可能为 JSON 数组/空格分隔/逗号分隔）：{user_tags or ""}
 
-输出要求（严格 JSON，禁止 markdown/解释/多余文本）：
+输出要求（严格 JSON，禁止 markdown/解释/多余文本，只输出标题+标签，不要描述）：
 {{
   "title": "标题（{title_hint}，中文优先）",
-  "description": "描述（{desc_hint}，中文优先）",
   "tags": ["标签1", "标签2", "标签3"]
 }}
 
@@ -227,17 +227,17 @@ def apply_platform_limits(
     title: str,
     tags: List[str],
     description: Optional[str] = None,
-) -> Tuple[str, List[str], Optional[str]]:
-    """Enforce platform RED-LINE limits on generated metadata.
+) -> Tuple[str, List[str]]:
+    """Enforce platform RED-LINE limits on generated title + tags.
 
-    Truncates the title to the platform cap, caps/dedupes tags, truncates the
-    description, and strips any leading ``#`` from tags (stored cleansed; the
-    publisher re-adds ``#``). These ceilings come from the production uploaders
-    and must never be exceeded.
+    Truncates the title to the platform cap, caps/dedupes tags, and strips any
+    leading ``#`` from tags (stored cleansed; the publisher re-adds ``#``).
+    These ceilings come from the production uploaders and must never be exceeded.
+    ``description`` is accepted only for backwards-compatible call sites; it is
+    no longer part of title/topic generation and is returned unchanged/ignored.
     """
     meta = (PLATFORM_META or {}).get(platform) if platform else None
     title = str(title or "").strip()
-    desc = str(description or "").strip()
     clean_tags: List[str] = []
     for t in tags:
         tag = str(t).strip().lstrip("#").strip()
@@ -250,12 +250,10 @@ def apply_platform_limits(
         max_tags = meta.get("max_tags")
         if max_tags is not None:
             clean_tags = clean_tags[:max_tags]
-        if meta.get("desc_max"):
-            desc = desc[: meta["desc_max"]]
     else:
         clean_tags = clean_tags[:4]
 
-    return title, clean_tags, desc
+    return title, clean_tags
 
 
 def build_platform_constraint_notes(
@@ -266,8 +264,8 @@ def build_platform_constraint_notes(
     """Return a compact platform red-line + style instruction block.
 
     Used by the /api/v1/ai/chat path so the "标题生成 / 对话模型" also honors the
-    per-platform title/topic/description ceilings and style, not just the
-    batch endpoint. Empty string when platform is unknown/unspecified.
+    per-platform title/topic ceilings and style (title + tags only, no description).
+    Empty string when platform is unknown/unspecified.
     """
     resolved = resolve_platform(platform)
     if not resolved:
@@ -286,8 +284,7 @@ def build_platform_constraint_notes(
         caps.append(f"标题最多 {meta['title_max']} 字（不可超）")
     if meta.get("max_tags"):
         caps.append(f"话题最多 {meta['max_tags']} 个（不可超）")
-    if meta.get("desc_max"):
-        caps.append(f"描述最多 {meta['desc_max']} 字（不可超）")
+    caps.append("只输出标题与话题，不要描述")
 
     lines = [
         f"目标平台：{label}。",
