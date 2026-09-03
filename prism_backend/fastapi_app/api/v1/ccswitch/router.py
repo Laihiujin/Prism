@@ -1,6 +1,6 @@
 """cc-switch 桥接 API：读取本机 CC Switch 的 provider 档案并应用到项目内的 agent。
 
-只读 cc-switch；应用目标仅限项目内配置（Hermes: hermes_agent.toml + hermes-home/config.yaml）。
+只读 cc-switch；应用目标仅限项目内配置（Hermes: tools/hermes-home/config.yaml）。
 app_type 支持 cc-switch 全部类型：claude / claude-desktop / codex / gemini /
 grokbuild / opencode / openclaw / hermes / pi。
 """
