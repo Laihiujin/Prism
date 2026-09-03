@@ -460,6 +460,19 @@ export default function SettingsPage() {
       <CcSwitchPanel />
       <HermesProviderCard />
       <AIServiceProviderCard
+        serviceType="chat"
+        title="标题生成 / 对话模型"
+        description="用于标题 AI 生成、文案润色与对话交互的模型提供商（对应 chat 服务）。"
+        defaultOpen={false}
+        providerOptions={[
+          { value: "openai_compatible", label: "OpenAI Compatible" },
+          { value: "openai", label: "OpenAI" },
+          { value: "siliconflow", label: "SiliconFlow" },
+          { value: "volcengine", label: "Volcengine" },
+        ]}
+        note="这里写入 chat 服务配置，素材编辑器的“标题 AI 生成”会直接使用它。请确认账户余额充足，避免 402 计费错误。"
+      />
+      <AIServiceProviderCard
         serviceType="cover_generation"
         title="图片生成"
         description="管理封面图、配图和图像生成模型提供商。"
@@ -790,7 +803,7 @@ export default function SettingsPage() {
                 <div className="mt-3 text-xs text-muted-foreground">
                   {browserRuntimeInfo?.browsers?.chromium?.version
                     ? `当前版本: ${browserRuntimeInfo?.browsers?.chromium?.version}`
-                    : "安装后会写入 browsers/chromium/hibbiki-* 目录。"}
+                    : "安装到 prism_backend/tools/browsers 组件目录，用 patchright 下载。"}
                 </div>
                 <div className="mt-3 break-all font-mono text-xs text-foreground/70">
                   {browserRuntimeInfo?.browsers?.chromium?.path || "安装后会在这里显示实际可执行文件路径。"}
@@ -849,7 +862,7 @@ export default function SettingsPage() {
                 <div className="mt-3 text-xs text-muted-foreground">
                   {browserRuntimeInfo?.browsers?.firefox?.version
                     ? `当前版本: ${browserRuntimeInfo?.browsers?.firefox?.version}`
-                    : "安装后会写入项目本地 browsers 目录。"}
+                    : "安装到 prism_backend/tools/browsers 组件目录，用 patchright 下载。"}
                 </div>
                 <div className="mt-3 break-all font-mono text-xs text-foreground/70">
                   {browserRuntimeInfo?.browsers?.firefox?.path || "安装后会在这里显示实际可执行文件路径。"}

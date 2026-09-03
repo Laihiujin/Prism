@@ -6,6 +6,7 @@ from utils.automation_provider import Playwright, async_playwright
 import os
 import asyncio
 from uploader.tk_uploader.tk_config import Tk_Locator
+from myUtils.browser_context import launch_optional_browser
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
 from utils.files_times import get_absolute_path
 from utils.log import tiktok_logger
@@ -13,7 +14,7 @@ from utils.log import tiktok_logger
 
 async def cookie_auth(account_file):
     async with async_playwright() as playwright:
-        browser = await playwright.firefox.launch(headless=HEADLESS_FLAG)
+        browser = await launch_optional_browser(playwright, platform="tiktok", headless=HEADLESS_FLAG)
         context = await browser.new_context(storage_state=account_file)
         context = await set_init_script(context)
         # 创建一个新的页面
@@ -49,14 +50,10 @@ async def tiktok_setup(account_file, handle=False):
 
 async def get_tiktok_cookie(account_file):
     async with async_playwright() as playwright:
-        options = {
-            'args': [
-                '--lang en-GB',
-            ],
-            'headless': False,  # Set headless option here
-        }
         # Make sure to run headed.
-        browser = await playwright.firefox.launch(**options)
+        browser = await launch_optional_browser(
+            playwright, platform="tiktok", headless=False, extra_args=["--lang", "en-GB"]
+        )
         # Setup context however you like.
         context = await browser.new_context()  # Pass any options
         context = await set_init_script(context)
@@ -140,7 +137,7 @@ class TiktokVideo(object):
         await file_chooser.set_files(self.file_path)
 
     async def upload(self, playwright: Playwright) -> None:
-        browser = await playwright.firefox.launch(headless=HEADLESS_FLAG)
+        browser = await launch_optional_browser(playwright, platform="tiktok", headless=HEADLESS_FLAG)
         context = await browser.new_context(storage_state=f"{self.account_file}")
         context = await set_init_script(context)
         page = await context.new_page()

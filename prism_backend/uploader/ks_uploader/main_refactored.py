@@ -24,6 +24,7 @@ from utils.log import kuaishou_logger
 from utils.browser_dom import dismiss_version_prompt
 from utils.browser_dom import handle_upload_error as shared_handle_upload_error
 from utils.browser_dom import remove_overlays
+from myUtils.browser_context import launch_optional_browser
 
 KUAISHOU_UPLOAD_URL = "https://cp.kuaishou.com/article/publish/video"
 KUAISHOU_MANAGE_URL = "https://cp.kuaishou.com/article/manage/video?status=2&from=publish"
@@ -163,9 +164,9 @@ async def _is_ks_login_page_gone(page: Page) -> bool:
 async def cookie_auth(account_file):
     async with async_playwright() as playwright:
         if LOCAL_CHROME_PATH:
-            browser = await playwright.chromium.launch(headless=True, executable_path=LOCAL_CHROME_PATH)
+            browser = await launch_optional_browser(playwright, platform="kuaishou", headless=True, executable_path=LOCAL_CHROME_PATH)
         else:
-            browser = await playwright.chromium.launch(headless=True, channel="chromium")
+            browser = await launch_optional_browser(playwright, platform="kuaishou", headless=True, channel="chromium")
         try:
             context = await browser.new_context(storage_state=account_file)
             context = await set_init_script(context)
@@ -216,9 +217,9 @@ async def get_ks_cookie(
             should_close_context = False
         else:
             if LOCAL_CHROME_PATH:
-                browser = await playwright.chromium.launch(headless=headless, executable_path=LOCAL_CHROME_PATH)
+                browser = await launch_optional_browser(playwright, platform="kuaishou", headless=headless, executable_path=LOCAL_CHROME_PATH)
             else:
-                browser = await playwright.chromium.launch(headless=headless, channel="chromium")
+                browser = await launch_optional_browser(playwright, platform="kuaishou", headless=headless, channel="chromium")
             context = await browser.new_context()
             should_close_context = True
         context = await set_init_script(context)
@@ -471,12 +472,12 @@ class KSVideo(KSBaseUploader):
         kuaishou_logger.info(_msg("🥳", "上传前检查通过"))
 
         if self.local_executable_path:
-            browser = await playwright.chromium.launch(
+            browser = await launch_optional_browser(playwright, platform="kuaishou", 
                 headless=self.headless,
                 executable_path=self.local_executable_path,
             )
         else:
-            browser = await playwright.chromium.launch(
+            browser = await launch_optional_browser(playwright, platform="kuaishou", 
                 headless=self.headless,
                 channel="chromium",
             )
@@ -649,7 +650,7 @@ class KSNote(KSBaseUploader):
         await page.keyboard.press("Enter")
 
         for index, tag in enumerate(self.tags[:3], start=1):
-            kuaishou_logger.info(_msg("🏷️", f"小人正在添加第 {index} 个话题: #{tag}"))
+            kuaishou_logger.info(_msg("��️", f"小人正在添加第 {index} 个话题: #{tag}"))
             await page.keyboard.type(f"#{tag} ")
             await asyncio.sleep(2)
 
@@ -707,12 +708,12 @@ class KSNote(KSBaseUploader):
         kuaishou_logger.info(_msg("🥳", "图文上传前检查通过"))
 
         if self.local_executable_path:
-            browser = await playwright.chromium.launch(
+            browser = await launch_optional_browser(playwright, platform="kuaishou", 
                 headless=self.headless,
                 executable_path=self.local_executable_path,
             )
         else:
-            browser = await playwright.chromium.launch(
+            browser = await launch_optional_browser(playwright, platform="kuaishou", 
                 headless=self.headless,
                 channel="chromium",
             )

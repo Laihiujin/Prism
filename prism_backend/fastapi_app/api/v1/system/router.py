@@ -15,6 +15,9 @@ from datetime import datetime, timedelta
 # 导入子路由
 from .browser_profiles import router as browser_profiles_router
 
+# 浏览器引擎「工具组件」（tools/）跨平台下载/安装/校验/卸载
+from tools import browser_components
+
 router = APIRouter(prefix="/system", tags=["系统维护"])
 
 # 注册子路由
@@ -29,7 +32,7 @@ def _repo_root() -> Path:
 
 
 def _browsers_root() -> Path:
-    return _repo_root() / "browsers"
+    return browser_components.component_root()
 
 
 def _sorted_subdirs(root: Path, prefix: str) -> list[Path]:
@@ -113,36 +116,8 @@ def _get_python_package_info(package_name: str) -> Dict[str, Any]:
 
 
 def _get_browser_runtime_info() -> Dict[str, Any]:
-    browsers_root = _browsers_root()
-    chromium_path = _resolve_chromium_path(browsers_root)
-    firefox_path = _resolve_firefox_path(browsers_root)
-    patchright_info = _get_python_package_info("patchright")
-    preferred_runtime = "patchright"
-    active_runtime = "patchright" if patchright_info["installed"] else None
-
-    return {
-        "pythonPath": sys.executable,
-        "browsersPath": str(browsers_root),
-        "preferredRuntime": preferred_runtime,
-        "activeRuntime": active_runtime,
-        "runtimes": {
-            "patchright": patchright_info,
-        },
-        "browsers": {
-            "chromium": {
-                "installed": chromium_path is not None,
-                "path": str(chromium_path) if chromium_path else None,
-                "version": _extract_browser_asset_version(chromium_path),
-                "uninstallable": True,
-            },
-            "firefox": {
-                "installed": firefox_path is not None,
-                "path": str(firefox_path) if firefox_path else None,
-                "version": _extract_browser_asset_version(firefox_path),
-                "uninstallable": True,
-            },
-        },
-    }
+    # 统一走 tools/ 浏览器组件模块（组件安装状态、路径、版本、运行时）
+    return browser_components.browser_runtime_info()
 
 
 def _run_runtime_command(args: list[str]) -> subprocess.CompletedProcess:
@@ -327,55 +302,26 @@ async def browser_runtime_status():
         raise HTTPException(status_code=500, detail=f"????????????: {str(e)}")
 
 
-@router.post("/browser-runtime/install/{target}", summary="??????????")
+@router.post("/browser-runtime/install/{target}", summary="下载并安装浏览器组件")
 async def browser_runtime_install(target: str):
     target = (target or "").strip().lower()
     allowed_targets = {"chromium", "firefox", "patchright"}
     if target not in allowed_targets:
-        raise HTTPException(status_code=400, detail=f"????????: {target}")
-
-    runtime_info = _get_browser_runtime_info()
-
-    if target == "patchright":
-        result = _run_runtime_command(["-m", "pip", "install", target])
-        return {
-            "success": result.returncode == 0,
-            "output": result.stdout,
-            "error": None if result.returncode == 0 else (result.stderr.strip() or result.stdout.strip()),
-            "browserRuntimeInfo": _get_browser_runtime_info(),
-        }
-
-    if target == "chromium":
-        install_result = _run_hibbiki_chromium_install()
-    else:
-        if not runtime_info["runtimes"]["patchright"]["installed"]:
-            install_runtime = _run_runtime_command(
-                ["-m", "pip", "install", "--upgrade", "--force-reinstall", "patchright==1.59.1"]
-            )
-            if install_runtime.returncode != 0:
-                return {
-                    "success": False,
-                    "output": install_runtime.stdout,
-                    "error": install_runtime.stderr.strip() or install_runtime.stdout.strip(),
-                    "browserRuntimeInfo": _get_browser_runtime_info(),
-                }
-
-        install_result = _run_runtime_command(["-m", "patchright", "install", target])
-
-    return {
-        "success": install_result.returncode == 0,
-        "output": install_result.stdout,
-        "error": None if install_result.returncode == 0 else (install_result.stderr.strip() or install_result.stdout.strip()),
-        "browserRuntimeInfo": _get_browser_runtime_info(),
-    }
+        raise HTTPException(status_code=400, detail=f"不支持的安装目标: {target}")
+    try:
+        return browser_components.install_component(target)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"安装失败: {str(e)}")
 
 
-@router.post("/browser-runtime/uninstall/{target}", summary="????????????")
+@router.post("/browser-runtime/uninstall/{target}", summary="卸载浏览器组件")
 async def browser_runtime_uninstall(target: str):
     target = (target or "").strip().lower()
     allowed_targets = {"chromium", "firefox", "patchright"}
     if target not in allowed_targets:
-        raise HTTPException(status_code=400, detail=f"????????: {target}")
+        raise HTTPException(status_code=400, detail=f"不支持的卸载目标: {target}")
 
     if target == "patchright":
         result = _run_runtime_command(["-m", "pip", "uninstall", "-y", target])
@@ -387,15 +333,11 @@ async def browser_runtime_uninstall(target: str):
         }
 
     try:
-        removed_paths = _uninstall_browser_asset(target)
+        return browser_components.uninstall_component(target)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"????????????: {str(e)}")
-
-    return {
-        "success": True,
-        "removedPaths": removed_paths,
-        "browserRuntimeInfo": _get_browser_runtime_info(),
-    }
+        raise HTTPException(status_code=500, detail=f"卸载失败: {str(e)}")
 
 
 @router.get("/browser-headless", summary="获取浏览器无头模式设置")
