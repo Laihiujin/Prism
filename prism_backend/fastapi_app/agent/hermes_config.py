@@ -10,7 +10,6 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, Iterable, Optional
 
-import toml
 import yaml
 
 
@@ -72,13 +71,6 @@ def get_workspace_root() -> Path:
         workspace_root.mkdir(parents=True, exist_ok=True)
         return workspace_root
     return get_source_repo_root()
-
-
-def get_config_path() -> Path:
-    config_root = _resolve_env_path("PRISM_HERMES_CONFIG_ROOT")
-    config_dir = config_root if config_root is not None else (get_backend_root() / "config")
-    config_dir.mkdir(parents=True, exist_ok=True)
-    return config_dir / "hermes_agent.toml"
 
 
 def get_hermes_source_path() -> Path:
@@ -354,7 +346,7 @@ def get_runtime_summary() -> Dict[str, Any]:
     return {
         "repo_root": str(get_repo_root()),
         "workspace_root": str(get_workspace_root()),
-        "config_path": str(get_config_path()),
+        "config_path": str(get_hermes_runtime_config_path()),
         "source_path": str(source_path),
         "webui_path": str(webui_path),
         "dashboard_dist_path": str(dashboard_dist_path),
@@ -610,49 +602,34 @@ def sync_agent_config_to_runtime(config: Dict[str, Any]) -> Path:
 
 
 def read_agent_config() -> Dict[str, Any]:
-    runtime_snapshot = _snapshot_from_hermes_runtime_config()
-    if runtime_snapshot.get("llm"):
-        return runtime_snapshot
-
-    config_path = get_config_path()
-    if not config_path.exists():
-        try:
-            from ..api.v1.ai.router import get_ai_config
-
-            legacy = get_ai_config("function_calling")
-            if legacy:
-                return {
-                    "llm": {
-                        "provider": legacy.get("provider") or "custom",
-                        "model": legacy.get("model_name") or "",
-                        "api_key": legacy.get("api_key") or "",
-                        "base_url": legacy.get("base_url") or "",
-                    },
-                    "runtime": {
-                        "max_turns": 12,
-                    },
-                }
-        except Exception:
-            pass
-        return {}
-    with config_path.open("r", encoding="utf-8") as handle:
-        return toml.load(handle)
+    """读取系统大语言模型配置（单一来源：Hermes 运行时的 config.yaml）。"""
+    return _snapshot_from_hermes_runtime_config()
 
 
 def write_agent_config(config: Dict[str, Any]) -> Path:
-    config_path = get_config_path()
+    """把系统大语言模型配置写入 Hermes 运行时的 config.yaml（单一来源）。"""
     with _CONFIG_LOCK:
-        with config_path.open("w", encoding="utf-8") as handle:
-            toml.dump(config, handle)
-        sync_agent_config_to_runtime(config)
-    return config_path
+        return sync_agent_config_to_runtime(config)
 
 
 def delete_agent_config() -> bool:
-    config_path = get_config_path()
+    """清除系统大语言模型配置（config.yaml 的 model/agent 段）。
+
+    与写入对称：写入会同步 config.yaml，清除也必须同步移除 config.yaml 里的
+    model/agent，否则读取仍会从 config.yaml 恢复出旧的模型配置。
+    """
+    config_path = get_hermes_runtime_config_path()
     if not config_path.exists():
         return False
-    config_path.unlink()
+    data = _read_hermes_runtime_config()
+    removed = False
+    for key in ("model", "agent"):
+        if key in data:
+            del data[key]
+            removed = True
+    if not removed:
+        return False
+    _write_hermes_runtime_config(data)
     return True
 
 

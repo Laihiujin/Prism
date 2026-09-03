@@ -1,10 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Loader2, RefreshCw, Save, TestTube2, Trash2 } from "lucide-react"
+import { ChevronDown, Loader2, RefreshCw, Save, TestTube2, Trash2 } from "lucide-react"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -16,6 +18,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { API_ENDPOINTS } from "@/lib/env"
+import { cn } from "@/lib/utils"
 
 type HermesConfigResponse = {
   provider?: string | null
@@ -60,6 +63,7 @@ const PROVIDER_OPTIONS = [
 
 export function HermesProviderCard() {
   const { toast } = useToast()
+  const [open, setOpen] = useState(false)
   const [form, setForm] = useState<HermesFormState>(DEFAULT_FORM)
   const [savedConfig, setSavedConfig] = useState<HermesConfigResponse | null>(null)
   const [loading, setLoading] = useState({
@@ -230,112 +234,135 @@ export function HermesProviderCard() {
     "http://127.0.0.1:9119"
 
   return (
-    <Card className="border-border/70 bg-transparent">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-foreground">
-          大语言模型配置
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          系统大语言模型（项目与 Hermes 共用）的 provider、模型、API Key 与最大轮次。此配置独立于上方 CC Switch 导入的 Hermes 提供商，自成一体。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="hermes-provider">提供商</Label>
-            <Select value={form.provider} onValueChange={(value) => setField("provider", value)}>
-              <SelectTrigger id="hermes-provider">
-                <SelectValue placeholder="选择提供商" />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDER_OPTIONS.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="hermes-model">默认模型</Label>
-            <Input
-              id="hermes-model"
-              value={form.model}
-              onChange={(event) => setField("model", event.target.value)}
-              placeholder="gpt-4.1 / claude-sonnet-4-5 / qwen-max"
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="border-border/70 bg-transparent">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-start justify-between gap-4 rounded-2xl px-5 py-4 text-left transition-colors hover:bg-accent/40"
+          >
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-sm font-medium text-foreground">大语言模型配置</div>
+                <Badge
+                  variant="outline"
+                  className={savedConfig ? "border-border/80 bg-black text-foreground" : "border-border/70 bg-card text-muted-foreground"}
+                >
+                  {savedConfig ? "已配置" : "未配置"}
+                </Badge>
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                系统大语言模型（项目与 Hermes 共用）的 provider、模型、API Key 与最大轮次。
+              </p>
+            </div>
+            <ChevronDown
+              className={cn(
+                "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180"
+              )}
             />
-          </div>
+          </button>
+        </CollapsibleTrigger>
 
-          <div className="space-y-2">
-            <Label htmlFor="hermes-base-url">Base URL</Label>
-            <Input
-              id="hermes-base-url"
-              value={form.baseUrl}
-              onChange={(event) => setField("baseUrl", event.target.value)}
-              placeholder="https://api.openai.com/v1"
-            />
-          </div>
+        <CollapsibleContent>
+          <CardContent className="space-y-5 border-t border-border/70 pt-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="hermes-provider">提供商</Label>
+                <Select value={form.provider} onValueChange={(value) => setField("provider", value)}>
+                  <SelectTrigger id="hermes-provider">
+                    <SelectValue placeholder="选择提供商" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROVIDER_OPTIONS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="hermes-api-key">API Key</Label>
-            <Input
-              id="hermes-api-key"
-              type="password"
-              value={form.apiKey}
-              onChange={(event) => setField("apiKey", event.target.value)}
-              placeholder="sk-..."
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="hermes-model">默认模型</Label>
+                <Input
+                  id="hermes-model"
+                  value={form.model}
+                  onChange={(event) => setField("model", event.target.value)}
+                  placeholder="gpt-4.1 / claude-sonnet-4-5 / qwen-max"
+                />
+              </div>
 
-          <div className="space-y-2 md:max-w-[220px]">
-            <Label htmlFor="hermes-max-turns">最大轮次</Label>
-            <Input
-              id="hermes-max-turns"
-              type="number"
-              min={1}
-              max={90}
-              value={form.maxTurns}
-              onChange={(event) => setField("maxTurns", event.target.value)}
-            />
-          </div>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="hermes-base-url">Base URL</Label>
+                <Input
+                  id="hermes-base-url"
+                  value={form.baseUrl}
+                  onChange={(event) => setField("baseUrl", event.target.value)}
+                  placeholder="https://api.openai.com/v1"
+                />
+              </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
-            <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">当前提供商</div>
-            <div className="mt-2 text-sm font-medium text-foreground">{savedConfig?.provider || providerLabel}</div>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
-            <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">Hermes Home</div>
-            <div className="mt-2 break-all text-sm text-foreground/80">{savedConfig?.runtime?.home_path || "未检测到"}</div>
-          </div>
-          <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
-            <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">Dashboard</div>
-            <div className="mt-2 break-all text-sm text-foreground/80">{dashboardUrl}</div>
-          </div>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="hermes-api-key">API Key</Label>
+                <Input
+                  id="hermes-api-key"
+                  type="password"
+                  value={form.apiKey}
+                  onChange={(event) => setField("apiKey", event.target.value)}
+                  placeholder="sk-..."
+                />
+              </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void saveConfig()} disabled={loading.save}>
-            {loading.save ? <Loader2 className="animate-spin" /> : <Save />}
-            保存模型配置
-          </Button>
-          <Button variant="secondary" className="bg-foreground/10" onClick={() => void testConfig()} disabled={loading.test}>
-            {loading.test ? <Loader2 className="animate-spin" /> : <TestTube2 />}
-            测试连接
-          </Button>
-          <Button variant="secondary" className="bg-foreground/10" onClick={() => void hydrate()} disabled={loading.hydrate}>
-            {loading.hydrate ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-            刷新
-          </Button>
-          <Button variant="destructive" onClick={() => void clearConfig()} disabled={loading.clear}>
-            {loading.clear ? <Loader2 className="animate-spin" /> : <Trash2 />}
-            清除配置
-          </Button>
-        </div>
+              <div className="space-y-2 md:max-w-[220px]">
+                <Label htmlFor="hermes-max-turns">最大轮次</Label>
+                <Input
+                  id="hermes-max-turns"
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={form.maxTurns}
+                  onChange={(event) => setField("maxTurns", event.target.value)}
+                />
+              </div>
+            </div>
 
-      </CardContent>
-    </Card>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
+                <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">当前提供商</div>
+                <div className="mt-2 text-sm font-medium text-foreground">{savedConfig?.provider || providerLabel}</div>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
+                <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">Hermes Home</div>
+                <div className="mt-2 break-all text-sm text-foreground/80">{savedConfig?.runtime?.home_path || "未检测到"}</div>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-card/30 p-4">
+                <div className="text-xs uppercase tracking-[0.22em] text-foreground/40">Dashboard</div>
+                <div className="mt-2 break-all text-sm text-foreground/80">{dashboardUrl}</div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => void saveConfig()} disabled={loading.save}>
+                {loading.save ? <Loader2 className="animate-spin" /> : <Save />}
+                保存模型配置
+              </Button>
+              <Button variant="secondary" className="bg-foreground/10" onClick={() => void testConfig()} disabled={loading.test}>
+                {loading.test ? <Loader2 className="animate-spin" /> : <TestTube2 />}
+                测试连接
+              </Button>
+              <Button variant="secondary" className="bg-foreground/10" onClick={() => void hydrate()} disabled={loading.hydrate}>
+                {loading.hydrate ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+                刷新
+              </Button>
+              <Button variant="destructive" onClick={() => void clearConfig()} disabled={loading.clear}>
+                {loading.clear ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                清除配置
+              </Button>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   )
 }

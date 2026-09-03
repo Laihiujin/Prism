@@ -1,11 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ArrowRightLeft, CheckCircle2, Database, Download, Loader2, RefreshCw, ShieldOff, TestTube2, XCircle } from "lucide-react"
+import { ArrowRightLeft, CheckCircle2, ChevronDown, Database, Download, Loader2, RefreshCw, ShieldOff, TestTube2, XCircle } from "lucide-react"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Select,
   SelectContent,
@@ -68,6 +69,7 @@ const fetchJson = async (url: string, init?: RequestInit) => {
 
 export function CcSwitchPanel() {
   const { toast } = useToast()
+  const [open, setOpen] = useState(false)
   const [status, setStatus] = useState<CcSwitchStatus | null>(null)
   const [providers, setProviders] = useState<CcSwitchProvider[]>([])
   const [projectConfig, setProjectConfig] = useState<ProjectHermesConfig | null>(null)
@@ -239,18 +241,34 @@ export function CcSwitchPanel() {
   }, [projectConfig, providers])
 
   return (
-    <Card className="border-border/70 bg-transparent">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-foreground">
-          <Database className="h-4 w-4" />
-          cc-switch 模型管辖（读取本机 CC Switch）
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          只读本机 CC Switch 的 provider 档案（<code>~/.cc-switch/cc-switch.db</code>），
-          把选中的 provider 应用到<b>项目内</b>的 Hermes Agent。不改动本机 Claude / Hermes 配置。
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="border-border/70 bg-transparent">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-start justify-between gap-4 rounded-2xl px-5 py-4 text-left transition-colors hover:bg-accent/40"
+          >
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Database className="h-4 w-4" />
+                <div className="text-sm font-medium text-foreground">cc-switch 模型管辖</div>
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                只读本机 CC Switch 的 provider 档案（<code>~/.cc-switch/cc-switch.db</code>），
+                把选中的 provider 应用到<b>项目内</b>的 Hermes Agent。不改动本机 Claude / Hermes 配置。
+              </p>
+            </div>
+            <ChevronDown
+              className={cn(
+                "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180"
+              )}
+            />
+          </button>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <CardContent className="space-y-5 border-t border-border/70 pt-5">
         {/* 状态行 */}
         <div className="flex flex-wrap items-center gap-2">
           {loading ? (
@@ -465,7 +483,9 @@ export function CcSwitchPanel() {
             <div className="mt-2 text-sm text-muted-foreground">尚未配置 —— 选上面的 provider 和模型，一键应用到项目。</div>
           )}
         </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   )
 }
