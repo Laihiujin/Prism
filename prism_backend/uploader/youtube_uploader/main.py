@@ -16,6 +16,7 @@ from typing import Any, Optional
 from utils.automation_provider import Page, async_playwright
 from utils.base_social_media import set_init_script
 from utils.log import youtube_logger
+from myUtils.browser_context import launch_optional_browser
 
 
 STUDIO_URL = "https://studio.youtube.com"
@@ -30,9 +31,9 @@ async def _launch_chromium(playwright: Any, *, headless: bool, proxy: Optional[s
     # Chrome has the most reliable existing Google sign-in profile support.
     # Patchright's bundled Chromium remains a portable fallback (including Docker).
     try:
-        return await playwright.chromium.launch(channel="chrome", **options)
+        return await launch_optional_browser(playwright, platform="youtube", channel="chrome", **options)
     except Exception:
-        return await playwright.chromium.launch(**options)
+        return await launch_optional_browser(playwright, platform="youtube", **options)
 
 
 def _is_signed_in(url: str) -> bool:

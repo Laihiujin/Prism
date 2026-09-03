@@ -21,6 +21,7 @@ from config.conf import DEBUG_MODE, LOCAL_CHROME_PATH
 from uploader.base_video import BaseVideoUploader
 from utils.base_social_media import set_init_script
 from utils.log import youtube_logger
+from myUtils.browser_context import launch_optional_browser
 
 try:
     # 国内直连 youtube.com 会超时，且 patchright 启的 chromium 不吃系统代理。
@@ -118,7 +119,7 @@ async def _fetch_youtube_channel_id_from_session(account_file) -> str:
         if not path.exists():
             return ""
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(**_chrome_launch_options(headless=True))
+            browser = await launch_optional_browser(pw, platform="youtube", **_chrome_launch_options(headless=True))
             try:
                 context = await browser.new_context(storage_state=str(path))
                 context = await set_init_script(context)
@@ -149,7 +150,7 @@ async def _fetch_youtube_channel_info_local(channel_id: str, handle: str = "") -
     url = f"https://www.youtube.com/channel/{channel_id}" if channel_id else f"https://www.youtube.com/{handle}"
     try:
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(**_chrome_launch_options(headless=True))
+            browser = await launch_optional_browser(pw, platform="youtube", **_chrome_launch_options(headless=True))
             try:
                 context = await browser.new_context()
                 context = await set_init_script(context)
@@ -291,7 +292,7 @@ async def _auto_register_account(account_file, original_account=None) -> None:
 async def cookie_auth(account_file) -> bool:
     """登录态是否仍有效：带 cookie 打开 Studio，没被踢到 Google 登录页且进入了频道页即有效。"""
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(**_chrome_launch_options(headless=True))
+        browser = await launch_optional_browser(playwright, platform="youtube", **_chrome_launch_options(headless=True))
         try:
             context = await browser.new_context(storage_state=account_file)
             context = await set_init_script(context)
@@ -313,7 +314,7 @@ async def youtube_cookie_gen(account_file, headless: bool = False):
     """交互式登录：开浏览器让用户登录 Google/YouTube，进入频道页后保存 storage_state。"""
     async with async_playwright() as playwright:
         # 登录必须显形，让用户输账号密码/二步验证
-        browser = await playwright.chromium.launch(**_chrome_launch_options(headless=False))
+        browser = await launch_optional_browser(playwright, platform="youtube", **_chrome_launch_options(headless=False))
         context = await browser.new_context()
         context = await set_init_script(context)
         page = await context.new_page()
@@ -454,7 +455,7 @@ class YouTubeVideo(BaseVideoUploader):
         self.headless = headless
 
     async def upload(self, playwright: Playwright) -> None:
-        browser = await playwright.chromium.launch(
+        browser = await launch_optional_browser(playwright, platform="youtube", 
             **_chrome_launch_options(
                 headless=self.headless,
                 proxy={"server": YT_PROXY} if YT_PROXY else None,

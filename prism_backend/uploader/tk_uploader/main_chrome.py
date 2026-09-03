@@ -12,6 +12,7 @@ from uploader.tk_uploader.tk_config import Tk_Locator
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
 from utils.files_times import get_absolute_path
 from utils.log import tiktok_logger
+from myUtils.browser_context import launch_optional_browser
 
 
 async def cookie_auth(account_file):
@@ -19,7 +20,7 @@ async def cookie_auth(account_file):
         launch_options = {"headless": HEADLESS_FLAG}
         if LOCAL_CHROME_PATH:
             launch_options["executable_path"] = LOCAL_CHROME_PATH
-        browser = await playwright.chromium.launch(**launch_options)
+        browser = await launch_optional_browser(playwright, platform="tiktok", **launch_options)
         try:
             context = await browser.new_context(storage_state=account_file)
             context = await set_init_script(context)
@@ -183,7 +184,7 @@ class TiktokVideo(object):
         launch_options = {"headless": HEADLESS_FLAG}
         if self.local_executable_path:
             launch_options["executable_path"] = self.local_executable_path
-        browser = await playwright.chromium.launch(**launch_options)
+        browser = await launch_optional_browser(playwright, platform="tiktok", **launch_options)
         context = await browser.new_context(storage_state=f"{self.account_file}")
         # context = await set_init_script(context)
         page = await context.new_page()

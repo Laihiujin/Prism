@@ -21,6 +21,7 @@ from utils.login_qrcode import print_terminal_qrcode
 from utils.login_qrcode import remove_qrcode_file
 from utils.login_qrcode import save_data_url_image
 from utils.log import douyin_logger
+from myUtils.browser_context import launch_optional_browser
 
 DOUYIN_PUBLISH_STRATEGY_IMMEDIATE = "immediate"
 DOUYIN_PUBLISH_STRATEGY_SCHEDULED = "scheduled"
@@ -79,7 +80,7 @@ async def cookie_auth(account_file):
         launch_kwargs["channel"] = "chrome"
     for _attempt in range(3):
         async with async_playwright() as playwright:
-            browser = await playwright.chromium.launch(**launch_kwargs)
+            browser = await launch_optional_browser(playwright, platform="douyin", **launch_kwargs)
             try:
                 context = await browser.new_context(storage_state=account_file)
                 context = await set_init_script(context)
@@ -244,7 +245,7 @@ async def douyin_cookie_gen(
                 launch_kwargs["executable_path"] = LOCAL_CHROME_PATH
             else:
                 launch_kwargs["channel"] = "chromium"
-            browser = await playwright.chromium.launch(**launch_kwargs)
+            browser = await launch_optional_browser(playwright, platform="douyin", **launch_kwargs)
             context = await browser.new_context()
             should_close_context = True
         context = await set_init_script(context)
@@ -356,7 +357,12 @@ class DouYinBaseUploader(BaseVideoUploader):
             # 中文输入法/富文本异常时，禁止紧接着按空格制造孤立「#」；
             # 必须先确认当前编辑器文本确实包含本次完整话题。
             current_text = await description_editor.inner_text()
-            if not current_text.rstrip().endswith(expected_topic):
+            # 抖音富文本在话题节点后可能附加零宽空格(U+200B/200C/200D等)，先去不可见字符再校验，避免误判“未完整输入”
+            _norm = "".join(
+                ch for ch in current_text
+                if not (0x200B <= ord(ch) <= 0x200D) and ch not in "\ufeff\u2060\xa0"
+            ).rstrip()
+            if not _norm.endswith(expected_topic):
                 raise RuntimeError(f"话题未完整输入，停止确认空格: expected={expected_topic!r}, actual={current_text!r}")
             await page.keyboard.press("Space")
             await page.wait_for_timeout(200)
@@ -1151,7 +1157,7 @@ class DouYinVideo(DouYinBaseUploader):
             launch_kwargs["executable_path"] = LOCAL_CHROME_PATH
         else:
             launch_kwargs["channel"] = "chromium"
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="douyin", **launch_kwargs)
         context = await browser.new_context(
             storage_state=f"{self.account_file}",
             permissions=["geolocation"],
@@ -1494,7 +1500,7 @@ class DouYinNote(DouYinBaseUploader):
             launch_kwargs["executable_path"] = LOCAL_CHROME_PATH
         else:
             launch_kwargs["channel"] = "chromium"
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="douyin", **launch_kwargs)
         context = await browser.new_context(
             storage_state=f"{self.account_file}",
             permissions=["geolocation"],

@@ -13,7 +13,7 @@ from typing import Optional
 
 from config.conf import LOCAL_CHROME_PATH
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
-from myUtils.browser_context import build_context_options
+from myUtils.browser_context import build_context_options, launch_optional_browser
 from myUtils.close_guide import try_close_guide
 from utils.log import douyin_logger
 # otp_events and input_queues are imported inside handle_sms_verification to avoid circular import
@@ -112,7 +112,7 @@ async def _best_effort_close_overlays(page: Page):
 
 async def cookie_auth(account_file):
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=HEADLESS_FLAG)
+        browser = await launch_optional_browser(playwright, platform="douyin", headless=HEADLESS_FLAG)
         context = await browser.new_context(**build_context_options(storage_state=account_file))
         context = await set_init_script(context)
         # 创建一个新的页面
@@ -175,7 +175,7 @@ async def douyin_cookie_gen(account_file):
             'headless': HEADLESS_FLAG
         }
         # Make sure to run headed.
-        browser = await playwright.chromium.launch(**options)
+        browser = await launch_optional_browser(playwright, platform="douyin", **options)
         # Setup context however you like.
         context = await browser.new_context(**build_context_options())
         context = await set_init_script(context)
@@ -334,7 +334,7 @@ class DouYinVideo(object):
             launch_kwargs["proxy"] = self.proxy
             douyin_logger.info(f"Using Proxy: {self.proxy.get('server')}")
 
-        browser = await playwright.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(playwright, platform="douyin", **launch_kwargs)
         # 创建一个浏览器上下文，使用指定的 cookie 文件
         context = await browser.new_context(**build_context_options(storage_state=f"{self.account_file}"))
         context = await set_init_script(context)

@@ -13,7 +13,7 @@ from pathlib import Path
 
 from config.conf import LOCAL_CHROME_PATH
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
-from myUtils.browser_context import build_context_options, build_browser_args, build_firefox_args
+from myUtils.browser_context import build_context_options, build_browser_args, build_firefox_args, launch_optional_browser
 from myUtils.close_guide import try_close_guide
 from utils.files_times import get_absolute_path
 from utils.log import tencent_logger
@@ -41,13 +41,8 @@ def format_str_for_short_title(origin_title: str) -> str:
 
 async def cookie_auth(account_file):
     async with async_playwright() as playwright:
-        # 🦊 使用 Firefox 替代 Chromium（更快、更稳定）
-        firefox_args = build_firefox_args()
-        firefox_args['headless'] = HEADLESS_FLAG
-        # Do not pass empty executable_path, otherwise Playwright may try to spawn '.' (ENOENT)
-        if not firefox_args.get("executable_path"):
-            firefox_args.pop("executable_path", None)
-        browser = await playwright.firefox.launch(**firefox_args)
+        # 自适应浏览器：优先本机可用引擎（此机为本地 Chrome）
+        browser = await launch_optional_browser(playwright, platform="channels", headless=HEADLESS_FLAG)
         context = await browser.new_context(**build_context_options(storage_state=account_file))
         context = await set_init_script(context)
         # 创建一个新的页面
@@ -113,13 +108,8 @@ async def cookie_auth(account_file):
 
 async def get_tencent_cookie(account_file):
     async with async_playwright() as playwright:
-        browser_args = build_firefox_args()  # 使用 Firefox 配置
-        browser_args['headless'] = HEADLESS_FLAG
         # Make sure to run headed.
-        if not browser_args.get("executable_path"):
-            browser_args.pop("executable_path", None)
-        # 🦊 使用 Firefox 替代 Chromium（更快、更稳定）
-        browser = await playwright.firefox.launch(**browser_args)
+        browser = await launch_optional_browser(playwright, platform="channels", headless=HEADLESS_FLAG)
         # Setup context however you like.
         context = await browser.new_context(**build_context_options())  # Pass any options
         # Pause the page, and start recording manually.
@@ -268,18 +258,11 @@ class TencentVideo(object):
                             tencent_logger.info(f"[+] 自动找到 Chrome for Testing")
                         break
 
-        # 🦊 视频号改用 Firefox（比 Chrome for Testing 更快）
-        # Firefox 也支持 H.265 视频编解码
-        tencent_logger.info(f"[+] ✅ 使用 Firefox 浏览器（更快、更稳定）")
+        # 自适应浏览器：默认按本机可用引擎（此机为本地 Chrome）。若需强制某引擎，
+        # 可用环境变量 PRISM_PLATFORM_BROWSER_CHANNELS=chromium|firefox。
+        tencent_logger.info(f"[+] ✅ 使用自适应浏览器（本机 Chrome）")
 
-        # 使用 Firefox 专用配置（会自动读取 LOCAL_FIREFOX_PATH）
-        firefox_args = build_firefox_args()
-        firefox_args['headless'] = browser_args.get('headless', False)
-        # 如果没有配置 executable_path，移除该字段让 Playwright 使用默认 Firefox
-        if not firefox_args.get('executable_path'):
-            firefox_args.pop('executable_path', None)
-
-        browser = await playwright.firefox.launch(**firefox_args)
+        browser = await launch_optional_browser(playwright, platform="channels", headless=False)
         # 创建一个浏览器上下文，使用指定的 cookie 文件
         context = await browser.new_context(**build_context_options(storage_state=f"{self.account_file}"))
         context = await set_init_script(context)
