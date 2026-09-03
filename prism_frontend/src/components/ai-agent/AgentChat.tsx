@@ -71,7 +71,7 @@ const ThoughtProcess = ({ content }: { content: string }) => {
     const cleanContent = content.replace(/^> 💭\s*/, '').trim();
 
     return (
-        <div className="my-2 rounded-lg border border-white/17 bg-black overflow-hidden">
+        <div className="my-2 rounded-lg border border-border bg-black overflow-hidden">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-white/80 hover:bg-black transition-colors"
@@ -88,7 +88,7 @@ const ThoughtProcess = ({ content }: { content: string }) => {
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
                     >
-                        <div className="px-3 pb-3 pt-0 text-xs text-white/70 font-mono whitespace-pre-wrap border-t border-white/17">
+                        <div className="px-3 pb-3 pt-0 text-xs text-white/70 font-mono whitespace-pre-wrap border-t border-border">
                             {cleanContent}
                         </div>
                     </motion.div>
@@ -104,8 +104,8 @@ const ToolExecution = ({ content }: { content: string }) => {
     const cleanContent = content.replace(/^> 🔧\s*/, '').trim();
 
     return (
-        <div className="my-2 rounded-lg border border-white/17 bg-black overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-white/80 border-b border-white/17">
+        <div className="my-2 rounded-lg border border-border bg-black overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-white/80 border-b border-border">
                 <Terminal className="h-3 w-3" />
                 <span>工具调用</span>
             </div>
@@ -359,7 +359,7 @@ export function AgentChat() {
                                                     </div>
                                                 </div>
                                                 <div className="flex-shrink-0 mt-1">
-                                                    <div className="h-9 w-9 rounded-full bg-black border border-white/17 flex items-center justify-center">
+                                                    <div className="h-9 w-9 rounded-full bg-black border border-border flex items-center justify-center">
                                                         <User className="h-5 w-5 text-white" />
                                                     </div>
                                                 </div>
@@ -372,7 +372,7 @@ export function AgentChat() {
                                                 className="flex gap-4 mb-8"
                                             >
                                                 <div className="flex-shrink-0 mt-1">
-                                                    <div className="h-9 w-9 rounded-full bg-black border border-white/17 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.15)]">
+                                                    <div className="h-9 w-9 rounded-full bg-black border border-border flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.15)]">
                                                         <Bot className="h-5 w-5 text-white" />
                                                     </div>
                                                 </div>
