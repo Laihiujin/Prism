@@ -24,20 +24,20 @@ export function AccountActivityLog({ logs }: AccountActivityLogProps) {
             {logs.map((item, index) => {
                 let Icon = Activity
                 let colorClass = "text-white"
-                let bgClass = "bg-black border-white/17"
+                let bgClass = "bg-black border-border"
 
                 if (item.type === "success") {
                     Icon = CheckCircle2
                     colorClass = "text-white"
-                    bgClass = "bg-black border-white/17"
+                    bgClass = "bg-black border-border"
                 } else if (item.type === "error") {
                     Icon = XCircle
                     colorClass = "text-white"
-                    bgClass = "bg-black border-white/17"
+                    bgClass = "bg-black border-border"
                 } else if (item.type === "warning") {
                     Icon = Shield
                     colorClass = "text-white"
-                    bgClass = "bg-black border-white/17"
+                    bgClass = "bg-black border-border"
                 }
 
                 return (
