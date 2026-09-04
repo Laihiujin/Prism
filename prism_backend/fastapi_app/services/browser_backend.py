@@ -109,8 +109,13 @@ class PatchrightBackend(BrowserBackend):
         返回 dict: {name, kind, path}；kind='chromium' 用 pw.chromium，'firefox' 用 pw.firefox。
         找不到返回 None（不抛异常，由调用方给出清晰报错）。
         """
-        if getattr(self, "_detected_browser", None) is not None:
-            return self._detected_browser
+        cached = getattr(self, "_detected_browser", None)
+        if cached is not None:
+            from pathlib import Path
+            if Path(cached["path"]).is_file():
+                return cached
+            logger.warning(f"[PatchrightBackend] 缓存浏览器已失效，重新扫描: {cached['path']}")
+            self._detected_browser = None
 
         try:
             from utils.chrome_detector import detect_browser

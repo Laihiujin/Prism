@@ -266,8 +266,8 @@ def _chrome_executable() -> str | None:
 
 
 def _chromium_in_browsers() -> bool:
-    # browsers/chromium/chromium-*/ 下的浏览器可执行文件
-    chromium_dir = REPO_ROOT / "browsers" / "chromium"
+    runtime_data = Path(os.environ.get("PRISM_RUNTIME_DATA_DIR", REPO_ROOT / "runtime-data"))
+    chromium_dir = runtime_data / "components" / "browsers"
     if not chromium_dir.exists():
         return False
     for exe in chromium_dir.rglob("*"):

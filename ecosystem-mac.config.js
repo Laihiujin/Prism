@@ -12,8 +12,10 @@ const { spawnSync } = require('child_process');
 const ROOT = __dirname;                       // 本文件所在目录 = 项目根
 const PRISMENV = path.join(ROOT, 'prismenv');
 const PY = path.join(PRISMENV, 'bin', 'python');
+const COMPONENT_ENV_ROOT = path.join(ROOT, 'prism_components');
 const BACKEND = path.join(ROOT, 'prism_backend');
-const BROWSERS = path.join(ROOT, 'browsers');
+const RUNTIME_DATA = process.env.PRISM_RUNTIME_DATA_DIR || path.join(ROOT, 'runtime-data');
+const BROWSERS = path.join(RUNTIME_DATA, 'components', 'browsers', 'patchright', 'versions', 'current');
 const HERMES_AGENT = path.join(ROOT, 'tools', 'hermes-agent');
 const HERMES_WEBUI = path.join(ROOT, 'tools', 'hermes-webui');
 const HERMES_HOME = path.join(ROOT, 'tools', 'hermes-home', 'webui');
@@ -38,15 +40,21 @@ function which(command, fallback) {
 }
 const REDIS = which('redis-server', '/opt/homebrew/bin/redis-server');
 
-function pyCli(name) {
-  // 优先 prismenv/bin/<console-script>（带 shebang，PM2 可直接跑）；
-  // 不存在则退回 prismenv/bin/python -m <name>。
-  const exe = path.join(PRISMENV, 'bin', name);
+function pyCliIn(envDir, name) {
+  // 优先 <envDir>/bin/<console-script>（带 shebang，PM2 可直接跑）；
+  // 不存在则退回 <envDir>/bin/python -m <name>。
+  const exe = path.join(envDir, 'bin', name);
   if (fs.existsSync(exe)) return { script: exe, preArgs: [] };
-  return { script: PY, preArgs: ['-m', name] };
+  return { script: path.join(envDir, 'bin', 'python'), preArgs: ['-m', name] };
 }
+function pyCli(name) { return pyCliIn(PRISMENV, name); }
 function pyCliArgs(name, extraArgs) {
   const c = pyCli(name);
+  return { script: c.script, args: c.preArgs.concat(extraArgs).join(' ') };
+}
+// 隔离组件：每个组件有自己的 prism_components/<component> 环境，入口在其 bin/ 下。
+function compPyCliArgs(component, name, extraArgs) {
+  const c = pyCliIn(path.join(COMPONENT_ENV_ROOT, component), name);
   return { script: c.script, args: c.preArgs.concat(extraArgs).join(' ') };
 }
 
@@ -144,9 +152,9 @@ module.exports = {
     {
       name: 'persona-api',
       cwd: '.',
-      script: pyCliArgs('persona', ['--data-dir', 'tools/persona-studio/data', 'serve']).script,
+      script: compPyCliArgs('persona', 'persona', ['--data-dir', 'tools/persona-studio/data', 'serve']).script,
       interpreter: 'none', // 按 shebang 直接运行 Python CLI
-      args: pyCliArgs('persona', ['--data-dir', 'tools/persona-studio/data', 'serve']).args,
+      args: compPyCliArgs('persona', 'persona', ['--data-dir', 'tools/persona-studio/data', 'serve']).args,
       autorestart: true,
       watch: false,
       env: { PLAYWRIGHT_BROWSERS_PATH: BROWSERS },
@@ -183,9 +191,9 @@ module.exports = {
     {
       name: 'hermes-dashboard',
       cwd: '.',
-      script: pyCliArgs('hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build']).script,
+      script: compPyCliArgs('hermes', 'hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build']).script,
       interpreter: 'none',
-      args: pyCliArgs('hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build']).args,
+      args: compPyCliArgs('hermes', 'hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build']).args,
       autorestart: true,
       watch: false,
       restart_delay: 2000,
