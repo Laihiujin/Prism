@@ -1281,7 +1281,7 @@ class Supervisor:
             if not started:
                 self._record_failure(name, "start", "进程启动失败（start_process 返回 False）")
                 return False
-            if name in {"backend", "automation-worker", "hermes-dashboard", "hermes-webui"}:
+            if name in {"backend", "automation-worker", "hermes-dashboard", "hermes-webui", "deepseek-harness"}:
                 ready = self.wait_for_service_ready(name)
                 if not ready:
                     probe_port = self.service_ports.get(name)
@@ -1422,6 +1422,14 @@ class Supervisor:
         return payload
 
     def can_start_service(self, name: str) -> bool:
+        if name == "deepseek-harness":
+            port = self.service_ports["deepseek-harness"]
+            if self.is_port_in_use(port) and self._http_ok(f"http://127.0.0.1:{port}/"):
+                self.mark_external_service(name, True)
+                return False
+            self.mark_external_service(name, False)
+            return True
+
         if name == "hermes-gateway":
             gateway_platform_status = self._get_gateway_platform_status()
             if not gateway_platform_status["configured"]:
