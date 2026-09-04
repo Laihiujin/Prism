@@ -267,7 +267,6 @@ DEV_TOOLS: List[DevTool] = [
             "win32": 'start "" "http://127.0.0.1:3080"',
             "linux": 'xdg-open "http://127.0.0.1:3080"',
         },
-        builtin=True,
     ),
     DevTool(
         id="ccswitch",
@@ -317,17 +316,6 @@ DEV_TOOLS: List[DevTool] = [
         description="Hermes Agent（CLI/WebUI/MCP，已在容器内置）。",
         install_path="hermes-agent",
         check="command -v hermes",
-        builtin=True,
-    ),
-    DevTool(
-        id="prism-mcp",
-        name="Prism MCP",
-        type="mcp",
-        repo="",
-        description="Prism 内置 MCP server：把 Prism 的 BaseTool 目录（发布/账号/数据工具）暴露给 Hermes 作为结构化 MCP 工具。随 Prism 后端内置，无需安装，始终可见。",
-        install_path="",
-        install_cmd="",
-        note="由 Prism 后端自动注入 Hermes config.yaml 的 mcp_servers['prism']（fastapi_app.agent.mcp_server）；内置组件，装/不装都显示占位符。",
         builtin=True,
     ),
     DevTool(
@@ -456,17 +444,6 @@ class DevToolRegistry:
         tool = self.get(tool_id)
         if not tool:
             raise ValueError(f"未知工具: {tool_id}")
-
-        if tool_id == "deepseek-harness":
-            import socket
-
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(0.3)
-                if sock.connect_ex(("127.0.0.1", 3080)) == 0:
-                    raise RuntimeError(
-                        "DeepSeek Harness 仍在 127.0.0.1:3080 运行；"
-                        "请先停止 deepseek-harness 服务，再执行卸载。"
-                    )
 
         # Skill（md 文件）：直接删除技能目录
         if isinstance(tool, dict) and tool.get("_is_skill"):
