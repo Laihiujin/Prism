@@ -2355,8 +2355,8 @@ class PrismApp {
 
     this.cleanupStaleManagedServices();
     await this.prepareManagedServicePorts();
-    console.log('Using supervisor to manage backend services...');
-    log.info('Using supervisor to manage backend services...');
+    console.log('Using PM2 to manage backend services (replaces supervisor)...');
+    log.info('Using PM2 to manage backend services (replaces supervisor)...');
     this.startSupervisor();
     await this.waitForSupervisorState(30000);
     try {
@@ -2370,7 +2370,9 @@ class PrismApp {
       log.error('Supervisor services failed to become healthy:', wrapped);
       throw wrapped;
     }
-    await this.startFrontend(this.buildServiceEnv());
+    // 前端亦由 PM2 托管（ecosystem.desktop.config.js 的 prism-frontend），
+    // 主进程不再单独启动前端，仅同步端口供 renderer 加载。
+    this.frontendPort = Number.parseInt(String(process.env.PRISM_FRONTEND_PORT || '3000'), 10);
     this.servicesStarted = true;
   }
 
@@ -2397,66 +2399,57 @@ class PrismApp {
     this.ensurePrismenvConfig();
     this.cleanupStaleSupervisorFromState();
     this.cleanupStaleSupervisorOnPort(7002);
-    const supervisorPaths = this.getSupervisorPaths();
-    const supervisorExe = supervisorPaths.exePath;
-    const supervisorScript = supervisorPaths.scriptPath;
-    const pythonPath = this.getPythonPath();
+    // 全面改用 PM2 管理进程：启动 PM2 controller 代替原 supervisor.py。
+    const controllerPath = this.isDev
+      ? path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor', 'pm2_controller.js')
+      : path.join(process.resourcesPath, 'supervisor', 'pm2_controller.js');
 
-    console.log('Supervisor exe:', supervisorExe);
-    console.log('Supervisor script:', supervisorScript);
-    log.info('Starting supervisor...');
-    log.info('  - Supervisor exe:', supervisorExe);
-    log.info('  - Supervisor script:', supervisorScript);
-    log.info('  - Supervisor cwd:', supervisorPaths.cwd);
-    log.info('  - Exe exists:', Boolean(supervisorExe && fs.existsSync(supervisorExe)));
-    log.info('  - Script exists:', Boolean(supervisorScript && fs.existsSync(supervisorScript)));
+    console.log('PM2 controller path:', controllerPath);
+    log.info('Starting PM2 controller (replaces supervisor)...');
+    log.info('  - Controller path:', controllerPath);
+    log.info('  - Exists:', Boolean(controllerPath && fs.existsSync(controllerPath)));
 
-    if (!supervisorExe && !supervisorScript) {
-      throw new Error('Supervisor entrypoint not found in packaged resources or desktop-electron/resources/supervisor');
+    if (!fs.existsSync(controllerPath)) {
+      throw new Error('PM2 controller not found in packaged resources or desktop-electron/resources/supervisor');
     }
 
-    const launchCmd = supervisorExe || pythonPath;
-    const launchArgs = supervisorExe ? [] : [supervisorScript];
-
-    console.log('Supervisor launch command:', launchCmd, launchArgs);
-    log.info('  - Launch Command:', launchCmd);
-    log.info('  - Launch Args:', launchArgs);
-
-    // 鏋勫缓鐜鍙橀噺
+    // 构建环境：沿用 buildServiceEnv()（含 PRISM_*/PLAYWRIGHT_*/HERMES_* 及端口），
+    // 补上状态文件路径（动态端口发现）与 PM2 数据目录（必须可写）。
     const env = this.buildServiceEnv();
-    // 动态端口发现：supervisor 把 API 端口/服务端口/启动令牌写入状态文件
+    // 动态端口发现：PM2 controller 把 API 端口/服务端口/启动令牌写入状态文件
     env.PRISM_SUPERVISOR_STATE_PATH = this.getSupervisorStatePath();
+    env.PM2_HOME = path.join(app.getPath('userData'), 'pm2');
 
-    this.supervisorProcess = spawn(launchCmd, launchArgs, {
-      cwd: supervisorPaths.cwd || this.getResourcesRoot(),
-      env: env,
+    this.supervisorProcess = spawn(process.execPath, [controllerPath], {
+      cwd: this.getResourcesRoot(),
+      env: { ...env, ELECTRON_RUN_AS_NODE: '1' },
       windowsHide: true
     });
 
     this.supervisorProcess.on('error', (error) => {
-      console.error('Supervisor failed to start:', error);
-      log.error('Supervisor failed to start:', error);
+      console.error('PM2 controller failed to start:', error);
+      log.error('PM2 controller failed to start:', error);
     });
 
     this.supervisorProcess.stdout?.on('data', (data) => {
-      console.log('[Supervisor]', data.toString());
-      log.info('[Supervisor]', data.toString());
+      console.log('[PM2 Controller]', data.toString());
+      log.info('[PM2 Controller]', data.toString());
     });
 
     this.supervisorProcess.stderr?.on('data', (data) => {
-      console.error('[Supervisor Error]', data.toString());
-      log.error('[Supervisor Error]', data.toString());
+      console.error('[PM2 Controller Error]', data.toString());
+      log.error('[PM2 Controller Error]', data.toString());
     });
 
     this.supervisorProcess.on('exit', (code) => {
-      console.warn(`Supervisor exited with code: ${code}`);
-      log.warn(`Supervisor exited with code: ${code}`);
+      console.warn(`PM2 controller exited with code: ${code}`);
+      log.warn(`PM2 controller exited with code: ${code}`);
       this.supervisorProcess = null;
       this.lastSupervisorExit = { code, at: Date.now() };
     });
 
-    console.log('Supervisor started');
-    log.info('Supervisor started');
+    console.log('PM2 controller started');
+    log.info('PM2 controller started');
   }
 
   async startRedis(env) {
@@ -3110,11 +3103,14 @@ class PrismApp {
     ipcMain.handle('system:restart-frontend', async () => {
       log.info('Restarting frontend service...');
       try {
-        if (this.frontendProcess) {
+        // 前端由 PM2 托管，重启走 PM2 controller 的 /api/restart/prism-frontend
+        if (this.supervisorProcess && !this.supervisorProcess.killed) {
+          await this.requestSupervisor('/api/restart/prism-frontend', 'POST', 30000);
+        } else if (this.frontendProcess) {
           this.frontendProcess.kill();
           this.frontendProcess = null;
+          await this.startFrontend();
         }
-        await this.startFrontend();
         log.info('Frontend service restarted successfully');
         return { success: true };
       } catch (error) {
@@ -3310,7 +3306,7 @@ class PrismApp {
               try {
                 const result = JSON.parse(data);
                 // 鍚屾椂鍚姩鍓嶇
-                this.startFrontend();
+                this.frontendPort = Number.parseInt(String(process.env.PRISM_FRONTEND_PORT || '3000'), 10);
                 resolve({ success: true, message: result.message });
               } catch (error) {
                 reject(error);

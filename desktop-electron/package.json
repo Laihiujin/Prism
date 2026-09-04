@@ -93,6 +93,20 @@
         ]
       },
       {
+        "from": "../tools/persona-studio",
+        "to": "tools/persona-studio",
+        "filter": [
+          "**/*",
+          "!**/.git/**",
+          "!**/.github/**",
+          "!**/docs/**",
+          "!**/dashboard/logs/**",
+          "!**/data/**",
+          "!**/tests/**",
+          "!**/nul"
+        ]
+      },
+      {
         "from": "../scripts/hermes",
         "to": "scripts/hermes",
         "filter": [
@@ -180,7 +194,15 @@
           "from": "resources/supervisor",
           "to": "supervisor",
           "filter": [
-            "supervisor.exe"
+            "pm2_controller.js",
+            "ecosystem.desktop.config.js"
+          ]
+        },
+        {
+          "from": "resources/node_modules",
+          "to": "node_modules",
+          "filter": [
+            "**/*"
           ]
         },
         {
@@ -261,8 +283,15 @@
           "from": "resources/supervisor",
           "to": "supervisor",
           "filter": [
-            "supervisor.py",
-            "api_server.py"
+            "pm2_controller.js",
+            "ecosystem.desktop.config.js"
+          ]
+        },
+        {
+          "from": "resources/node_modules",
+          "to": "node_modules",
+          "filter": [
+            "**/*"
           ]
         }
       ]
