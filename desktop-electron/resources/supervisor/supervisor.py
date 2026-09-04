@@ -259,6 +259,7 @@ class ProcessManager:
     def stop_all(self) -> None:
         logger.info("Stopping all managed services...")
         stop_order = [
+            "deepseek-harness",
             "hermes-gateway",
             "hermes-webui",
             "hermes-dashboard",
@@ -282,6 +283,7 @@ class Supervisor:
             "automation-worker": self._read_env_port(("AUTOMATION_WORKER_PORT", "PRISM_AUTOMATION_WORKER_PORT"), 7001),
             "hermes-dashboard": self._read_env_port(("PRISM_HERMES_DASHBOARD_PORT",), 9119),
             "hermes-webui": self._read_env_port(("PRISM_HERMES_WEBUI_PORT",), 9131),
+            "deepseek-harness": self._read_env_port(("PRISM_DEEPSEEK_HARNESS_PORT",), 3080),
         }
         self.preferred_service_ports = dict(self.service_ports)
         self.external_services: Dict[str, bool] = {}
@@ -305,6 +307,7 @@ class Supervisor:
             "hermes-webui": {"max_restarts": 2, "backoff": 5.0, "stable_after": 90.0},
             "celery-worker": {"max_restarts": 2, "backoff": 5.0, "stable_after": 90.0},
             "hermes-gateway": {"max_restarts": 1, "backoff": 8.0, "stable_after": 120.0},
+            "deepseek-harness": {"max_restarts": 3, "backoff": 5.0, "stable_after": 90.0},
         }
         self._login_env_cache: Optional[Dict[str, str]] = None
 
@@ -545,6 +548,7 @@ class Supervisor:
             "hermes-gateway",
             "hermes-dashboard",
             "hermes-webui",
+            "deepseek-harness",
         ):
             status = self.get_service_status(name)
             failure = self.failures.get(name)
@@ -863,7 +867,7 @@ class Supervisor:
 
     def _refresh_dynamic_service_ports(self) -> None:
         reserved_ports: set[int] = set()
-        for service_name in ("backend", "automation-worker", "hermes-dashboard", "hermes-webui"):
+        for service_name in ("backend", "automation-worker", "hermes-dashboard", "hermes-webui", "deepseek-harness"):
             reserved_ports.add(self._resolve_dynamic_service_port(service_name, reserved_ports))
 
     def _get_reserved_dynamic_ports(self, current_name: str) -> set[int]:
@@ -1017,6 +1021,7 @@ class Supervisor:
         env["PRISM_SUPERVISOR_MANAGES_HERMES_UI"] = "1"
         env["PRISM_HERMES_DASHBOARD_PORT"] = str(self.service_ports["hermes-dashboard"])
         env["PRISM_HERMES_WEBUI_PORT"] = str(self.service_ports["hermes-webui"])
+        env["PRISM_DEEPSEEK_HARNESS_PORT"] = str(self.service_ports["deepseek-harness"])
         # 启动令牌：子进程携带，供归属校验与未来 readiness 校验使用
         env["PRISM_LAUNCH_TOKEN"] = self.launch_token
         if self.python_exe:
@@ -1149,6 +1154,23 @@ class Supervisor:
                 self.hermes_dir,
             ), str(script.parent)
 
+        if name == "deepseek-harness":
+            harness_dir = self.resources_path / "tools" / "deepseek-harness"
+            entry = harness_dir / "apps" / "cli" / "lib" / "bin.js"
+            if not entry.exists():
+                raise FileNotFoundError(f"DeepSeek Harness CLI entry not found: {entry}")
+            node = shutil.which("node") or "node"
+            return [
+                node,
+                str(entry),
+                "web",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(self.service_ports["deepseek-harness"]),
+                "--no-open",
+            ], str(harness_dir)
+
         raise ValueError(f"Unsupported service: {name}")
 
     def get_service_env(self, name: str, base_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
@@ -1163,6 +1185,10 @@ class Supervisor:
             env["HERMES_WEBUI_AGENT_DIR"] = str(self.hermes_dir)
             if self.python_exe:
                 env["HERMES_WEBUI_PYTHON"] = str(self.python_exe)
+        elif name == "deepseek-harness":
+            env["DSH_HOST"] = "127.0.0.1"
+            env["DSH_PORT"] = str(self.service_ports["deepseek-harness"])
+            env["PRISM_DEEPSEEK_HARNESS_ROOT"] = str(self.resources_path / "tools" / "deepseek-harness")
 
         if name == "hermes-dashboard":
             env["HERMES_WEB_DIST"] = str(self.hermes_dir / "hermes_cli" / "web_dist")
@@ -1207,6 +1233,14 @@ class Supervisor:
                 self._is_pid_listening(child_pid, port)
                 and self._http_ok(f"http://127.0.0.1:{port}/?prism_shell_health=1")
                 and self._http_ok(f"http://127.0.0.1:{port}/static/boot.js?prism_shell_health=1")
+            )
+
+        if name == "deepseek-harness":
+            port = self.service_ports["deepseek-harness"]
+            return (
+                self.is_port_in_use(port)
+                and self._is_pid_listening(child_pid, port)
+                and self._http_ok(f"http://127.0.0.1:{port}/")
             )
 
         if name == "backend":
@@ -1371,6 +1405,10 @@ class Supervisor:
             payload["port"] = self.service_ports["hermes-webui"]
             payload["url"] = f"http://127.0.0.1:{self.service_ports['hermes-webui']}"
             payload["webui_url"] = payload["url"]
+        elif name == "deepseek-harness":
+            payload["port"] = self.service_ports["deepseek-harness"]
+            payload["url"] = f"http://127.0.0.1:{self.service_ports['deepseek-harness']}"
+            payload["cli"] = str(self.resources_path / "tools" / "deepseek-harness" / "apps" / "cli" / "lib" / "bin.js")
         if gateway_platform_status is not None:
             payload["configured"] = bool(gateway_platform_status["configured"])
             payload["platforms"] = gateway_platform_status["platforms"]
@@ -1480,6 +1518,7 @@ class Supervisor:
             time.sleep(3)
         self.start_named_service("hermes-dashboard", env)
         self.start_named_service("hermes-webui", env)
+        self.start_named_service("deepseek-harness", env)
         self.start_named_service("celery-worker", env)
         gateway_platform_status = self._get_gateway_platform_status()
         if gateway_platform_status["configured"]:

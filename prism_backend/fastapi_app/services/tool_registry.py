@@ -250,6 +250,7 @@ DEV_TOOLS: List[DevTool] = [
         install_path="deepseek-harness",
         install_cmd="pnpm install 2>/dev/null || corepack enable && pnpm install",
         check="test -f tools/deepseek-harness/package.json",
+        note="CLI: tools/deepseek-harness/apps/cli/lib/bin.js；API + Web UI 默认由 dsh web 统一提供 127.0.0.1:3080。PM2 服务名 deepseek-harness。",
     ),
     DevTool(
         id="ccswitch",
