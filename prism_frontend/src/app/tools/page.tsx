@@ -452,7 +452,7 @@ export default function ToolsPage() {
                 </div>
             )}
 
-            {!isLoading && category !== "skill" && category !== "catalog" && category !== "mcp" && category !== "plugin" && (
+            {!isLoading && category !== "skill" && category !== "catalog" && category !== "mcp" && category !== "plugin" && category !== "browser" && (
                 <DevToolsGrid visibleTools={visibleTools} renderToolCard={renderToolCard} />
             )}
 
