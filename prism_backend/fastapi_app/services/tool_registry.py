@@ -37,8 +37,14 @@ def _iter_skill_dicts() -> Iterable[Dict[str, Any]]:
     """动态枚举 Hermes 技能（md 文件）：skills/<分类>/<技能名>/SKILL.md。
 
     停用的技能会移到 skills/_disabled/<分类>/<技能名>/ 下（软停用，不物理删除）。
+
+    打包版中 runtime-data 可能位于用户数据目录而非 bundle/Resources，
+    skills 根目录可能不存在；此时优雅地返回空列表，避免整个 /tools 列表因
+    单一路径缺失而崩溃（配置的 DevTools/组件仍会正常展示）。
     """
-    roots = [(SKILLS_ROOT, True)]
+    roots: List[Tuple[Path, bool]] = []
+    if SKILLS_ROOT.is_dir():
+        roots.append((SKILLS_ROOT, True))
     disabled_root = SKILLS_ROOT / "_disabled"
     if disabled_root.is_dir():
         roots.append((disabled_root, False))
@@ -92,11 +98,15 @@ class DevTool:
     note: str = ""      # 备注（如"模型管理外置"）
     github_repo: str = ""  # GitHub repo（owner/repo）：外部应用按平台动态解析最新版下载链接
     asset_patterns: Dict[str, str] = field(default_factory=dict)  # 平台 -> 资产名 fnmatch 模式
+    builtin: bool = False  # 内置组件（随 Prism 提供，始终视为已安装，装/不装都显示占位符）
 
     def target_path(self) -> Path:
         return TOOLS_DIR / self.install_path
 
     def is_installed(self) -> bool:
+        # 内置组件：随 Prism 本体提供，无需用户安装，始终显示为已安装。
+        if self.builtin:
+            return True
         # install_path 为空（全局安装工具，如 computer-use-linux / ccswitch）时，
         # target_path() 会退化到 TOOLS_DIR（恒存在），导致误报已安装。
         # 此时应直接走 check 检测，而不是用目录是否存在判定。
@@ -257,6 +267,7 @@ DEV_TOOLS: List[DevTool] = [
             "win32": 'start "" "http://127.0.0.1:3080"',
             "linux": 'xdg-open "http://127.0.0.1:3080"',
         },
+        builtin=True,
     ),
     DevTool(
         id="ccswitch",
@@ -306,6 +317,18 @@ DEV_TOOLS: List[DevTool] = [
         description="Hermes Agent（CLI/WebUI/MCP，已在容器内置）。",
         install_path="hermes-agent",
         check="command -v hermes",
+        builtin=True,
+    ),
+    DevTool(
+        id="prism-mcp",
+        name="Prism MCP",
+        type="mcp",
+        repo="",
+        description="Prism 内置 MCP server：把 Prism 的 BaseTool 目录（发布/账号/数据工具）暴露给 Hermes 作为结构化 MCP 工具。随 Prism 后端内置，无需安装，始终可见。",
+        install_path="",
+        install_cmd="",
+        note="由 Prism 后端自动注入 Hermes config.yaml 的 mcp_servers['prism']（fastapi_app.agent.mcp_server）；内置组件，装/不装都显示占位符。",
+        builtin=True,
     ),
     DevTool(
         id="persona-studio",
@@ -324,12 +347,13 @@ DEV_TOOLS: List[DevTool] = [
         description=(
             "本地代理网关内核（官方 v1.19.10）：订阅节点 → 每节点独立端口（8001 起），"
             "external-controller 127.0.0.1:9093。已集成 agent 工具 proxy_gateway / mihomo_control。"
+            "随 persona-studio 集成内置，无需手动下载。"
         ),
         install_path="",
-        install_url="https://github.com/MetaCubeX/mihomo/releases",
-        note="由 PM2 persona-proxy 托管，配置目录 tools/persona-studio/proxies/（config.yaml / gateway.json）；点「打开」进入 Prism 代理网关管理页",
-        # 二进制随 persona-studio 仓库内置，install_path 留空避免 uninstall 误删 proxies 目录；
-        # check 用绝对路径（后端进程 cwd 是 prism_backend/，相对路径解析不到）
+        note="由 PM2 persona-proxy 托管，配置目录 tools/persona-studio/proxies/（config.yaml / gateway.json）；点「打开」进入 Prism 代理网关管理页。内置组件（二进制随 persona-studio 内置），无需手工下载集成。",
+        # 内置组件：随 persona-studio 提供、由 PM2 persona-proxy 托管，始终视为已集成。
+        builtin=True,
+        # 二进制随 persona-studio 仓库内置；install_path 留空避免 uninstall 误删 proxies 目录。
         check=f"test -f {REPO_ROOT / 'tools/persona-studio/proxies/mihomo'}",
         launch_cmd={
             "darwin": 'open "http://127.0.0.1:3000/persona-proxy"',
