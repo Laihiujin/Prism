@@ -3,7 +3,7 @@
 # 用法: ./start-mac.sh
 #
 # 说明：
-# - macOS 上所有进程由 PM2 统一托管（见 start-pm2.sh / ecosystem-mac.config.js），
+# - macOS 上所有进程由 PM2 统一托管（见 start-pm2.sh / ecosystem.config.js），
 #   本脚本只负责把环境准备好（幂等），然后交给 PM2 启动整套服务。
 # - 环境准备复用跨平台入口 bootstrap.py（创建 prismenv + pip 依赖 + 前端依赖 + .env + 检查 Redis）。
 set -euo pipefail
@@ -34,7 +34,7 @@ if [ ! -x "$ROOT/prismenv/bin/python" ]; then
   exit 1
 fi
 
-# ── 2) 确认 Redis（PM2 通过 ecosystem-mac.config.js 的 prism-redis 启动它）────
+# ── 2) 确认 Redis（PM2 通过 ecosystem.config.js 的 prism-redis 启动它）────
 if ! command -v redis-server >/dev/null 2>&1; then
   echo "[ERROR] 未检测到 redis-server，Prism 无法运行（Celery 队列与账号锁依赖它）。" >&2
   echo "        安装: brew install redis && redis-server --daemonize yes" >&2
