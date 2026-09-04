@@ -56,7 +56,14 @@ const CATEGORY_TABS = [
     { key: "mcp", label: "MCP" },
     { key: "plugin", label: "插件" },
     { key: "component", label: "组件" },
+    { key: "browser", label: "浏览器" },
     { key: "catalog", label: "业务工具" },
+]
+
+const BROWSER_COMPONENTS = [
+    { id: "chromium", name: "Chromium", description: "独立 Chromium 浏览器运行时，安装到 Prism 的 runtime-data。", platform: "macOS / Windows / Linux" },
+    { id: "firefox", name: "Firefox", description: "独立 Firefox 浏览器运行时，可与 Chromium 并存。", platform: "macOS / Windows / Linux" },
+    { id: "patchright", name: "Patchright Chromium", description: "Patchright 自动化引擎及其浏览器驱动。", platform: "macOS / Windows / Linux" },
 ]
 
 function DevToolsGrid({
@@ -84,6 +91,15 @@ export default function ToolsPage() {
     const { toast } = useToast()
     const [base, setBase] = useState(API_ENDPOINTS.base)
     const [hermesRefreshKey, setHermesRefreshKey] = useState(0)
+    const [browserRuntime, setBrowserRuntime] = useState<any>(null)
+    const [browserAction, setBrowserAction] = useState<string | null>(null)
+
+    const refreshBrowserRuntime = async () => {
+        const api = (window as any).electronAPI?.browserRuntime
+        if (!api?.getStatus) return
+        const result = await api.getStatus()
+        if (result?.success) setBrowserRuntime(result.browserRuntimeInfo)
+    }
 
     useEffect(() => {
         let active = true
@@ -96,6 +112,39 @@ export default function ToolsPage() {
             active = false
         }
     }, [])
+
+    useEffect(() => { void refreshBrowserRuntime() }, [])
+
+    const changeBrowser = async (id: string, action: "install" | "uninstall") => {
+        const api = (window as any).electronAPI?.browserRuntime
+        if (!api?.[action]) {
+            toast({ variant: "destructive", title: "仅桌面端可用", description: "请在 Prism Electron 应用中管理浏览器组件。" })
+            return
+        }
+        setBrowserAction(`${action}:${id}`)
+        try {
+            const result = await api[action](id)
+            if (result?.success === false) throw new Error(result.error || "操作失败")
+            toast({ title: action === "install" ? "浏览器安装完成" : "浏览器已卸载", description: result.output || id })
+            await refreshBrowserRuntime()
+        } catch (error: any) {
+            toast({ variant: "destructive", title: action === "install" ? "安装失败" : "卸载失败", description: error?.message || String(error) })
+        } finally { setBrowserAction(null) }
+    }
+
+    const renderBrowserTools = () => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {BROWSER_COMPONENTS.map((browser) => {
+                const state = browserRuntime?.browsers?.[browser.id] || browserRuntime?.runtimes?.[browser.id]
+                const installed = Boolean(state?.installed)
+                const busy = browserAction?.endsWith(`:${browser.id}`)
+                return <Card key={browser.id} className="border-border/70 bg-card/40">
+                    <CardHeader className="pb-3"><div className="flex items-center justify-between gap-3"><CardTitle className="text-base">{browser.name}</CardTitle><Badge variant="outline" className={installed ? "border-emerald-500/50 text-emerald-300" : "text-muted-foreground"}>{installed ? "已安装" : "未安装"}</Badge></div></CardHeader>
+                    <CardContent className="space-y-3"><p className="text-sm text-muted-foreground">{browser.description}</p><p className="text-xs text-muted-foreground">{browser.platform}</p><div className="flex gap-2"><Button size="sm" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "install")} disabled={Boolean(browserAction)}>{busy && browserAction?.startsWith("install") ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}{installed ? "重装" : "安装"}</Button><Button size="sm" variant="destructive" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "uninstall")} disabled={Boolean(browserAction) || !installed}><Trash2 className="mr-1.5 h-3.5 w-3.5" />卸载</Button></div>{state?.path && <code className="block truncate text-[10px] text-muted-foreground">{state.path}</code>}</CardContent>
+                </Card>
+            })}
+        </div>
+    )
 
     const { data, isLoading, refetch } = useQuery({
         queryKey: ["tools"],
@@ -386,6 +435,8 @@ export default function ToolsPage() {
             )}
 
             {!isLoading && category === "catalog" && <CatalogToolsSection />}
+
+            {!isLoading && category === "browser" && renderBrowserTools()}
 
             {!isLoading && category === "mcp" && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
