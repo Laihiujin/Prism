@@ -248,9 +248,15 @@ DEV_TOOLS: List[DevTool] = [
         repo="https://github.com/deepseek-ai/deepseek-harness.git",
         description="DeepSeek 官方 agent harness（monorepo，pnpm）。",
         install_path="deepseek-harness",
-        install_cmd="pnpm install 2>/dev/null || corepack enable && pnpm install",
-        check="test -f tools/deepseek-harness/package.json",
+        install_cmd="corepack pnpm install --frozen-lockfile && corepack pnpm run build",
+        build_cmd="corepack pnpm run build",
+        check="test -f tools/deepseek-harness/apps/cli/lib/bin.js && test -d tools/deepseek-harness/node_modules",
         note="CLI: tools/deepseek-harness/apps/cli/lib/bin.js；API + Web UI 默认由 dsh web 统一提供 127.0.0.1:3080。PM2 服务名 deepseek-harness。",
+        launch_cmd={
+            "darwin": 'open "http://127.0.0.1:3080"',
+            "win32": 'start "" "http://127.0.0.1:3080"',
+            "linux": 'xdg-open "http://127.0.0.1:3080"',
+        },
     ),
     DevTool(
         id="ccswitch",
@@ -426,6 +432,17 @@ class DevToolRegistry:
         tool = self.get(tool_id)
         if not tool:
             raise ValueError(f"未知工具: {tool_id}")
+
+        if tool_id == "deepseek-harness":
+            import socket
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(0.3)
+                if sock.connect_ex(("127.0.0.1", 3080)) == 0:
+                    raise RuntimeError(
+                        "DeepSeek Harness 仍在 127.0.0.1:3080 运行；"
+                        "请先停止 deepseek-harness 服务，再执行卸载。"
+                    )
 
         # Skill（md 文件）：直接删除技能目录
         if isinstance(tool, dict) and tool.get("_is_skill"):
