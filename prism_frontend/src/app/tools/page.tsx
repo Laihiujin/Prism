@@ -95,10 +95,24 @@ export default function ToolsPage() {
     const [browserAction, setBrowserAction] = useState<string | null>(null)
 
     const refreshBrowserRuntime = async () => {
-        const api = (window as any).electronAPI?.browserRuntime
-        if (!api?.getStatus) return
-        const result = await api.getStatus()
-        if (result?.success) setBrowserRuntime(result.browserRuntimeInfo)
+        try {
+            // 桌面壳（Electron）优先走 IPC；网页模式走后端状态接口兜底（与 settings 钩子一致）。
+            const api = (window as any).electronAPI?.browserRuntime
+            if (api?.getStatus) {
+                const result = await api.getStatus()
+                if (result?.success) {
+                    setBrowserRuntime(result.browserRuntimeInfo)
+                    return
+                }
+            }
+            const res = await fetch(`${base}/api/v1/system/browser-runtime/status`, { cache: "no-store" })
+            const data = await res.json().catch(() => ({}))
+            if (data?.success !== false && data?.browserRuntimeInfo) {
+                setBrowserRuntime(data.browserRuntimeInfo)
+            }
+        } catch {
+            // 忽略，保留现有状态
+        }
     }
 
     useEffect(() => {
@@ -117,13 +131,18 @@ export default function ToolsPage() {
 
     const changeBrowser = async (id: string, action: "install" | "uninstall") => {
         const api = (window as any).electronAPI?.browserRuntime
-        if (!api?.[action]) {
-            toast({ variant: "destructive", title: "仅桌面端可用", description: "请在 Prism Electron 应用中管理浏览器组件。" })
-            return
-        }
         setBrowserAction(`${action}:${id}`)
         try {
-            const result = await api[action](id)
+            let result: any
+            // 桌面壳（Electron）优先走 IPC；网页模式走后端 HTTP 接口兜底（与 settings 钩子一致）。
+            if (api?.[action]) {
+                result = await api[action](id)
+            } else {
+                const endpoint = action === "install" ? "install" : "uninstall"
+                const res = await fetch(`${base}/api/v1/system/browser-runtime/${endpoint}/${id}`, { method: "POST" })
+                result = await res.json().catch(() => ({}))
+                if (!res.ok) throw new Error(result?.detail || result?.error || `${id} ${action === "install" ? "安装" : "卸载"}失败`)
+            }
             if (result?.success === false) throw new Error(result.error || "操作失败")
             toast({ title: action === "install" ? "浏览器安装完成" : "浏览器已卸载", description: result.output || id })
             await refreshBrowserRuntime()
@@ -157,7 +176,9 @@ export default function ToolsPage() {
     const installMutation = useMutation({
         mutationFn: async (id: string) => {
             const res = await fetch(`/api/v1/tools/${id}/install`, { method: "POST" })
-            return res.json()
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.detail || data?.error || "安装失败")
+            return data
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["tools"] })
@@ -171,7 +192,9 @@ export default function ToolsPage() {
     const uninstallMutation = useMutation({
         mutationFn: async (id: string) => {
             const res = await fetch(`/api/v1/tools/${id}/uninstall`, { method: "POST" })
-            return res.json()
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.detail || data?.error || "卸载失败")
+            return data
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["tools"] })
@@ -185,7 +208,9 @@ export default function ToolsPage() {
     const launchMutation = useMutation({
         mutationFn: async (id: string) => {
             const res = await fetch(`/api/v1/tools/${id}/launch`, { method: "POST" })
-            return res.json()
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.detail || data?.error || "打开失败")
+            return data
         },
         onSuccess: (data) => {
             toast({ title: "已打开", description: data.result?.message })
@@ -198,7 +223,9 @@ export default function ToolsPage() {
     const buildMutation = useMutation({
         mutationFn: async (id: string) => {
             const res = await fetch(`/api/v1/tools/${id}/build`, { method: "POST" })
-            return res.json()
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.detail || data?.error || "构建失败")
+            return data
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["tools"] })
@@ -216,7 +243,9 @@ export default function ToolsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ enabled }),
             })
-            return res.json()
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.detail || data?.error || "操作失败")
+            return data
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["tools"] })

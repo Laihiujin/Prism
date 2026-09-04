@@ -86,7 +86,12 @@ def _hermes_dependencies() -> list[str]:
             "d = tomllib.loads(pathlib.Path('pyproject.toml').read_text()); "
             "p = d.get('project', {}); "
             "deps = list(p.get('dependencies', [])); "
-            "deps.extend((p.get('optional-dependencies') or {}).get('web', [])); "
+            "opts = p.get('optional-dependencies') or {}; "
+            # web -> dashboard/UI extra; pty -> ptyprocess/pywinpty (PTY chat).
+            # Without the pty extra, the dashboard's PTY-backed chat tab raises
+            # "The `ptyprocess` package is missing" (PtyUnavailableError).
+            "deps.extend(opts.get('web', [])); "
+            "deps.extend(opts.get('pty', [])); "
             "print(json.dumps(deps))"
         )],
         cwd=str(HERMES_ROOT), capture_output=True, text=True, check=True,
