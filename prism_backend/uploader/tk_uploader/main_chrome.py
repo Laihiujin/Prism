@@ -80,7 +80,8 @@ async def get_tiktok_cookie(account_file):
         if LOCAL_CHROME_PATH:
             options["executable_path"] = LOCAL_CHROME_PATH
         # 持久化上下文（相当于正常 Chrome 窗口，非无痕）
-        context = await playwright.chromium.launch_persistent_context(**options)
+        from myUtils.browser_context import launch_persistent_browser_context
+        context = await launch_persistent_browser_context(playwright, platform="tiktok", **options)
         context = await set_init_script(context)
         page = context.pages[0] if context.pages else await context.new_page()
         await page.goto("https://www.tiktok.com/login?lang=en")

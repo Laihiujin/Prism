@@ -482,13 +482,14 @@ async def debug_playwright(headless: bool | None = None):
         if headless is None:
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
         from utils.automation_provider import async_playwright
+        from myUtils.browser_context import launch_optional_browser
 
         pw = await async_playwright().start()
         launch_kwargs: Dict[str, Any] = {"headless": headless}
         executable_path = _resolve_executable_path()
         if executable_path:
             launch_kwargs["executable_path"] = executable_path
-        browser = await pw.chromium.launch(**launch_kwargs)
+        browser = await launch_optional_browser(pw, headless=headless, **{k: v for k, v in launch_kwargs.items() if k != "headless"})
         await browser.close()
         await pw.stop()
         return {"success": True}

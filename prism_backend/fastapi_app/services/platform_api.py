@@ -13,12 +13,13 @@ Prism 后端 HTTP 客户端 —— 供 tool_catalog / mcp_server 复用。
 
 from __future__ import annotations
 
-import os
 from typing import Any, Dict, List, Optional
 
 import httpx
 
-BACKEND_URL = os.getenv("PRISM_BACKEND_URL", "http://127.0.0.1:7000").rstrip("/")
+from fastapi_app.core.runtime import get_backend_url
+
+BACKEND_URL = get_backend_url()
 
 
 def _short(value: Any, limit: int = 500) -> Any:

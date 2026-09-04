@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { backendBaseUrl } from "@/lib/env"
 
 export const runtime = "edge"
 export const maxDuration = 30
@@ -14,8 +15,7 @@ export async function POST(req: NextRequest) {
         const lastMessage = messages[messages.length - 1]
 
         // 调用后端 FastAPI AI 服务
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7000"
-        const response = await fetch(`${backendUrl}/api/v1/ai/chat`, {
+        const response = await fetch(`${backendBaseUrl}/api/v1/ai/chat`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -51,10 +51,11 @@ export async function POST(req: NextRequest) {
                 "X-Vercel-AI-Data-Stream": "v1",
             },
         })
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("AI Chat Error:", error)
+        const message = error instanceof Error ? error.message : "AI 服务暂时不可用"
         return NextResponse.json(
-            { error: error.message || "AI 服务暂时不可用" },
+            { error: message },
             { status: 500 }
         )
     }

@@ -59,7 +59,8 @@ class PrismApp {
     this.supervisorLaunchToken = null;
     this.runtimeSettings = {
       browserHeadless: true,
-      automationRuntime: 'patchright'
+      automationRuntime: 'patchright',
+      browserBackendDefault: 'patchright'
     };
   }
 
@@ -85,6 +86,7 @@ class PrismApp {
     this.runtimeSettings = this.loadRuntimeSettings();
     process.env.PLAYWRIGHT_HEADLESS = this.runtimeSettings.browserHeadless ? 'true' : 'false';
     process.env.PRISM_AUTOMATION_RUNTIME = this.runtimeSettings.automationRuntime;
+    process.env.PRISM_BROWSER_BACKEND_DEFAULT = this.runtimeSettings.browserBackendDefault;
     this.applyPlatformBrowserPreferenceEnv(process.env, this.runtimeSettings.platformBrowserPreferences || {});
     this.applyPlatformProxyPreferenceEnv(process.env, this.runtimeSettings.platformProxyPreferences || {});
     this.setupTray();
@@ -513,9 +515,16 @@ class PrismApp {
   }
 
   normalizeRuntimeSettings(raw = {}) {
+    const browserBackendDefault = ['patchright', 'persona'].includes(raw.browserBackendDefault)
+      ? raw.browserBackendDefault
+      : 'patchright';
     return {
       browserHeadless: this.normalizeBooleanSetting(raw.browserHeadless, true),
       automationRuntime: 'patchright',
+      browserBackendDefault,
+      browserBackendGeneration: Number.isSafeInteger(raw.browserBackendGeneration) && raw.browserBackendGeneration > 0
+        ? raw.browserBackendGeneration
+        : 1,
       platformBrowserPreferences: this.normalizePlatformBrowserPreferences(raw.platformBrowserPreferences),
       platformProxyPreferences: this.normalizePlatformProxyPreferences(raw.platformProxyPreferences)
     };
@@ -596,16 +605,21 @@ class PrismApp {
   }
 
   saveRuntimeSettings(nextSettings = {}) {
+    const previousBackend = this.runtimeSettings?.browserBackendDefault || 'patchright';
     const settings = this.normalizeRuntimeSettings({
       ...this.runtimeSettings,
       ...nextSettings
     });
+    if (settings.browserBackendDefault !== previousBackend) {
+      settings.browserBackendGeneration = (this.runtimeSettings?.browserBackendGeneration || 1) + 1;
+    }
     const settingsPath = this.getRuntimeSettingsPath();
     fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
     this.runtimeSettings = settings;
     process.env.PLAYWRIGHT_HEADLESS = settings.browserHeadless ? 'true' : 'false';
     process.env.PRISM_AUTOMATION_RUNTIME = settings.automationRuntime;
+    process.env.PRISM_BROWSER_BACKEND_DEFAULT = settings.browserBackendDefault;
     this.applyPlatformBrowserPreferenceEnv(process.env, settings.platformBrowserPreferences || {});
     this.applyPlatformProxyPreferenceEnv(process.env, settings.platformProxyPreferences || {});
     return settings;
@@ -619,6 +633,22 @@ class PrismApp {
 
   getPythonPath() {
     return this.getPythonRuntime().path;
+  }
+
+  getRuntimeManifestPath() {
+    return path.join(this.getResourcesRoot(), 'prismenv', 'prism-runtime.json');
+  }
+
+  getRuntimeManifest() {
+    // 供给模块（scripts/packaging/provision）写出的运行时清单：
+    // { manager, mirror, envDir, python, component }
+    try {
+      const raw = fs.readFileSync(this.getRuntimeManifestPath(), 'utf8');
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      return null;
+    }
   }
 
   getPrismenvSitePackagesPath() {
@@ -684,6 +714,29 @@ class PrismApp {
   getPythonRuntime() {
     if (this.shouldReuseCachedPythonRuntime()) {
       return this.pythonRuntimeCache;
+    }
+
+    // 优先使用 provision 写出的 prism-runtime.json：采用其中记录的 python 路径，
+    // 且不再做 venv site-packages 的 PYTHONPATH 注入（conda env 自身已带依赖）。
+    // 若清单缺失或其中 python 不可用，则回退到下面的探测逻辑。
+    const manifest = this.getRuntimeManifest();
+    if (manifest && manifest.python) {
+      const manifestPython = path.resolve(manifest.python);
+      const probe = this.testPythonExecutable(manifestPython, []);
+      if (probe.ok) {
+        this.pythonRuntimeCache = {
+          path: manifestPython,
+          args: [],
+          source: 'prismenv',
+          version: probe.version,
+          sitePackagesPath: null,
+          error: null,
+          fromManifest: true
+        };
+        log.info('Using provisioned runtime from prism-runtime.json:', manifestPython);
+        return this.pythonRuntimeCache;
+      }
+      log.warn('prism-runtime.json python unavailable, falling back:', manifestPython);
     }
 
     const packagedPython = path.join(this.getResourcesRoot(), 'prismenv', 'Scripts', 'python.exe');
@@ -1742,6 +1795,7 @@ class PrismApp {
       PLAYWRIGHT_BROWSERS_PATH: browsersRoot,
       PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false',
       PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime,
+      PRISM_BROWSER_BACKEND_DEFAULT: this.runtimeSettings.browserBackendDefault,
       BACKEND_PORT: backendPort,
       PRISM_BACKEND_PORT: backendPort,
       AUTOMATION_WORKER_PORT: automationWorkerPort,

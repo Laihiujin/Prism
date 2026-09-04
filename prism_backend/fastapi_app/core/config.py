@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 from typing import List
 from pathlib import Path
+from fastapi_app.core.runtime import get_backend_host, get_backend_port
 
 
 def _is_dev_repo(base_dir: Path) -> bool:
@@ -69,8 +70,8 @@ class Settings(BaseSettings):
     USE_BEIJING_TIME: bool = True  # 全局使用北京时间
 
     # 服务器配置
-    HOST: str = "0.0.0.0"
-    PORT: int = 7000  # FastAPI专用端口（与 function_calling_tools / 前端 / 启动脚本一致）
+    HOST: str = get_backend_host()
+    PORT: int = get_backend_port()
     DEBUG: bool = False
 
     # CORS配置

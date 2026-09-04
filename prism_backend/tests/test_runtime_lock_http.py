@@ -22,6 +22,7 @@ def _patch_singleton(redis=None):
 def test_runtime_endpoint_unlocked():
     from fastapi.testclient import TestClient
     from fastapi_app.main import app
+    from fastapi_app.core.config import settings
     _patch_singleton()
     c = TestClient(app)
     r = c.get("/api/v1/accounts/rt_acct_1/runtime")
@@ -29,7 +30,8 @@ def test_runtime_endpoint_unlocked():
     body = r.json()["result"]
     assert body["locked"] is False
     assert body["account_id"] == "rt_acct_1"
-    assert body["browser_backend"] == "patchright"  # 无账号记录 → 默认
+    # 无账号记录时应遵循当前运行配置；本地 .env 可以显式覆盖代码默认值。
+    assert body["browser_backend"] == settings.PRISM_BROWSER_BACKEND_DEFAULT
 
 
 def test_runtime_endpoint_locked():

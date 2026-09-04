@@ -15,9 +15,10 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from .tool_runtime import BaseTool, ToolResult
+from fastapi_app.core.runtime import get_api_base_url
 
 # 后端 API 基础 URL（本地）
-API_BASE_URL = os.getenv("AGENT_API_BASE_URL", os.getenv("MANUS_API_BASE_URL", "http://localhost:7000/api/v1"))
+API_BASE_URL = os.getenv("AGENT_API_BASE_URL") or os.getenv("MANUS_API_BASE_URL") or get_api_base_url()
 
 # mihomo 外部控制器
 MIHOMO_BASE = "http://127.0.0.1:9093"

@@ -191,7 +191,7 @@
         </div>
 
         <div class="buttons">
-            <button class="btn-secondary" onclick="window.location.href='http://localhost:3000/settings'">
+            <button class="btn-secondary" onclick="window.location.href='/settings'">
                 取消
             </button>
             <button class="btn-danger" id="clearBtn" onclick="clearVideoData()">
@@ -203,7 +203,7 @@
     </div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:7000/api/v1/system/clear-video-data';
+        const API_URL = '/api/v1/system/clear-video-data';
 
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status');
@@ -269,7 +269,7 @@
                 clearBtn.innerHTML = '重试';
 
                 if (error.message.includes('Failed to fetch')) {
-                    showStatus('❌ 无法连接到后端服务，请确保后端正在运行（端口 7000）', 'error');
+                    showStatus('❌ 无法连接到后端服务，请确保 Prism 后端正在运行', 'error');
                 }
             }
         }
@@ -277,7 +277,7 @@
         // 页面加载时检查后端状态
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                const response = await fetch('http://127.0.0.1:7000/', {
+                const response = await fetch('/api/health', {
                     method: 'GET'
                 });
 
@@ -285,7 +285,7 @@
                     showStatus('✅ 后端服务连接正常，准备就绪', 'success');
                 }
             } catch (error) {
-                showStatus('⚠️ 警告：无法连接到后端服务（端口 7000），请先启动后端', 'warning');
+                showStatus('⚠️ 警告：无法连接到 Prism 后端，请先启动后端', 'warning');
                 document.getElementById('clearBtn').disabled = true;
             }
         });

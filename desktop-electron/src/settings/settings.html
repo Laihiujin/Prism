@@ -589,7 +589,7 @@
     </div>
 
     <script>
-        let API_BASE = 'http://127.0.0.1:7000/api/v1/system';
+        let API_BASE = `http://127.0.0.1:${7000}/api/v1/system`;
         const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI);
         let currentLogFilter = 'all';
         let autoRefreshInterval = null;

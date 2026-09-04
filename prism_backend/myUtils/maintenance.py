@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from utils.automation_provider import Page, async_playwright
 from myUtils.cookie_manager import cookie_manager
+from myUtils.browser_context import launch_optional_browser
 
 # 动态加载配置
 def load_guide_config():
@@ -158,7 +159,8 @@ async def maintain_account(platform_code: int, cookie_file: str, headless: bool 
     print(f"🔧 [Maintenance] 开始维护账号: {cookie_file} ({target_url})")
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=headless)
+        platform = {1: "xiaohongshu", 2: "channels", 3: "douyin", 4: "kuaishou", 5: "bilibili"}.get(platform_code)
+        browser = await launch_optional_browser(p, platform=platform, headless=headless)
         context = await browser.new_context(storage_state=file_path)
         page = await context.new_page()
         

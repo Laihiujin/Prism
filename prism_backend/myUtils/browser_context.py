@@ -390,6 +390,34 @@ async def launch_optional_browser(
     raise RuntimeError("所有浏览器启动方案均失败：\n" + "\n".join(failures))
 
 
+async def launch_persistent_browser_context(
+    playwright,
+    *,
+    platform: Optional[str] = None,
+    browser: str = "auto",
+    **launch_options: Any,
+) -> Any:
+    """Capability-aware persistent context launcher."""
+    engine, resolved = resolve_browser_launch_opts(
+        platform=platform,
+        browser=browser,
+        headless=bool(launch_options.pop("headless", False)),
+        **launch_options,
+    )
+    return await getattr(playwright, engine).launch_persistent_context(**resolved)
+
+
+async def connect_browser_over_cdp(playwright, cdp_url: str, *, platform: Optional[str] = None) -> Any:
+    """Attach through CDP with an explicit Chromium capability guard."""
+    engine, _ = resolve_browser_launch_opts(platform=platform, browser="auto", headless=False)
+    if engine != "chromium":
+        raise RuntimeError(
+            f"平台 {platform or 'unknown'} 当前选择 {engine}，但 CDP attach 仅支持 Chromium；"
+            "请将该平台浏览器切换为 Chromium 后重试。"
+        )
+    return await playwright.chromium.connect_over_cdp(cdp_url)
+
+
 # ============================================
 # 单账号绑定持久化浏览器
 # ============================================
@@ -655,4 +683,3 @@ class PersistentBrowserManager:
 
 # 全局实例
 persistent_browser_manager = PersistentBrowserManager()
-

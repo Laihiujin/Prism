@@ -22,6 +22,7 @@ class BrowserSession:
     """一次账号浏览器会话的句柄。release 仅关闭进程，Profile 数据永久保留。"""
     account_id: str
     backend: str
+    generation: int = 1
     context: Any = None          # BrowserContext / Persona session
     page: Any = None             # Page
     browser: Any = None          # Browser process handle
@@ -52,6 +53,7 @@ class BrowserBackend:
     """Browser Backend 统一接口。平台 Adapter 不直接调用底层库。"""
 
     name = "base"
+    capabilities = frozenset()
 
     async def start(
         self,
@@ -87,6 +89,7 @@ class PatchrightBackend(BrowserBackend):
     """
 
     name = "patchright"
+    capabilities = frozenset({"persistent_context", "chromium", "firefox", "proxy", "headful"})
 
     def __init__(self, profile_root: Optional[str] = None):
         self.profile_root = profile_root or "data/browser_profiles"
@@ -214,6 +217,7 @@ class PersonaBackend(BrowserBackend):
     """
 
     name = "persona"
+    capabilities = frozenset({"persistent_profile", "cdp_attach", "identity", "proxy", "headful"})
 
     def __init__(self, api_base: Optional[str] = None):
         self.api_base = api_base  # http://127.0.0.1:8787
@@ -356,11 +360,33 @@ class BrowserBackendManager:
         cls._backends[backend.name] = backend
 
     @classmethod
-    def get(cls, name: str = "patchright") -> BrowserBackend:
+    def _ensure_registered(cls) -> None:
         if not cls._backends:
             cls.register(PatchrightBackend())
             cls.register(PersonaBackend())
+
+    @classmethod
+    def describe(cls) -> Dict[str, Dict[str, Any]]:
+        cls._ensure_registered()
+        return {
+            name: {"name": name, "capabilities": sorted(backend.capabilities)}
+            for name, backend in cls._backends.items()
+        }
+
+    @classmethod
+    def require_capability(cls, name: str, capability: str) -> BrowserBackend:
+        backend = cls.get(name)
+        if capability not in backend.capabilities:
+            raise RuntimeError(f"Browser backend '{backend.name}' does not support capability '{capability}'")
+        return backend
+
+    @classmethod
+    def get(cls, name: Optional[str] = None) -> BrowserBackend:
+        cls._ensure_registered()
         # 别名：persona-studio / persona_studio → persona
+        if name is None:
+            from fastapi_app.services.browser_runtime import get_default_browser_backend
+            name = get_default_browser_backend()
         normalized = {
             "persona-studio": "persona",
             "persona_studio": "persona",
@@ -373,5 +399,5 @@ class BrowserBackendManager:
         return backend
 
 
-def get_browser_backend(name: str = "patchright") -> BrowserBackend:
+def get_browser_backend(name: Optional[str] = None) -> BrowserBackend:
     return BrowserBackendManager.get(name)
