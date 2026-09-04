@@ -138,6 +138,14 @@ build/supervisor/
 /build/supervisor/
 build_output/
 scripts/packaging/*
+!scripts/packaging/provision/
+!scripts/packaging/provision/**/*.py
+!scripts/packaging/provision/**/*.json
+!scripts/packaging/provision/**/*.txt
+!scripts/packaging/provision/**/*.md
+!scripts/packaging/provision/**/*.yaml
+scripts/packaging/provision/micromamba/*
+scripts/packaging/provision/.mamba/
 !scripts/packaging/build-package.bat
 !scripts/packaging/build-supervisor.bat
 !scripts/packaging/build-version.json

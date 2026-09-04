@@ -1,0 +1,18 @@
+# Prism 共享运行时环境的 conda（conda-forge）依赖。
+# 由 provision.py 读取并把它们写进临时 micromamba environment.yml。
+# 以 # 开头的行是注释，会被忽略。
+#
+# 只放那些值得走 conda-forge 预编译二进制的包（原生依赖 / 版本强约束）。
+# 其余纯 Python 依赖放 requirements.prism.lock.txt（pip 层）。
+# 注意：conda-deps.txt 和 requirements.prism.lock.txt 不要重复列同一个包，
+# 否则 pip 会重复安装覆盖 conda 的版本。
+#
+# 需要后台 / 版本隔离更强时，可以把下面这些取消注释，并从
+# requirements.prism.lock.txt 里对应删除（numpy/opencv/pillow 等）：
+#   numpy
+#   opencv
+#   pillow
+#   ffmpeg
+#   libgomp
+python=3.11
+pip

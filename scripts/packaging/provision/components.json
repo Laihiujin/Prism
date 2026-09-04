@@ -1,0 +1,17 @@
+{
+  "inject": [
+    {
+      "name": "persona",
+      "src": "tools/persona-studio/engine",
+      "pip": "tools/persona-studio/engine",
+      "entrypoints": ["persona"]
+    },
+    {
+      "name": "hermes",
+      "src": "tools/hermes-agent",
+      "launch_module": "hermes_cli.main",
+      "entrypoints": ["hermes"]
+    }
+  ],
+  "isolated": []
+}

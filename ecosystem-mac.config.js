@@ -18,6 +18,8 @@ const HERMES_AGENT = path.join(ROOT, 'tools', 'hermes-agent');
 const HERMES_WEBUI = path.join(ROOT, 'tools', 'hermes-webui');
 const HERMES_HOME = path.join(ROOT, 'tools', 'hermes-home', 'webui');
 const PERSONA_PROXY = path.join(ROOT, 'tools', 'persona-studio', 'proxies', 'mihomo');
+const DEEPSEEK_HARNESS = path.join(ROOT, 'tools', 'deepseek-harness');
+const DSH_CLI = path.join(DEEPSEEK_HARNESS, 'apps', 'cli', 'lib', 'bin.js');
 const runtime = JSON.parse(fs.readFileSync(path.join(ROOT, 'runtime-data', 'runtime.json'), 'utf8'));
 const backendEnv = {
   PRISM_BACKEND_HOST: String(runtime.backend_host),
@@ -214,6 +216,27 @@ module.exports = {
       },
       error_file: './logs/hermes-webui-error.log',
       out_file: './logs/hermes-webui-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+    },
+    {
+      // DeepSeek Harness：CLI 启动器会挂载 API 与 3080 Web UI，三者共享同一进程/配置。
+      name: 'deepseek-harness',
+      cwd: DEEPSEEK_HARNESS,
+      script: DSH_CLI,
+      interpreter: process.execPath,
+      args: 'web --host 127.0.0.1 --port 3080 --no-open',
+      autorestart: true,
+      watch: false,
+      restart_delay: 3000,
+      max_restarts: 5,
+      env: {
+        NODE_ENV: process.env.NODE_ENV || 'production',
+        DSH_HOST: '127.0.0.1',
+        DSH_PORT: '3080',
+        PRISM_DEEPSEEK_HARNESS_ROOT: DEEPSEEK_HARNESS,
+      },
+      error_file: './logs/deepseek-harness-error.log',
+      out_file: './logs/deepseek-harness-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
   ]
