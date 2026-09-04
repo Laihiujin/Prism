@@ -168,10 +168,13 @@ desktop-electron/.cache/
 desktop-electron/resources/*
 !desktop-electron/resources/supervisor/
 desktop-electron/resources/supervisor/*
-!desktop-electron/resources/supervisor/api_server.py
-!desktop-electron/resources/supervisor/supervisor.py
+!desktop-electron/resources/supervisor/pm2_controller.js
+!desktop-electron/resources/supervisor/ecosystem.desktop.config.js
 desktop-electron/syn_backend/
 desktop-electron/dump.rdb
+
+# npm cache (repo root)
+/.cache/
 
 # Installer artifacts
 *.exe
