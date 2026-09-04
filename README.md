@@ -185,7 +185,7 @@ start.bat
 
 启动顺序为 **Redis → Celery Worker → Automation Worker → FastAPI 后端 → 前端**。控制台地址 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
 
-> **进程托管**：macOS/Linux 统一由 **PM2** 托管所有进程（`start-pm2.sh` + `ecosystem-mac.config.js`，含 Redis、后端、Worker、Celery、前端、Persona、Hermes），Windows 由内置 **Supervisor** 托管。`start-mac.sh` 只负责把环境准备好（幂等），然后交给 PM2 启动。
+> **进程托管**：macOS/Linux/Windows 统一由 **PM2** 托管所有进程（`start-pm2.sh`（macOS/Linux）/ `start-pm2.bat`（Windows）+ `ecosystem.config.js`，含 Redis、后端、Worker、Celery、前端、Persona、Hermes）。`start-mac.sh` 只负责把环境准备好（幂等），然后交给 PM2 启动。
 
 > **关于虚拟环境**：仓库统一使用名为 `prismenv` 的虚拟环境（启动脚本、桌面打包、Hermes 运行时都叫它）。`python3 bootstrap.py` 已包含创建 `prismenv` 的步骤；等价的手工命令为
 > ```bash
@@ -194,6 +194,80 @@ start.bat
 > cd prism_frontend && npm install && cd ..
 > cp env.example .env
 > ```
+
+## 本地构建 / 打包 Electron 桌面客户端（可选）
+
+`desktop-electron/` 是对 Web 控制台的桌面封装。打包时会从仓库带入 `prismenv`、`prism_backend`、`tools/hermes-agent`、`tools/hermes-webui`、`config`，以及 `prism_frontend/.next/standalone`、`prism_frontend/.next/static`、`prism_frontend/public`。因此**必须先构建好 Next.js 前端（standalone），否则会被 `electron-builder` 卡在缺资源上**。
+
+### 0. 前置（与 Web 版一致，做一遍即可）
+
+```bash
+python3 bootstrap.py        # 创建 prismenv + 后端/前端依赖 + 生成 .env
+```
+
+### 1. 先构建前端（Next.js standalone 输出）
+
+```bash
+cd prism_frontend
+npm install
+npm run build               # 生成 .next/standalone、.next/static、public
+```
+
+要求 `prism_frontend/next.config.ts` 保留 `output: "standalone"`（打包管线依赖它）。
+
+### 2. 打包
+
+#### macOS
+
+```bash
+cd desktop-electron
+npm install                 # 安装 electron / electron-builder（postinstall 自动 install-app-deps）
+
+npm run pack                # electron-builder --dir → dist-build/<arch>/Prism.app
+# 或构建完整安装镜像（x64 + arm64 的 dmg / zip）：
+npx electron-builder --mac
+```
+
+- 产物在 `desktop-electron/dist-build/`。
+- **macOS 需自备系统 Redis**：mac 安装包不内嵌 Redis 二进制，先启动本机 Redis：
+  ```bash
+  brew install redis && redis-server --daemonize yes
+  ```
+- 当前 `mac` 段配置为 `hardenedRuntime: false`、`gatekeeperAssess: false`，未做签名/公证，本地自用即可；对外分发需自行补签名与 notarization。
+
+#### Windows
+
+```bat
+cd prism_frontend
+npm install
+npm run build
+
+cd ..\desktop-electron
+npm install
+npm run build               :: NSIS 安装包 → dist-build\Prism-<version>-setup.exe
+npm run build:dir           :: 仅目录包 → dist-build\win-unpacked\（便于本地测试）
+```
+
+- Windows 一键打包脚本（构建前端 + 后端服务 exe + supervisor + Inno/NSIS 安装包）：
+  ```bat
+  scripts\packaging\build-package.bat
+  ```
+- Windows 打包前置依赖：
+  - `desktop-electron\resources\redis\`：放入 `redis-server.exe`、`redis-cli.exe`、`redis.windows*.conf`（从 [tporadowski/redis](https://github.com/tporadowski/redis/releases) 下载，或先跑 `scripts\packaging\prepare-supervisor-build.bat` 自动准备）。
+  - Chromium：`scripts\launchers\setup_browser.bat`。
+  - supervisor.exe：由 `scripts\packaging\build-supervisor.bat`（PyInstaller）生成。
+  - 需要 `prismenv\Scripts\python.exe` 与 `prismenv\_python\python.exe`（`bootstrap.py` 已建好）。
+
+### 3. 本地联调（不打包，直接跑 Electron 壳）
+
+```bash
+# 先让外部栈跑起来，再让 Electron 指向它：
+#   macOS:  ./start-mac.sh      Windows: start.bat
+cd desktop-electron
+npm run start               # electron . —— 连接到已启动的外部后端/前端
+```
+
+> Windows 也可直接用仓库根目录的 `launch-electron-desktop.bat`；macOS 想让 Electron 自己拉起前后端，可改用 `npm run dev`（设置 `PRISM_START_SERVICES=1`、`PRISM_START_FRONTEND=1`）。
 
 ## 命令行
 
