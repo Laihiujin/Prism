@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 import { backendBaseUrl } from "@/lib/env"
 import type { PlatformKey } from "@/lib/mock-data"
@@ -24,17 +24,53 @@ const statusMap: Record<string, "正常" | "异常" | "待激活" | "在线"> = 
   过期: "异常",
 }
 
-export async function GET() {
+const ACCOUNT_PAGE_SIZE = 1000
+
+export async function GET(request: NextRequest) {
   try {
-    const response = await fetch(`${backendBaseUrl}/api/v1/accounts/`, { cache: "no-store" })
+    const requestedLimit = Number(request.nextUrl.searchParams.get("limit"))
+    const fetchAll = request.nextUrl.searchParams.get("all") === "true"
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(Math.floor(requestedLimit), ACCOUNT_PAGE_SIZE)
+      : ACCOUNT_PAGE_SIZE
+
+    const response = await fetch(
+      `${backendBaseUrl}/api/v1/accounts/?skip=0&limit=${limit}`,
+      { cache: "no-store" }
+    )
     if (!response.ok) {
       throw new Error(`Backend responded with ${response.status}`)
     }
 
     const payload = await response.json()
+    const firstPage = Array.isArray(payload?.items) ? payload.items : []
+    const total = Number(payload?.total ?? firstPage.length)
+    let allItems = firstPage
+
+    if (fetchAll && total > firstPage.length) {
+      const pageRequests: Promise<unknown>[] = []
+      for (let skip = firstPage.length; skip < total; skip += ACCOUNT_PAGE_SIZE) {
+        pageRequests.push(
+          fetch(`${backendBaseUrl}/api/v1/accounts/?skip=${skip}&limit=${ACCOUNT_PAGE_SIZE}`, {
+            cache: "no-store",
+          }).then(async (pageResponse) => {
+            if (!pageResponse.ok) {
+              throw new Error(`Backend responded with ${pageResponse.status}`)
+            }
+            return pageResponse.json()
+          })
+        )
+      }
+      const remainingPages = await Promise.all(pageRequests)
+      allItems = [
+        ...firstPage,
+        ...remainingPages.flatMap((page: any) => Array.isArray(page?.items) ? page.items : []),
+      ]
+    }
+
     // FastAPI response format: { success: true, total: N, items: [...] }
-    const rows: Array<Record<string, unknown>> = Array.isArray(payload?.items)
-      ? payload.items
+    const rows: Array<Record<string, unknown>> = allItems.length > 0
+      ? allItems
       : Array.isArray(payload?.accounts)
         ? payload.accounts.flatMap((group: any) => group?.accounts || [])
         : Array.isArray(payload?.result?.accounts)

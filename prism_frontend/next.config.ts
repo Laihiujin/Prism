@@ -1,7 +1,7 @@
 import type { NextConfig } from "next"
 
 function normalizeBackendUrl(raw: string): string {
-  const fallback = `http://127.0.0.1:${7000}`
+  const fallback = `http://127.0.0.1:${9200}`
   const trimmed = (raw || "").trim().replace(/\/+$/, "")
   const candidate = trimmed || fallback
 
@@ -17,7 +17,7 @@ function normalizeBackendUrl(raw: string): string {
 }
 
 const publicBackendUrl = normalizeBackendUrl(
-  process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE || `http://127.0.0.1:${7000}`
+  process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE || `http://127.0.0.1:${9200}`
 )
 
 const internalBackendUrl = normalizeBackendUrl(

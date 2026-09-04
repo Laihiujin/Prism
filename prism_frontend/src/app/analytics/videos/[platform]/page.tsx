@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, Fragment } from "react"
+import { useCallback, useEffect, useState, useMemo, Fragment, type ReactNode } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useParams, useRouter } from "next/navigation"
 import {
@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useToast } from "@/components/ui/use-toast"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -144,6 +145,7 @@ export default function PlatformVideosPage() {
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [sheetPage, setSheetPage] = useState(1)
     const [sheetPageSize, setSheetPageSize] = useState(20)
+    const [sheetSearch, setSheetSearch] = useState("")
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
 
     // 热门视频分页状态
@@ -165,18 +167,18 @@ export default function PlatformVideosPage() {
         refetchInterval: 30000,
     })
 
-    const rawVideos = videosData?.data || []
+    const rawVideos = useMemo(() => videosData?.data || [], [videosData?.data])
     const summary = videosData?.summary || null
 
-    const normalizeCoverUrl = (raw: any) => {
+    const normalizeCoverUrl = useCallback((raw: any) => {
         const url = String(raw || "").trim()
         if (!url) return ""
         if (url.startsWith("//")) return `https:${url}`
         if (url.startsWith("http://")) return `https://${url.slice(7)}`
         return url
-    }
+    }, [])
 
-    const parseRawData = (value: any) => {
+    const parseRawData = useCallback((value: any) => {
         if (!value) return null
         if (typeof value === "object") return value
         if (typeof value !== "string") return null
@@ -185,9 +187,9 @@ export default function PlatformVideosPage() {
         } catch {
             return null
         }
-    }
+    }, [])
 
-    const normalizeVideo = (video: any) => ({
+    const normalizeVideo = useCallback((video: any) => ({
         ...video,
         views: video.views || video.playCount || video.play_count || 0,
         likes: video.likes || video.likeCount || video.like_count || 0,
@@ -211,7 +213,7 @@ export default function PlatformVideosPage() {
         status: video.status || "",
         collected_at: video.collectedAt || video.collected_at || "",
         raw_data: parseRawData(video.raw_data || video.rawData || video.rawData || video.raw_data),
-    })
+    }), [normalizeCoverUrl, parseRawData, platform])
 
     const videos = useMemo(() => {
         const mapped = rawVideos.map(normalizeVideo)
@@ -246,7 +248,7 @@ export default function PlatformVideosPage() {
             }
         }
         return result
-    }, [rawVideos])
+    }, [normalizeVideo, rawVideos])
 
     const summaryStats = useMemo(() => {
         if (!summary) {
@@ -311,7 +313,7 @@ export default function PlatformVideosPage() {
     }, [summaryStats, statsFromVideos, videos.length])
 
     // 多维度评分算法 - 综合考虑播放、点赞、评论、收藏、分享
-    const calculateVideoScore = (video: any) => {
+    const calculateVideoScore = useCallback((video: any) => {
         const weights = {
             views: 0.3,      // 播放量权重30%
             likes: 0.25,     // 点赞权重25%
@@ -343,7 +345,7 @@ export default function PlatformVideosPage() {
             normalizedShares * weights.shares
 
         return score
-    }
+    }, [videos])
 
     const sortedVideos = useMemo(() => {
         return [...videos].sort((a: any, b: any) => {
@@ -351,13 +353,24 @@ export default function PlatformVideosPage() {
             const scoreB = calculateVideoScore(b)
             return scoreB - scoreA
         })
-    }, [videos])
+    }, [calculateVideoScore, videos])
 
-    const sheetTotalPages = Math.max(1, Math.ceil(sortedVideos.length / sheetPageSize))
+    const sheetFilteredVideos = useMemo(() => {
+        const keyword = sheetSearch.trim().toLowerCase()
+        if (!keyword) return sortedVideos
+        return sortedVideos.filter((video: any) => [
+            video.title,
+            video.video_id,
+            video.account_name,
+            video.author_name,
+        ].some((value) => String(value || "").toLowerCase().includes(keyword)))
+    }, [sheetSearch, sortedVideos])
+
+    const sheetTotalPages = Math.max(1, Math.ceil(sheetFilteredVideos.length / sheetPageSize))
     const sheetVideos = useMemo(() => {
         const start = (sheetPage - 1) * sheetPageSize
-        return sortedVideos.slice(start, start + sheetPageSize)
-    }, [sortedVideos, sheetPage, sheetPageSize])
+        return sheetFilteredVideos.slice(start, start + sheetPageSize)
+    }, [sheetFilteredVideos, sheetPage, sheetPageSize])
 
     // 热门视频分页逻辑 - 动态左右分配
     const hotVideosTotalPages = Math.max(1, Math.ceil(sortedVideos.length / hotVideosPerPage))
@@ -382,7 +395,7 @@ export default function PlatformVideosPage() {
 
     useEffect(() => {
         setSheetPage(1)
-    }, [platform, sheetPageSize, sortedVideos.length])
+    }, [platform, sheetPageSize, sheetSearch, sortedVideos.length])
 
     const videoCount = videos.length || summary?.totalVideos || 0
 
@@ -824,6 +837,13 @@ export default function PlatformVideosPage() {
                         <SheetTitle className="text-2xl text-foreground">{config.label} 视频数据全集</SheetTitle>
                         <SheetDescription>查看所有监测到的视频元数据、互动指标及发布状态</SheetDescription>
                         <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            <Input
+                                value={sheetSearch}
+                                onChange={(event) => setSheetSearch(event.target.value)}
+                                placeholder="搜索视频、账号或 ID"
+                                aria-label="搜索视频数据"
+                                className="h-8 w-64 border-border/70 bg-card text-xs text-foreground"
+                            />
                             <span>每页显示</span>
                             <Select value={String(sheetPageSize)} onValueChange={(value) => setSheetPageSize(Number(value))}>
                                 <SelectTrigger className="h-8 w-20 border-border/70 bg-card text-foreground">
@@ -835,6 +855,7 @@ export default function PlatformVideosPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <span>共 {sheetFilteredVideos.length} 条</span>
                         </div>
                     </SheetHeader>
 
@@ -857,7 +878,17 @@ export default function PlatformVideosPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sheetVideos.map((v: any, i: number) => {
+                                    {sheetVideos.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={11} className="h-40 text-center text-sm text-muted-foreground">
+                                                {isLoading
+                                                    ? "正在加载视频数据…"
+                                                    : sheetSearch
+                                                        ? "没有匹配的视频数据"
+                                                        : "暂无视频数据，请先同步该平台账号数据"}
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : sheetVideos.map((v: any, i: number) => {
                                         const key = rowKey(v, i)
                                         const extras = extractExtraFields(v)
                                         const rawJson = v.raw_data ? JSON.stringify(v.raw_data, null, 2) : ""
@@ -999,7 +1030,7 @@ export default function PlatformVideosPage() {
     )
 }
 
-function ScrollArea({ children, className }: { children: React.ReactNode; className?: string }) {
+function ScrollArea({ children, className }: { children: ReactNode; className?: string }) {
     return (
         <div className={cn("overflow-auto", className)}>
             {children}
