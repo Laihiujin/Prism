@@ -185,7 +185,7 @@ start.bat
 
 This brings up Redis → Celery worker → automation worker → FastAPI backend → frontend, in that order. Console at `http://localhost:3000`, API docs at `http://localhost:7000/api/docs`.
 
-> **Process supervision**: on macOS/Linux all processes are managed by **PM2** (`start-pm2.sh` + `ecosystem-mac.config.js` — Redis, backend, worker, Celery, frontend, Persona, Hermes); on Windows a bundled **Supervisor** does it. `start-mac.sh` only prepares the environment (idempotently), then hands off to PM2.
+> **Process supervision**: on macOS/Linux/Windows all processes are managed by **PM2** (`start-pm2.sh` (macOS/Linux) / `start-pm2.bat` (Windows) + `ecosystem.config.js` — Redis, backend, worker, Celery, frontend, Persona, Hermes). `start-mac.sh` only prepares the environment (idempotently), then hands off to PM2.
 
 > **About the virtual env**: the repo uses a single virtual env named `prismenv` (the launcher scripts, desktop packaging and Hermes runtime all refer to it). `python3 bootstrap.py` already includes creating `prismenv`; the equivalent manual commands are
 > ```bash
@@ -194,6 +194,80 @@ This brings up Redis → Celery worker → automation worker → FastAPI backend
 > cd prism_frontend && npm install && cd ..
 > cp env.example .env
 > ```
+
+## Build the Electron desktop client locally (optional)
+
+`desktop-electron/` is a desktop shell wrapping the web console. When packaging it bundles `prismenv`, `prism_backend`, `tools/hermes-agent`, `tools/hermes-webui`, `config`, plus `prism_frontend/.next/standalone`, `prism_frontend/.next/static` and `prism_frontend/public`. So you **must build the Next.js frontend first (`standalone` output)**, or `electron-builder` will fail on the missing resources.
+
+### 0. Prerequisites (same as the web build — do it once)
+
+```bash
+python3 bootstrap.py        # creates prismenv + backend/frontend deps + .env
+```
+
+### 1. Build the frontend first (Next.js standalone output)
+
+```bash
+cd prism_frontend
+npm install
+npm run build               # produces .next/standalone, .next/static, public
+```
+
+Keep `output: "standalone"` in `prism_frontend/next.config.ts` — the packaging pipeline relies on it.
+
+### 2. Package
+
+#### macOS
+
+```bash
+cd desktop-electron
+npm install                 # installs electron / electron-builder (postinstall runs install-app-deps)
+
+npm run pack                # electron-builder --dir → dist-build/<arch>/Prism.app
+# or full installers (dmg / zip for x64 + arm64):
+npx electron-builder --mac
+```
+
+- Output lands in `desktop-electron/dist-build/`.
+- **macOS needs a system Redis**: the mac bundle does not ship Redis binaries, so start Redis first:
+  ```bash
+  brew install redis && redis-server --daemonize yes
+  ```
+- The `mac` config sets `hardenedRuntime: false` and `gatekeeperAssess: false` — no code signing or notarization, fine for local use; add signing/notarization before public distribution.
+
+#### Windows
+
+```bat
+cd prism_frontend
+npm install
+npm run build
+
+cd ..\desktop-electron
+npm install
+npm run build               :: NSIS installer → dist-build\Prism-<version>-setup.exe
+npm run build:dir           :: unpacked dir only → dist-build\win-unpacked\ (handy for local testing)
+```
+
+- One-click Windows packaging script (builds the frontend + backend service exes + supervisor + Inno/NSIS installer):
+  ```bat
+  scripts\packaging\build-package.bat
+  ```
+- Windows packaging prerequisites:
+  - `desktop-electron\resources\redis\`: put `redis-server.exe`, `redis-cli.exe` and `redis.windows*.conf` in it (download from [tporadowski/redis](https://github.com/tporadowski/redis/releases), or run `scripts\packaging\prepare-supervisor-build.bat` to stage them).
+  - Chromium: `scripts\launchers\setup_browser.bat`.
+  - supervisor.exe: produced by `scripts\packaging\build-supervisor.bat` (PyInstaller).
+  - Requires `prismenv\Scripts\python.exe` and `prismenv\_python\python.exe` (already created by `bootstrap.py`).
+
+### 3. Local integration (run the Electron shell without packaging)
+
+```bash
+# Start the external stack first, then point Electron at it:
+#   macOS:  ./start-mac.sh      Windows: start.bat
+cd desktop-electron
+npm run start               # electron . — connects to the already-running backend/frontend
+```
+
+> On Windows you can also use `launch-electron-desktop.bat` from the repo root; on macOS use `npm run dev` if you want Electron to bring up the services and frontend itself (it sets `PRISM_START_SERVICES=1`, `PRISM_START_FRONTEND=1`).
 
 ## CLI
 
