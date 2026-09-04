@@ -36,6 +36,7 @@ class TabManager {
 
         this.sidebar = document.getElementById('sidebar-tabs');
         this.container = document.getElementById('webview-container');
+        this.loadingEl = document.getElementById('webview-loading');
         this.urlBar = document.getElementById('url-bar');
         this.popup = document.getElementById('tab-popup');
         this.pUrlDisplay = document.getElementById('p-url-display');
@@ -115,6 +116,60 @@ class TabManager {
             }
         });
 
+        // 浏览器式键盘快捷键
+        document.addEventListener('keydown', (event) => {
+            const isCmd = event.metaKey || event.ctrlKey;
+
+            if (isCmd && event.key.toLowerCase() === 'l') {
+                event.preventDefault();
+                if (this.urlBar) {
+                    this.urlBar.focus();
+                    this.urlBar.select();
+                }
+                return;
+            }
+
+            if (isCmd && event.key.toLowerCase() === 'r') {
+                event.preventDefault();
+                const tab = this.activeTab();
+                if (tab?.webview && typeof tab.webview.reload === 'function') {
+                    tab.webview.reload();
+                }
+                return;
+            }
+
+            if (isCmd && event.key.toLowerCase() === 'w') {
+                event.preventDefault();
+                const active = this.activeTab();
+                if (active && !active.pinned) {
+                    this.removeTab(active.id);
+                }
+                return;
+            }
+
+            if (isCmd && event.key.toLowerCase() === 't') {
+                event.preventDefault();
+                this.addTab('https://www.google.com', 'browser');
+                return;
+            }
+
+            if (isCmd && (event.key === 'Tab' || event.key === 'PageDown')) {
+                event.preventDefault();
+                const idx = this.tabs.findIndex(t => t.id === this.activeId);
+                const next = this.tabs[(idx + 1) % this.tabs.length];
+                if (next) this.switchTab(next.id);
+                return;
+            }
+
+            if (isCmd && event.key === 'PageUp') {
+                event.preventDefault();
+                const idx = this.tabs.findIndex(t => t.id === this.activeId);
+                const prev = this.tabs[(idx - 1 + this.tabs.length) % this.tabs.length];
+                if (prev) this.switchTab(prev.id);
+                return;
+            }
+        });
+
         if (this.hermesMenu) {
             this.hermesMenu.addEventListener('pointerdown', (event) => {
                 event.stopPropagation();
@@ -137,21 +192,47 @@ class TabManager {
         };
 
         // 主地址栏监听
+        const clearAddressButton = document.getElementById('url-clear');
+        const goAddressButton = document.getElementById('url-go');
+        const updateAddressState = () => this.refreshAddressBarState();
+        const submitAddress = () => {
+            const url = this.urlBar.value.trim();
+            if (url) {
+                this.performNavigation(url);
+            }
+        };
+
+        this.urlBar.addEventListener('input', updateAddressState);
+        this.urlBar.addEventListener('focus', () => this.urlBar.select());
+        this.urlBar.addEventListener('click', (event) => event.stopPropagation());
         this.urlBar.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
-                const url = this.urlBar.value.trim();
-                console.log('[地址栏] 按下回车，URL:', url);
-                if (url) {
-                    this.performNavigation(url);
-                }
+                submitAddress();
+            } else if (e.key === 'Escape') {
+                this.urlBar.value = this.activeTab()?.url || '';
+                updateAddressState();
                 this.urlBar.blur();
             }
         });
+        clearAddressButton?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.urlBar.value = '';
+            updateAddressState();
+            this.urlBar.focus();
+        });
+        goAddressButton?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            submitAddress();
+        });
+        updateAddressState();
 
         // 弹窗 URL 点击切换编辑态
         document.getElementById('p-url-container').onclick = (e) => {
+            e.stopPropagation();
             this.pUrlDisplay.style.display = 'none';
             this.pUrlInput.style.display = 'block';
             this.pUrlInput.focus();
@@ -174,6 +255,9 @@ class TabManager {
                 if (url) {
                     this.performNavigation(url, this.popup.dataset.tabId);
                 }
+                this.pUrlInput.blur();
+            } else if (e.key === 'Escape') {
+                this.pUrlInput.value = this.getWebviewUrl(popupTab()?.webview);
                 this.pUrlInput.blur();
             }
         });
@@ -234,6 +318,13 @@ class TabManager {
             return webview.getURL() || fallback || webview.getAttribute('src') || '';
         }
         return webview.getAttribute('src') || fallback;
+    }
+
+    refreshAddressBarState() {
+        this.urlBar?.closest('.address-bar')?.classList.toggle(
+            'has-value',
+            Boolean(this.urlBar.value.trim())
+        );
     }
 
     getWebviewTitle(webview, fallback = '') {
@@ -611,7 +702,7 @@ class TabManager {
         webview.src = options.initialUrl || url;
         this.container.appendChild(webview);
 
-        const tabData = { id, webview, tabItem, url, title: '会话加载中...', type, pinned };
+        const tabData = { id, webview, tabItem, url, title: '会话加载中...', type, pinned, loading: false };
         this.tabs.push(tabData);
 
         // 拦截新窗口
@@ -633,6 +724,7 @@ class TabManager {
             tabData.title = this.getWebviewTitle(webview, tabData.title);
             if (id === this.activeId) {
                 this.urlBar.value = tabData.url;
+                this.refreshAddressBarState();
                 if (this.popup.style.display === 'block' && this.popup.dataset.tabId === id) {
                     this.syncPopupInfo(tabData);
                 }
@@ -642,6 +734,12 @@ class TabManager {
         webview.addEventListener('did-finish-load', updateInfo);
         webview.addEventListener('did-finish-load', () => {
             this.clearInternalRetry(id);
+            if (this.isManagedLocalUrl(this.getWebviewUrl(webview, tabData.url))) {
+                webview.insertCSS(`
+                    :root { color-scheme: dark !important; }
+                    html, body, #__next { background: #000000 !important; }
+                `).catch((error) => console.warn('[Shell] Failed to apply local dark surface:', error));
+            }
         });
         webview.addEventListener('did-navigate', updateInfo);
         webview.addEventListener('did-navigate-in-page', updateInfo);
@@ -663,6 +761,19 @@ class TabManager {
             tabData.title = e.title;
             if (id === this.activeId && this.popup.style.display === 'block') {
                 this.syncPopupInfo(tabData);
+            }
+        });
+
+        webview.addEventListener('did-start-loading', () => {
+            tabData.loading = true;
+            if (id === this.activeId) {
+                this.updateActiveLoadingState();
+            }
+        });
+        webview.addEventListener('did-stop-loading', () => {
+            tabData.loading = false;
+            if (id === this.activeId) {
+                this.updateActiveLoadingState();
             }
         });
 
@@ -802,9 +913,11 @@ class TabManager {
             active.webview.classList.add('active');
             active.tabItem.classList.add('active');
             this.urlBar.value = this.getWebviewUrl(active.webview, active.url);
+            this.refreshAddressBarState();
             this.activeId = id;
         }
 
+        this.updateActiveLoadingState();
         this.syncUtilityButtons();
     }
 
@@ -828,6 +941,13 @@ class TabManager {
 
     activeTab() {
         return this.tabs.find(t => t.id === this.activeId);
+    }
+
+    updateActiveLoadingState() {
+        const active = this.activeTab();
+        if (this.loadingEl) {
+            this.loadingEl.classList.toggle('visible', Boolean(active?.loading));
+        }
     }
 
     showPopup(id) {
@@ -872,7 +992,10 @@ class TabManager {
 
 // ========== 设置面板功能 ==========
 
-let API_BASE = `http://127.0.0.1:${7000}/api/v1/system`;
+// 系统维护 API 根地址：后端 FastAPI 的 /api/v1/system/*。
+// 默认 9200（与 Electron 主进程 getConfiguredBackendPort 一致），运行时会用
+// getInfo().backendUrl 纠正为真实后端地址。
+let API_BASE = `http://127.0.0.1:${9200}/api/v1/system`;
 
 async function hydrateSystemApiBase() {
     if (!window.electronAPI?.app?.getInfo) {
@@ -881,6 +1004,13 @@ async function hydrateSystemApiBase() {
 
     try {
         const info = await window.electronAPI.app.getInfo();
+        // getInfo() 不返回 systemApiBaseUrl；以真实的 backendUrl 推导 /api/v1/system。
+        const backendCandidate = String(info?.backendUrl || '').trim();
+        if (backendCandidate) {
+            API_BASE = backendCandidate.replace(/\/+$/, '') + '/api/v1/system';
+            return API_BASE;
+        }
+
         const candidate = String(info?.systemApiBaseUrl || '').trim();
         if (candidate) {
             API_BASE = candidate.replace(/\/+$/, '');
@@ -903,6 +1033,8 @@ function toggleSettingsPanel() {
     } else {
         panel.classList.add('open');
         overlay.classList.add('open');
+        refreshRuntimeInfo();
+        refreshServiceStatus();
     }
 }
 
@@ -913,26 +1045,80 @@ function closeSettingsPanel() {
     overlay.classList.remove('open');
 }
 
-function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        border-radius: 8px;
-        z-index: 10000;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        border: 1px solid ${type === 'error' ? '#EF5350' : '#66BB6A'};
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
+async function refreshRuntimeInfo() {
+    const backendEl = document.getElementById('settings-backend-url');
+    if (!backendEl || !window.electronAPI?.app?.getInfo) {
+        return;
+    }
+    try {
+        const info = await window.electronAPI.app.getInfo();
+        const bits = [];
+        if (info?.backendPort) bits.push(`端口 ${info.backendPort}`);
+        if (info?.backendUrl) bits.push(info.backendUrl);
+        if (info?.supervisorApiPort) bits.push(`Supervisor ${info.supervisorApiPort}`);
+        backendEl.textContent = bits.join(' · ') || '未知';
+    } catch (error) {
+        backendEl.textContent = '获取失败';
+    }
+}
 
-    setTimeout(() => toast.remove(), 3000);
+async function refreshServiceStatus() {
+    const statusEl = document.getElementById('settings-service-status');
+    if (!statusEl || !window.electronAPI?.supervisor?.getStatus) {
+        return;
+    }
+    try {
+        const status = await window.electronAPI.supervisor.getStatus();
+        const data = status?.data || status || {};
+        const entries = [];
+        for (const key of ['backend', 'automation_worker', 'celery_worker', 'hermes_dashboard', 'hermes_webui']) {
+            const svc = data[key];
+            if (!svc) continue;
+            const label = svc.port ? `${key} :${svc.port}` : key;
+            const state = svc.running ? '运行中' : (svc.reason || '已停止');
+            entries.push(`${label}=${state}`);
+        }
+        statusEl.textContent = entries.join(' | ') || '暂无服务信息';
+    } catch (error) {
+        statusEl.textContent = '获取失败';
+    }
+}
+
+function showToast(message, type = 'info') {
+    const stack = document.getElementById('toast-stack');
+    if (!stack) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type === 'error' ? 'toast-error' : 'toast-info'}`;
+
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    icon.textContent = type === 'error' ? '!' : '✓';
+
+    const text = document.createElement('span');
+    text.className = 'toast-message';
+    text.textContent = String(message).replace(/^[✅❌⚠️⏹]+\s*/u, '');
+
+    const close = document.createElement('button');
+    close.className = 'toast-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', '关闭通知');
+    close.textContent = '×';
+
+    let removalTimer;
+    const dismiss = () => {
+        clearTimeout(removalTimer);
+        toast.classList.add('is-leaving');
+        setTimeout(() => toast.remove(), 160);
+    };
+    close.addEventListener('click', dismiss);
+    toast.append(icon, text, close);
+    stack.prepend(toast);
+
+    while (stack.children.length > 4) {
+        stack.lastElementChild?.remove();
+    }
+    removalTimer = setTimeout(dismiss, 3200);
 }
 
 async function restartAllServices() {

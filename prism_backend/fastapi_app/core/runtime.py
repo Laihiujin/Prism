@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 DEFAULT_BACKEND_HOST = "127.0.0.1"
-DEFAULT_BACKEND_PORT = 7000
+DEFAULT_BACKEND_PORT = 9200
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RUNTIME_FILE = REPO_ROOT / "runtime-data" / "runtime.json"
 

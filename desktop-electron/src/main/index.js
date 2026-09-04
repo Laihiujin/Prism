@@ -75,6 +75,7 @@ class PrismApp {
     // 绛夊緟 Electron 鍑嗗灏辩华
     await app.whenReady();
     nativeTheme.themeSource = 'dark';
+    this.setupEditingContextMenus();
     log.info('Applied default dark theme source for Electron browser surfaces');
 
     this.repoRoot = path.join(__dirname, '../../../');
@@ -169,6 +170,18 @@ class PrismApp {
   setupAppMenu() {
     const template = [
       {
+        label: '编辑',
+        submenu: [
+          { role: 'undo', label: '撤销' },
+          { role: 'redo', label: '重做' },
+          { type: 'separator' },
+          { role: 'cut', label: '剪切' },
+          { role: 'copy', label: '复制' },
+          { role: 'paste', label: '粘贴' },
+          { role: 'selectAll', label: '全选' }
+        ]
+      },
+      {
         label: '帮助',
         submenu: [
           {
@@ -210,6 +223,34 @@ class PrismApp {
       }
     ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
+
+  setupEditingContextMenus() {
+    app.on('web-contents-created', (_event, contents) => {
+      contents.on('context-menu', (_contextEvent, params) => {
+        const hasSelection = Boolean(params.selectionText?.trim());
+        if (!params.isEditable && !hasSelection) return;
+
+        const template = [];
+        if (params.isEditable) {
+          template.push(
+            { role: 'undo', label: '撤销', enabled: params.editFlags.canUndo },
+            { role: 'redo', label: '重做', enabled: params.editFlags.canRedo },
+            { type: 'separator' },
+            { role: 'cut', label: '剪切', enabled: params.editFlags.canCut },
+            { role: 'copy', label: '复制', enabled: params.editFlags.canCopy },
+            { role: 'paste', label: '粘贴', enabled: params.editFlags.canPaste },
+            { type: 'separator' },
+            { role: 'selectAll', label: '全选', enabled: params.editFlags.canSelectAll }
+          );
+        } else {
+          template.push({ role: 'copy', label: '复制', enabled: params.editFlags.canCopy });
+        }
+        Menu.buildFromTemplate(template).popup({
+          window: BrowserWindow.fromWebContents(contents) || this.mainWindow || undefined
+        });
+      });
+    });
   }
 
   setupAutomationPath() {
@@ -322,7 +363,7 @@ class PrismApp {
       // Ignore malformed URL and fall back to the default port.
     }
 
-    return 7000;
+    return 9200;
   }
 
   resolveBackendPort(rawUrl) {
@@ -1323,10 +1364,21 @@ class PrismApp {
   }
 
   getAppIconPath() {
+    if (process.platform === 'win32') {
+      return this.resolveFirstPath([
+        path.join(app.getAppPath(), 'icon.ico'),
+        path.join(process.resourcesPath, 'icon.ico'),
+        path.join(__dirname, '..', '..', 'icon.ico')
+      ]);
+    }
+    // macOS / Linux: Tray + window need a PNG (Electron can't load .ico here).
     return this.resolveFirstPath([
-      path.join(app.getAppPath(), 'icon.ico'),
-      path.join(process.resourcesPath, 'icon.ico'),
-      path.join(__dirname, '..', '..', 'icon.ico')
+      path.join(app.getAppPath(), 'tray.png'),
+      path.join(app.getAppPath(), 'icon.png'),
+      path.join(process.resourcesPath, 'tray.png'),
+      path.join(process.resourcesPath, 'icon.png'),
+      path.join(__dirname, '..', '..', 'tray.png'),
+      path.join(__dirname, '..', '..', 'icon.png')
     ]);
   }
 
@@ -1981,6 +2033,10 @@ class PrismApp {
     const configuredWorkerPort = this.getConfiguredAutomationWorkerPort();
     const configuredBackendPort = this.getConfiguredBackendPort();
     const reservedPorts = new Set();
+
+    // 禁止把后端/worker 分配到 supervisor 自身 HTTP API 端口(7002)，
+    // 否则 FastAPI 绑定会和 supervisor API 冲突，前端也会把 /api/* 打到 supervisor 上导致 404。
+    reservedPorts.add(this.getSupervisorApiPort());
 
     this.backendPort = await this.resolveManagedPort(
       configuredBackendPort,
@@ -2741,7 +2797,7 @@ class PrismApp {
       height: 700,
       resizable: false,
       frame: true,
-      backgroundColor: '#0a0a0e',
+      backgroundColor: '#000000',
       titleBarStyle: 'default',
       autoHideMenuBar: true,
       icon: this.appIconPath || undefined,
@@ -2782,7 +2838,7 @@ class PrismApp {
       height: 800,
       minWidth: 1000,
       minHeight: 600,
-      backgroundColor: '#0a0a0e',
+      backgroundColor: '#000000',
       titleBarStyle: 'default',
       autoHideMenuBar: true,
       icon: this.appIconPath || undefined,
@@ -2817,7 +2873,7 @@ class PrismApp {
       minWidth: 1200,
       minHeight: 700,
       show: false,
-      backgroundColor: '#0a0a0e',
+      backgroundColor: '#000000',
       titleBarStyle: 'default',
       autoHideMenuBar: true,
       icon: this.appIconPath || undefined,
@@ -2871,7 +2927,7 @@ class PrismApp {
         width: options.width || 1200,
         height: options.height || 800,
         show: true,
-        backgroundColor: '#0a0a0e',
+        backgroundColor: '#000000',
         icon: this.appIconPath || undefined,
         title: options.title || 'Browser Preview',
         webPreferences: {

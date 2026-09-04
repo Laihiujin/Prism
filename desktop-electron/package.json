@@ -42,7 +42,9 @@
     "files": [
       "src/**/*",
       "package.json",
-      "icon.ico"
+      "icon.ico",
+      "icon.png",
+      "tray.png"
     ],
     "extraResources": [
       {
@@ -222,7 +224,7 @@
       "deleteAppDataOnUninstall": true
     },
     "compression": "maximum",
-    "electronVersion": "28.0.0",
+    "electronVersion": "39.2.7",
     "publish": [
       {
         "provider": "github",
@@ -233,6 +235,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png",
       "artifactName": "Prism-${version}-${arch}-setup.${ext}",
       "target": [
         {

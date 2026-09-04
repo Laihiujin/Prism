@@ -14,6 +14,7 @@ import glob
 import json
 import logging
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -1514,14 +1515,18 @@ class Supervisor:
         for candidate in redis_candidates:
             if redis_exe:
                 break
-            potential_exe = candidate / "redis-server.exe"
-            if potential_exe.exists():
-                redis_dir = candidate
-                redis_exe = potential_exe
-                redis_conf = candidate / "redis.windows.conf"
-                break
+            for potential_name in ("redis-server.exe", "redis-server"):
+                potential_exe = candidate / potential_name
+                if potential_exe.exists():
+                    redis_dir = candidate
+                    redis_exe = potential_exe
+                    if potential_name.endswith(".exe"):
+                        redis_conf = candidate / "redis.windows.conf"
+                    break
 
-        if not redis_exe and not self.is_packaged:
+        if not redis_exe:
+            # 打包产物默认自带 Redis；若未捆绑（如 mac），正确回退到用户机器上已安装的
+            # redis-server，避免 Prism 依赖的 Redis 缺失导致后端无法启动。
             system_redis = shutil.which("redis-server")
             if system_redis:
                 redis_exe = Path(system_redis)
