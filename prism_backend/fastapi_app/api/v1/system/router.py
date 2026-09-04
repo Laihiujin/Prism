@@ -306,7 +306,8 @@ async def browser_runtime_status():
 async def browser_runtime_install(target: str):
     target = (target or "").strip().lower()
     allowed_targets = {"chromium", "firefox", "patchright"}
-    if target not in allowed_targets:
+    provider = browser_components.get_provider(target)
+    if target not in allowed_targets and not (provider and provider.get("repository") and provider.get("userSelectable")):
         raise HTTPException(status_code=400, detail=f"不支持的安装目标: {target}")
     try:
         return browser_components.install_component(target)
@@ -314,6 +315,30 @@ async def browser_runtime_install(target: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"安装失败: {str(e)}")
+
+
+@router.post("/browser-runtime/apply/{provider_id}", summary="应用已安装的浏览器 Provider")
+async def browser_runtime_apply(provider_id: str):
+    try:
+        return browser_components.apply_provider(provider_id.strip().lower())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"应用失败: {str(e)}")
+
+
+@router.post("/browser-runtime/apply-local", summary="应用已检测到的本机浏览器")
+async def browser_runtime_apply_local(payload: Dict[str, str] = Body(...)):
+    try:
+        return browser_components.apply_local_browser(payload.get("executablePath", ""))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"应用本机浏览器失败: {str(e)}")
+
+
+@router.post("/browser-runtime/provider/{provider_id}/uninstall", summary="卸载浏览器 Provider")
+async def browser_provider_uninstall(provider_id: str):
+    try:
+        return browser_components.uninstall_provider(provider_id.strip().lower())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"卸载失败: {str(e)}")
 
 
 @router.post("/browser-runtime/uninstall/{target}", summary="卸载浏览器组件")
@@ -1159,4 +1184,3 @@ async def diagnostic_paths():
         "status": "success",
         "data": paths_info
     }
-

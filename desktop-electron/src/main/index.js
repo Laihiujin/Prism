@@ -213,18 +213,10 @@ class PrismApp {
   }
 
   setupAutomationPath() {
-    // 鑾峰彇鎵撳寘鍚庣殑璧勬簮璺緞
-    const isDev = this.isDev;
-
-    if (isDev) {
-      // 寮€鍙戠幆澧冿細浣跨敤椤圭洰鏍圭洰褰曠殑娴忚鍣?
-      this.automationBrowserPath = path.join(__dirname, '../../../browsers');
-      log.info('Dev mode Playwright browser path:', this.automationBrowserPath);
-    } else {
-      // 鐢熶骇鐜锛氫娇鐢ㄦ墦鍖呭悗鐨勬祻瑙堝櫒
-      this.automationBrowserPath = path.join(process.resourcesPath, 'browsers');
-      log.info('Packaged mode Playwright browser path:', this.automationBrowserPath);
-    }
+    // Browser binaries are mutable Tools components. Keep them in user data,
+    // never in the read-only application/resources or source browsers/ trees.
+    this.automationBrowserPath = this.getBrowsersRoot();
+    log.info('Managed Playwright browser path:', this.automationBrowserPath);
 
     // 璁剧疆鐜鍙橀噺锛岃 Playwright 浣跨敤鎸囧畾鐨勬祻瑙堝櫒
     process.env.PLAYWRIGHT_BROWSERS_PATH = this.automationBrowserPath;
@@ -816,9 +808,9 @@ class PrismApp {
   }
 
   getBrowsersRoot() {
-    return this.isDev
-      ? path.join(this.repoRoot, 'browsers')
-      : path.join(process.resourcesPath, 'browsers');
+    const runtimeData = process.env.PRISM_RUNTIME_DATA_DIR
+      || path.join(app.getPath('userData'), 'runtime-data');
+    return path.join(runtimeData, 'components', 'browsers', 'patchright', 'versions', 'current');
   }
 
   resolveFirstPath(candidates) {
@@ -845,6 +837,8 @@ class PrismApp {
       candidates.push(path.join(dir, 'Chrome-bin', 'chrome.exe'));
     }
     for (const dir of this.getSubdirs(browsersRoot, 'chromium-')) {
+      candidates.push(path.join(dir, 'chrome-mac-arm64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'));
+      candidates.push(path.join(dir, 'chrome-mac-x64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'));
       candidates.push(path.join(dir, 'chrome-win64', 'chrome.exe'));
       candidates.push(path.join(dir, 'chrome-win', 'chrome.exe'));
     }
@@ -1792,6 +1786,7 @@ class PrismApp {
       PRISM_RESOURCES_PATH: appRoot,
       PRISM_HERMES_PYTHON: pythonPath,
       PRISM_RUNTIME_SETTINGS_PATH: this.getRuntimeSettingsPath(),
+      PRISM_RUNTIME_DATA_DIR: path.join(app.getPath('userData'), 'runtime-data'),
       PLAYWRIGHT_BROWSERS_PATH: browsersRoot,
       PLAYWRIGHT_HEADLESS: this.runtimeSettings.browserHeadless ? 'true' : 'false',
       PRISM_AUTOMATION_RUNTIME: this.runtimeSettings.automationRuntime,

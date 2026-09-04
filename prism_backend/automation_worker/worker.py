@@ -110,6 +110,14 @@ def _resolve_executable_path_legacy_unused() -> str | None:
 # 设置正确的事件循环策略（Windows）
 # Playwright 需要 asyncio subprocess 支持（Windows 上由 ProactorEventLoop 提供）。
 def _resolve_executable_path() -> str | None:
+    try:
+        from tools.browser_provider_registry import active_provider_executable
+        active = active_provider_executable("chromium")
+        if active:
+            return str(active)
+    except Exception:
+        pass
+
     def _normalize(raw: str | Path | None) -> Path | None:
         if not raw:
             return None

@@ -144,6 +144,14 @@ def _firefox_executable_path() -> Optional[str]:
       仓库内 Firefox(source=repo) -> LOCAL_FIREFOX_PATH/默认仓库路径 -> 任意 detected firefox。
     返回 None 表示本机没有可用的 Firefox。
     """
+    # 0) 用户在 Tools 中明确应用的本机/组件 Firefox
+    try:
+        from tools.browser_provider_registry import active_provider_executable
+        active = active_provider_executable("firefox")
+        if active:
+            return str(active)
+    except Exception:
+        pass
     # 1) 仓库内 patchright 专用 Firefox
     try:
         from utils.chrome_detector import list_detected_browsers

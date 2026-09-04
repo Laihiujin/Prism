@@ -22,9 +22,10 @@
 """
 import os
 import glob
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from utils.runtime_env import load_runtime_env
 
 # 各浏览器可执行文件（相对于检测到的目录）
@@ -188,17 +189,27 @@ def _find_browser_on_platform(browser_name: str, platform_key: str) -> Optional[
     return None
 
 
-def detect_browser() -> Optional[BrowserInfo]:
-    """
-    按主流程度检测用户本机浏览器，返回 BrowserInfo（name/kind/path）。
-    找不到任何系统浏览器时回退到 Playwright/Patchright 自带浏览器；
-    仍然没有则返回 None（不抛异常）。
-    """
+def detect_browsers() -> List[BrowserInfo]:
+    """Return every currently available local/managed browser in preference order."""
     env_info = load_runtime_env()
+    found: List[BrowserInfo] = []
+    seen_paths = set()
+
+    runtime_data = Path(os.environ.get("PRISM_RUNTIME_DATA_DIR", _repo_root() / "runtime-data"))
+    active_file = runtime_data / "components" / "browsers" / "active.json"
+    try:
+        active = json.loads(active_file.read_text(encoding="utf-8"))
+        active_path = str(Path(active.get("executablePath", "")).resolve())
+        if active_path and Path(active_path).is_file():
+            found.append(BrowserInfo(name=str(active.get("name") or active.get("provider", "Managed browser")), kind=str(active.get("kind") or "chromium"), path=active_path))
+            seen_paths.add(active_path)
+    except (OSError, ValueError, TypeError):
+        pass
 
     override = _env_override()
     if override is not None:
-        return override
+        found.append(override)
+        seen_paths.add(override.path)
 
     if env_info["is_mac"]:
         platform_key = "mac"
@@ -212,13 +223,26 @@ def detect_browser() -> Optional[BrowserInfo]:
         if not BROWSER_BINARIES[browser_name].get(platform_key):
             continue
         path = _find_browser_on_platform(browser_name, platform_key)
-        if path:
-            return BrowserInfo(name=browser_name, kind=BROWSER_BINARIES[browser_name]["kind"], path=path)
+        if path and path not in seen_paths:
+            found.append(BrowserInfo(name=browser_name, kind=BROWSER_BINARIES[browser_name]["kind"], path=path))
+            seen_paths.add(path)
 
     # 最后兜底：Playwright/Patchright 自带浏览器（已存在于本机缓存时）
     playwright_path = _find_playwright_chromium()
-    if playwright_path:
-        return BrowserInfo(name="Playwright Chromium", kind="chromium", path=playwright_path)
+    if playwright_path and playwright_path not in seen_paths:
+        found.append(BrowserInfo(name="Managed Chromium", kind="chromium", path=playwright_path))
+    return found
+
+
+def detect_browser() -> Optional[BrowserInfo]:
+    """
+    按主流程度检测用户本机浏览器，返回 BrowserInfo（name/kind/path）。
+    找不到任何系统浏览器时回退到 Playwright/Patchright 自带浏览器；
+    仍然没有则返回 None（不抛异常）。
+    """
+    browsers = detect_browsers()
+    if browsers:
+        return browsers[0]
 
     return None
 
@@ -350,15 +374,12 @@ def _repo_root() -> Path:
 
 def _scan_repo_browsers() -> list:
     """
-    遍历仓库工具浏览器目录下真实存在的浏览器可执行文件（按当前平台）。
-    Prism 现在的浏览器组件装到 prism_backend/tools/browsers/（tools 组件），
-    同时兼容历史仓库根目录 browsers/。
+    遍历 runtime-data 中由 Tools 管理的浏览器可执行文件（按当前平台）。
     返回 dict 列表：{name, kind, path, source='repo'}；找不到返回 []。
     （目录只含 DEPENDENCIES_VALIDATED/INSTALLATION_COMPLETE 等标记而无 exe 的视为未安装，不返回。）
     """
-    browsers_root = _repo_root() / "browsers"
-    tools_root = _repo_root() / "prism_backend" / "tools" / "browsers"
-    roots = [r for r in (tools_root, browsers_root) if r.exists()]
+    runtime_data = Path(os.environ.get("PRISM_RUNTIME_DATA_DIR", _repo_root() / "runtime-data"))
+    roots = [r for r in (runtime_data / "components" / "browsers",) if r.exists()]
     found: list = []
     if not roots:
         return found

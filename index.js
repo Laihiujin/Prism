@@ -58,18 +58,8 @@ class PrismApp {
   }
 
   setupPlaywrightPath() {
-    // 获取打包后的资源路径
-    const isDev = !app.isPackaged;
-
-    if (isDev) {
-      // 开发环境：使用项目根目录的浏览
-      this.playwrightBrowserPath = path.join(__dirname, '../../../browsers');
-      log.info('🔧 开发模- 浏览器路', this.playwrightBrowserPath);
-    } else {
-      // 生产环境：使用打包后的浏览器
-      this.playwrightBrowserPath = path.join(process.resourcesPath, 'browsers');
-      log.info('📦 生产模式 - 浏览器路', this.playwrightBrowserPath);
-    }
+    this.playwrightBrowserPath = this.getBrowsersRoot();
+    log.info('Tools 管理的浏览器路径', this.playwrightBrowserPath);
 
     // 设置环境变量，让 Playwright 使用指定的浏览器
     process.env.PLAYWRIGHT_BROWSERS_PATH = this.playwrightBrowserPath;
@@ -83,12 +73,12 @@ class PrismApp {
   }
 
   getResourcesRoot() {
-    return this.isDev  this.repoRoot : process.resourcesPath;
+    return this.isDev ? this.repoRoot : process.resourcesPath;
   }
 
   getBackendDir() {
     return this.isDev
-       path.join(this.repoRoot, 'prism_backend')
+      ? path.join(this.repoRoot, 'prism_backend')
       : path.join(process.resourcesPath, 'backend');
   }
 
@@ -101,9 +91,9 @@ class PrismApp {
   }
 
   getBrowsersRoot() {
-    return this.isDev
-       path.join(this.repoRoot, 'browsers')
-      : path.join(process.resourcesPath, 'browsers');
+    const runtimeData = process.env.PRISM_RUNTIME_DATA_DIR
+      || path.join(app.getPath('userData'), 'runtime-data');
+    return path.join(runtimeData, 'components', 'browsers', 'patchright', 'versions', 'current');
   }
 
   resolveFirstPath(candidates) {
@@ -115,7 +105,7 @@ class PrismApp {
       return null;
     }
     const exePath = path.join(process.resourcesPath, 'services', `${name}.exe`);
-    return fs.existsSync(exePath)  exePath : null;
+    return fs.existsSync(exePath) ? exePath : null;
   }
 
   buildServiceEnv() {
@@ -164,7 +154,7 @@ class PrismApp {
       return;
     }
     const redisPath = this.isDev
-       'redis-server'
+      ? 'redis-server'
       : path.join(process.resourcesPath, 'redis', 'redis-server.exe');
     if (!this.isDev && !fs.existsSync(redisPath)) {
       log.warn(`⚠️ Redis 未找 ${redisPath}`);
@@ -197,7 +187,7 @@ class PrismApp {
     const pythonPath = this.getPythonPath();
     log.info('🧩 启动 Automation Worker...');
     const launchCmd = workerExe || pythonPath;
-    const launchArgs = workerExe  [] : [workerScript];
+    const launchArgs = workerExe ? [] : [workerScript];
     this.automationWorkerProcess = spawn(launchCmd, launchArgs, {
       env: { ...env, PYTHONPATH: backendDir },
       cwd: backendDir,
@@ -220,7 +210,7 @@ class PrismApp {
     log.info('🧩 启动 Celery Worker...');
     const launchCmd = celeryExe || pythonPath;
     const launchArgs = celeryExe
-       []
+      ? []
       : [
           '-m',
           'celery',
@@ -301,7 +291,7 @@ class PrismApp {
       }
 
       const launchCmd = backendExe || pythonPath;
-      const launchArgs = backendExe  [] : [mainScript];
+      const launchArgs = backendExe ? [] : [mainScript];
       this.backendProcess = spawn(launchCmd, launchArgs, {
         cwd: backendDir,
         env: {
@@ -446,7 +436,7 @@ class PrismApp {
 
       const promises = cookies.map(cookie => {
         // Playwright cookie 格式Electron cookie 格式
-        const url = `${cookie.secure  'https' : 'http'}://${cookie.domain.startsWith('.')  cookie.domain.substring(1) : cookie.domain}${cookie.path}`;
+        const url = `${cookie.secure ? 'https' : 'http'}://${cookie.domain.startsWith('.') ? cookie.domain.substring(1) : cookie.domain}${cookie.path}`;
         return sess.cookies.set({
           url: url,
           name: cookie.name,

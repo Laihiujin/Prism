@@ -18,9 +18,11 @@ scripts/packaging/provision/
   requirements.prism.lock.txt # pip 层依赖（当前为 requirements.txt 拷贝；生产应换 lockfile）
   components.json             # 组件清单：inject（装进共享 env） / isolated（独立 env）
   components/
-    <name>/env.yaml           # 隔离组件环境的 micromamba environment.yml
+    <name>/env.yaml           # 隔离组件环境的 micromamba environment.yml（persona / hermes …）
   micromamba/                 # 内嵌 micromamba 二进制（.exe / 无后缀），按平台放置
   .mamba/                     # 自包含 repodata 缓存根（运行时生成）
+prismenv/                     # 共享运行时环境（仅 Prism 本体 + 被后端 import 的库）
+prism_components/<name>/      # 每个隔离组件的独立 conda 环境（运行时生成）
 ```
 
 ## 用法
@@ -37,11 +39,20 @@ python3 scripts/packaging/provision/provision.py --dry-run
 # 完整 runtime 就绪性报告（PM2 健康自检）
 python3 scripts/packaging/provision/provision.py --verify
 
-# 实际供给共享运行时（prismenv = conda 环境 + requirements + person/hermes 入口）
+# 实际供给共享运行时（prismenv = conda 环境 + requirements + persona/hermes 入口）
 python3 scripts/packaging/provision/provision.py --mirror tuna
+
+# 只跑系统依赖 stage（.env / Redis / 本机浏览器检测 / 前端）
+python3 scripts/packaging/provision/provision.py --system
+
+# 只有用户明确要求时才下载 Prism 管理的 Chromium
+python3 scripts/packaging/provision/provision.py --system --install-browser chromium
 
 # 供给全部隔离组件环境（components/<name>/env.yaml）
 python3 scripts/packaging/provision/provision.py --all
+
+# 一键：共享环境 + 全部隔离组件环境 + 系统依赖 stage（等价于依次 --mirror + --all）
+python3 scripts/packaging/provision/provision.py --all --mirror tuna
 
 # 只供给一个隔离组件
 python3 scripts/packaging/provision/provision.py --component persona
@@ -68,14 +79,24 @@ python3 scripts/packaging/provision/provision.py --force
 
 ## 新增一个开源组件
 
+判据：**它是独立进程/独立入口，还是被 prism_backend 进程直接 import？**
+
+- **独立进程组件**（persona / hermes / deepseek-harness / 未来的 MCP、插件）→ **isolated**，
+  每个组件一个自己的 conda env（`prism_components/<name>`），入口 `bin/<name>`；来了装一套、
+  卸载删一套。互不污染共享 `prismenv`。
+- **被后端 import 的库 / 内嵌子应用**（`biliup`、`douyin_tiktok_api`）→ **留在 `prismenv`**，
+  不隔离（隔离会让后端进程 import 不到）。这类冲突靠 `requirements.prism.lock.txt` 锁版本解决。
+
+新增一个独立进程组件：
+
 1. 放源码到 `tools/<name>/`（或任意路径）。
-2. **注入型**（兼容共享 Python，入口进 `prismenv`）：在 `components.json` 的
-   `inject` 加一条 `{"name": ..., "src": "...", "entrypoints": ["<name>"]}`。
-   「注入」= 以可编辑方式 `pip install -e <src>`，从而生成 console-script 入口。
-3. **隔离型**（需要不同 Python 版本 / 冲突原生依赖）：新建
-   `components/<name>/env.yaml`（含 `{{CHANNELS}}` 占位，会被替换成镜像通道），
-   并在 `components.json` 的 `isolated` 登记。
-4. 运行 `--verify` 确认全绿。
+2. 建 `components/<name>/env.yaml`：只写 conda 层（`python` + `pip`），组件本体由 provision 以
+   `pip install -e` 安装。模板见 `components/persona/env.yaml`。
+3. 在 `components.json` 的 `isolated` 登记一条：
+   `{"name": ..., "src": "tools/<name>", "pip": "tools/<name>", "extras": [...], "entrypoints": ["<name>"]}`。
+   - `pip`：组件本体目录（缺省用 `src`）；`extras`：安装时附加的 PEP 508 extras（如 persona 的 `[api,launch]`）。
+4. 运行 `python3 scripts/packaging/provision/provision.py --component <name> --mirror tuna` 建环境，
+   `--verify` 确认该组件入口为 `[ok]`。卸载 = 删除 `prism_components/<name>/`（留出空间给下一个组件）。
 
 ## 运行时清单（供壳 / supervisor 读取）
 
@@ -94,11 +115,12 @@ python3 scripts/packaging/provision/provision.py --force
 ## 非 Python 运行时（“还有其他的”）
 
 `--verify` 会一并报告 Redis / Chromium / frontend 依赖 / mihomo / `.env`。
-这些目前**委托现有 `bootstrap.py` / `scripts/packaging`**：Redis（`which
-redis-server`，缺失给安装指引）、浏览器（`patchright install chromium` /
-`install_hibbiki_chromium.ps1`）、前端（`npm install` + `next build`）、
-mihomo 二进制、`.env`（从 `env.example` 复制）。本模块负责 Python 运行时与入口，
-系统依赖步骤建议在 `bootstrap.py` 侧保留或单独成 stage。
+这些由 `--system`（或 `--all` 末尾）统一步骤供给：`.env`（从 `env.example`
+复制）、Redis（`which redis-server`，缺失给安装指引）、浏览器（默认只检测本机
+Chrome/Edge/Firefox 等；显式 `--install-browser chromium` 才下载组件）和前端
+依赖及构建。
+mihomo 二进制从 `tools/persona-studio/proxies/` 已知路径检测。Python 运行时与
+入口由本模块（micromamba）负责；`--system` 是一次性补齐系统/前端依赖的 stage。
 
 ## 生产化待办
 

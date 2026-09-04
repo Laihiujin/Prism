@@ -32,6 +32,7 @@ import hashlib
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -60,13 +61,13 @@ COMPONENTS_JSON = PROVISION_DIR / "components.json"
 
 
 def load_components() -> dict:
-    """读取 components.json：哪些组件注入共享环境、哪些隔离成独立 env。"""
+    """读取 components.json：哪些组件注入共享环境、哪些隔离成独立 env、哪些是 node 组件。"""
     if not COMPONENTS_JSON.exists():
-        return {"inject": [], "isolated": []}
+        return {"inject": [], "isolated": [], "node": []}
     try:
         return json.loads(COMPONENTS_JSON.read_text(encoding="utf-8"))
     except Exception:
-        return {"inject": [], "isolated": []}
+        return {"inject": [], "isolated": [], "node": []}
 
 
 def resolve_component_src(src_rel: str) -> Path:
@@ -121,16 +122,20 @@ def install_component(env_dir: Path, comp: dict, mirror, dry_run: bool = False) 
         pip_target = src if is_python_project(src) else None
 
     if pip_target is not None and pip_target.exists():
+        extras = comp.get("extras") or []
+        spec = str(pip_target)
+        if extras:
+            spec = f"{spec}[{','.join(extras)}]"
         if dry_run:
-            log("[dry-run]", py, "-m pip install -e", pip_target)
+            log("[dry-run]", py, "-m pip install -e", spec)
             return True
-        log(f"安装组件 {name} -> {pip_target}")
-        rc = run([str(py), "-m", "pip", "install", "-e", str(pip_target)],
+        log(f"安装组件 {name} -> {spec}")
+        rc = run([str(py), "-m", "pip", "install", "-e", spec],
                  env_extra={"PIP_INDEX_URL": mirror["pypi"]}, check=False)
         if rc == 0:
             log(f"组件 {name} 已安装（console-script 应已生成）")
             return True
-        warn(f"pip install -e 失败（{name}），尝试启动器回退: {pip_target}")
+        warn(f"pip install -e 失败（{name}），尝试启动器回退: {spec}")
 
     launch_module = comp.get("launch_module")
     if launch_module:
@@ -222,9 +227,9 @@ def mimamba_env(extra=None) -> dict:
     return env
 
 
-def run(cmd, env_extra=None, check=True) -> int:
+def run(cmd, env_extra=None, check=True, cwd=None) -> int:
     log("$", " ".join(_shell_quote(c) for c in cmd))
-    proc = subprocess.run(cmd, env=mimamba_env(env_extra))
+    proc = subprocess.run(cmd, env=mimamba_env(env_extra), cwd=cwd)
     if check and proc.returncode != 0:
         raise RuntimeError(f"命令失败（exit {proc.returncode}）: {cmd[0]}")
     return proc.returncode
@@ -429,6 +434,15 @@ def component_env_path(name: str) -> Path:
     return yml
 
 
+def component_meta(name: str) -> dict:
+    """从 components.json 的 isolated 清单里取回组件元数据（src/pip/extras/入口）。"""
+    for comp in load_components().get("isolated", []):
+        if comp.get("name") == name:
+            return comp
+    # 也允许仅由 env.yaml 目录声明的组件（缺元数据时退回空 dict，仅建环境不注入）
+    return {"name": name, "src": f"tools/{name}"}
+
+
 def cmd_check(mm, mirror, env_dir: Path) -> int:
     print(f"micromamba : {mm}")
     print(f"mirror     : {mirror['name']} -> {mirror['channels']}")
@@ -443,19 +457,32 @@ def cmd_check(mm, mirror, env_dir: Path) -> int:
 # ------------------------------------------------------------- verify ----
 
 def _has_browser_chromium() -> tuple[bool, str]:
-    browsers = REPO_ROOT / "browsers"
-    if not browsers.exists():
-        return False, "browsers/ 不存在"
+    """Accept a supported local browser or a Prism-managed browser component."""
     hits = []
-    for p in browsers.rglob("*"):
-        if p.is_file() and p.name.lower() in ("chrome", "chromium", "chrome.exe", "headless_shell", "chrome-headless-shell"):
-            hits.append(str(p))
-    # 限制避免遍历过深
-    for sub in ("chromium", "chrome-for-testing"):
-        d = browsers / sub
-        if d.exists():
-            hits.append(f"{d}/ (目录)")
-    return bool(hits), (hits[0] if hits else "(未发现 Chromium)")
+    local_candidates = [
+        Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+        Path("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
+        Path("/Applications/Firefox.app/Contents/MacOS/firefox"),
+        Path("/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"),
+        Path("/Applications/Arc.app/Contents/MacOS/Arc"),
+        Path("/usr/bin/google-chrome"),
+        Path("/usr/bin/google-chrome-stable"),
+        Path("/usr/bin/microsoft-edge"),
+        Path("/usr/bin/firefox"),
+        Path("/usr/bin/chromium"),
+    ]
+    for candidate in local_candidates:
+        if candidate.is_file():
+            return True, f"local: {candidate}"
+    runtime_data = Path(os.environ.get("PRISM_RUNTIME_DATA_DIR", REPO_ROOT / "runtime-data"))
+    for browsers in (runtime_data / "components" / "browsers",):
+        if not browsers.exists():
+            continue
+        for p in browsers.rglob("*"):
+            if p.is_file() and p.name.lower() in ("chrome", "chromium", "chrome.exe", "firefox", "firefox.exe", "headless_shell", "chrome-headless-shell"):
+                hits.append(str(p))
+                break
+    return bool(hits), (f"managed: {hits[0]}" if hits else "(未发现受支持的本机或组件浏览器)")
 
 
 def readiness(env_dir: Path, component_env_root: Path) -> list[tuple[str, bool, str]]:
@@ -481,11 +508,16 @@ def readiness(env_dir: Path, component_env_root: Path) -> list[tuple[str, bool, 
         cpy = env_python_path(epath)
         checks.append((f"[isolated] {comp['name']}", cpy.exists(), str(cpy)))
 
+    for comp in comps.get("node", []):
+        nsrc = resolve_component_src(comp.get("src", f"tools/{comp['name']}"))
+        nm = nsrc / "node_modules"
+        checks.append((f"[node] {comp['name']}", nm.exists(), str(nm)))
+
     redis = shutil.which("redis-server")
     checks.append(("redis-server", bool(redis), redis or "(missing, 需安装)"))
 
     ok_b, detail_b = _has_browser_chromium()
-    checks.append(("chromium", ok_b, detail_b))
+    checks.append(("browser", ok_b, detail_b))
 
     front = REPO_ROOT / "prism_frontend"
     node = front / "node_modules"
@@ -516,15 +548,17 @@ def cmd_verify(env_dir: Path, component_env_root: Path) -> int:
 
 # ------------------------------------------------------- system deps ----
 
-def stage_env_file() -> tuple[bool, str]:
+def stage_env_file(dry_run: bool = False) -> tuple[bool, str]:
     env = REPO_ROOT / ".env"
     example = REPO_ROOT / "env.example"
     if env.exists():
-        return True, f".env 已存在"
+        return True, ".env 已存在"
     if not example.exists():
         return False, "env.example 不存在，跳过 .env 生成"
+    if dry_run:
+        return True, "dry-run：将从 env.example 生成 .env"
     shutil.copyfile(example, env)
-    return True, f"已从 env.example 生成 .env"
+    return True, "已从 env.example 生成 .env"
 
 
 def stage_redis() -> tuple[bool, str]:
@@ -534,30 +568,73 @@ def stage_redis() -> tuple[bool, str]:
     return False, "未发现 redis-server。请先安装/启动（macOS: brew install redis && redis-server --daemonize yes）"
 
 
-def stage_browsers(env_dir: Path) -> tuple[bool, str]:
+def stage_browsers(
+    env_dir: Path,
+    dry_run: bool = False,
+    install_browser: str | None = None,
+) -> tuple[bool, str]:
     ok_b, detail_b = _has_browser_chromium()
     if ok_b:
         return True, detail_b
+    if install_browser != "chromium":
+        return False, (
+            "未发现受支持浏览器；默认不下载。"
+            "如需 Prism 管理的 Chromium，请显式传入 --install-browser chromium"
+        )
     py = env_python_path(env_dir)
     if not py.exists():
         return False, "chromium 缺失，且环境 python 不存在"
+    if dry_run:
+        return False, f"chromium 缺失；dry-run：将执行 {py} -m patchright install chromium"
     log("chromium 缺失，尝试用 patchright 安装（可跳过，约 150MB）...")
-    rc = run([str(py), "-m", "patchright", "install", "chromium"], check=False)
+    runtime_data = Path(os.environ.get("PRISM_RUNTIME_DATA_DIR", REPO_ROOT / "runtime-data"))
+    bpath = str(runtime_data / "components" / "browsers" / "patchright" / "versions" / "current")
+    rc = run([str(py), "-m", "patchright", "install", "chromium"],
+             env_extra={"PLAYWRIGHT_BROWSERS_PATH": bpath}, check=False)
     if rc == 0:
         return True, "chromium 已安装（patchright）"
-    return False, "patchright 安装 chromium 失败，请手动执行: <env>/bin/python -m patchright install chromium"
+    return False, "patchright 安装 chromium 失败，请从 Tools 浏览器组件页重试"
 
 
-def stage_frontend() -> tuple[bool, str]:
+def stage_frontend(dry_run: bool = False) -> tuple[bool, str]:
     front = REPO_ROOT / "prism_frontend"
+    if not front.exists():
+        return False, "prism_frontend 目录不存在"
+    if (front / "node_modules").exists() and (front / ".next").exists():
+        return True, "前端 node_modules + .next 已存在"
     if (front / "node_modules").exists():
-        return True, "前端 node_modules 已存在"
-    return False, "前端 node_modules 缺失，请先：(cd prism_frontend && npm install && npm run build)"
+        return True, "前端 node_modules 已存在（.next 待 build）"
+    if dry_run:
+        return False, "前端 node_modules 缺失；dry-run：将 (cd prism_frontend && npm install && npm run build)"
+    npm = shutil.which("npm")
+    if not npm:
+        return False, "未发现 npm，无法安装前端依赖"
+    log("前端 node_modules 缺失，开始 npm install + build（较重，可跳过）...")
+    env = {
+        "PLAYWRIGHT_BROWSERS_PATH": str(Path(os.environ.get("PRISM_RUNTIME_DATA_DIR", REPO_ROOT / "runtime-data")) / "components" / "browsers" / "patchright" / "versions" / "current"),
+        "NEXT_TELEMETRY_DISABLED": "1",
+    }
+    rc = run([npm, "install"], cwd=str(front), env_extra=env, check=False)
+    if rc != 0:
+        return False, "npm install 失败，请手动执行：(cd prism_frontend && npm install)"
+    rc = run([npm, "run", "build"], cwd=str(front), env_extra=env, check=False)
+    if rc != 0:
+        return True, "npm install 成功但 build 失败：(cd prism_frontend && npm run build)"
+    return True, "前端已构建（npm install + build）"
 
 
-def run_system_stage(env_dir: Path) -> int:
+def run_system_stage(
+    env_dir: Path,
+    dry_run: bool = False,
+    install_browser: str | None = None,
+) -> int:
     print("== 系统依赖 stage ==")
-    checks = [stage_env_file(), stage_redis(), stage_browsers(env_dir), stage_frontend()]
+    checks = [
+        stage_env_file(dry_run),
+        stage_redis(),
+        stage_browsers(env_dir, dry_run, install_browser),
+        stage_frontend(dry_run),
+    ]
     all_ok = True
     for ok, detail in checks:
         print(f"[{'ok' if ok else 'MISS'}] {detail}")
@@ -595,6 +672,87 @@ def provision_shared(mm, mirror, env_dir, inject, force, dry_run) -> int:
     return 0
 
 
+def _port_open(port, host="127.0.0.1") -> bool:
+    """是否仍有服务在监听该端口（用于卸载前的运行中保护）。"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1.0)
+        try:
+            return s.connect_ex((host, int(port))) == 0
+        finally:
+            s.close()
+    except OSError:
+        return False
+
+
+def _git_dirty(path: Path) -> bool:
+    """嵌套 repo 是否有未提交修改（用于完整卸载前的源码保护）。"""
+    if not (path / ".git").exists():
+        return False
+    try:
+        r = subprocess.run(["git", "-C", str(path), "status", "--porcelain"],
+                           capture_output=True, text=True)
+        return bool(r.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        return True  # 拿不到状态则按“有修改”处理，更安全
+
+
+def remove_component(name: str, component_env_root, force: bool = False) -> int:
+    """卸载组件：
+    - node 组件：先做运行中保护（组件声明了 port 且仍在监听 → 拒绝）和源码保护
+      （嵌套 repo 有未提交修改 → 拒绝，除非 --force），再删除整个 tools/<name>。
+    - 隔离 conda 组件：删除 prism_components/<name> 环境。
+    """
+    comps = load_components()
+    node_comp = next((c for c in comps.get("node", []) if c.get("name") == name), None)
+    if node_comp is not None:
+        src = resolve_component_src(node_comp.get("src", f"tools/{name}"))
+        if not src.exists():
+            warn(f"组件 {name} 源码目录不存在（{src}），无需卸载。")
+            return 1
+        port = node_comp.get("port")
+        if port and _port_open(port):
+            warn(f"组件 {name} 仍在运行（127.0.0.1:{port}），拒绝卸载。请先停止该服务。")
+            return 1
+        if not force and _git_dirty(src):
+            warn(f"组件 {name} 源码有未提交修改，拒绝删除；如确认要删，请加 --force（会丢失这些修改）。")
+            return 1
+        log(f"卸载 node 组件 {name} -> 删除 {src}")
+        shutil.rmtree(src, ignore_errors=True)
+        log(f"已删除 {src}")
+        return 0
+    env_dir = Path(component_env_root) / name
+    if not env_dir.exists():
+        warn(f"组件 {name} 环境不存在（{env_dir}），无需卸载。")
+        return 1
+    log(f"卸载组件 {name} -> 删除 {env_dir}")
+    shutil.rmtree(env_dir, ignore_errors=True)
+    log(f"已删除 {env_dir}")
+    return 0
+
+
+def reset_component_deps(name: str, component_env_root) -> int:
+    """只清 node 组件依赖（node_modules），保留源码，用于依赖损坏后重装。"""
+    comps = load_components()
+    node_comp = next((c for c in comps.get("node", []) if c.get("name") == name), None)
+    if node_comp is None:
+        warn(f"组件 {name} 不是已登记的 node 组件，仅支持 --uninstall。")
+        return 1
+    src = resolve_component_src(node_comp.get("src", f"tools/{name}"))
+    port = node_comp.get("port")
+    if port and _port_open(port):
+        warn(f"组件 {name} 仍在运行（127.0.0.1:{port}），拒绝清依赖。请先停止该服务。")
+        return 1
+    nm = src / "node_modules"
+    if not nm.exists():
+        warn(f"node 组件 {name} 的 node_modules 不存在（{nm}），无需清理。")
+        return 1
+    log(f"重置 {name} 依赖 -> 删除 {nm}（源码保留）")
+    shutil.rmtree(nm, ignore_errors=True)
+    log(f"已删除 {nm}。可重新安装：cd {src} && pnpm install --frozen-lockfile")
+    return 0
+
+
 def provision_component(mm, mirror, name, component_env_root, force, dry_run) -> int:
     env_dir = Path(component_env_root) / name
     yml = component_env_path(name)
@@ -610,8 +768,9 @@ def provision_component(mm, mirror, name, component_env_root, force, dry_run) ->
         tmp_path = Path(tmp.name)
         env_file = tmp_path
     try:
+        meta = component_meta(name)
         py = create_env(env_dir, mm, mirror, read_conda_deps(), PIP_REQS_FILE,
-                        force=force, component=name, inject=None, dry_run=dry_run, env_file=env_file)
+                        force=force, component=name, inject=[meta], dry_run=dry_run, env_file=env_file)
     finally:
         if tmp_path is not None:
             try:
@@ -627,6 +786,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Prism runtime self-provisioning (micromamba)")
     parser.add_argument("--mirror", help="镜像提供方: tuna | aliyun | official（默认读取 mirror.json default）")
     parser.add_argument("--component", help="只供给某个隔离组件环境（components/<name>/env.yaml）")
+    parser.add_argument("--uninstall", metavar="NAME", help="卸载组件：node 组件删整个 tools/<name>（含运行中/源码修改保护）；隔离组件删 prism_components/<name> 环境")
+    parser.add_argument("--reset-deps", metavar="NAME", help="只清 node 组件依赖（node_modules），保留源码，用于依赖损坏后重装")
     parser.add_argument("--env-dir", default=str(REPO_ROOT / "prismenv"), help="共享运行时环境目录")
     parser.add_argument("--component-env-dir", default=str(REPO_ROOT / "prism_components"), help="组件环境根目录")
     parser.add_argument("--print-python", action="store_true", help="只打印共享环境 python 路径（供壳捕获）")
@@ -635,6 +796,11 @@ def main(argv=None) -> int:
     parser.add_argument("--with", dest="with_names", action="append", metavar="NAME", help="只注入指定的共享组件（可重复）")
     parser.add_argument("--skip-inject", action="store_true", help="跳过把组件注入共享环境")
     parser.add_argument("--system", action="store_true", help="只跑系统依赖 stage（.env/Redis/browser/frontend）")
+    parser.add_argument(
+        "--install-browser",
+        choices=("chromium",),
+        help="显式安装 Prism 管理的浏览器组件；默认 --system 只检测本机浏览器",
+    )
     parser.add_argument("--all", action="store_true", help="供给共享环境 + 全部隔离组件环境 + 系统依赖 stage")
     parser.add_argument("--check", action="store_true", help="只检查依赖/配置，不实际安装")
     parser.add_argument("--verify", action="store_true", help="输出完整 runtime 就绪性报告")
@@ -656,6 +822,9 @@ def main(argv=None) -> int:
         print("isolated:")
         for c in comps.get("isolated", []):
             print("  ", c.get("name"), "->", c.get("src"))
+        print("node:")
+        for c in comps.get("node", []):
+            print("  ", c.get("name"), "->", c.get("src"))
         return 0
 
     if config.verify:
@@ -666,6 +835,22 @@ def main(argv=None) -> int:
         py = env_python_path(Path(config.env_dir))
         print(py)
         return 0 if py.exists() else 1
+
+    # --system 只需共享环境就位（跑 .env/Redis/browser/frontend），不需要 micromamba
+    if config.system:
+        return run_system_stage(
+            Path(config.env_dir),
+            dry_run=config.dry_run,
+            install_browser=config.install_browser,
+        )
+
+    # --uninstall 卸载组件，也不需要 micromamba
+    if config.uninstall:
+        return remove_component(config.uninstall, Path(config.component_env_dir), force=config.force)
+
+    # --reset-deps 只清 node 组件依赖，也不需要 micromamba
+    if config.reset_deps:
+        return reset_component_deps(config.reset_deps, Path(config.component_env_dir))
 
     try:
         mm = resolve_micromamba()
@@ -690,7 +875,11 @@ def main(argv=None) -> int:
             rc = provision_component(mm, mirror, name, config.component_env_dir, config.force, config.dry_run)
             if rc != 0:
                 return rc
-        return 0
+        return run_system_stage(
+            Path(config.env_dir),
+            dry_run=config.dry_run,
+            install_browser=config.install_browser,
+        )
 
     if config.component:
         return provision_component(mm, mirror, config.component, config.component_env_dir, config.force, config.dry_run)
