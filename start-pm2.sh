@@ -49,7 +49,7 @@ if ! "$ROOT/prismenv/bin/python" "$ROOT/scripts/prism_runtime.py" health --timeo
   "$PM2" start ecosystem-mac.config.js --only prism-backend --update-env
   "$ROOT/prismenv/bin/python" "$ROOT/scripts/prism_runtime.py" health --timeout 60
 fi
-"$PM2" start ecosystem-mac.config.js --only prism-worker,prism-celery,prism-frontend,persona-api,persona-proxy,persona-dashboard,hermes-dashboard,hermes-webui --update-env
+"$PM2" start ecosystem-mac.config.js --only prism-worker,prism-celery,prism-frontend,persona-api,persona-proxy,persona-dashboard,hermes-dashboard,hermes-webui,deepseek-harness --update-env
 PRISM_BACKEND_URL="$("$ROOT/prismenv/bin/python" -c 'import json, pathlib; print(json.loads(pathlib.Path("runtime-data/runtime.json").read_text())["backend_url"])')"
 echo
 "$PM2" list

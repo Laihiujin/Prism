@@ -1,0 +1,23 @@
+{
+  "default": "tuna",
+  "providers": {
+    "tuna": {
+      "channels": [
+        "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge",
+        "https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main"
+      ],
+      "pypi": "https://pypi.tuna.tsinghua.edu.cn/simple"
+    },
+    "aliyun": {
+      "channels": [
+        "https://mirrors.aliyun.com/anaconda/cloud/conda-forge",
+        "https://mirrors.aliyun.com/anaconda/pkgs/main"
+      ],
+      "pypi": "https://mirrors.aliyun.com/pypi/simple"
+    },
+    "official": {
+      "channels": ["conda-forge"],
+      "pypi": "https://pypi.org/simple"
+    }
+  }
+}
