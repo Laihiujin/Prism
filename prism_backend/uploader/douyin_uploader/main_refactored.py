@@ -8,9 +8,7 @@ import random
 import sys
 from pathlib import Path
 
-from patchright.async_api import Page
-from patchright.async_api import Playwright
-from patchright.async_api import async_playwright
+from utils.automation_provider import Page, Playwright, async_playwright
 
 from config.conf import BASE_DIR, DEBUG_MODE, LOCAL_CHROME_HEADLESS, LOCAL_CHROME_PATH
 from uploader.base_video import BaseVideoUploader
@@ -236,7 +234,8 @@ async def douyin_cookie_gen(
 ):
     async with async_playwright() as playwright:
         if cdp_url:
-            browser = await playwright.chromium.connect_over_cdp(cdp_url)
+            from myUtils.browser_context import connect_browser_over_cdp
+            browser = await connect_browser_over_cdp(playwright, cdp_url, platform="douyin")
             context = browser.contexts[0] if browser.contexts else await browser.new_context()
             should_close_context = False
         else:

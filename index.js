@@ -264,8 +264,8 @@ class PrismApp {
       NODE_ENV: 'production',
       PORT: '3000',
       HOSTNAME: '127.0.0.1',
-      NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:7000',
-      PRISM_BACKEND_URL: 'http://127.0.0.1:7000',
+      NEXT_PUBLIC_BACKEND_URL: env.PRISM_BACKEND_URL || `http://127.0.0.1:${env.PRISM_BACKEND_PORT || 7000}`,
+      PRISM_BACKEND_URL: env.PRISM_BACKEND_URL || `http://127.0.0.1:${env.PRISM_BACKEND_PORT || 7000}`,
       NEXT_TELEMETRY_DISABLED: '1'
     };
     this.frontendProcess = spawn(process.execPath, [serverJs], {

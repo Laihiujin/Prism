@@ -1,6 +1,8 @@
-function normalizeBackendBaseUrl(raw: string): string {
+const DEFAULT_BACKEND_URL = `http://127.0.0.1:${7000}`
+
+export function normalizeBackendBaseUrl(raw: string): string {
   const trimmed = (raw || "").trim().replace(/\/+$/, "")
-  const normalized = (trimmed || "http://127.0.0.1:7000").replace(/\/api\/v1$/i, "")
+  const normalized = (trimmed || DEFAULT_BACKEND_URL).replace(/\/api\/v1$/i, "")
 
   try {
     const url = new URL(normalized)
@@ -19,7 +21,7 @@ export const backendBaseUrl = normalizeBackendBaseUrl(
   process.env.PRISM_INTERNAL_BACKEND_URL ??
     process.env.NEXT_PUBLIC_BACKEND_URL ??
     process.env.NEXT_PUBLIC_API_BASE ??
-    "http://127.0.0.1:7000"
+    DEFAULT_BACKEND_URL
 )
 
 export const API_ENDPOINTS = {
@@ -56,6 +58,7 @@ export const API_ENDPOINTS = {
   agentExecuteScript: `${backendBaseUrl}/api/v1/agent/execute-script`,
   agentScripts: `${backendBaseUrl}/api/v1/agent/scripts`,
   agentExecutions: `${backendBaseUrl}/api/v1/agent/executions`,
+  agentScript: (scriptId: string) => `${backendBaseUrl}/api/v1/agent/scripts/${scriptId}`,
   agentOpenClawRun: `${backendBaseUrl}/api/v1/agent/openclaw-run`,
   agentHermesRun: `${backendBaseUrl}/api/v1/agent/hermes-run`,
 

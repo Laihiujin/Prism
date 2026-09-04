@@ -988,7 +988,13 @@ class Supervisor:
             "false" if isinstance(browser_headless, bool) else
             os.getenv("PLAYWRIGHT_HEADLESS", "true")
         )
-        env["PRISM_AUTOMATION_RUNTIME"] = "patchright"
+        env["PRISM_AUTOMATION_RUNTIME"] = (
+            automation_runtime if automation_runtime in {"patchright", "playwright"} else "patchright"
+        )
+        browser_backend_default = str(runtime_settings.get("browserBackendDefault") or "patchright").lower()
+        env["PRISM_BROWSER_BACKEND_DEFAULT"] = (
+            browser_backend_default if browser_backend_default in {"patchright", "persona"} else "patchright"
+        )
         if settings_path_raw:
             env["PRISM_RUNTIME_SETTINGS_PATH"] = settings_path_raw
         env["PRISM_PLATFORM_BROWSER_PREFERENCES"] = json.dumps(platform_browser_preferences)

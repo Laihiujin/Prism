@@ -224,6 +224,7 @@ export default function SettingsPage() {
     stopAll,
     setBrowserHeadless,
     setAutomationRuntime,
+    setBrowserBackendDefault,
     installPatchright,
     uninstallPatchright,
     installChromium,
@@ -271,6 +272,7 @@ export default function SettingsPage() {
   const currentRuntime =
     appInfo?.runtimeSettings?.automationRuntime ?? browserRuntimeInfo?.preferredRuntime ?? "patchright"
   const browserHeadless = appInfo?.runtimeSettings?.browserHeadless
+  const browserBackendDefault = appInfo?.runtimeSettings?.browserBackendDefault ?? "patchright"
   const [douyinLoginMode, setDouyinLoginMode] = useState<string>("browser")
   const [douyinModeLoading, setDouyinModeLoading] = useState(false)
 
@@ -541,6 +543,29 @@ export default function SettingsPage() {
                 当前为网页模式：可查看并安装组件，但默认运行时切换仅桌面版可用。
               </div>
             ) : null}
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm text-muted-foreground">默认浏览器后端</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  未绑定后端的账号使用此设置；切换后 Prism 会持久化配置并重启受管服务。
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {(["patchright", "persona"] as const).map((backend) => (
+                  <Button
+                    key={backend}
+                    variant={browserBackendDefault === backend ? "default" : "secondary"}
+                    disabled={loading.setAutomationRuntime || !isElectronApp}
+                    onClick={() => void setBrowserBackendDefault(backend)}
+                  >
+                    {backend === "patchright" ? "Patchright" : "Persona"}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card p-4">

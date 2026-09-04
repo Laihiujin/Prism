@@ -65,7 +65,7 @@ export function AgentChat() {
 
   const fetchContext = async () => {
     try {
-      const response = await fetch(`${API_ENDPOINTS.agentContext || 'http://localhost:7000/api/v1/agent/context'}`)
+      const response = await fetch(API_ENDPOINTS.agentContext)
       const data = await response.json()
       if (data.success) {
         setContext(data.data)
@@ -193,7 +193,7 @@ export function AgentChat() {
       setLoading(true)
 
       // 1. 保存脚本
-      const saveResponse = await fetch(`${API_ENDPOINTS.agentSaveScript || 'http://localhost:7000/api/v1/agent/save-script'}`, {
+      const saveResponse = await fetch(API_ENDPOINTS.agentSaveScript, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +216,7 @@ export function AgentChat() {
       const scriptId = saveData.data.script_id
 
       // 2. 执行脚本
-      const executeResponse = await fetch(`${API_ENDPOINTS.agentExecuteScript || 'http://localhost:7000/api/v1/agent/execute-script'}`, {
+      const executeResponse = await fetch(API_ENDPOINTS.agentExecuteScript, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 // 后端连接状态检测Hook
 import { useEffect, useState } from 'react'
+import { API_ENDPOINTS } from '@/lib/env'
 
 interface BackendStatus {
     connected: boolean
@@ -26,7 +27,7 @@ export function useBackendStatus() {
             setStatus(prev => ({ ...prev, checking: true }))
 
             try {
-                const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:7000'
+                const baseUrl = API_ENDPOINTS.base
                 const response = await fetch(`${baseUrl}/health`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' },

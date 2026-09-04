@@ -297,7 +297,8 @@ class DouyinUpload(BasePlatform):
                     browser_options['proxy'] = proxy
                     logger.info(f"[DouyinUpload] 使用代理: {proxy.get('server', 'unknown')}")
 
-                browser = await playwright.chromium.launch(**browser_options)
+                from myUtils.browser_context import launch_optional_browser
+                browser = await launch_optional_browser(playwright, platform="douyin", **browser_options)
                 context = await browser.new_context(**build_context_options(storage_state=account_file))
                 context = await set_init_script(context)
                 page = await context.new_page()

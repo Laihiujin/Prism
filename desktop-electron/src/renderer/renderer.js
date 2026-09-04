@@ -729,7 +729,7 @@ class TabManager {
                 }
             }
 
-            let backendBase = 'http://127.0.0.1:7000';
+            let backendBase = `http://127.0.0.1:${7000}`;
             if (window.electronAPI?.app?.getInfo) {
                 const info = await window.electronAPI.app.getInfo();
                 backendBase = String(info?.backendUrl || backendBase).replace(/\/+$/, '');
@@ -872,7 +872,7 @@ class TabManager {
 
 // ========== 设置面板功能 ==========
 
-let API_BASE = 'http://127.0.0.1:7000/api/v1/system';
+let API_BASE = `http://127.0.0.1:${7000}/api/v1/system`;
 
 async function hydrateSystemApiBase() {
     if (!window.electronAPI?.app?.getInfo) {

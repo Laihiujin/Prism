@@ -18,7 +18,10 @@ set PY=python
 echo.
 
 set PLAYWRIGHT_BROWSERS_PATH=%ROOT%\browsers
-set MANUS_API_BASE_URL=http://localhost:7000/api/v1
+if not defined PRISM_BACKEND_HOST set PRISM_BACKEND_HOST=127.0.0.1
+if not defined PRISM_BACKEND_PORT set PRISM_BACKEND_PORT=7000
+if not defined PRISM_BACKEND_URL set PRISM_BACKEND_URL=http://%PRISM_BACKEND_HOST%:%PRISM_BACKEND_PORT%
+set MANUS_API_BASE_URL=%PRISM_BACKEND_URL%/api/v1
 
 if not defined ENABLE_OCR_RESCUE set ENABLE_OCR_RESCUE=1
 if not defined START_CELERY set START_CELERY=1
@@ -26,7 +29,7 @@ if not defined FORCE_CELERY set FORCE_CELERY=0
 
 pushd %BACKEND_DIR%
 
-echo Starting FastAPI Backend on port 7000...
+echo Starting FastAPI Backend on port %PRISM_BACKEND_PORT%...
 echo.
 
 %PY% fastapi_app/run.py

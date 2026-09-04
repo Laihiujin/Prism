@@ -22,6 +22,7 @@ import httpx
 from utils.automation_provider import Page, async_playwright, TimeoutError as PlaywrightTimeoutError
 from loguru import logger
 from contextlib import asynccontextmanager
+from myUtils.browser_context import launch_optional_browser
 
 # Always define BASE_DIR first
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -559,7 +560,7 @@ class VideoDataCollector:
             return {"success": False, "error": "Cookie file not found"}
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(**self._build_launch_args())
+            browser = await launch_optional_browser(p, platform="kuaishou", **self._build_launch_args())
             context = await browser.new_context(
                 storage_state=cookie_path,
                 user_agent=DEFAULT_UA,
@@ -667,7 +668,7 @@ class VideoDataCollector:
             return {"success": False, "error": "Cookie file not found"}
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(**self._build_launch_args())
+            browser = await launch_optional_browser(p, platform="xiaohongshu", **self._build_launch_args())
             context = await browser.new_context(
                 storage_state=cookie_path,
                 user_agent=DEFAULT_UA,
@@ -760,7 +761,7 @@ class VideoDataCollector:
             print(f"[Douyin] API collect failed, fallback to page: {api_result.get('error')}")
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(**self._build_launch_args())
+            browser = await launch_optional_browser(p, platform="douyin", **self._build_launch_args())
             context = await browser.new_context(
                 storage_state=cookie_path,
                 user_agent=DEFAULT_UA,
@@ -1060,7 +1061,7 @@ class VideoDataCollector:
             return {"success": False, "error": "Cookie file not found"}
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(**self._build_launch_args())
+            browser = await launch_optional_browser(p, platform="channels", **self._build_launch_args())
             context = await browser.new_context(
                 storage_state=cookie_path,
                 user_agent=DEFAULT_UA,

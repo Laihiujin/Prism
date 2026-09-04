@@ -27,6 +27,7 @@ from ....core.config import settings
 from .tools import router as tools_router
 from myUtils.cookie_manager import cookie_manager
 from platforms.path_utils import resolve_cookie_file
+from fastapi_app.services.browser_runtime import get_browser_runtime_snapshot, resolve_browser_backend
 
 _PLATFORM_PROFILE_URLS = {
     "douyin": "https://creator.douyin.com/",
@@ -46,6 +47,22 @@ _ACTIVE_SESSIONS: Dict[str, Any] = {}
 
 # 包含工具路由
 router.include_router(tools_router)
+
+
+@router.get("/browser-backends/registry")
+async def get_browser_backend_registry():
+    """Return live provider selection and declared capabilities."""
+    from fastapi_app.services.browser_backend import BrowserBackendManager
+    runtime = get_browser_runtime_snapshot()
+
+    return {
+        "status": "success",
+        "result": {
+            "default": runtime["backend"],
+            "generation": runtime["generation"],
+            "providers": BrowserBackendManager.describe(),
+        },
+    }
 
 
 @router.get("", response_model=AccountListResponse, include_in_schema=False)
@@ -712,6 +729,16 @@ async def get_account_environment(account_id: str):
         except Exception:
             pass
 
+        active_record = _ACTIVE_SESSIONS.get(account_id)
+        active_session = active_record.get("session") if active_record else None
+        configured_backend = resolve_browser_backend(binding)
+        active_backend = active_session.backend if active_session else configured_backend
+        active_engine = (
+            active_session.extra.get("engine")
+            if active_session and isinstance(active_session.extra, dict)
+            else None
+        )
+
         env = {
             "account": {
                 "account_id": account.get("account_id"),
@@ -720,10 +747,12 @@ async def get_account_environment(account_id: str):
                 "user_id": account.get("user_id"),
             },
             "browser": {
-                "backend": binding.get("browser_backend") or settings.PRISM_BROWSER_BACKEND_DEFAULT,
+                "backend": active_backend,
+                "configured_backend": configured_backend,
+                "generation": getattr(active_session, "generation", None),
                 "persona_profile_id": binding.get("persona_profile_id"),
                 "persona_online": persona_online,
-                "engine": "patchright",
+                "engine": active_engine,
             },
             "runtime": runtime_status,
             "proxy": {
@@ -744,7 +773,7 @@ async def get_account_environment(account_id: str):
             },
             "identity": {
                 "stable": bool(proxy_id),
-                "relationship": "Account → Persona Profile → Sticky Proxy → Patchright → Platform Adapter",
+                "relationship": f"Account → Browser Backend ({active_backend}) → Sticky Proxy → Platform Adapter",
             },
         }
         return {"status": "success", "result": env}
@@ -763,7 +792,9 @@ async def get_account_runtime(account_id: str):
         lock_service = get_runtime_lock_service()
         lock_status = lock_service.status(account_id)
         binding = cookie_manager.get_account_binding(account_id) or {}
-        active_local = account_id in _ACTIVE_SESSIONS
+        active_record = _ACTIVE_SESSIONS.get(account_id)
+        active_session = active_record.get("session") if active_record else None
+        configured_backend = resolve_browser_backend(binding)
         return {
             "status": "success",
             "result": {
@@ -775,8 +806,10 @@ async def get_account_runtime(account_id: str):
                 "acquired_at": lock_status.get("acquired_at"),
                 "expires_at": lock_status.get("expires_at"),
                 "ttl_remaining": lock_status.get("ttl_remaining"),
-                "browser_backend": binding.get("browser_backend") or settings.PRISM_BROWSER_BACKEND_DEFAULT,
-                "active_local": active_local,
+                "browser_backend": active_session.backend if active_session else configured_backend,
+                "configured_browser_backend": configured_backend,
+                "browser_backend_generation": getattr(active_session, "generation", None),
+                "active_local": active_session is not None,
             },
         }
     except Exception as e:
@@ -892,7 +925,8 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
     try:
         binding = cookie_manager.get_account_binding(account_id) or {}
         proxy_id = binding.get("proxy_id")
-        backend_name = binding.get("browser_backend") or settings.PRISM_BROWSER_BACKEND_DEFAULT
+        backend_name = resolve_browser_backend(binding)
+        runtime_snapshot = get_browser_runtime_snapshot()
 
         from fastapi_app.services.browser_backend import get_browser_backend
         from fastapi_app.services.persona_proxies import resolve_proxy as resolve_persona_proxy
@@ -945,6 +979,7 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
             proxy=proxy_config,
             headless=request.headless,
         )
+        session.generation = int(runtime_snapshot["generation"])
         # 会话句柄 + 锁 + 心跳暂存（Runtime 保持存活期间持续持有锁）
         heartbeat = LockHeartbeat(lock_service, account_id, lock["token"])
         heartbeat.start()
@@ -958,6 +993,7 @@ async def start_account_browser(account_id: str, request: _BrowserActionRequest)
             "result": {
                 "success": True,
                 "backend": backend_name,
+                "browser_backend_generation": session.generation,
                 "account_id": account_id,
                 "proxy": proxy_meta,
                 "persona_profile_id": binding.get("persona_profile_id"),

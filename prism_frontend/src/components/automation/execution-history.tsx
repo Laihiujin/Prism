@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table"
 import { History, Loader2, RefreshCw, CheckCircle2, XCircle, Clock } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { API_ENDPOINTS } from "@/lib/env"
 
 interface Execution {
   execution_id: string
@@ -41,7 +42,7 @@ export function ExecutionHistory() {
   const fetchExecutions = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:7000/api/v1/agent/executions')
+      const response = await fetch(API_ENDPOINTS.agentExecutions)
       const data = await response.json()
 
       if (data.success) {
