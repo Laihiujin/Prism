@@ -1,4 +1,4 @@
-const DEFAULT_BACKEND_URL = `http://127.0.0.1:${7000}`
+const DEFAULT_BACKEND_URL = `http://127.0.0.1:${9200}`
 
 export function normalizeBackendBaseUrl(raw: string): string {
   const trimmed = (raw || "").trim().replace(/\/+$/, "")

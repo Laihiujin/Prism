@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/page-scaffold"
 
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Calendar, Download, Play, Heart, MessageCircle, Bookmark, X, Check, Search, Filter as FilterIcon } from "lucide-react"
+import { Calendar, Download, Play, Heart, MessageCircle, Bookmark, Check, Search, Filter as FilterIcon } from "lucide-react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,10 @@ import { cn } from "@/lib/utils"
 
 const PLATFORMS = [
     { value: "douyin", label: "抖音", icon: "/douYin.svg" },
-    { value: "bilibili", label: "B站", icon: "/Bilibili.svg" },
+    { value: "kuaishou", label: "快手", icon: "/kuaiShou.svg" },
+    { value: "channels", label: "视频号", icon: "/shiPingHao.svg" },
+    { value: "xiaohongshu", label: "小红书", icon: "/xiaoHongShu.svg" },
+    { value: "bilibili", label: "B站", icon: "/bilibili.svg" },
     { value: "tiktok", label: "TikTok", icon: "/Tiktok.svg" },
     { value: "youtube", label: "YouTube", icon: "/youtube.svg" },
 ]
@@ -66,7 +69,7 @@ export default function AnalyticsPage() {
     const { data: accountsData } = useQuery({
         queryKey: ['accounts'],
         queryFn: async () => {
-            const res = await fetch('/api/accounts?limit=1000')
+            const res = await fetch('/api/accounts?all=true')
             if (!res.ok) throw new Error('Failed to fetch accounts')
             return res.json()
         },
@@ -115,7 +118,7 @@ export default function AnalyticsPage() {
 
     const accountIds = useMemo(
         () => filteredAccounts.map(accountIdOf).filter(Boolean),
-        [filteredAccounts]
+        [accountIdOf, filteredAccounts]
     )
 
     // Clean up selected accounts when platforms change
@@ -145,7 +148,7 @@ export default function AnalyticsPage() {
 
         const today = new Date()
         const end = today.toISOString().split('T')[0]
-        let start = new Date()
+        const start = new Date()
 
         switch (preset) {
             case "30d":
@@ -168,7 +171,7 @@ export default function AnalyticsPage() {
     const dateRange = timePreset === "custom" ? { start: startDate, end: endDate } : getDateRangeFromPreset(timePreset)
 
     // Fetch analytics data with filters
-    const { data: analyticsData, isLoading, refetch } = useQuery({
+    const { data: analyticsData, isLoading } = useQuery({
         queryKey: ['analytics', dateRange.start, dateRange.end, selectedPlatforms, selectedAccounts],
         queryFn: async () => {
             if (selectedAccounts.length === 0) {
@@ -290,10 +293,6 @@ export default function AnalyticsPage() {
 
     const totalDrawerPages = Math.ceil(drawerFilteredAccounts.length / accountDrawerPerPage)
 
-    const selectedAccountsList = useMemo(() => {
-        return accounts.filter((acc: any) => selectedAccounts.includes(accountIdOf(acc)))
-    }, [accounts, selectedAccounts])
-
     return (
         <div className="mx-auto max-w-[1440px] space-y-3 px-3 py-3 md:px-5 md:py-4">
             <PageHeader
@@ -396,7 +395,7 @@ export default function AnalyticsPage() {
                             <div>
                                 <h3 className="text-lg font-semibold text-foreground/80 mb-2">请选择账号查看数据</h3>
                                 <p className="text-sm text-muted-foreground mb-4">
-                                    点击右上角"筛选账号"按钮选择要分析的账号
+                                    点击右上角“筛选账号”按钮选择要分析的账号
                                 </p>
                                 <Button
                                     variant="outline"

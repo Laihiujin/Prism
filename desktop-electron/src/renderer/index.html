@@ -11,8 +11,9 @@
         :root {
             --sidebar-width: 64px;
             --navbar-height: 58px;
-            --bg-main: linear-gradient(180deg, #000000 0%, #030303 100%);
-            --bg-sidebar: rgba(3, 3, 4, 0.98);
+            color-scheme: dark;
+            --bg-main: #000000;
+            --bg-sidebar: #000000;
             --bg-sidebar-edge: rgba(255, 255, 255, 0.04);
             --bg-popup: rgba(8, 8, 9, 0.98);
             --bg-panel: rgba(8, 8, 9, 0.98);
@@ -48,6 +49,15 @@
             width: 100vw;
             overflow: hidden;
             display: flex;
+        }
+
+        input,
+        textarea,
+        [contenteditable="true"] {
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-app-region: no-drag;
+            pointer-events: auto;
         }
 
         .sidebar {
@@ -370,7 +380,7 @@
 
         .navbar {
             height: var(--navbar-height);
-            background: rgba(4, 4, 5, 0.92);
+            background: #000000;
             backdrop-filter: blur(20px);
             display: flex;
             align-items: center;
@@ -388,7 +398,7 @@
             border-radius: 14px;
             display: flex;
             align-items: center;
-            padding: 0 18px;
+            padding: 0 6px 0 14px;
             max-width: 860px;
             margin: 0 auto;
             transition: var(--transition);
@@ -411,11 +421,63 @@
             font-size: 13px;
             font-weight: 500;
             letter-spacing: -0.01em;
-            text-align: center;
+            text-align: left;
+            caret-color: #ffffff;
+            min-width: 0;
+            appearance: none;
+        }
+
+        .address-bar input::-webkit-search-cancel-button {
+            display: none;
         }
 
         .address-bar input::placeholder {
             color: var(--text-muted);
+        }
+
+        .address-icon {
+            width: 17px;
+            height: 17px;
+            flex: 0 0 auto;
+            margin-right: 10px;
+            color: #71717a;
+        }
+
+        .address-action {
+            width: 30px;
+            height: 30px;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            border-radius: 9px;
+            background: transparent;
+            color: #71717a;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .address-action:hover,
+        .address-action:focus-visible {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            outline: none;
+        }
+
+        .address-action svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        #url-clear {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .address-bar.has-value #url-clear {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .webview-container {
@@ -431,10 +493,45 @@
             width: 100%;
             height: 100%;
             display: none;
+            background: #000000;
+            color-scheme: dark;
         }
 
         webview.active {
             display: flex;
+        }
+
+        .webview-loading {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(2, 2, 2, 0.42);
+            backdrop-filter: blur(2px);
+            z-index: 60;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .webview-loading.visible {
+            display: flex;
+        }
+
+        .webview-loading .spinner {
+            width: 44px;
+            height: 44px;
+            border: 3px solid rgba(255, 255, 255, 0.12);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spinner-rotate 0.8s linear infinite;
+            box-shadow: 0 0 24px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes spinner-rotate {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .tab-popup {
@@ -576,11 +673,11 @@
             left: calc(var(--sidebar-width) + 10px);
             top: 10px;
             bottom: 10px;
-            width: 430px;
-            background: var(--bg-panel);
+            width: min(470px, calc(100vw - var(--sidebar-width) - 28px));
+            background: #050505;
             backdrop-filter: blur(22px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 28px;
+            border-radius: 20px;
             z-index: 1000;
             transform: translateX(calc(-100% - 18px));
             transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
@@ -599,23 +696,32 @@
         }
 
         .settings-header {
-            padding: 24px;
+            padding: 22px 24px 18px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
-            background: rgba(8, 8, 9, 0.92);
+            background: rgba(5, 5, 5, 0.96);
             backdrop-filter: blur(12px);
             z-index: 10;
         }
 
         .settings-header h2 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--text-main);
             letter-spacing: -0.02em;
+        }
+
+        .settings-kicker {
+            margin-bottom: 5px;
+            color: #71717a;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
         }
 
         .settings-close {
@@ -641,11 +747,11 @@
         }
 
         .settings-content {
-            padding: 20px;
+            padding: 18px 20px 26px;
         }
 
         .settings-section {
-            margin-bottom: 28px;
+            margin-bottom: 22px;
         }
 
         .settings-section-title {
@@ -654,27 +760,39 @@
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.16em;
-            margin-bottom: 12px;
+            margin: 0 4px 9px;
         }
 
         .settings-item {
-            background: rgba(18, 18, 20, 0.84);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 14px 16px;
-            margin-bottom: 10px;
+            background: #0a0a0a;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 0;
+            padding: 15px 16px;
+            margin-bottom: -1px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             transition: all 0.2s;
             cursor: pointer;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            box-shadow: none;
+        }
+
+        .settings-section .settings-item:nth-child(2) {
+            border-radius: 14px 14px 0 0;
+        }
+
+        .settings-section .settings-item:last-child {
+            border-radius: 0 0 14px 14px;
+        }
+
+        .settings-section .settings-item:nth-child(2):last-child {
+            border-radius: 14px;
         }
 
         .settings-item:hover {
-            background: rgba(24, 24, 26, 0.96);
+            background: #111111;
             border-color: rgba(255, 255, 255, 0.14);
-            transform: translateY(-1px);
+            transform: none;
         }
 
         .settings-item-info {
@@ -700,7 +818,7 @@
         .settings-btn-small {
             padding: 7px 14px;
             font-size: 12px;
-            border-radius: 10px;
+            border-radius: 8px;
             border: none;
             cursor: pointer;
             transition: all 0.2s;
@@ -752,6 +870,86 @@
             opacity: 1;
             pointer-events: auto;
         }
+
+        .toast-stack {
+            position: fixed;
+            top: 16px;
+            right: 18px;
+            z-index: 20000;
+            display: flex;
+            width: min(360px, calc(100vw - 36px));
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr) 24px;
+            align-items: center;
+            gap: 10px;
+            min-height: 54px;
+            padding: 10px 10px 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.11);
+            border-radius: 14px;
+            background: rgba(8, 8, 8, 0.96);
+            color: #f4f4f5;
+            box-shadow: 0 18px 55px rgba(0, 0, 0, 0.62);
+            backdrop-filter: blur(20px);
+            pointer-events: auto;
+            animation: toast-in 180ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .toast-icon {
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .toast-error .toast-icon {
+            background: rgba(248, 113, 113, 0.12);
+            color: #fca5a5;
+        }
+
+        .toast-message {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.45;
+        }
+
+        .toast-close {
+            width: 24px;
+            height: 24px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: #71717a;
+            cursor: pointer;
+        }
+
+        .toast-close:hover {
+            background: rgba(255, 255, 255, 0.07);
+            color: #ffffff;
+        }
+
+        .toast.is-leaving {
+            animation: toast-out 150ms ease forwards;
+        }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes toast-out {
+            to { opacity: 0; transform: translateY(-5px) scale(0.98); }
+        }
     </style>
 </head>
 
@@ -760,10 +958,29 @@
 
     <div class="settings-panel" id="settings-panel">
         <div class="settings-header">
-            <h2>系统设置</h2>
+            <div>
+                <div class="settings-kicker">Prism Desktop</div>
+                <h2>系统与运行时</h2>
+            </div>
             <div class="settings-close" id="settings-close">关闭</div>
         </div>
         <div class="settings-content">
+            <div class="settings-section">
+                <div class="settings-section-title">运行信息</div>
+                <div class="settings-item" style="cursor: default;">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">后端地址</div>
+                        <div class="settings-item-desc" id="settings-backend-url">加载中…</div>
+                    </div>
+                </div>
+                <div class="settings-item" style="cursor: default;">
+                    <div class="settings-item-info">
+                        <div class="settings-item-label">服务状态</div>
+                        <div class="settings-item-desc" id="settings-service-status">加载中…</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="settings-section">
                 <div class="settings-section-title">进程控制</div>
                 <div class="settings-item" onclick="restartAllServices()">
@@ -920,11 +1137,15 @@
     <div class="main-area">
         <div class="navbar">
             <div class="address-bar">
-                <input type="text" id="url-bar" spellcheck="false" placeholder="输入网址或搜索内容..." />
+                <svg class="address-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                <input type="search" id="url-bar" spellcheck="false" autocomplete="off" aria-label="网址或搜索内容" placeholder="输入网址或搜索内容…" />
+                <button class="address-action" id="url-clear" type="button" title="清空" aria-label="清空地址栏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 7 10 10M17 7 7 17"></path></svg></button>
+                <button class="address-action" id="url-go" type="button" title="访问" aria-label="访问地址"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></button>
             </div>
         </div>
         <div class="webview-container" id="webview-container">
             <!-- Webviews -->
+            <div class="webview-loading" id="webview-loading"><div class="spinner"></div></div>
         </div>
     </div>
 
@@ -968,6 +1189,8 @@
             </div>
         </div>
     </div>
+
+    <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
 
     <script src="./renderer.js"></script>
 </body>
