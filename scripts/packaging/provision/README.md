@@ -109,7 +109,7 @@ python3 scripts/packaging/provision/provision.py --force
 **Electron 壳接入**：`desktop-electron/src/main/index.js` 的 `getPythonRuntime()`
 应改为优先读此文件拿真实 python 路径，缺失则先触发一次供给再启动；去掉原
 「探测 venv + 运行时拼 PYTHONPATH 注入 site-packages」逻辑，仅在运行时保留
-`PYTHONPATH=<后端/tools 源码>`（与 `ecosystem-mac.config.js` 一致）。
+`PYTHONPATH=<后端/tools 源码>`（与 `ecosystem.config.js` 一致）。
 注意 conda 入口在 Windows 是 `Scripts/<ep>.exe`，非 `bin/<ep>`。
 
 ## 非 Python 运行时（“还有其他的”）
