@@ -41,15 +41,15 @@ sleep 1
 echo "============================================"
 echo "  Prism 启动 (PM2)"
 echo "============================================"
-"$PM2" start ecosystem-mac.config.js --only prism-redis,prism-backend --update-env
+"$PM2" start ecosystem.config.js --only prism-redis,prism-backend --update-env
 if ! "$ROOT/prismenv/bin/python" "$ROOT/scripts/prism_runtime.py" health --timeout 60; then
   echo "[WARN] 后端未能绑定所选端口，重新选择端口并重试一次..." >&2
   "$PM2" delete prism-backend >/dev/null 2>&1 || true
   "$ROOT/prismenv/bin/python" "$ROOT/scripts/prism_runtime.py" prepare >/dev/null
-  "$PM2" start ecosystem-mac.config.js --only prism-backend --update-env
+  "$PM2" start ecosystem.config.js --only prism-backend --update-env
   "$ROOT/prismenv/bin/python" "$ROOT/scripts/prism_runtime.py" health --timeout 60
 fi
-"$PM2" start ecosystem-mac.config.js --only prism-worker,prism-celery,prism-frontend,persona-api,persona-proxy,persona-dashboard,hermes-dashboard,hermes-webui,deepseek-harness --update-env
+"$PM2" start ecosystem.config.js --only prism-worker,prism-celery,prism-frontend,persona-api,persona-proxy,persona-dashboard,hermes-dashboard,hermes-webui,deepseek-harness --update-env
 PRISM_BACKEND_URL="$("$ROOT/prismenv/bin/python" -c 'import json, pathlib; print(json.loads(pathlib.Path("runtime-data/runtime.json").read_text())["backend_url"])')"
 echo
 "$PM2" list
@@ -63,8 +63,19 @@ echo "  代理网关     http://127.0.0.1:7771-7776 (sg/jp/us/de/tw/hk)"
 
 # 明确打开 Prism 主前端，避免浏览器停留在 Persona Dashboard:5173。
 # 统一使用 localhost，避免浏览器把 localhost 与 127.0.0.1 视为两个独立站点。
+# 等待前端就绪后再打开，避免浏览器先弹 5173（Persona）或加载到"无法连接"。
+FRONTEND_URL="http://localhost:3000/"
 if command -v open >/dev/null 2>&1; then
-  open "http://localhost:3000/"
+  if command -v curl >/dev/null 2>&1; then
+    for _ in $(seq 1 60); do
+      code="$(curl -s -o /dev/null -w '%{http_code}' "$FRONTEND_URL" 2>/dev/null || true)"
+      case "$code" in
+        20[0-9]) break ;;
+      esac
+      sleep 1
+    done
+  fi
+  open "$FRONTEND_URL"
 fi
 
 echo
