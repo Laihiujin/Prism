@@ -122,6 +122,17 @@ def _load_platform_browser_preferences() -> Dict[str, str]:
 
 def _resolve_platform_browser_choice(platform: str | None) -> str:
     normalized_platform = _normalize_platform_key(platform)
+    try:
+        # The active local/provider selection is global; an explicit platform
+        # preference still wins when configured below.
+        active_state_path = __import__('tools.browser_provider_registry', fromlist=['browsers_root']).browsers_root() / 'active.json'
+        import json as _json
+        state = _json.loads(active_state_path.read_text(encoding='utf-8'))
+        active_kind = str(state.get('kind') or '')
+        if active_kind in {'chromium', 'firefox'} and not os.getenv(f"PRISM_PLATFORM_BROWSER_{normalized_platform.upper()}"):
+            return active_kind
+    except Exception:
+        pass
     preferences = _load_platform_browser_preferences()
     default_choice = PLATFORM_BROWSER_DEFAULTS.get(normalized_platform, "chromium")
     preferred = _normalize_browser_choice(preferences.get(normalized_platform), default_choice)
@@ -190,6 +201,14 @@ def _sanitize_launch_options(browser_choice: str, launch_opts: Dict[str, Any]) -
 
 
 def _resolve_local_chrome_path(headless: bool) -> str | None:
+    try:
+        from tools.browser_provider_registry import active_provider_executable
+        active = active_provider_executable("chromium")
+        if active:
+            return str(active)
+    except Exception:
+        pass
+
     def _normalize(candidate: str | Path | None) -> Path | None:
         if not candidate:
             return None

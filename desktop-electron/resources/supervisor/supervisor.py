@@ -330,6 +330,12 @@ class Supervisor:
                     break
 
         self.backend_dir = self.resources_path / "prism_backend"
+        runtime_settings_path = os.environ.get("PRISM_RUNTIME_SETTINGS_PATH")
+        self.runtime_data_dir = Path(
+            os.environ.get("PRISM_RUNTIME_DATA_DIR")
+            or (str(Path(runtime_settings_path).parent / "runtime-data") if runtime_settings_path else "")
+            or str(self.resources_path / "runtime-data")
+        )
         self.hermes_dir = self.resources_path / "tools" / "hermes-agent"
         self.hermes_home_dir = Path(
             os.environ.get("PRISM_HERMES_HOME")
@@ -337,7 +343,7 @@ class Supervisor:
         )
         self.prismenv_dir = self.resources_path / "prismenv"
         self.prismenv_site_packages = self._resolve_prismenv_site_packages()
-        self.browsers_dir = self.resources_path / "browsers"
+        self.browsers_dir = self.resources_path / "prism_backend" / "tools" / "browsers"
         self.services_dir = self.resources_path / "services"
         self.python_exe = self._resolve_prismenv_python()
 
@@ -362,6 +368,7 @@ class Supervisor:
         logger.info("Services dir: %s (exists: %s)", self.services_dir, self.services_dir.exists())
         logger.info("Browsers dir: %s (exists: %s)", self.browsers_dir, self.browsers_dir.exists())
         logger.info("Shared Python runtime: %s", self.python_exe or "not available")
+        logger.info("Managed component data: %s", self.runtime_data_dir / "components")
         if self.prismenv_site_packages:
             logger.info("Packaged site-packages: %s", self.prismenv_site_packages)
 
@@ -1159,7 +1166,13 @@ class Supervisor:
             entry = harness_dir / "apps" / "cli" / "lib" / "bin.js"
             if not entry.exists():
                 raise FileNotFoundError(f"DeepSeek Harness CLI entry not found: {entry}")
-            node = shutil.which("node") or "node"
+            node = self._resolve_managed_binary("node", "node")
+            if node is None and not self.is_packaged:
+                node = shutil.which("node")
+            if node is None:
+                raise FileNotFoundError(
+                    "Prism Node Runtime 未安装；请在 Tools 中安装 Node Runtime 后再启动 DeepSeek Harness"
+                )
             return [
                 node,
                 str(entry),
@@ -1172,6 +1185,21 @@ class Supervisor:
             ], str(harness_dir)
 
         raise ValueError(f"Unsupported service: {name}")
+
+    def _resolve_managed_binary(self, component: str, binary: str) -> Optional[str]:
+        """Resolve an active versioned native component from its current manifest."""
+        manifest_path = self.runtime_data_dir / "components" / component / "current.json"
+        try:
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            return None
+        raw = payload.get("binary") or (payload.get("binaries") or {}).get(binary)
+        if not raw:
+            return None
+        candidate = Path(str(raw))
+        if not candidate.is_absolute():
+            candidate = manifest_path.parent / candidate
+        return str(candidate.resolve()) if candidate.is_file() else None
 
     def get_service_env(self, name: str, base_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         env = dict(base_env or self.build_env())
@@ -1473,16 +1501,19 @@ class Supervisor:
                 time.sleep(0.5)
 
     def start_redis(self, env: Dict[str, str]) -> None:
+        managed_redis = self._resolve_managed_binary("redis", "redis-server")
         redis_candidates = (
             self.resources_path / "prism_backend" / "Redis",
             self.resources_path / "Redis",
             self.resources_path / "redis",
         )
 
-        redis_dir = None
-        redis_exe = None
+        redis_dir = Path(managed_redis).parent if managed_redis else None
+        redis_exe = Path(managed_redis) if managed_redis else None
         redis_conf = None
         for candidate in redis_candidates:
+            if redis_exe:
+                break
             potential_exe = candidate / "redis-server.exe"
             if potential_exe.exists():
                 redis_dir = candidate
@@ -1490,8 +1521,14 @@ class Supervisor:
                 redis_conf = candidate / "redis.windows.conf"
                 break
 
+        if not redis_exe and not self.is_packaged:
+            system_redis = shutil.which("redis-server")
+            if system_redis:
+                redis_exe = Path(system_redis)
+                redis_dir = redis_exe.parent
+
         if not redis_exe:
-            logger.warning("Redis executable not found in packaged resources.")
+            logger.warning("Prism Redis Runtime 未安装；生产模式不会回退用户机器上的 Redis。")
             return
 
         redis_in_use = self.is_port_in_use(6379)

@@ -29,6 +29,8 @@ interface LoadingState {
   installFirefox: boolean
   uninstallChromium: boolean
   uninstallFirefox: boolean
+  installFingerprintChromium: boolean
+  applyFingerprintChromium: boolean
 }
 
 interface ServiceStatus {
@@ -74,6 +76,24 @@ interface BrowserRuntimeInfo {
   browsers?: {
     chromium?: BrowserAssetInfo
     firefox?: BrowserAssetInfo
+  }
+  providerRegistry?: {
+    providers?: Array<{
+      id: string
+      name: string
+      category: string
+      installable?: boolean
+      experimental?: boolean
+      userSelectable?: boolean
+      labels?: string[]
+      assets?: Record<string, string>
+      installed?: boolean
+      installedVersions?: string[]
+      compatible?: boolean
+      recommended?: boolean
+      active?: boolean
+      defaultDownload?: boolean
+    }>
   }
 }
 
@@ -146,9 +166,12 @@ export function useSettingsActions() {
     installFirefox: false,
     uninstallChromium: false,
     uninstallFirefox: false,
+    installFingerprintChromium: false,
+    applyFingerprintChromium: false,
   })
   const [status, setStatus] = useState<RuntimeStatus | null>(null)
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
+  const [browserProviderAction, setBrowserProviderAction] = useState<string | null>(null)
 
   const setLoadingState = (key: keyof LoadingState, value: boolean) => {
     setLoading((prev) => ({ ...prev, [key]: value }))
@@ -205,36 +228,25 @@ export function useSettingsActions() {
   }, [updateAppInfo])
 
   const loadBrowserRuntimeInfo = useCallback(async (): Promise<BrowserRuntimeInfo | null> => {
+    try {
+      const response = await fetch(`${apiBase}/api/v1/system/browser-runtime/status`)
+      const data = await response.json().catch(() => ({}))
+      if (response.ok && data?.success !== false) return data?.browserRuntimeInfo ?? null
+    } catch {
+      // Desktop startup can briefly precede backend readiness; use IPC fallback.
+    }
     if (isElectron) {
       const electron = (window as any).electronAPI
-      if (electron.browserRuntime?.getStatus) {
-        const result = await electron.browserRuntime.getStatus()
-        if (!result?.success) {
-          throw new Error(result?.error || "\u83b7\u53d6\u6d4f\u89c8\u5668\u8fd0\u884c\u65f6\u72b6\u6001\u5931\u8d25")
-        }
-        return result.browserRuntimeInfo ?? null
-      }
-
-      if (electron.app?.getInfo) {
-        const info = await electron.app.getInfo()
-        return info?.browserRuntimeInfo ?? null
-      }
-
-      return null
+      const result = await electron.browserRuntime?.getStatus?.()
+      if (result?.success) return result.browserRuntimeInfo ?? null
     }
-
-    const response = await fetch(`${apiBase}/api/v1/system/browser-runtime/status`)
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok || data?.success === false) {
-      throw new Error(data?.detail || data?.error || "\u83b7\u53d6\u6d4f\u89c8\u5668\u8fd0\u884c\u65f6\u72b6\u6001\u5931\u8d25")
-    }
-    return data?.browserRuntimeInfo ?? null
+    throw new Error("\u83b7\u53d6\u6d4f\u89c8\u5668\u8fd0\u884c\u65f6\u72b6\u6001\u5931\u8d25")
   }, [apiBase])
 
   const installBrowserRuntimeTarget = async (
-    target: "patchright" | "chromium" | "firefox"
+    target: string
   ) => {
-    if (isElectron) {
+    if (isElectron && ["patchright", "chromium", "firefox"].includes(target)) {
       const electron = (window as any).electronAPI
       if (electron.browserRuntime?.install) {
         return await electron.browserRuntime.install(target)
@@ -683,6 +695,73 @@ export function useSettingsActions() {
     await installBrowserAsset("installFirefox", "firefox", "Firefox")
   }
 
+  const installFingerprintChromium = async () => {
+    await handleAction("installFingerprintChromium", async () => {
+      const result = await installBrowserRuntimeTarget("fingerprint-chromium")
+      if (!result.success) throw new Error(result.error || "Fingerprint Chromium 下载失败")
+      syncBrowserRuntimeInfo(result.browserRuntimeInfo)
+    }, "Fingerprint Chromium 已下载")
+  }
+
+  const applyFingerprintChromium = async () => {
+    await handleAction("applyFingerprintChromium", async () => {
+      const response = await fetch(`${apiBase}/api/v1/system/browser-runtime/apply/fingerprint-chromium`, { method: "POST" })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.detail || result.error || "Fingerprint Chromium 应用失败")
+      syncBrowserRuntimeInfo(result.browserRuntimeInfo)
+      await restartServicesAfterBrowserAssetChange()
+      await refreshStatus({ silent: true })
+    }, "Fingerprint Chromium 已应用")
+  }
+
+  const installBrowserProvider = async (providerId: string, label: string) => {
+    setBrowserProviderAction(`install:${providerId}`)
+    try {
+      const result = await installBrowserRuntimeTarget(providerId)
+      if (!result.success) throw new Error(result.error || `${label} 下载失败`)
+      syncBrowserRuntimeInfo(result.browserRuntimeInfo)
+      toast({ title: `${label} 已下载`, description: "浏览器尚未应用，请确认后点击“应用”。" })
+    } catch (error: any) {
+      toast({ title: `${label} 下载失败`, description: error?.message || "请稍后重试", variant: "destructive" })
+    } finally {
+      setBrowserProviderAction(null)
+    }
+  }
+
+  const applyBrowserProvider = async (providerId: string, label: string) => {
+    setBrowserProviderAction(`apply:${providerId}`)
+    try {
+      const response = await fetch(`${apiBase}/api/v1/system/browser-runtime/apply/${providerId}`, { method: "POST" })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.detail || result.error || `${label} 应用失败`)
+      syncBrowserRuntimeInfo(result.browserRuntimeInfo)
+      await restartServicesAfterBrowserAssetChange()
+      await refreshStatus({ silent: true })
+      toast({ title: `${label} 已应用`, description: "之后创建的新浏览器会话将使用它。" })
+    } catch (error: any) {
+      toast({ title: `${label} 应用失败`, description: error?.message || "请稍后重试", variant: "destructive" })
+    } finally {
+      setBrowserProviderAction(null)
+    }
+  }
+
+  const uninstallBrowserProvider = async (providerId: string, label: string) => {
+    setBrowserProviderAction(`uninstall:${providerId}`)
+    try {
+      const response = await fetch(`${apiBase}/api/v1/system/browser-runtime/provider/${providerId}/uninstall`, { method: "POST" })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.detail || result.error || `${label} 卸载失败`)
+      syncBrowserRuntimeInfo(result.browserRuntimeInfo)
+      await restartServicesAfterBrowserAssetChange()
+      await refreshStatus({ silent: true })
+      toast({ title: `${label} 已卸载` })
+    } catch (error: any) {
+      toast({ title: `${label} 卸载失败`, description: error?.message || "请先切换到其他浏览器", variant: "destructive" })
+    } finally {
+      setBrowserProviderAction(null)
+    }
+  }
+
   const uninstallBrowserAsset = async (
     key: "uninstallPatchright" | "uninstallChromium" | "uninstallFirefox",
     target: "patchright" | "chromium" | "firefox",
@@ -871,6 +950,12 @@ export function useSettingsActions() {
     installFirefox,
     uninstallChromium,
     uninstallFirefox,
+    installFingerprintChromium,
+    applyFingerprintChromium,
+    browserProviderAction,
+    installBrowserProvider,
+    applyBrowserProvider,
+    uninstallBrowserProvider,
     quitApp,
     clearMaterials,
     clearAccounts,

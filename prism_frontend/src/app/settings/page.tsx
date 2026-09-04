@@ -231,6 +231,10 @@ export default function SettingsPage() {
     installFirefox,
     uninstallChromium,
     uninstallFirefox,
+    browserProviderAction,
+    installBrowserProvider,
+    applyBrowserProvider,
+    uninstallBrowserProvider,
     quitApp,
     clearMaterials,
     clearAccounts,
@@ -269,6 +273,9 @@ export default function SettingsPage() {
 
   const serviceEntries = Object.entries(status ?? {}).filter(([, value]) => value)
   const browserRuntimeInfo = appInfo?.browserRuntimeInfo
+  const downloadableBrowserProviders = browserRuntimeInfo?.providerRegistry?.providers?.filter(
+    (provider) => provider.installable && provider.userSelectable && provider.compatible && provider.id !== "persona"
+  ) || []
   const currentRuntime =
     appInfo?.runtimeSettings?.automationRuntime ?? browserRuntimeInfo?.preferredRuntime ?? "patchright"
   const browserHeadless = appInfo?.runtimeSettings?.browserHeadless
@@ -811,6 +818,34 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3">
+              {downloadableBrowserProviders.map((provider) => (
+                <div key={provider.id} className={provider.experimental ? "rounded-xl border border-amber-500/40 bg-card p-4" : "rounded-xl border border-border/70 bg-card p-4"}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="font-medium text-foreground">{provider.name}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(provider.labels || []).map((label) => <Badge key={label} variant="outline" className={provider.experimental ? "border-amber-500/50 text-amber-400" : ""}>{label}</Badge>)}
+                      <Badge variant="outline">{provider.active ? "应用中" : provider.installed ? "已下载" : "未下载"}</Badge>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-xs text-muted-foreground">
+                    不会自动下载。下载、应用和卸载均由用户手动操作；切换只影响之后创建的浏览器会话。
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button onClick={() => void installBrowserProvider(provider.id, provider.name)} disabled={browserProviderAction !== null} variant="secondary" className="flex-1">
+                      {browserProviderAction === `install:${provider.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                      {provider.installed ? "检查并下载新版本" : "下载"}
+                    </Button>
+                    <Button onClick={() => void applyBrowserProvider(provider.id, provider.name)} disabled={browserProviderAction !== null || !provider.installed || provider.active} variant="secondary">
+                      {browserProviderAction === `apply:${provider.id}` && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {provider.active ? "应用中" : "应用"}
+                    </Button>
+                    <Button onClick={() => void uninstallBrowserProvider(provider.id, provider.name)} disabled={browserProviderAction !== null || !provider.installed} variant="secondary">
+                      {browserProviderAction === `uninstall:${provider.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                      卸载
+                    </Button>
+                  </div>
+                </div>
+              ))}
               <div className="rounded-xl border border-border/70 bg-card p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-medium text-foreground">Chromium</div>
@@ -828,7 +863,7 @@ export default function SettingsPage() {
                 <div className="mt-3 text-xs text-muted-foreground">
                   {browserRuntimeInfo?.browsers?.chromium?.version
                     ? `当前版本: ${browserRuntimeInfo?.browsers?.chromium?.version}`
-                    : "安装到 prism_backend/tools/browsers 组件目录，用 patchright 下载。"}
+                    : "由 Tools 安装到 Prism runtime-data，可随时切换或卸载。"}
                 </div>
                 <div className="mt-3 break-all font-mono text-xs text-foreground/70">
                   {browserRuntimeInfo?.browsers?.chromium?.path || "安装后会在这里显示实际可执行文件路径。"}
@@ -887,7 +922,7 @@ export default function SettingsPage() {
                 <div className="mt-3 text-xs text-muted-foreground">
                   {browserRuntimeInfo?.browsers?.firefox?.version
                     ? `当前版本: ${browserRuntimeInfo?.browsers?.firefox?.version}`
-                    : "安装到 prism_backend/tools/browsers 组件目录，用 patchright 下载。"}
+                    : "由 Tools 安装到 Prism runtime-data，可随时切换或卸载。"}
                 </div>
                 <div className="mt-3 break-all font-mono text-xs text-foreground/70">
                   {browserRuntimeInfo?.browsers?.firefox?.path || "安装后会在这里显示实际可执行文件路径。"}

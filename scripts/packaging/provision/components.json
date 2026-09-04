@@ -1,17 +1,26 @@
 {
-  "inject": [
+  "inject": [],
+  "isolated": [
     {
       "name": "persona",
       "src": "tools/persona-studio/engine",
       "pip": "tools/persona-studio/engine",
+      "extras": ["api", "launch", "secure"],
       "entrypoints": ["persona"]
     },
     {
       "name": "hermes",
       "src": "tools/hermes-agent",
-      "launch_module": "hermes_cli.main",
+      "pip": "tools/hermes-agent",
       "entrypoints": ["hermes"]
     }
   ],
-  "isolated": []
+  "node": [
+    {
+      "name": "deepseek-harness",
+      "src": "tools/deepseek-harness",
+      "port": 3080,
+      "entrypoints": ["deepseek-harness"]
+    }
+  ]
 }
