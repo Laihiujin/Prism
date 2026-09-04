@@ -87,6 +87,8 @@ dump.rdb
 upload/
 
 # Backend runtime artifacts
+/prism_components/*
+!/prism_components/.gitkeep
 syn_backend/logs/*
 syn_backend/videoFile/*
 syn_backend/cookiesFile/*.json
