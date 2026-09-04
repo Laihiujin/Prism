@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { FileCode, Play, Eye, Trash2, Loader2, RefreshCw } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { API_ENDPOINTS } from "@/lib/env"
 
 interface Script {
   script_id: string
@@ -51,7 +52,7 @@ export function ScriptManager() {
   const fetchScripts = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:7000/api/v1/agent/scripts')
+      const response = await fetch(API_ENDPOINTS.agentScripts)
       const data = await response.json()
 
       if (data.success) {
@@ -71,7 +72,7 @@ export function ScriptManager() {
 
   const handleView = async (script: Script) => {
     try {
-      const response = await fetch(`http://localhost:7000/api/v1/agent/scripts/${script.script_id}`)
+      const response = await fetch(API_ENDPOINTS.agentScript(script.script_id))
       const data = await response.json()
 
       if (data.success) {
@@ -93,7 +94,7 @@ export function ScriptManager() {
 
     setExecuting(true)
     try {
-      const response = await fetch('http://localhost:7000/api/v1/agent/execute-script', {
+      const response = await fetch(API_ENDPOINTS.agentExecuteScript, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

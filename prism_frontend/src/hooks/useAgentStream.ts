@@ -100,7 +100,7 @@ export function useAgentStream() {
 
       // 鍒涘缓 POST 璇锋眰鍙戦€佹暟鎹?
       const response = await fetch(
-        `${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/agent/hermes-stream`,
+        `${API_ENDPOINTS.base}/api/v1/agent/hermes-stream`,
         {
           method: "POST",
           headers: {
@@ -305,7 +305,7 @@ export function useAgentStream() {
     abortControllerRef.current = null
 
     // 璋冪敤鍚庣鍋滄 API
-    fetch(`${API_ENDPOINTS.base || 'http://localhost:7000'}/api/v1/agent/hermes-stop`, {
+    fetch(`${API_ENDPOINTS.base}/api/v1/agent/hermes-stop`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -324,4 +324,3 @@ export function useAgentStream() {
     resetState
   }
 }
-

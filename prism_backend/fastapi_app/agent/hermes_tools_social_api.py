@@ -8,12 +8,14 @@ import re
 import httpx
 
 from .tool_runtime import BaseTool, ToolResult
+from fastapi_app.core.runtime import get_api_base_url
 
 # TikTok/Douyin/Bilibili API 基础 URL (已集成到后端 7000 端口)
 # 注意: douyin_tiktok_api 已挂载在 /api/v1/douyin-tiktok 路径下
-DOUYIN_API_BASE_URL = os.getenv("DOUYIN_API_BASE_URL", "http://localhost:7000/api/v1/douyin-tiktok/api/douyin/web")
-TIKTOK_API_BASE_URL = os.getenv("TIKTOK_API_BASE_URL", "http://localhost:7000/api/v1/douyin-tiktok/api/tiktok/web")
-BILIBILI_API_BASE_URL = os.getenv("BILIBILI_API_BASE_URL", "http://localhost:7000/api/v1/douyin-tiktok/api/bilibili/web")
+_SOCIAL_API_BASE_URL = f"{get_api_base_url()}/douyin-tiktok/api"
+DOUYIN_API_BASE_URL = os.getenv("DOUYIN_API_BASE_URL", f"{_SOCIAL_API_BASE_URL}/douyin/web")
+TIKTOK_API_BASE_URL = os.getenv("TIKTOK_API_BASE_URL", f"{_SOCIAL_API_BASE_URL}/tiktok/web")
+BILIBILI_API_BASE_URL = os.getenv("BILIBILI_API_BASE_URL", f"{_SOCIAL_API_BASE_URL}/bilibili/web")
 
 
 # ============================================

@@ -11,6 +11,8 @@ from typing import Dict, List, Optional, Any
 from loguru import logger
 from utils.automation_provider import async_playwright
 from myUtils.cookie_manager import cookie_manager
+from myUtils.browser_context import launch_optional_browser
+from fastapi_app.core.runtime import get_api_base_url
 
 
 class DataCrawlerService:
@@ -26,7 +28,7 @@ class DataCrawlerService:
         if not tk_api_base_url:
             tk_api_base_url = os.getenv(
                 "DATA_CRAWLER_API_BASE_URL",
-                "http://localhost:7000/api/v1/douyin-tiktok/api",
+                f"{get_api_base_url()}/douyin-tiktok/api",
             )
         self.tk_api_base_url = tk_api_base_url.rstrip("/")
         self.client = httpx.AsyncClient(timeout=30.0)
@@ -120,7 +122,7 @@ class DataCrawlerService:
             cookie_str, cookie_dict = convert_cookies(cookies)
 
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
+                browser = await launch_optional_browser(p, platform="xiaohongshu", headless=True)
                 try:
                     context = await browser.new_context(storage_state=cookie_state, user_agent=self._default_ua)
                     page = await context.new_page()
@@ -480,7 +482,7 @@ class DataCrawlerService:
             cookie_str, cookie_dict = convert_cookies(cookies)
 
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
+                browser = await launch_optional_browser(p, platform="kuaishou", headless=True)
                 try:
                     context = await browser.new_context(storage_state=cookie_state, user_agent=self._default_ua)
                     page = await context.new_page()

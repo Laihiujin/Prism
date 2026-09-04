@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from loguru import logger
 from .function_calling_service import Tool
+from fastapi_app.core.runtime import get_api_base_url
+
+API_BASE_URL = get_api_base_url()
 
 
 def _resolve_backend_cwd() -> Path:
@@ -42,13 +45,13 @@ async def get_system_info() -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             # 获取账号信息
-            accounts_resp = await client.get("http://localhost:7000/api/v1/accounts/")
+            accounts_resp = await client.get(f"{API_BASE_URL}/accounts/")
             accounts_data = accounts_resp.json()
             accounts_items = accounts_data.get("items") or accounts_data.get("data") or []
             accounts_count = len(accounts_items)
 
             # 获取视频信息
-            videos_resp = await client.get("http://localhost:7000/api/v1/files/")
+            videos_resp = await client.get(f"{API_BASE_URL}/files/")
             videos_data = videos_resp.json()
             videos_count = len(videos_data.get("data", []))
 
@@ -96,7 +99,7 @@ async def list_accounts(platform: Optional[str] = None) -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            url = "http://localhost:7000/api/v1/accounts/"
+            url = f"{API_BASE_URL}/accounts/"
             if platform:
                 url += f"?platform={platform}"
 
@@ -153,7 +156,7 @@ async def list_videos(limit: int = 20) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                f"http://localhost:7000/api/v1/files/?limit={limit}"
+                f"{API_BASE_URL}/files/?limit={limit}"
             )
             data = resp.json()
 
@@ -219,7 +222,7 @@ async def create_publish_task(
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                "http://localhost:7000/api/v1/tasks/publish",
+                f"{API_BASE_URL}/tasks/publish",
                 json={
                     "account_ids": account_ids,
                     "video_path": video_path,
@@ -296,7 +299,7 @@ async def get_task_status(task_id: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                f"http://localhost:7000/api/v1/tasks/{task_id}"
+                f"{API_BASE_URL}/tasks/{task_id}"
             )
             data = resp.json()
 
@@ -425,7 +428,7 @@ async def publish_video_to_tencent(file_id: str, custom_title: Optional[str] = N
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             # 1. 获取文件信息
-            file_resp = await client.get(f"http://localhost:7000/api/v1/files/{file_id}")
+            file_resp = await client.get(f"{API_BASE_URL}/files/{file_id}")
             file_data = file_resp.json()
 
             if file_data.get("status") != "success":
@@ -439,7 +442,7 @@ async def publish_video_to_tencent(file_id: str, custom_title: Optional[str] = N
             if not custom_title:
                 # 使用 AI 生成标题
                 ai_resp = await client.post(
-                    "http://localhost:7000/api/v1/ai/chat",
+                    f"{API_BASE_URL}/ai/chat",
                     json={
                         "message": f"根据文件名生成一个吸引人的视频标题（不超过30字）：{filename}",
                         "stream": False
@@ -460,7 +463,7 @@ async def publish_video_to_tencent(file_id: str, custom_title: Optional[str] = N
 
             # 4. 调用统一发布接口（direct）
             upload_resp = await client.post(
-                "http://localhost:7000/api/v1/publish/direct",
+                f"{API_BASE_URL}/publish/direct",
                 json={
                     "platform": 2,
                     "cookie_file": account_file,
@@ -536,7 +539,7 @@ async def search_files(keyword: Optional[str] = None, file_type: Optional[str] =
                 params["file_type"] = file_type
 
             resp = await client.get(
-                "http://localhost:7000/api/v1/files/",
+                f"{API_BASE_URL}/files/",
                 params=params
             )
 
@@ -602,7 +605,7 @@ async def delete_file(file_id: str) -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.delete(f"http://localhost:7000/api/v1/files/{file_id}")
+            resp = await client.delete(f"{API_BASE_URL}/files/{file_id}")
 
             if resp.status_code != 200:
                 return {"success": False, "error": f"删除失败: {resp.status_code}"}
@@ -658,7 +661,7 @@ async def publish_to_multiple_platforms(
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             # 获取文件信息
-            file_resp = await client.get(f"http://localhost:7000/api/v1/files/{file_id}")
+            file_resp = await client.get(f"{API_BASE_URL}/files/{file_id}")
             file_data = file_resp.json()
 
             if file_data.get("status") != "success":
@@ -670,7 +673,7 @@ async def publish_to_multiple_platforms(
             # 生成标题（如果未提供）
             if not title:
                 ai_resp = await client.post(
-                    "http://localhost:7000/api/v1/ai/chat",
+                    f"{API_BASE_URL}/ai/chat",
                     json={
                         "message": f"根据文件名生成一个吸引人的视频标题（不超过30字）：{filename}",
                         "stream": False
@@ -681,7 +684,7 @@ async def publish_to_multiple_platforms(
 
             # 调用批量发布接口
             publish_resp = await client.post(
-                "http://localhost:7000/api/v1/publish/batch",
+                f"{API_BASE_URL}/publish/batch",
                 json={
                     "file_ids": [file_id],
                     "platforms": platforms,
@@ -767,7 +770,7 @@ async def get_analytics_summary(days: int = 7) -> Dict[str, Any]:
             start_date = end_date - timedelta(days=days)
 
             resp = await client.get(
-                "http://localhost:7000/api/v1/analytics/",
+                f"{API_BASE_URL}/analytics/",
                 params={
                     "startDate": start_date.strftime("%Y-%m-%d"),
                     "endDate": end_date.strftime("%Y-%m-%d")
@@ -847,7 +850,7 @@ async def upload_file(file_path: str, file_type: Optional[str] = None) -> Dict[s
                 data['file_type'] = file_type
 
             resp = await client.post(
-                "http://localhost:7000/api/v1/files/upload",
+                f"{API_BASE_URL}/files/upload",
                 files=files,
                 data=data
             )
@@ -904,7 +907,7 @@ async def get_file_details(file_id: str) -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"http://localhost:7000/api/v1/files/{file_id}")
+            resp = await client.get(f"{API_BASE_URL}/files/{file_id}")
 
             if resp.status_code != 200:
                 return {"error": f"获取文件详情失败: {resp.status_code}"}
@@ -954,7 +957,7 @@ async def update_file(file_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.patch(
-                f"http://localhost:7000/api/v1/files/{file_id}",
+                f"{API_BASE_URL}/files/{file_id}",
                 json=updates
             )
 
@@ -1005,7 +1008,7 @@ async def batch_delete_files(file_ids: List[str]) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                "http://localhost:7000/api/v1/files/batch-delete",
+                f"{API_BASE_URL}/files/batch-delete",
                 json={"file_ids": file_ids}
             )
 
@@ -1050,7 +1053,7 @@ async def get_file_tags() -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get("http://localhost:7000/api/v1/files/tags")
+            resp = await client.get(f"{API_BASE_URL}/files/tags")
 
             if resp.status_code != 200:
                 return {"error": f"获取标签失败: {resp.status_code}"}
@@ -1092,7 +1095,7 @@ async def add_file_tags(file_id: str, tags: List[str]) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                f"http://localhost:7000/api/v1/files/{file_id}/tags",
+                f"{API_BASE_URL}/files/{file_id}/tags",
                 json={"tags": tags}
             )
 
@@ -1144,7 +1147,7 @@ async def get_publish_presets() -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get("http://localhost:7000/api/v1/publish/presets")
+            resp = await client.get(f"{API_BASE_URL}/publish/presets")
 
             if resp.status_code != 200:
                 return {"error": f"获取预设失败: {resp.status_code}"}
@@ -1186,7 +1189,7 @@ async def create_preset(name: str, config: Dict[str, Any]) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                "http://localhost:7000/api/v1/publish/presets",
+                f"{API_BASE_URL}/publish/presets",
                 json={"name": name, "config": config}
             )
 
@@ -1238,7 +1241,7 @@ async def delete_preset(preset_id: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.delete(
-                f"http://localhost:7000/api/v1/publish/presets/{preset_id}"
+                f"{API_BASE_URL}/publish/presets/{preset_id}"
             )
 
             if resp.status_code != 200:
@@ -1285,7 +1288,7 @@ async def apply_preset(preset_id: str, file_ids: List[str]) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                f"http://localhost:7000/api/v1/publish/presets/{preset_id}/apply",
+                f"{API_BASE_URL}/publish/presets/{preset_id}/apply",
                 json={"file_ids": file_ids}
             )
 
@@ -1334,7 +1337,7 @@ async def get_otp_events() -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get("http://localhost:7000/api/v1/verification/otp-events")
+            resp = await client.get(f"{API_BASE_URL}/verification/otp-events")
 
             if resp.status_code != 200:
                 return {"error": f"获取验证码事件失败: {resp.status_code}"}
@@ -1383,7 +1386,7 @@ async def batch_publish(
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                "http://localhost:7000/api/v1/publish/batch",
+                f"{API_BASE_URL}/publish/batch",
                 json={
                     "file_ids": file_ids,
                     "platforms": platforms,
@@ -1459,7 +1462,7 @@ async def platform_login(platform: str, credentials: Dict[str, str]) -> Dict[str
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                f"http://localhost:7000/api/v1/platforms/{platform}/login",
+                f"{API_BASE_URL}/platforms/{platform}/login",
                 json=credentials
             )
 
@@ -1513,7 +1516,7 @@ async def verify_cookie(platform: str, cookie_data: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                f"http://localhost:7000/api/v1/platforms/{platform}/verify-cookie",
+                f"{API_BASE_URL}/platforms/{platform}/verify-cookie",
                 json={"cookie_data": cookie_data}
             )
 
@@ -1567,7 +1570,7 @@ async def get_login_status(session_id: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                f"http://localhost:7000/api/v1/platforms/login/status?session_id={session_id}"
+                f"{API_BASE_URL}/platforms/login/status?session_id={session_id}"
             )
 
             if resp.status_code != 200:
@@ -1616,7 +1619,7 @@ async def start_login_session(platform: str, account_id: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                "http://localhost:7000/api/v1/platforms/login/start",
+                f"{API_BASE_URL}/platforms/login/start",
                 json={"platform": platform, "account_id": account_id}
             )
 
@@ -1688,7 +1691,7 @@ async def create_matrix_task(
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                "http://localhost:7000/api/v1/matrix/generate_tasks",
+                f"{API_BASE_URL}/matrix/generate_tasks",
                 json={
                     "platforms": platforms,
                     "accounts": account_ids,
@@ -1768,7 +1771,7 @@ async def get_matrix_tasks(status: Optional[str] = None) -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            url = "http://localhost:7000/api/v1/matrix/tasks"
+            url = f"{API_BASE_URL}/matrix/tasks"
             if status:
                 url += f"?status={status}"
 
@@ -1818,7 +1821,7 @@ async def get_matrix_statistics() -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get("http://localhost:7000/api/v1/matrix/stats")
+            resp = await client.get(f"{API_BASE_URL}/matrix/stats")
 
             if resp.status_code != 200:
                 return {"error": f"获取统计信息失败: {resp.status_code}"}
@@ -1865,7 +1868,7 @@ async def get_account_details(account_id: str) -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"http://localhost:7000/api/v1/accounts/{account_id}")
+            resp = await client.get(f"{API_BASE_URL}/accounts/{account_id}")
 
             if resp.status_code != 200:
                 return {"error": f"获取账号详情失败: {resp.status_code}"}
@@ -1919,7 +1922,7 @@ async def create_account(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
-                "http://localhost:7000/api/v1/accounts/",
+                f"{API_BASE_URL}/accounts/",
                 json={
                     "platform": platform,
                     "name": name,
@@ -1986,7 +1989,7 @@ async def update_account(account_id: str, updates: Dict[str, Any]) -> Dict[str, 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.patch(
-                f"http://localhost:7000/api/v1/accounts/{account_id}",
+                f"{API_BASE_URL}/accounts/{account_id}",
                 json=updates
             )
 
@@ -2036,7 +2039,7 @@ async def delete_account(account_id: str) -> Dict[str, Any]:
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.delete(f"http://localhost:7000/api/v1/accounts/{account_id}")
+            resp = await client.delete(f"{API_BASE_URL}/accounts/{account_id}")
 
             if resp.status_code != 200:
                 return {"success": False, "error": f"删除账号失败: {resp.status_code}"}
@@ -2084,7 +2087,7 @@ async def sync_account_info(account_id: str) -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
-                f"http://localhost:7000/api/v1/accounts/{account_id}/sync"
+                f"{API_BASE_URL}/accounts/{account_id}/sync"
             )
 
             if resp.status_code != 200:

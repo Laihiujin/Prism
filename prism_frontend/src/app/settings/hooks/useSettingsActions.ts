@@ -80,6 +80,7 @@ interface BrowserRuntimeInfo {
 interface RuntimeSettings {
   browserHeadless: boolean
   automationRuntime?: "patchright"
+  browserBackendDefault?: "patchright" | "persona"
   platformBrowserPreferences?: Partial<Record<PlatformBrowserKey, PlatformBrowserChoice>>
   platformProxyPreferences?: Partial<Record<PlatformProxyKey, PlatformProxyChoice>>
 }
@@ -119,7 +120,7 @@ const isElectron = typeof window !== "undefined" && Boolean((window as any).elec
 
 export function useSettingsActions() {
   const { toast } = useToast()
-  const apiBase = API_ENDPOINTS.base || "http://localhost:7000"
+  const apiBase = API_ENDPOINTS.base
   const [loading, setLoading] = useState<LoadingState>({
     refreshStatus: false,
     restartAll: false,
@@ -167,6 +168,10 @@ export function useSettingsActions() {
               automationRuntime:
                 incomingRuntimeSettings?.automationRuntime ??
                 previousRuntimeSettings?.automationRuntime,
+              browserBackendDefault:
+                incomingRuntimeSettings?.browserBackendDefault ??
+                previousRuntimeSettings?.browserBackendDefault ??
+                "patchright",
               platformBrowserPreferences: {
                 ...DEFAULT_PLATFORM_BROWSER_PREFERENCES,
                 ...(previousRuntimeSettings?.platformBrowserPreferences ?? {}),
@@ -505,6 +510,17 @@ export function useSettingsActions() {
 
       await refreshStatus({ silent: true })
     }, "\u5df2\u542f\u7528 Patchright")
+  }
+
+  const setBrowserBackendDefault = async (browserBackendDefault: "patchright" | "persona") => {
+    await handleAction("setAutomationRuntime", async () => {
+      if (!isElectron) throw new Error("默认浏览器后端切换仅桌面版可用")
+      const electron = (window as any).electronAPI
+      const result = await electron.settings.update({ browserBackendDefault })
+      if (!result.success) throw new Error(result.error || "默认浏览器后端切换失败")
+      updateAppInfo({ runtimeSettings: result.settings })
+      await refreshStatus({ silent: true })
+    }, `已切换为 ${browserBackendDefault}；新浏览器会话立即生效`)
   }
 
   const setPlatformBrowserPreference = async (
@@ -846,6 +862,7 @@ export function useSettingsActions() {
     stopAll,
     setBrowserHeadless,
     setAutomationRuntime,
+    setBrowserBackendDefault,
     setPlatformBrowserPreference,
     setPlatformProxyPreference,
     installPatchright,

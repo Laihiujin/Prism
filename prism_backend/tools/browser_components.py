@@ -136,12 +136,23 @@ def _get_python_package_info(package_name: str) -> Dict[str, Any]:
 def browser_runtime_info() -> Dict[str, Any]:
     """设置页「浏览器管理」用到的运行时信息（含组件安装状态）。"""
     patchright_info = _get_python_package_info("patchright")
+    try:
+        from fastapi_app.services.browser_backend import BrowserBackendManager
+        from fastapi_app.services.browser_runtime import get_browser_runtime_snapshot
+
+        browser_backends = BrowserBackendManager.describe()
+        browser_backend_default = get_browser_runtime_snapshot()
+    except Exception as exc:
+        browser_backends = {}
+        browser_backend_default = {"backend": "patchright", "generation": 1, "error": str(exc)}
     return {
         "pythonPath": sys.executable,
         "browsersPath": str(component_root()),
         "preferredRuntime": "patchright",
         "activeRuntime": "patchright" if patchright_info["installed"] else None,
         "runtimes": {"patchright": patchright_info},
+        "browserBackendDefault": browser_backend_default,
+        "browserBackends": browser_backends,
         "browsers": components_status(),
     }
 

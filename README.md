@@ -139,31 +139,61 @@ tools/               自托管组件：hermes-agent、persona-studio、代理网
 
 ## 快速开始
 
-依赖：Python 3.11、Node 18+、Redis。
+依赖：**Python 3.11、Node 18+、Redis**（必须）。浏览器（Chromium/Firefox）用于账号登录与自动化，首次运行会自动准备。
+
+### ① 安装系统依赖
+
+- **Python 3.11**
+  - macOS：`brew install python@3.11`
+  - Ubuntu：`sudo apt install python3.11`
+  - Windows：官网安装并勾选 *Add to PATH*
+- **Node 18+**：官网或 `brew install node`
+- **Redis**（必需，Prism 的 Celery 队列与账号分布式锁依赖它）
+  - macOS：`brew install redis && redis-server --daemonize yes`
+  - Ubuntu：`sudo apt install redis-server`（装完 `redis-server --daemonize yes`）
+  - Windows：下载 [tporadowski/redis](https://github.com/tporadowski/redis/releases) 的 `Redis-x64-*.zip`，解压到 PATH
+
+### ② 一键环境引导（跨平台）
 
 ```bash
 git clone https://github.com/Laihiujin/Prism.git
 cd Prism
-
-python -m venv prismenv && source prismenv/bin/activate   # Windows: prismenv\Scripts\activate
-pip install -r requirements.txt
-
-cd prism_frontend && npm install && cd ..
-
-cp env.example .env   # 按需配置 REDIS_URL、浏览器路径、API Key
+python3 bootstrap.py            # 创建 prismenv + pip 依赖 + 前端依赖 + 生成 .env + 检查 Redis
 ```
 
-一键启动：
+`bootstrap.py` 是统一的“配方”入口，幂等、可重复执行：
+
+| 命令 | 作用 |
+|---|---|
+| `python3 bootstrap.py` | 完整引导 |
+| `python3 bootstrap.py --dev` | 另装开发/测试依赖 |
+| `python3 bootstrap.py --no-browsers` | 跳过浏览器安装（首次较大） |
+| `python3 bootstrap.py --check` | 只检查环境，不改动 |
+
+### ③ 一键启动
 
 ```bash
+# macOS / Linux（先引导环境，再交给 PM2 托管所有进程）
+./start-mac.sh
+
 # Windows
 start.bat
 
-# macOS（推荐用 PM2 管理）
+# 仅启动（跳过引导，需已运行过 bootstrap.py）：macOS 用 PM2 统一托管
 ./start-pm2.sh
 ```
 
-启动顺序为 Redis → Celery Worker → Automation Worker → FastAPI 后端 → 前端。控制台地址 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
+启动顺序为 **Redis → Celery Worker → Automation Worker → FastAPI 后端 → 前端**。控制台地址 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
+
+> **进程托管**：macOS/Linux 统一由 **PM2** 托管所有进程（`start-pm2.sh` + `ecosystem-mac.config.js`，含 Redis、后端、Worker、Celery、前端、Persona、Hermes），Windows 由内置 **Supervisor** 托管。`start-mac.sh` 只负责把环境准备好（幂等），然后交给 PM2 启动。
+
+> **关于虚拟环境**：仓库统一使用名为 `prismenv` 的虚拟环境（启动脚本、桌面打包、Hermes 运行时都叫它）。`python3 bootstrap.py` 已包含创建 `prismenv` 的步骤；等价的手工命令为
+> ```bash
+> python3.11 -m venv prismenv
+> prismenv/bin/python -m pip install -r requirements.txt   # Windows: prismenv\Scripts\python.exe
+> cd prism_frontend && npm install && cd ..
+> cp env.example .env
+> ```
 
 ## 命令行
 

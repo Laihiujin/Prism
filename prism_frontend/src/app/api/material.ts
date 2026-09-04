@@ -1,8 +1,8 @@
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:7000"
+import { backendBaseUrl } from "@/lib/env"
 
-async function request<T>(path: string, options?: RequestInit) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+async function request<T>(path: string, options?: globalThis.RequestInit) {
+  const response = await fetch(`${backendBaseUrl}${path}`, {
     ...options,
     cache: "no-store",
   })
@@ -22,5 +22,5 @@ export const materialApi = {
       body: formData,
     }),
   deleteMaterial: (id: string) => request(`/api/v1/files/${encodeURIComponent(id)}`, { method: "DELETE" }),
-  getMaterialPreviewUrl: (filename: string) => `${API_BASE_URL}/api/v1/files/${filename}`,
+  getMaterialPreviewUrl: (filename: string) => `${backendBaseUrl}/api/v1/files/${filename}`,
 }

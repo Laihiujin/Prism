@@ -139,31 +139,61 @@ All processes are supervised via PM2 (macOS) or a bundled Supervisor (Windows), 
 
 ## Quick start
 
-Requirements: Python 3.11, Node 18+, Redis.
+Requirements: **Python 3.11, Node 18+, Redis** (required). A browser (Chromium/Firefox) is used for account login and automation and is prepared automatically on first run.
+
+### ① Install system dependencies
+
+- **Python 3.11**
+  - macOS: `brew install python@3.11`
+  - Ubuntu: `sudo apt install python3.11`
+  - Windows: install from python.org and check *Add to PATH*
+- **Node 18+**: from nodejs.org or `brew install node`
+- **Redis** (required — Prism's Celery queue and per-account distributed locks depend on it)
+  - macOS: `brew install redis && redis-server --daemonize yes`
+  - Ubuntu: `sudo apt install redis-server` (then `redis-server --daemonize yes`)
+  - Windows: download the `Redis-x64-*.zip` from [tporadowski/redis](https://github.com/tporadowski/redis/releases) and add it to PATH
+
+### ② One-command environment bootstrap (cross-platform)
 
 ```bash
 git clone https://github.com/Laihiujin/Prism.git
 cd Prism
-
-python -m venv prismenv && source prismenv/bin/activate   # Windows: prismenv\Scripts\activate
-pip install -r requirements.txt
-
-cd prism_frontend && npm install && cd ..
-
-cp env.example .env   # set REDIS_URL, browser paths, API keys as needed
+python3 bootstrap.py            # creates prismenv + pip deps + frontend deps + .env + checks Redis
 ```
 
-Start everything:
+`bootstrap.py` is the single "recipe" entry point — it is idempotent and safe to re-run:
+
+| Command | Effect |
+|---|---|
+| `python3 bootstrap.py` | full bootstrap |
+| `python3 bootstrap.py --dev` | also install development/test deps |
+| `python3 bootstrap.py --no-browsers` | skip browser install (large on first run) |
+| `python3 bootstrap.py --check` | check only, change nothing |
+
+### ③ Start everything
 
 ```bash
+# macOS / Linux (bootstraps the env, then lets PM2 manage every process)
+./start-mac.sh
+
 # Windows
 start.bat
 
-# macOS (PM2-managed, recommended)
+# Start only (skips bootstrap; must have run bootstrap.py first): macOS uses PM2
 ./start-pm2.sh
 ```
 
 This brings up Redis → Celery worker → automation worker → FastAPI backend → frontend, in that order. Console at `http://localhost:3000`, API docs at `http://localhost:7000/api/docs`.
+
+> **Process supervision**: on macOS/Linux all processes are managed by **PM2** (`start-pm2.sh` + `ecosystem-mac.config.js` — Redis, backend, worker, Celery, frontend, Persona, Hermes); on Windows a bundled **Supervisor** does it. `start-mac.sh` only prepares the environment (idempotently), then hands off to PM2.
+
+> **About the virtual env**: the repo uses a single virtual env named `prismenv` (the launcher scripts, desktop packaging and Hermes runtime all refer to it). `python3 bootstrap.py` already includes creating `prismenv`; the equivalent manual commands are
+> ```bash
+> python3.11 -m venv prismenv
+> prismenv/bin/python -m pip install -r requirements.txt   # Windows: prismenv\Scripts\python.exe
+> cd prism_frontend && npm install && cd ..
+> cp env.example .env
+> ```
 
 ## CLI
 
