@@ -328,7 +328,8 @@ Apache License 2.0，详见 [`LICENSE`](./LICENSE)。项目中引入的 MIT / Ap
 
 | | | |
 |-|-|-|
-| ![1d1114b7-9c71-4c18-91df-0a462bed5405](https://github.com/user-attachments/assets/f0c38071-f69a-4262-a339-182c090d4c41) | ![dac9dc35-e027-42e8-b6aa-81f3211906da](https://github.com/user-attachments/assets/761ae5f1-8350-49d6-bba6-de2f01f1b73e) | ![Prism 交流群二维码](docs/prism-qq-group-qr.jpg) |
+| ![1d1114b7-9c71-4c18-91df-0a462bed5405](https://github.com/user-attachments/assets/f0c38071-f69a-4262-a339-182c090d4c41) | ![dac9dc35-e027-42e8-b6aa-81f3211906da](https://github.com/user-attachments/assets/761ae5f1-8350-49d6-bba6-de2f01f1b73e) | <img width="1284" height="2289" alt="prism" src="https://github.com/user-attachments/assets/3d5234d1-2a85-4eea-8435-5d1642790805" />
+ |
 
 <div align="right">
 
