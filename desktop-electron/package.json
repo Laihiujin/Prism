@@ -8,6 +8,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "cross-env PRISM_START_SERVICES=1 PRISM_START_FRONTEND=1 electron .",
+    "dev:watch": "node scripts/dev-watch.js",
     "build": "electron-builder --win --x64",
     "build:dir": "electron-builder --win --x64 --dir",
     "pack": "electron-builder --dir",
