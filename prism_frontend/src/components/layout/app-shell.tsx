@@ -3,6 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react"
 import { usePathname } from "next/navigation"
 import { HermesEmbeddedHost } from "@/components/hermes/hermes-embedded-host"
+import { HermesChatEmbeddedHost } from "@/components/hermes/hermes-chat-embedded-host"
 import { PersonaEmbeddedHost } from "@/components/persona/persona-embedded-host"
 import { SidebarNew } from "@/components/layout/sidebar-new"
 import { NavbarNew } from "@/components/layout/navbar-new"
@@ -59,15 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </Suspense>
           {hermesActive && <HermesEmbeddedHost active />}
-          {hermesChatActive && (
-            <div className="absolute inset-0 z-10 bg-black">
-              <iframe
-                src="http://127.0.0.1:8788/"
-                title="HermesChat"
-                className="block h-full w-full border-0 bg-black"
-              />
-            </div>
-          )}
+          {hermesChatActive && <HermesChatEmbeddedHost active />}
           {personaActive && <PersonaEmbeddedHost active />}
         </main>
       </div>
