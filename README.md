@@ -34,13 +34,9 @@
 
 ## 🟟 产品演示 / Product Demo
 
-**真实交互演示 / Real Interaction Walkthrough**
+**交互演示 / Interaction Walkthrough**
 
 ![walkthrough](docs/demos/prism_wrap.gif)
-
-**14 页功能巡览 / 14-Screen Feature Tour**
-
-![tour](docs/demos/prism_hyperframes_demo.gif)
 
 ---
 
@@ -419,6 +415,6 @@ Apache License 2.0，详见 [`LICENSE`](./LICENSE)。项目中引入的 MIT / Ap
 
 <div align="right">
 
-[⬆ 回到顶部](#prism) · [English Version ↑](README_EN.md)
+[回到顶部](#prism) · [English Version ↑](README_EN.md)
 
 </div>
