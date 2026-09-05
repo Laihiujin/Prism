@@ -291,8 +291,8 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"OpenClaw/Hermes agent init failed (optional): {e}")
 
-    # Hermes UI can be managed centrally by Supervisor in desktop mode.
-    if os.getenv("PRISM_SUPERVISOR_MANAGES_HERMES_UI", "0") != "1":
+    # Hermes UI can be managed centrally by PM2 in desktop mode.
+    if os.getenv("PRISM_PM2_MANAGES_HERMES_UI", "0") != "1":
         try:
             from fastapi_app.agent.hermes_agent import start_hermes_dashboard
 

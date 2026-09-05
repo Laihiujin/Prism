@@ -12,7 +12,7 @@ const restartAllWithFallback = async () => {
     if (!isMissingRestartAllHandler(error)) {
       throw error;
     }
-    return invoke('supervisor:restart-all');
+    return invoke('pm2:restart-all');
   }
 };
 
@@ -62,14 +62,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     clearVideoData: (options) => invoke('system:clear-video-data', options)
   },
 
-  // Supervisor 管理（用于启动管理器）
-  supervisor: {
-    getStatus: () => invoke('supervisor:get-status'),
-    startAll: () => invoke('supervisor:start-all'),
-    stopAll: () => invoke('supervisor:stop-all'),
-    restartAll: () => invoke('supervisor:restart-all'),
-    launchMainApp: () => invoke('supervisor:launch-main-app'),
-    getDiagnostics: () => invoke('supervisor:get-diagnostics')
+  // PM2 管理（用于启动管理器）
+  pm2: {
+    getStatus: () => invoke('pm2:get-status'),
+    startAll: () => invoke('pm2:start-all'),
+    stopAll: () => invoke('pm2:stop-all'),
+    restartAll: () => invoke('pm2:restart-all'),
+    launchMainApp: () => invoke('pm2:launch-main-app'),
+    getDiagnostics: () => invoke('pm2:get-diagnostics')
   },
 
   // 自托管更新（electron-updater generic feed）

@@ -191,8 +191,8 @@
       "requestedExecutionLevel": "asInvoker",
       "extraResources": [
         {
-          "from": "resources/supervisor",
-          "to": "supervisor",
+          "from": "resources/pm2",
+          "to": "pm2",
           "filter": [
             "pm2_controller.js",
             "ecosystem.desktop.config.js"
@@ -280,8 +280,8 @@
       "gatekeeperAssess": false,
       "extraResources": [
         {
-          "from": "resources/supervisor",
-          "to": "supervisor",
+          "from": "resources/pm2",
+          "to": "pm2",
           "filter": [
             "pm2_controller.js",
             "ecosystem.desktop.config.js"

@@ -82,7 +82,7 @@ export function HermesChatEmbeddedHost({ active }: { active: boolean }) {
           return
         }
         // Backend unreachable — keep the fallback URL so the chat iframe still
-        // loads when the desktop supervisor is already serving the WebUI.
+        // loads when the desktop pm2 is already serving the WebUI.
         setReady(true)
         setStartupError("")
       }

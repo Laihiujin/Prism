@@ -41,7 +41,7 @@ class PrismApp {
     this.redisProcess = null;
     this.automationWorkerProcess = null;
     this.frontendProcess = null;
-    this.supervisorProcess = null;
+    this.pm2Process = null;
     this.automationBrowserPath = null;
     this.visualBrowserWindows = new Map();
     this.servicesStarted = false;
@@ -53,10 +53,10 @@ class PrismApp {
     this.frontendPort = 3000;
     this.backendPort = null;
     this.automationWorkerPort = null;
-    // 动态 supervisor API 端口（supervisor 启动后经状态文件发现）
-    this.supervisorApiPort = null;
-    this.supervisorStatePath = null;
-    this.supervisorLaunchToken = null;
+    // 动态 pm2 API 端口（pm2 启动后经状态文件发现）
+    this.pm2ApiPort = null;
+    this.pm2StatePath = null;
+    this.pm2LaunchToken = null;
     this.runtimeSettings = {
       browserHeadless: true,
       automationRuntime: 'patchright',
@@ -81,8 +81,6 @@ class PrismApp {
     this.repoRoot = path.join(__dirname, '../../../');
     this.isPackagedRuntime = this.detectPackagedRuntime();
     this.isDev = !this.isPackagedRuntime;
-    const supervisorPaths = this.getSupervisorPaths();
-    const supervisorExists = Boolean(supervisorPaths.exePath || supervisorPaths.scriptPath);
     this.appIconPath = this.getAppIconPath();
     this.runtimeSettings = this.loadRuntimeSettings();
     process.env.PLAYWRIGHT_HEADLESS = this.runtimeSettings.browserHeadless ? 'true' : 'false';
@@ -94,10 +92,8 @@ class PrismApp {
 
     console.log('App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged, 'isPackagedRuntime:', this.isPackagedRuntime);
     console.log('resourcesPath:', process.resourcesPath);
-    console.log('supervisor paths:', supervisorPaths);
     log.info('App ready. isDev:', this.isDev, 'isPackaged:', app.isPackaged, 'isPackagedRuntime:', this.isPackagedRuntime);
     log.info('resourcesPath:', process.resourcesPath);
-    log.info('supervisor paths:', supervisorPaths);
 
     // 1. 璁剧疆 Playwright 娴忚鍣ㄨ矾寰?
     this.setupAutomationPath();
@@ -122,7 +118,7 @@ class PrismApp {
         // 失败根因上报：弹窗展示诊断摘要 + 写入日志
         const message = error instanceof Error ? error.message : String(error);
         log.error('Services failed to start:', error);
-        const diagnostics = await this.getSupervisorDiagnostics(5000);
+        const diagnostics = await this.getPM2Diagnostics(5000);
         const detail = this.summarizeDiagnostics(diagnostics);
         dialog.showMessageBoxSync({
           type: 'error',
@@ -278,7 +274,6 @@ class PrismApp {
     const executableName = path.basename(process.execPath || '').toLowerCase();
     const runningViaElectronBinary = executableName === 'electron.exe' || executableName === 'electron';
     const packagedMarkers = [
-      path.join(process.resourcesPath, 'supervisor', 'supervisor.exe'),
       path.join(process.resourcesPath, 'frontend', 'standalone', 'server.js'),
       path.join(process.resourcesPath, 'services', 'backend', 'backend.exe')
     ];
@@ -288,40 +283,6 @@ class PrismApp {
 
   getResourcesRoot() {
     return this.isDev ? this.repoRoot : process.resourcesPath;
-  }
-
-  getSupervisorPaths() {
-    const packagedExePath = path.join(process.resourcesPath, 'supervisor', 'supervisor.exe');
-    const packagedScriptPath = path.join(process.resourcesPath, 'supervisor', 'supervisor.py');
-    const devSupervisorDir = path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor');
-    const devExePath = path.join(devSupervisorDir, 'supervisor.exe');
-    const devScriptPath = path.join(devSupervisorDir, 'supervisor.py');
-    const preferScriptInDev = this.isDev;
-    const exePath = preferScriptInDev
-      ? null
-      : this.resolveFirstPath([packagedExePath, devExePath]);
-    const scriptPath = this.resolveFirstPath(
-      preferScriptInDev
-        ? [devScriptPath, packagedScriptPath]
-        : exePath
-          ? []
-          : [packagedScriptPath, devScriptPath]
-    );
-    const fallbackExePath = exePath || (
-      scriptPath
-        ? null
-        : this.resolveFirstPath(
-            this.isDev
-              ? [devExePath, packagedExePath]
-              : [packagedExePath, devExePath]
-          )
-    );
-
-    return {
-      exePath: fallbackExePath,
-      scriptPath,
-      cwd: fallbackExePath ? path.dirname(fallbackExePath) : (scriptPath ? path.dirname(scriptPath) : null)
-    };
   }
 
   normalizeBackendUrl(rawUrl) {
@@ -1444,90 +1405,16 @@ class PrismApp {
     this.mainWindow.focus();
   }
 
-  getSupervisorStatePath() {
-    if (this.supervisorStatePath) {
-      return this.supervisorStatePath;
-    }
-    const explicitPath = process.env.PRISM_SUPERVISOR_STATE_PATH;
-    if (explicitPath) {
-      this.supervisorStatePath = explicitPath;
-      return this.supervisorStatePath;
-    }
-    this.supervisorStatePath = path.join(app.getPath('userData'), 'supervisor-state.json');
-    return this.supervisorStatePath;
+  getPM2ApiPort() {
+    return this.pm2ApiPort || 7002;
   }
 
-  readSupervisorState() {
+  async getPM2Diagnostics(timeoutMs = 5000) {
     try {
-      const raw = fs.readFileSync(this.getSupervisorStatePath(), 'utf8');
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  async waitForSupervisorState(timeoutMs = 30000, pollIntervalMs = 300) {
-    const deadline = Date.now() + timeoutMs;
-    let lastState = null;
-    while (Date.now() < deadline) {
-      const state = this.readSupervisorState();
-      if (state && Number.isInteger(state.apiPort) && state.apiPort > 0) {
-        lastState = state;
-        break;
-      }
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-    }
-    if (!lastState) {
-      throw new Error('Supervisor state file did not appear within timeout (动态端口发现失败)');
-    }
-    this.supervisorApiPort = lastState.apiPort;
-    this.supervisorLaunchToken = lastState.launchToken || null;
-
-    // 从状态文件同步服务端口（权威来源仍是 /api/status，这里先做引导）
-    const servicePorts = lastState.servicePorts || {};
-    if (Number.isInteger(servicePorts.backend) && servicePorts.backend > 0) {
-      log.info(`Bootstrap backend port from supervisor state: ${this.backendPort || 'unset'} -> ${servicePorts.backend}`);
-      this.backendPort = servicePorts.backend;
-    }
-    if (Number.isInteger(servicePorts['automation-worker']) && servicePorts['automation-worker'] > 0) {
-      log.info(`Bootstrap automation-worker port from supervisor state: ${this.automationWorkerPort || 'unset'} -> ${servicePorts['automation-worker']}`);
-      this.automationWorkerPort = servicePorts['automation-worker'];
-    }
-    log.info('Supervisor state discovered:', { apiPort: this.supervisorApiPort, launchToken: Boolean(this.supervisorLaunchToken) });
-    return lastState;
-  }
-
-  cleanupStaleSupervisorFromState() {
-    const state = this.readSupervisorState();
-    if (!state || !Number.isInteger(state.pid) || state.pid <= 0) {
-      return;
-    }
-    if (state.pid === process.pid) {
-      return;
-    }
-    const details = this.getProcessDetails(state.pid);
-    const commandLine = String(details?.commandLine || '').toLowerCase();
-    const executablePath = path.normalize(String(details?.executablePath || '')).toLowerCase();
-    const isSupervisorProcess = commandLine.includes('supervisor') || executablePath.includes('supervisor');
-    if (!isSupervisorProcess) {
-      return;
-    }
-    if (this.terminateProcessByPid(state.pid)) {
-      log.warn(`Terminated stale supervisor from previous state file (pid ${state.pid})`);
-    }
-  }
-
-  getSupervisorApiPort() {
-    return this.supervisorApiPort || 7002;
-  }
-
-  async getSupervisorDiagnostics(timeoutMs = 5000) {
-    try {
-      const payload = await this.requestSupervisor('/api/diagnostics', 'GET', timeoutMs);
+      const payload = await this.requestPM2('/api/diagnostics', 'GET', timeoutMs);
       return payload?.data || payload || null;
     } catch (error) {
-      log.warn('Failed to fetch supervisor diagnostics:', error);
+      log.warn('Failed to fetch pm2 diagnostics:', error);
       return null;
     }
   }
@@ -1537,13 +1424,13 @@ class PrismApp {
     return buildVersionInfo(app.getVersion(), this.getResourcesRoot(), this.repoRoot);
   }
 
-  async requestSupervisor(pathname, method = 'GET', timeoutMs = 20000) {
+  async requestPM2(pathname, method = 'GET', timeoutMs = 20000) {
     const http = require('http');
 
     return new Promise((resolve, reject) => {
       const req = http.request({
         hostname: '127.0.0.1',
-        port: this.getSupervisorApiPort(),
+        port: this.getPM2ApiPort(),
         path: pathname,
         method
       }, (res) => {
@@ -1565,7 +1452,7 @@ class PrismApp {
       req.on('error', reject);
       req.setTimeout(timeoutMs, () => {
         req.destroy();
-        reject(new Error(`Supervisor request timeout: ${pathname}`));
+        reject(new Error(`PM2 request timeout: ${pathname}`));
       });
       req.end();
     });
@@ -1584,12 +1471,12 @@ class PrismApp {
     const nextWorkerPort = parsePort(workerStatus.port);
 
     if (nextBackendPort && nextBackendPort !== this.backendPort) {
-      log.info(`Syncing backend port from supervisor status: ${this.backendPort || 'unset'} -> ${nextBackendPort}`);
+      log.info(`Syncing backend port from pm2 status: ${this.backendPort || 'unset'} -> ${nextBackendPort}`);
       this.backendPort = nextBackendPort;
     }
 
     if (nextWorkerPort && nextWorkerPort !== this.automationWorkerPort) {
-      log.info(`Syncing automation-worker port from supervisor status: ${this.automationWorkerPort || 'unset'} -> ${nextWorkerPort}`);
+      log.info(`Syncing automation-worker port from pm2 status: ${this.automationWorkerPort || 'unset'} -> ${nextWorkerPort}`);
       this.automationWorkerPort = nextWorkerPort;
     }
 
@@ -1614,36 +1501,36 @@ class PrismApp {
     return status;
   }
 
-  async getSupervisorStatus(timeoutMs = 5000) {
-    const statusPayload = await this.requestSupervisor('/api/status', 'GET', timeoutMs);
+  async getPM2Status(timeoutMs = 5000) {
+    const statusPayload = await this.requestPM2('/api/status', 'GET', timeoutMs);
     this.syncManagedServicePortsFromStatus(statusPayload);
     return statusPayload;
   }
 
-  async requestSupervisorRestartAll(timeoutMs = 30000) {
+  async requestPM2RestartAll(timeoutMs = 30000) {
     let lastError = null;
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.requestSupervisor('/api/restart', 'POST', timeoutMs);
+        return await this.requestPM2('/api/restart', 'POST', timeoutMs);
       } catch (error) {
         lastError = error;
         const message = String(error?.message || '');
-        const isTimeout = message.includes('Supervisor request timeout: /api/restart');
+        const isTimeout = message.includes('PM2 request timeout: /api/restart');
 
         if (!isTimeout) {
           throw error;
         }
 
-        log.warn(`Supervisor restart request timed out on attempt ${attempt + 1}; probing restart state...`);
+        log.warn(`PM2 restart request timed out on attempt ${attempt + 1}; probing restart state...`);
 
         try {
-          const restartState = await this.requestSupervisor('/api/restart-status', 'GET', 5000);
+          const restartState = await this.requestPM2('/api/restart-status', 'GET', 5000);
           if (restartState?.data?.restart_in_progress) {
             return { status: 'accepted', message: 'Restart already in progress' };
           }
         } catch (probeError) {
-          log.warn('Failed to probe supervisor restart state after timeout:', probeError);
+          log.warn('Failed to probe pm2 restart state after timeout:', probeError);
         }
 
         if (attempt === 0) {
@@ -1652,16 +1539,16 @@ class PrismApp {
       }
     }
 
-    throw lastError || new Error('Supervisor restart request failed');
+    throw lastError || new Error('PM2 restart request failed');
   }
 
-  async waitForSupervisorServices(timeoutMs = 60000, pollIntervalMs = 1000) {
+  async waitForPM2Services(timeoutMs = 60000, pollIntervalMs = 1000) {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
       try {
-        const restartState = await this.requestSupervisor('/api/restart-status', 'GET', 5000);
-        const statusPayload = await this.getSupervisorStatus(5000);
+        const restartState = await this.requestPM2('/api/restart-status', 'GET', 5000);
+        const statusPayload = await this.getPM2Status(5000);
         const status = statusPayload?.data || {};
         const isServiceReady = (service, { allowDisabled = false, optional = false } = {}) => {
           if (!service) {
@@ -1693,22 +1580,20 @@ class PrismApp {
           return true;
         }
       } catch (error) {
-        log.warn('Waiting for supervisor services failed; retrying...', error);
+        log.warn('Waiting for pm2 services failed; retrying...', error);
       }
 
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
 
-    throw new Error('Timed out waiting for supervisor services to become healthy');
+    throw new Error('Timed out waiting for PM2-managed services to become healthy');
   }
 
   async stopManagedServices() {
-    if (this.supervisorProcess && !this.supervisorProcess.killed) {
-      try {
-        await this.requestSupervisor('/api/stop', 'POST');
-      } catch (error) {
-        log.warn('Failed to stop managed services via supervisor API:', error);
-      }
+    try {
+      await this.requestPM2('/api/stop', 'POST');
+    } catch (error) {
+      log.warn('Failed to stop managed services via pm2 API:', error);
     }
 
     this.cleanup();
@@ -2034,9 +1919,9 @@ class PrismApp {
     const configuredBackendPort = this.getConfiguredBackendPort();
     const reservedPorts = new Set();
 
-    // 禁止把后端/worker 分配到 supervisor 自身 HTTP API 端口(7002)，
-    // 否则 FastAPI 绑定会和 supervisor API 冲突，前端也会把 /api/* 打到 supervisor 上导致 404。
-    reservedPorts.add(this.getSupervisorApiPort());
+    // 禁止把后端/worker 分配到 pm2_controller 的 HTTP API 端口(7002)，
+    // 否则 FastAPI 绑定会和 pm2_controller API 冲突，前端也会把 /api/* 打到 controller 上导致 404。
+    reservedPorts.add(this.getPM2ApiPort());
 
     this.backendPort = await this.resolveManagedPort(
       configuredBackendPort,
@@ -2093,19 +1978,6 @@ class PrismApp {
     }
   }
 
-  getSupervisorResourceMarkers() {
-    const candidates = [
-      path.join(process.resourcesPath, 'supervisor'),
-      path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor')
-    ];
-
-    return [...new Set(
-      candidates
-        .filter(Boolean)
-        .map((candidate) => path.normalize(candidate).toLowerCase())
-    )];
-  }
-
   getManagedServiceResourceMarkers() {
     const candidates = [
       this.repoRoot,
@@ -2115,9 +1987,7 @@ class PrismApp {
       path.join(process.resourcesPath, 'prism_backend'),
       path.join(process.resourcesPath, 'tools', 'hermes-agent'),
       path.join(process.resourcesPath, 'tools', 'hermes-webui'),
-      path.join(process.resourcesPath, 'services', 'backend'),
-      path.join(process.resourcesPath, 'supervisor'),
-      path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor')
+      path.join(process.resourcesPath, 'services', 'backend')
     ];
 
     return [...new Set(
@@ -2144,8 +2014,7 @@ class PrismApp {
         "  'automation_worker\\\\worker.py',",
         "  'tools\\\\hermes-webui\\\\server.py',",
         "  'hermes_cli.main',",
-        "  'celery_app',",
-        "  'supervisor.py'",
+        "  'celery_app'",
         ')',
         '$pids = Get-CimInstance Win32_Process | Where-Object {',
         '  $name = [string]$_.Name',
@@ -2161,7 +2030,7 @@ class PrismApp {
         '    }',
         '  }',
         '  if (-not $belongsToRepo) { return $false }',
-        "  $serviceByName = $name.ToLower() -in @('backend.exe', 'supervisor.exe')",
+        "  $serviceByName = $name.ToLower() -in @('backend.exe')",
         '  $serviceByCommand = $false',
         '  foreach ($keyword in $keywords) {',
         '    if ($cmdLower -and $cmdLower.Contains($keyword)) {',
@@ -2194,59 +2063,6 @@ class PrismApp {
         .filter((value) => Number.isInteger(value) && value > 0);
     } catch (error) {
       log.warn('Failed to inspect repo managed service processes:', error);
-      return [];
-    }
-  }
-
-  listRepoSupervisorPids() {
-    if (process.platform !== 'win32') {
-      return [];
-    }
-
-    try {
-      const markers = this.getSupervisorResourceMarkers()
-        .map((marker) => `'${marker.replace(/'/g, "''")}'`)
-        .join(', ');
-      const psCommand = [
-        '$ErrorActionPreference = "SilentlyContinue"',
-        `$markers = @(${markers})`,
-        '$pids = Get-CimInstance Win32_Process | Where-Object {',
-        '  $name = [string]$_.Name',
-        '  $cmd = [string]$_.CommandLine',
-        '  $exe = [string]$_.ExecutablePath',
-        '  $belongsToRepo = $false',
-        '  foreach ($marker in $markers) {',
-        '    if (($cmd -and $cmd.ToLower().Contains($marker)) -or ($exe -and $exe.ToLower().Contains($marker))) {',
-        '      $belongsToRepo = $true',
-        '      break',
-        '    }',
-        '  }',
-        "  $looksLikeSupervisor = ($name.ToLower() -eq 'supervisor.exe') -or (($name.ToLower().StartsWith('python')) -and $cmd -and $cmd.ToLower().Contains('supervisor.py'))",
-        '  $belongsToRepo -and $looksLikeSupervisor',
-        '} | Select-Object -ExpandProperty ProcessId -Unique',
-        'if ($pids) { $pids | ConvertTo-Json -Compress }'
-      ].join('; ');
-      const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', psCommand], {
-        encoding: 'utf8',
-        windowsHide: true
-      });
-
-      if (result.error || result.status !== 0) {
-        return [];
-      }
-
-      const raw = String(result.stdout || '').trim();
-      if (!raw) {
-        return [];
-      }
-
-      const parsed = JSON.parse(raw);
-      const values = Array.isArray(parsed) ? parsed : [parsed];
-      return values
-        .map((value) => Number.parseInt(value, 10))
-        .filter((value) => Number.isInteger(value) && value > 0);
-    } catch (error) {
-      log.warn('Failed to inspect repo supervisor processes:', error);
       return [];
     }
   }
@@ -2300,40 +2116,6 @@ class PrismApp {
     }
   }
 
-  cleanupStaleSupervisorOnPort(port = 7002) {
-    const candidatePids = new Set(this.listRepoSupervisorPids());
-    for (const pid of this.listListeningPidsByPort(port)) {
-      candidatePids.add(pid);
-    }
-
-    if (candidatePids.size === 0) {
-      return;
-    }
-
-    const repoMarkers = this.getSupervisorResourceMarkers();
-    const terminated = [];
-
-    for (const pid of candidatePids) {
-      const details = this.getProcessDetails(pid);
-      const commandLine = String(details?.commandLine || '').toLowerCase();
-      const executablePath = path.normalize(String(details?.executablePath || '')).toLowerCase();
-      const isSupervisorProcess = commandLine.includes('supervisor') || executablePath.includes('supervisor');
-      const belongsToRepo = repoMarkers.some((marker) => commandLine.includes(marker) || executablePath.includes(marker));
-
-      if (!isSupervisorProcess || !belongsToRepo) {
-        continue;
-      }
-
-      if (this.terminateProcessByPid(pid)) {
-        terminated.push(pid);
-      }
-    }
-
-    if (terminated.length > 0) {
-      log.warn(`Terminated stale repo supervisor process(es) before startup: ${terminated.join(', ')}`);
-    }
-  }
-
   cleanupStaleManagedServices() {
     const terminated = [];
 
@@ -2355,21 +2137,9 @@ class PrismApp {
 
     this.cleanupStaleManagedServices();
     await this.prepareManagedServicePorts();
-    console.log('Using PM2 to manage backend services (replaces supervisor)...');
-    log.info('Using PM2 to manage backend services (replaces supervisor)...');
-    this.startSupervisor();
-    await this.waitForSupervisorState(30000);
-    try {
-      await this.waitForSupervisorServices(90000, 1500);
-    } catch (error) {
-      // 失败根因上报：把 supervisor 诊断摘要附加到异常信息
-      const diagnostics = await this.getSupervisorDiagnostics(5000);
-      const summary = this.summarizeDiagnostics(diagnostics);
-      const wrapped = new Error(`${error.message}${summary ? ` — ${summary}` : ''}`);
-      wrapped.cause = diagnostics;
-      log.error('Supervisor services failed to become healthy:', wrapped);
-      throw wrapped;
-    }
+    console.log('Using PM2 to manage backend services (replaces pm2)...');
+    log.info('Using PM2 to manage backend services (replaces pm2)...');
+    this.startPM2();
     // 前端亦由 PM2 托管（ecosystem.desktop.config.js 的 prism-frontend），
     // 主进程不再单独启动前端，仅同步端口供 renderer 加载。
     this.frontendPort = Number.parseInt(String(process.env.PRISM_FRONTEND_PORT || '3000'), 10);
@@ -2391,65 +2161,41 @@ class PrismApp {
     return failed.length > 0 ? `失败服务: ${failed.join('; ')}` : '';
   }
 
-  startSupervisor() {
-    if (this.supervisorProcess) {
+  startPM2() {
+    // 服务进程改由 PM2 托管（ecosystem.desktop.config.js）。
+    // 桌面打包应用需要自管理：由主进程拉起 pm2_controller，该控制器用 PM2 托管全部服务，
+    // 并在 :7002（默认）提供与旧 pm2 一致的状态/重启 HTTP API 供主进程调用。
+    const resourcesRoot = this.getResourcesRoot();
+    const controllerPath = path.join(resourcesRoot, 'pm2', 'pm2_controller.js');
+    if (!fs.existsSync(controllerPath)) {
+      log.warn('pm2_controller.js not found at', controllerPath, '; 跳过本地控制器启动');
       return;
     }
-
-    this.ensurePrismenvConfig();
-    this.cleanupStaleSupervisorFromState();
-    this.cleanupStaleSupervisorOnPort(7002);
-    // 全面改用 PM2 管理进程：启动 PM2 controller 代替原 supervisor.py。
-    const controllerPath = this.isDev
-      ? path.join(this.repoRoot, 'desktop-electron', 'resources', 'supervisor', 'pm2_controller.js')
-      : path.join(process.resourcesPath, 'supervisor', 'pm2_controller.js');
-
-    console.log('PM2 controller path:', controllerPath);
-    log.info('Starting PM2 controller (replaces supervisor)...');
-    log.info('  - Controller path:', controllerPath);
-    log.info('  - Exists:', Boolean(controllerPath && fs.existsSync(controllerPath)));
-
-    if (!fs.existsSync(controllerPath)) {
-      throw new Error('PM2 controller not found in packaged resources or desktop-electron/resources/supervisor');
-    }
-
-    // 构建环境：沿用 buildServiceEnv()（含 PRISM_*/PLAYWRIGHT_*/HERMES_* 及端口），
-    // 补上状态文件路径（动态端口发现）与 PM2 数据目录（必须可写）。
-    const env = this.buildServiceEnv();
-    // 动态端口发现：PM2 controller 把 API 端口/服务端口/启动令牌写入状态文件
-    env.PRISM_SUPERVISOR_STATE_PATH = this.getSupervisorStatePath();
-    env.PM2_HOME = path.join(app.getPath('userData'), 'pm2');
-
-    this.supervisorProcess = spawn(process.execPath, [controllerPath], {
-      cwd: this.getResourcesRoot(),
-      env: { ...env, ELECTRON_RUN_AS_NODE: '1' },
-      windowsHide: true
+    const userData = app.getPath('userData');
+    // 显式注入服务端口，覆盖可能残留的 process.env（如测试环境写死的 BACKEND_PORT=7000），
+    // 确保 PM2 托管的服务与前端 bundle 使用同一端口。
+    const env = {
+      ...process.env,
+      PM2_HOME: path.join(userData, 'pm2'),
+      PRISM_PM2_STATE_PATH: path.join(userData, 'pm2-state.json'),
+      PM2_API_PORT: String(this.getPM2ApiPort()),
+      ELECTRON_RUN_AS_NODE: '1',
+      BACKEND_PORT: String(this.backendPort || 9200),
+      PRISM_BACKEND_PORT: String(this.backendPort || 9200),
+      AUTOMATION_WORKER_PORT: String(this.automationWorkerPort || 7001),
+      PRISM_AUTOMATION_WORKER_PORT: String(this.automationWorkerPort || 7001),
+      PRISM_HERMES_DASHBOARD_PORT: String(this.getConfiguredHermesDashboardPort?.() || 9119),
+      PRISM_HERMES_WEBUI_PORT: String(this.getConfiguredHermesWebuiPort?.() || 9131),
+      PRISM_FRONTEND_PORT: String(this.frontendPort || 3000),
+      PRISM_DEEPSEEK_HARNESS_PORT: String(3080),
+    };
+    this.pm2Process = spawn(process.execPath, [controllerPath], {
+      env,
+      cwd: resourcesRoot,
+      windowsHide: true,
     });
-
-    this.supervisorProcess.on('error', (error) => {
-      console.error('PM2 controller failed to start:', error);
-      log.error('PM2 controller failed to start:', error);
-    });
-
-    this.supervisorProcess.stdout?.on('data', (data) => {
-      console.log('[PM2 Controller]', data.toString());
-      log.info('[PM2 Controller]', data.toString());
-    });
-
-    this.supervisorProcess.stderr?.on('data', (data) => {
-      console.error('[PM2 Controller Error]', data.toString());
-      log.error('[PM2 Controller Error]', data.toString());
-    });
-
-    this.supervisorProcess.on('exit', (code) => {
-      console.warn(`PM2 controller exited with code: ${code}`);
-      log.warn(`PM2 controller exited with code: ${code}`);
-      this.supervisorProcess = null;
-      this.lastSupervisorExit = { code, at: Date.now() };
-    });
-
-    console.log('PM2 controller started');
-    log.info('PM2 controller started');
+    this.pm2Process.on('error', (e) => log.error('pm2_controller failed to start:', e));
+    log.info('pm2_controller spawned:', controllerPath, 'pid', this.pm2Process?.pid);
   }
 
   async startRedis(env) {
@@ -2969,17 +2715,17 @@ class PrismApp {
         frontendPort: this.getFrontendPort(),
         systemApiBaseUrl: this.getSystemApiBaseUrl(),
         versionInfo: this.getVersionInfo(),
-        supervisorApiPort: this.getSupervisorApiPort()
+        pm2ApiPort: this.getPM2ApiPort()
       };
     });
 
-    // 失败根因上报：supervisor 诊断
-    ipcMain.handle('supervisor:get-diagnostics', async () => {
+    // 失败根因上报：pm2 诊断
+    ipcMain.handle('pm2:get-diagnostics', async () => {
       return {
         success: true,
-        diagnostics: await this.getSupervisorDiagnostics(5000),
-        supervisorExit: this.lastSupervisorExit || null,
-        supervisorApiPort: this.getSupervisorApiPort()
+        diagnostics: await this.getPM2Diagnostics(5000),
+        pm2Exit: this.lastPM2Exit || null,
+        pm2ApiPort: this.getPM2ApiPort()
       };
     });
 
@@ -3103,10 +2849,11 @@ class PrismApp {
     ipcMain.handle('system:restart-frontend', async () => {
       log.info('Restarting frontend service...');
       try {
-        // 前端由 PM2 托管，重启走 PM2 controller 的 /api/restart/prism-frontend
-        if (this.supervisorProcess && !this.supervisorProcess.killed) {
-          await this.requestSupervisor('/api/restart/prism-frontend', 'POST', 30000);
-        } else if (this.frontendProcess) {
+        // 前端由 PM2 controller 托管，重启走其 /api/restart/prism-frontend（优先 :7002）；失败再回退本地前端进程。
+        try {
+          await this.requestPM2('/api/restart/prism-frontend', 'POST', 30000);
+        } catch (pm2Err) {
+          if (!this.frontendProcess) throw pm2Err;
           this.frontendProcess.kill();
           this.frontendProcess = null;
           await this.startFrontend();
@@ -3123,9 +2870,10 @@ class PrismApp {
     ipcMain.handle('system:restart-backend', async () => {
       log.info('Restarting backend service...');
       try {
-        if (this.supervisorProcess && !this.supervisorProcess.killed) {
-          await this.requestSupervisor('/api/restart/backend', 'POST', 30000);
-        } else {
+        // 后端由 PM2 controller 托管，重启走其 /api/restart/backend（优先 :7002）；失败再回退本地后端进程。
+        try {
+          await this.requestPM2('/api/restart/backend', 'POST', 30000);
+        } catch (pm2Err) {
           if (this.backendProcess) {
             this.backendProcess.kill();
             this.backendProcess = null;
@@ -3185,9 +2933,9 @@ class PrismApp {
           running: this.backendProcess !== null && !this.backendProcess.killed,
           pid: this.backendProcess?.pid
         },
-        supervisor: {
-          running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
-          pid: this.supervisorProcess?.pid
+        pm2: {
+          running: this.pm2Process !== null && !this.pm2Process.killed,
+          pid: this.pm2Process?.pid
         },
         automation_worker: {
           running: this.automationWorkerProcess !== null && !this.automationWorkerProcess.killed,
@@ -3212,87 +2960,69 @@ class PrismApp {
       };
     });
 
-    // ========== Supervisor 绠＄悊 IPC (閫氳繃 HTTP API 涓?supervisor 閫氫俊) ==========
+    // ========== PM2 绠＄悊 IPC (閫氳繃 HTTP API 涓?pm2 閫氫俊) ==========
 
-    // 鑾峰彇 supervisor 绠＄悊鐨勬湇鍔＄姸鎬?
-    ipcMain.handle('supervisor:get-status', async () => {
+    // 鑾峰彇 pm2 绠＄悊鐨勬湇鍔＄姸鎬?
+    ipcMain.handle('pm2:get-status', async () => {
+      // 优先从 :7002（pm2_controller）拉取受管服务状态；不可达时回退本地进程快照。
+      let payload;
       try {
-        if (!this.supervisorProcess || this.supervisorProcess.killed) {
-          return {
-            frontend: {
-              running: this.frontendProcess !== null && !this.frontendProcess.killed,
-              pid: this.frontendProcess?.pid
-            },
-            backend: {
-              running: this.backendProcess !== null && !this.backendProcess.killed,
-              pid: this.backendProcess?.pid
-            },
-            supervisor: {
-              running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
-              pid: this.supervisorProcess?.pid
-            },
-            automation_worker: {
-              running: this.automationWorkerProcess !== null && !this.automationWorkerProcess.killed,
-              pid: this.automationWorkerProcess?.pid
-            },
-            celery_worker: {
-              running: this.celeryProcess !== null && !this.celeryProcess.killed,
-              pid: this.celeryProcess?.pid
-            },
-            hermes_gateway: {
-              running: false,
-              pid: null,
-            },
-            hermes_dashboard: {
-              running: false,
-              pid: null,
-            },
-            hermes_webui: {
-              running: false,
-              pid: null,
-            }
-          };
-        }
-
-        const result = await this.getSupervisorStatus(5000);
-        const payload = result?.data || {};
-        payload.frontend = {
-          running: this.frontendProcess !== null && !this.frontendProcess.killed,
-          pid: this.frontendProcess?.pid
-        };
-        const workerStatus = payload.automation_worker || payload.worker || { running: false, pid: null, external: false };
-        const celeryStatus = payload.celery_worker || payload.celery || { running: false, pid: null, external: false };
-        const gatewayStatus = payload.hermes_gateway || payload.gateway || { running: false, pid: null, external: false };
-        const hermesDashboardStatus = payload.hermes_dashboard || payload.dashboard || { running: false, pid: null, external: false };
-        const hermesWebuiStatus = payload.hermes_webui || payload.webui || { running: false, pid: null, external: false };
+        const result = await this.getPM2Status(5000);
+        payload = result?.data || {};
+      } catch (pm2Err) {
         return {
-          backend: payload.backend || { running: false, pid: null, external: false },
-          automation_worker: workerStatus,
-          celery_worker: celeryStatus,
-          hermes_gateway: gatewayStatus,
-          hermes_dashboard: hermesDashboardStatus,
-          hermes_webui: hermesWebuiStatus,
-          frontend: payload.frontend,
-          supervisor: {
-            running: this.supervisorProcess !== null && !this.supervisorProcess.killed,
-            pid: this.supervisorProcess?.pid
-          }
+          frontend: {
+            running: this.frontendProcess !== null && !this.frontendProcess.killed,
+            pid: this.frontendProcess?.pid
+          },
+          backend: {
+            running: this.backendProcess !== null && !this.backendProcess.killed,
+            pid: this.backendProcess?.pid
+          },
+          pm2: { running: false, pid: null },
+          automation_worker: {
+            running: this.automationWorkerProcess !== null && !this.automationWorkerProcess.killed,
+            pid: this.automationWorkerProcess?.pid
+          },
+          celery_worker: {
+            running: this.celeryProcess !== null && !this.celeryProcess.killed,
+            pid: this.celeryProcess?.pid
+          },
+          hermes_gateway: { running: false, pid: null },
+          hermes_dashboard: { running: false, pid: null },
+          hermes_webui: { running: false, pid: null }
         };
-      } catch (error) {
-        log.error('Failed to get supervisor status:', error);
-        throw error;
       }
+      payload.frontend = {
+        running: this.frontendProcess !== null && !this.frontendProcess.killed,
+        pid: this.frontendProcess?.pid
+      };
+      const workerStatus = payload.automation_worker || payload.worker || { running: false, pid: null, external: false };
+      const celeryStatus = payload.celery_worker || payload.celery || { running: false, pid: null, external: false };
+      const gatewayStatus = payload.hermes_gateway || payload.gateway || { running: false, pid: null, external: false };
+      const hermesDashboardStatus = payload.hermes_dashboard || payload.dashboard || { running: false, pid: null, external: false };
+      const hermesWebuiStatus = payload.hermes_webui || payload.webui || { running: false, pid: null, external: false };
+      return {
+        backend: payload.backend || { running: false, pid: null, external: false },
+        automation_worker: workerStatus,
+        celery_worker: celeryStatus,
+        hermes_gateway: gatewayStatus,
+        hermes_dashboard: hermesDashboardStatus,
+        hermes_webui: hermesWebuiStatus,
+        frontend: payload.frontend,
+        pm2: { running: true, pid: null }
+      };
     });
 
     // 鍚姩鎵€鏈夋湇鍔?
-    ipcMain.handle('supervisor:start-all', async () => {
+    ipcMain.handle('pm2:start-all', async () => {
       try {
         const http = require('http');
 
         return new Promise((resolve, reject) => {
           const req = http.request({
             hostname: '127.0.0.1',
-            port: this.getSupervisorApiPort(),
+            port: this.getPM2ApiPort(),
             path: '/api/start',
             method: 'POST'
           }, (res) => {
@@ -3321,20 +3051,20 @@ class PrismApp {
           req.end();
         });
       } catch (error) {
-        log.error('Failed to start supervisor-managed services:', error);
+        log.error('Failed to start pm2-managed services:', error);
         return { success: false, error: error.message };
       }
     });
 
     // 鍋滄鎵€鏈夋湇鍔?
-    ipcMain.handle('supervisor:stop-all', async () => {
+    ipcMain.handle('pm2:stop-all', async () => {
       try {
         const http = require('http');
 
         return new Promise((resolve, reject) => {
           const req = http.request({
             hostname: '127.0.0.1',
-            port: this.getSupervisorApiPort(),
+            port: this.getPM2ApiPort(),
             path: '/api/stop',
             method: 'POST'
           }, (res) => {
@@ -3366,24 +3096,24 @@ class PrismApp {
           req.end();
         });
       } catch (error) {
-        log.error('Failed to stop supervisor-managed services:', error);
+        log.error('Failed to stop pm2-managed services:', error);
         return { success: false, error: error.message };
       }
     });
 
     // 閲嶅惎鎵€鏈夋湇鍔?
-    ipcMain.handle('supervisor:restart-all', async () => {
+    ipcMain.handle('pm2:restart-all', async () => {
       try {
         await this.restartManagedServices();
         return { success: true, message: 'Restart completed' };
       } catch (error) {
-        log.error('Failed to restart supervisor-managed services:', error);
+        log.error('Failed to restart pm2-managed services:', error);
         return { success: false, error: error.message };
       }
     });
 
     // 鍚姩涓诲簲鐢?
-    ipcMain.handle('supervisor:launch-main-app', async () => {
+    ipcMain.handle('pm2:launch-main-app', async () => {
       try {
         // 鍏抽棴鍚姩绠＄悊鍣ㄧ獥鍙?
         if (this.launcherWindow) {
@@ -3536,9 +3266,6 @@ class PrismApp {
 
     stopProcess(this.redisProcess, 'redis');
     this.redisProcess = null;
-
-    stopProcess(this.supervisorProcess, 'supervisor');
-    this.supervisorProcess = null;
 
     this.servicesStarted = false;
     log.info('Resource cleanup complete');
