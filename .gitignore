@@ -258,3 +258,6 @@ prism_backend/logs/douyin_preview_screenshot.png
 
 #爬虫登录态配置(cookie/ttwid,运行时写入,不入库)
 prism_backend/douyin_tiktok_api/crawlers/**/config.yaml
+_scan.sh
+_sub.sh
+_precise.sh

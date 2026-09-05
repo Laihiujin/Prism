@@ -2,9 +2,16 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-if not defined PRISM_BACKEND_HOST set "PRISM_BACKEND_HOST=127.0.0.1"
-if not defined PRISM_BACKEND_PORT set "PRISM_BACKEND_PORT=7000"
-if not defined PRISM_BACKEND_URL set "PRISM_BACKEND_URL=http://%PRISM_BACKEND_HOST%:%PRISM_BACKEND_PORT%"
+set "ROOT=%~dp0"
+set "PY=%ROOT%prismenv\Scripts\python.exe"
+rem 默认后端地址：优先取 runtime.json 的动态端口；无栈/未引导时回退 :7000。
+rem 外部可通过 PRISM_BACKEND_URL / PRISM_BACKEND_PORT 显式指定，仍生效。
+if not defined PRISM_BACKEND_URL (
+  if exist "%PY%" (
+    for /f "usebackq delims=" %%I in (`"%PY%" -c "import json,pathlib;print(json.loads(pathlib.Path(r'%ROOT%runtime-data\runtime.json').read_text()).get('backend_url','http://127.0.0.1:7000'))"`) do set "PRISM_BACKEND_URL=%%I"
+  )
+)
+if not defined PRISM_BACKEND_URL set "PRISM_BACKEND_URL=http://127.0.0.1:7000"
 set "BACKEND_URL=%PRISM_BACKEND_URL%"
 set "PRISM_USE_EXTERNAL_STACK=1"
 set "PRISM_START_SERVICES=0"
