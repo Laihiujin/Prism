@@ -819,8 +819,8 @@ class TabManager {
         };
 
         try {
-            if (window.electronAPI?.supervisor?.getStatus) {
-                const status = await window.electronAPI.supervisor.getStatus();
+            if (window.electronAPI?.pm2?.getStatus) {
+                const status = await window.electronAPI.pm2.getStatus();
                 const dashboardCandidate = String(
                     status?.hermes_dashboard?.dashboard_url
                     || status?.hermes_dashboard?.url
@@ -1055,7 +1055,7 @@ async function refreshRuntimeInfo() {
         const bits = [];
         if (info?.backendPort) bits.push(`端口 ${info.backendPort}`);
         if (info?.backendUrl) bits.push(info.backendUrl);
-        if (info?.supervisorApiPort) bits.push(`Supervisor ${info.supervisorApiPort}`);
+        if (info?.pm2ApiPort) bits.push(`PM2 ${info.pm2ApiPort}`);
         backendEl.textContent = bits.join(' · ') || '未知';
     } catch (error) {
         backendEl.textContent = '获取失败';
@@ -1064,11 +1064,11 @@ async function refreshRuntimeInfo() {
 
 async function refreshServiceStatus() {
     const statusEl = document.getElementById('settings-service-status');
-    if (!statusEl || !window.electronAPI?.supervisor?.getStatus) {
+    if (!statusEl || !window.electronAPI?.pm2?.getStatus) {
         return;
     }
     try {
-        const status = await window.electronAPI.supervisor.getStatus();
+        const status = await window.electronAPI.pm2.getStatus();
         const data = status?.data || status || {};
         const entries = [];
         for (const key of ['backend', 'automation_worker', 'celery_worker', 'hermes_dashboard', 'hermes_webui']) {
@@ -1123,7 +1123,7 @@ function showToast(message, type = 'info') {
 
 async function restartAllServices() {
     try {
-        const response = await fetch(`${API_BASE}/supervisor/restart`, { method: 'POST' });
+        const response = await fetch(`${API_BASE}/pm2/restart`, { method: 'POST' });
         if (response.ok) {
             showToast('✅ 所有服务已重启');
         } else {
@@ -1137,7 +1137,7 @@ async function restartAllServices() {
 
 async function restartBackendService() {
     try {
-        const response = await fetch(`${API_BASE}/supervisor/restart/backend`, { method: 'POST' });
+        const response = await fetch(`${API_BASE}/pm2/restart/backend`, { method: 'POST' });
         if (response.ok) {
             showToast('✅ 后端服务已重启');
         } else {
@@ -1153,7 +1153,7 @@ async function stopAllServices() {
     if (!confirm('确认停止所有服务？')) return;
 
     try {
-        const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+        const response = await fetch(`${API_BASE}/pm2/stop`, { method: 'POST' });
         if (response.ok) {
             showToast('⏹ 所有服务已停止');
         } else {
@@ -1287,7 +1287,7 @@ async function forceKillAllProcesses() {
     if (!confirm('确认强制终止所有进程？')) return;
 
     try {
-        const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+        const response = await fetch(`${API_BASE}/pm2/stop`, { method: 'POST' });
 
         if (response.ok) {
             showToast('✅ 进程已强制终止');
@@ -1307,7 +1307,7 @@ restartAllServices = async function () {
                 throw new Error(result?.error || '服务重启失败');
             }
         } else {
-            const response = await fetch(`${API_BASE}/supervisor/restart`, { method: 'POST' });
+            const response = await fetch(`${API_BASE}/pm2/restart`, { method: 'POST' });
             if (!response.ok) {
                 const data = await response.json();
                 throw new Error(data.detail || '服务重启失败');
@@ -1330,7 +1330,7 @@ stopAllServices = async function () {
                 throw new Error(result?.error || '停止服务失败');
             }
         } else {
-            const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+            const response = await fetch(`${API_BASE}/pm2/stop`, { method: 'POST' });
             if (!response.ok) {
                 const data = await response.json();
                 throw new Error(data.detail || '停止服务失败');

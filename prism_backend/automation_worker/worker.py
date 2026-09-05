@@ -187,7 +187,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 _BASE_DIR = Path(__file__).resolve().parent.parent  # prism_backend
 _ROOT_ENV = _APP_ROOT / ".env"
 if _ROOT_ENV.exists():
-    # Keep supervisor/Electron-provided env values authoritative.
+    # Keep pm2/Electron-provided env values authoritative.
     load_dotenv(_ROOT_ENV, override=False)
 
 

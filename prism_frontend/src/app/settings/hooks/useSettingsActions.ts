@@ -42,7 +42,7 @@ interface ServiceStatus {
 interface RuntimeStatus {
   frontend?: ServiceStatus
   backend?: ServiceStatus
-  supervisor?: ServiceStatus
+  pm2?: ServiceStatus
   automation_worker?: ServiceStatus
   celery_worker?: ServiceStatus
   hermes_gateway?: ServiceStatus
@@ -313,9 +313,9 @@ export function useSettingsActions() {
       if (isElectron) {
         const electron = (window as any).electronAPI
         let nextStatus = null
-        if (electron.supervisor?.getStatus) {
+        if (electron.pm2?.getStatus) {
           try {
-            nextStatus = await electron.supervisor.getStatus()
+            nextStatus = await electron.pm2.getStatus()
           } catch {
             nextStatus = await electron.system.getStatus()
           }
@@ -376,7 +376,7 @@ export function useSettingsActions() {
           throw new Error(result.error || "服务重启失败")
         }
       } else {
-        const response = await fetch(`${apiBase}/api/v1/system/supervisor/restart`, {
+        const response = await fetch(`${apiBase}/api/v1/system/pm2/restart`, {
           method: "POST",
         })
         if (!response.ok) {
@@ -396,7 +396,7 @@ export function useSettingsActions() {
           throw new Error(result.error || "后端重启失败")
         }
       } else {
-        const response = await fetch(`${apiBase}/api/v1/system/supervisor/restart/backend`, {
+        const response = await fetch(`${apiBase}/api/v1/system/pm2/restart/backend`, {
           method: "POST",
         })
         if (!response.ok) {
@@ -436,7 +436,7 @@ export function useSettingsActions() {
           throw new Error(result.error || "停止服务失败")
         }
       } else {
-        const response = await fetch(`${apiBase}/api/v1/system/supervisor/stop`, {
+        const response = await fetch(`${apiBase}/api/v1/system/pm2/stop`, {
           method: "POST",
         })
         if (!response.ok) {
@@ -615,7 +615,7 @@ export function useSettingsActions() {
 
   const restartServicesAfterBrowserAssetChange = async () => {
     const restartViaBackend = async () => {
-      const response = await fetch(`${apiBase}/api/v1/system/supervisor/restart`, {
+      const response = await fetch(`${apiBase}/api/v1/system/pm2/restart`, {
         method: "POST",
       })
       const data = await response.json().catch(() => ({}))
@@ -897,7 +897,7 @@ export function useSettingsActions() {
           throw new Error(result.error || "强制停止失败")
         }
       } else {
-        const response = await fetch(`${apiBase}/api/v1/system/supervisor/stop`, {
+        const response = await fetch(`${apiBase}/api/v1/system/pm2/stop`, {
           method: "POST",
         })
         if (!response.ok) {

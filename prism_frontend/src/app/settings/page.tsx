@@ -67,7 +67,7 @@ type ConfirmState = {
 const statusLabels: Record<string, string> = {
   frontend: "前端",
   backend: "后端",
-  supervisor: "调度器",
+  pm2: "PM2",
   automation_worker: "Automation Worker",
   celery_worker: "Celery Worker",
   hermes_gateway: "Hermes Gateway",
@@ -225,16 +225,6 @@ export default function SettingsPage() {
     setBrowserHeadless,
     setAutomationRuntime,
     setBrowserBackendDefault,
-    installPatchright,
-    uninstallPatchright,
-    installChromium,
-    installFirefox,
-    uninstallChromium,
-    uninstallFirefox,
-    browserProviderAction,
-    installBrowserProvider,
-    applyBrowserProvider,
-    uninstallBrowserProvider,
     quitApp,
     clearMaterials,
     clearAccounts,
@@ -273,9 +263,6 @@ export default function SettingsPage() {
 
   const serviceEntries = Object.entries(status ?? {}).filter(([, value]) => value)
   const browserRuntimeInfo = appInfo?.browserRuntimeInfo
-  const downloadableBrowserProviders = browserRuntimeInfo?.providerRegistry?.providers?.filter(
-    (provider) => provider.installable && provider.userSelectable && provider.compatible && provider.id !== "persona"
-  ) || []
   const currentRuntime =
     appInfo?.runtimeSettings?.automationRuntime ?? browserRuntimeInfo?.preferredRuntime ?? "patchright"
   const browserHeadless = appInfo?.runtimeSettings?.browserHeadless
@@ -735,244 +722,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="border-border/70 bg-card">
-            <CardHeader>
-              <CardTitle className="text-foreground">自动化运行时</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Patchright 是 Prism 唯一支持的生产自动化运行时。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3">
-              <div className="rounded-xl border border-border/70 bg-card p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium text-foreground">Patchright</div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      browserRuntimeInfo?.runtimes?.patchright?.installed
-                        ? "border-border bg-black text-foreground"
-                        : "border-border/70 bg-card text-muted-foreground"
-                    }
-                  >
-                    {browserRuntimeInfo?.runtimes?.patchright?.installed
-                      ? `已安装 ${browserRuntimeInfo?.runtimes?.patchright?.version || ""}`.trim()
-                      : "未安装"}
-                  </Badge>
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {browserRuntimeInfo?.activeRuntime === "patchright"
-                    ? "当前已启用"
-                    : browserRuntimeInfo?.runtimes?.patchright?.installed
-                      ? "可切换为默认自动化运行时"
-                      : browserRuntimeInfo?.runtimes?.patchright?.error || "推荐用于 Chromium 自动化"}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={() => void installPatchright()}
-                    disabled={loading.installPatchright}
-                    variant="secondary"
-                    className="flex-1 border-border/70 bg-card text-foreground hover:bg-accent/40"
-                  >
-                    {loading.installPatchright ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        安装中...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="mr-2 h-4 w-4" />
-                        {browserRuntimeInfo?.runtimes?.patchright?.installed ? "重装 Patchright" : "安装 Patchright"}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => void uninstallPatchright()}
-                    disabled={loading.uninstallPatchright || !browserRuntimeInfo?.runtimes?.patchright?.installed}
-                    variant="secondary"
-                    className="border border-border/70 bg-card text-foreground/70 hover:bg-accent/40"
-                  >
-                    {loading.uninstallPatchright ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        卸载中...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        卸载
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/70 bg-card">
-            <CardHeader>
-              <CardTitle className="text-foreground">浏览器资源</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                管理本地 Chromium / Firefox 资源包。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3">
-              {downloadableBrowserProviders.map((provider) => (
-                <div key={provider.id} className={provider.experimental ? "rounded-xl border border-amber-500/40 bg-card p-4" : "rounded-xl border border-border/70 bg-card p-4"}>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="font-medium text-foreground">{provider.name}</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(provider.labels || []).map((label) => <Badge key={label} variant="outline" className={provider.experimental ? "border-amber-500/50 text-amber-400" : ""}>{label}</Badge>)}
-                      <Badge variant="outline">{provider.active ? "应用中" : provider.installed ? "已下载" : "未下载"}</Badge>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    不会自动下载。下载、应用和卸载均由用户手动操作；切换只影响之后创建的浏览器会话。
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button onClick={() => void installBrowserProvider(provider.id, provider.name)} disabled={browserProviderAction !== null} variant="secondary" className="flex-1">
-                      {browserProviderAction === `install:${provider.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                      {provider.installed ? "检查并下载新版本" : "下载"}
-                    </Button>
-                    <Button onClick={() => void applyBrowserProvider(provider.id, provider.name)} disabled={browserProviderAction !== null || !provider.installed || provider.active} variant="secondary">
-                      {browserProviderAction === `apply:${provider.id}` && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {provider.active ? "应用中" : "应用"}
-                    </Button>
-                    <Button onClick={() => void uninstallBrowserProvider(provider.id, provider.name)} disabled={browserProviderAction !== null || !provider.installed} variant="secondary">
-                      {browserProviderAction === `uninstall:${provider.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                      卸载
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              <div className="rounded-xl border border-border/70 bg-card p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium text-foreground">Chromium</div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      browserRuntimeInfo?.browsers?.chromium?.installed
-                        ? "border-border bg-black text-foreground"
-                        : "border-border/70 bg-card text-muted-foreground"
-                    }
-                  >
-                    {browserRuntimeInfo?.browsers?.chromium?.installed ? "已安装" : "未安装"}
-                  </Badge>
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {browserRuntimeInfo?.browsers?.chromium?.version
-                    ? `当前版本: ${browserRuntimeInfo?.browsers?.chromium?.version}`
-                    : "由 Tools 安装到 Prism runtime-data，可随时切换或卸载。"}
-                </div>
-                <div className="mt-3 break-all font-mono text-xs text-foreground/70">
-                  {browserRuntimeInfo?.browsers?.chromium?.path || "安装后会在这里显示实际可执行文件路径。"}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={() => void installChromium()}
-                    disabled={loading.installChromium}
-                    variant="secondary"
-                    className="flex-1 border-border/70 bg-card text-foreground hover:bg-accent/40"
-                  >
-                    {loading.installChromium ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        安装中...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="mr-2 h-4 w-4" />
-                        {browserRuntimeInfo?.browsers?.chromium?.installed ? "重装 Chromium" : "下载 Chromium"}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => void uninstallChromium()}
-                    disabled={loading.uninstallChromium || !browserRuntimeInfo?.browsers?.chromium?.installed}
-                    variant="secondary"
-                    className="border border-border/70 bg-card text-foreground/70 hover:bg-accent/40"
-                  >
-                    {loading.uninstallChromium ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        卸载
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-border/70 bg-card p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium text-foreground">Firefox</div>
-                  <Badge
-                    variant="outline"
-                    className={
-                      browserRuntimeInfo?.browsers?.firefox?.installed
-                        ? "border-border bg-black text-foreground"
-                        : "border-border/70 bg-card text-muted-foreground"
-                    }
-                  >
-                    {browserRuntimeInfo?.browsers?.firefox?.installed ? "已安装" : "未安装"}
-                  </Badge>
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {browserRuntimeInfo?.browsers?.firefox?.version
-                    ? `当前版本: ${browserRuntimeInfo?.browsers?.firefox?.version}`
-                    : "由 Tools 安装到 Prism runtime-data，可随时切换或卸载。"}
-                </div>
-                <div className="mt-3 break-all font-mono text-xs text-foreground/70">
-                  {browserRuntimeInfo?.browsers?.firefox?.path || "安装后会在这里显示实际可执行文件路径。"}
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    onClick={() => void installFirefox()}
-                    disabled={loading.installFirefox}
-                    variant="secondary"
-                    className="flex-1 border-border/70 bg-card text-foreground hover:bg-accent/40"
-                  >
-                    {loading.installFirefox ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        安装中...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="mr-2 h-4 w-4" />
-                        {browserRuntimeInfo?.browsers?.firefox?.installed ? "重装 Firefox" : "下载 Firefox"}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => void uninstallFirefox()}
-                    disabled={
-                      loading.uninstallFirefox ||
-                      !browserRuntimeInfo?.browsers?.firefox?.installed ||
-                      browserRuntimeInfo?.browsers?.firefox?.uninstallable === false
-                    }
-                    variant="secondary"
-                    className="border border-border/70 bg-card text-foreground/70 hover:bg-accent/40"
-                  >
-                    {loading.uninstallFirefox ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        卸载中...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        卸载
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   )
@@ -986,7 +735,7 @@ export default function SettingsPage() {
             常用控制
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            桌面版的前端、后端、Worker 和调度器重启入口统一放在这里。
+            桌面版的前端、后端、Worker 和 PM2 重启入口统一放在这里。
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -994,7 +743,7 @@ export default function SettingsPage() {
             onClick={() =>
               openConfirm({
                 title: "重启所有服务",
-                description: "这会重启前端、后端和各个工作进程。打包模式下会走调度器的受管重启流程。",
+                description: "这会重启前端、后端和各个工作进程。打包模式下会走 PM2 的受管重启流程。",
                 onConfirm: restartAll,
               })
             }
@@ -1068,7 +817,7 @@ export default function SettingsPage() {
             onClick={() =>
               openConfirm({
                 title: "停止所有服务",
-                description: "这会停止前端、后端、工作进程与调度器管理的受管服务。",
+                description: "这会停止前端、后端、工作进程与 PM2 管理的受管服务。",
                 onConfirm: stopAll,
                 variant: "danger",
               })

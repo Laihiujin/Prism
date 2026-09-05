@@ -93,6 +93,7 @@ export default function ToolsPage() {
     const [hermesRefreshKey, setHermesRefreshKey] = useState(0)
     const [browserRuntime, setBrowserRuntime] = useState<any>(null)
     const [browserAction, setBrowserAction] = useState<string | null>(null)
+    const [providerAction, setProviderAction] = useState<Record<string, boolean>>({})
 
     const refreshBrowserRuntime = async () => {
         try {
@@ -151,19 +152,96 @@ export default function ToolsPage() {
         } finally { setBrowserAction(null) }
     }
 
-    const renderBrowserTools = () => (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {BROWSER_COMPONENTS.map((browser) => {
-                const state = browserRuntime?.browsers?.[browser.id] || browserRuntime?.runtimes?.[browser.id]
-                const installed = Boolean(state?.installed)
-                const busy = browserAction?.endsWith(`:${browser.id}`)
-                return <Card key={browser.id} className="border-border/70 bg-card/40">
-                    <CardHeader className="pb-3"><div className="flex items-center justify-between gap-3"><CardTitle className="text-base">{browser.name}</CardTitle><Badge variant="outline" className={installed ? "border-emerald-500/50 text-emerald-300" : "text-muted-foreground"}>{installed ? "已安装" : "未安装"}</Badge></div></CardHeader>
-                    <CardContent className="space-y-3"><p className="text-sm text-muted-foreground">{browser.description}</p><p className="text-xs text-muted-foreground">{browser.platform}</p><div className="flex gap-2"><Button size="sm" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "install")} disabled={Boolean(browserAction)}>{busy && browserAction?.startsWith("install") ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}{installed ? "重装" : "安装"}</Button><Button size="sm" variant="destructive" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "uninstall")} disabled={Boolean(browserAction) || !installed}><Trash2 className="mr-1.5 h-3.5 w-3.5" />卸载</Button></div>{state?.path && <code className="block truncate text-[10px] text-muted-foreground">{state.path}</code>}</CardContent>
+    const changeProvider = async (id: string, action: "install" | "apply" | "uninstall", label: string) => {
+        const key = `${action}:${id}`
+        setProviderAction((prev) => ({ ...prev, [key]: true }))
+        try {
+            let result: any
+            const endpoint =
+                action === "install" ? `install/${id}`
+                : action === "apply" ? `apply/${id}`
+                : `provider/${id}/uninstall`
+            const res = await fetch(`${base}/api/v1/system/browser-runtime/${endpoint}`, { method: "POST" })
+            result = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(result?.detail || result?.error || `${label} ${action === "install" ? "下载" : action === "apply" ? "应用" : "卸载"}失败`)
+            if (result?.success === false) throw new Error(result.error || "操作失败")
+            const verb = action === "install" ? "下载" : action === "apply" ? "应用" : "卸载"
+            toast({ title: `${label} ${verb}完成`, description: result.output || id })
+            await refreshBrowserRuntime()
+        } catch (error: any) {
+            const verb = action === "install" ? "下载失败" : action === "apply" ? "应用失败" : "卸载失败"
+            toast({ variant: "destructive", title: `${label} ${verb}`, description: error?.message || String(error) })
+        } finally { setProviderAction((prev) => ({ ...prev, [key]: false })) }
+    }
+
+    const renderBrowserTools = () => {
+        const providers = (browserRuntime?.providerRegistry?.providers || []).filter(
+            (p: any) => p?.installable && p?.userSelectable && p?.compatible && p?.id !== "persona"
+        )
+        return (
+            <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {BROWSER_COMPONENTS.map((browser) => {
+                        const state = browserRuntime?.browsers?.[browser.id] || browserRuntime?.runtimes?.[browser.id]
+                        const installed = Boolean(state?.installed)
+                        const busy = browserAction?.endsWith(`:${browser.id}`)
+                        return <Card key={browser.id} className="border-border/70 bg-card/40">
+                            <CardHeader className="pb-3"><div className="flex items-center justify-between gap-3"><CardTitle className="text-base">{browser.name}</CardTitle><Badge variant="outline" className={installed ? "border-emerald-500/50 text-emerald-300" : "text-muted-foreground"}>{installed ? "已安装" : "未安装"}</Badge></div></CardHeader>
+                            <CardContent className="space-y-3"><p className="text-sm text-muted-foreground">{browser.description}</p><p className="text-xs text-muted-foreground">{browser.platform}</p><div className="flex gap-2"><Button size="sm" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "install")} disabled={Boolean(browserAction)}>{busy && browserAction?.startsWith("install") ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}{installed ? "重装" : "安装"}</Button><Button size="sm" variant="destructive" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "uninstall")} disabled={Boolean(browserAction) || !installed}><Trash2 className="mr-1.5 h-3.5 w-3.5" />卸载</Button></div>{state?.path && <code className="block truncate text-[10px] text-muted-foreground">{state.path}</code>}</CardContent>
+                        </Card>
+                    })}
+                </div>
+
+                <Card className="border-border/70 bg-card/40">
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <CardTitle className="text-base">浏览器资源</CardTitle>
+                            <Badge variant="outline" className="text-muted-foreground">下载 / 应用 / 卸载</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">管理动态浏览器资源包；下载后到设置页的「浏览器管理」中选取使用。</p>
+                    </CardHeader>
+                    <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {providers.length === 0 ? (
+                            <div className="col-span-full rounded-xl border border-dashed border-border/70 bg-card/20 p-4 text-sm text-muted-foreground">
+                                暂无可用浏览器资源包
+                            </div>
+                        ) : providers.map((provider: any) => {
+                            const installed = Boolean(provider?.installed)
+                            const active = Boolean(provider?.active)
+                            const experimental = Boolean(provider?.experimental)
+                            const busy = Object.keys(providerAction).some((k) => providerAction[k] && k.endsWith(`:${provider.id}`))
+                            return (
+                                <div key={provider.id} className={experimental ? "rounded-xl border border-amber-500/40 bg-card p-4" : "rounded-xl border border-border/70 bg-card p-4"}>
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <div className="font-medium text-foreground">{provider.name}</div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {(provider.labels || []).map((label: string) => <Badge key={label} variant="outline" className={experimental ? "border-amber-500/50 text-amber-400" : undefined}>{label}</Badge>)}
+                                            <Badge variant="outline">{active ? "应用中" : installed ? "已下载" : "未下载"}</Badge>
+                                        </div>
+                                    </div>
+                                    <p className="mt-3 text-xs text-muted-foreground">不会自动下载；下载、应用和卸载均由用户手动操作，切换只影响之后创建的浏览器会话。</p>
+                                    <div className="mt-4 flex flex-wrap gap-2">
+                                        <Button size="sm" className="rounded-lg flex-1" onClick={() => void changeProvider(provider.id, "install", provider.name)} disabled={busy}>
+                                            {providerAction[`install:${provider.id}`] ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
+                                            {installed ? "检查新版本" : "下载"}
+                                        </Button>
+                                        <Button size="sm" className="rounded-lg" variant="secondary" onClick={() => void changeProvider(provider.id, "apply", provider.name)} disabled={busy || !installed || active}>
+                                            {providerAction[`apply:${provider.id}`] ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                                            {active ? "应用中" : "应用"}
+                                        </Button>
+                                        <Button size="sm" className="rounded-lg" variant="destructive" onClick={() => void changeProvider(provider.id, "uninstall", provider.name)} disabled={busy || !installed}>
+                                            {providerAction[`uninstall:${provider.id}`] ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Trash2 className="mr-1.5 h-3.5 w-3.5" />}
+                                            卸载
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </CardContent>
                 </Card>
-            })}
-        </div>
-    )
+            </div>
+        )
+    }
 
     const { data, isLoading, refetch } = useQuery({
         queryKey: ["tools"],

@@ -438,7 +438,7 @@
                             <span class="action-icon">🔄</span>
                             <div class="action-text">
                                 <span class="action-label">重启所有服务</span>
-                                <span class="action-desc">Frontend + Supervisor + Backend + Worker + Hermes + Celery</span>
+                                <span class="action-desc">Frontend + PM2 + Backend + Worker + Hermes + Celery</span>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="restartAll()">
@@ -628,20 +628,20 @@
 
         async function refreshHermesRuntimeStatus() {
             try {
-                const [supervisorResponse, runtimeResponse] = await Promise.all([
-                    fetch(`${API_BASE}/supervisor/status`),
+                const [pm2Response, runtimeResponse] = await Promise.all([
+                    fetch(`${API_BASE}/pm2/status`),
                     fetch(`${getBackendBaseFromSystemApi()}/api/v1/agent/config/hermes/runtime`)
                 ]);
 
-                const supervisorPayload = await supervisorResponse.json().catch(() => ({}));
+                const pm2Payload = await pm2Response.json().catch(() => ({}));
                 const runtimePayload = await runtimeResponse.json().catch(() => ({}));
-                const supervisorData = supervisorPayload?.data || {};
+                const pm2Data = pm2Payload?.data || {};
                 const runtime = runtimePayload?.data || {};
-                const gateway = supervisorData?.hermes_gateway || supervisorData?.gateway || {};
-                const dashboard = supervisorData?.hermes_dashboard || supervisorData?.dashboard || {};
-                const webui = supervisorData?.hermes_webui || supervisorData?.webui || {};
+                const gateway = pm2Data?.hermes_gateway || pm2Data?.gateway || {};
+                const dashboard = pm2Data?.hermes_dashboard || pm2Data?.dashboard || {};
+                const webui = pm2Data?.hermes_webui || pm2Data?.webui || {};
                 const gatewayOnline = Boolean(gateway?.running);
-                const gatewaySource = gateway?.external ? '外部实例' : gateway?.managed ? 'Supervisor 托管' : '共享网关';
+                const gatewaySource = gateway?.external ? '外部实例' : gateway?.managed ? 'PM2 托管' : '共享网关';
                 const sharedGatewayHint = gatewayOnline ? '共享 Gateway 已在线' : '共享 Gateway 未运行';
 
                 setRuntimeStatus(
@@ -732,7 +732,7 @@
             btn.innerHTML = '<span class="spinner"></span>';
 
             try {
-                const response = await fetch(`${API_BASE}/supervisor/restart`, { method: 'POST' });
+                const response = await fetch(`${API_BASE}/pm2/restart`, { method: 'POST' });
                 const data = await response.json();
 
                 if (response.ok) {
@@ -756,7 +756,7 @@
             btn.innerHTML = '<span class="spinner"></span>';
 
             try {
-                const response = await fetch(`${API_BASE}/supervisor/restart/backend`, { method: 'POST' });
+                const response = await fetch(`${API_BASE}/pm2/restart/backend`, { method: 'POST' });
                 const data = await response.json();
 
                 if (response.ok) {
@@ -780,7 +780,7 @@
             btn.innerHTML = '<span class="spinner"></span>';
 
             try {
-                const response = await fetch(`${API_BASE}/supervisor/restart/hermes-gateway`, { method: 'POST' });
+                const response = await fetch(`${API_BASE}/pm2/restart/hermes-gateway`, { method: 'POST' });
                 const data = await response.json();
 
                 if (response.ok) {
@@ -802,7 +802,7 @@
             if (!confirm('确认停止所有服务？')) return;
 
             try {
-                const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+                const response = await fetch(`${API_BASE}/pm2/stop`, { method: 'POST' });
                 const data = await response.json();
 
                 if (response.ok) {
@@ -938,7 +938,7 @@
             if (!confirm('确认强制终止所有进程？')) return;
 
             try {
-                const response = await fetch(`${API_BASE}/supervisor/stop`, { method: 'POST' });
+                const response = await fetch(`${API_BASE}/pm2/stop`, { method: 'POST' });
 
                 if (response.ok) {
                     showToast('✅ 进程已强制终止', 'success');
@@ -1049,7 +1049,7 @@
                         throw new Error(result?.error || '服务重启失败');
                     }
                 } else {
-                    const response = await fetch(`${API_BASE}/supervisor/restart`, { method: 'POST' });
+                    const response = await fetch(`${API_BASE}/pm2/restart`, { method: 'POST' });
                     if (!response.ok) {
                         throw new Error(await parseResponseError(response, '服务重启失败'));
                     }
