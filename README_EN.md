@@ -174,14 +174,27 @@ python3 bootstrap.py            # creates prismenv + pip deps + frontend deps + 
 
 # Windows
 start.bat
-
-# Start only (skips bootstrap; must have run bootstrap.py first): macOS uses PM2
-./start-pm2.sh
 ```
+
+Stop (keeps data & logs, so `start-*` can relaunch later):
+
+```bash
+# macOS / Linux
+./stop.sh
+
+# Windows
+stop.bat
+```
+
+> **One command for any machine (equivalent to start)**:
+> ```bash
+> python3 bootstrap.py --no-browsers && pm2 start ecosystem.config.js
+> ```
+> `pm2 start ecosystem.config.js` manages all 11 processes across platforms (macOS uses `prismenv/bin/python`, Windows uses `prismenv\Scripts\python.exe`). The repo's `start-mac.sh` / `start.bat` are fuller wrappers: they pick the dynamic backend port, health-check, retry on failure and print the access URLs.
 
 This brings up Redis → Celery worker → automation worker → FastAPI backend → frontend, in that order. Console at `http://localhost:3000`, API docs at `http://localhost:7000/api/docs`.
 
-> **Process supervision**: on macOS/Linux/Windows all processes are managed by **PM2** (`start-pm2.sh` (macOS/Linux) / `start-pm2.bat` (Windows) + `ecosystem.config.js` — Redis, backend, worker, Celery, frontend, Persona, Hermes). `start-mac.sh` only prepares the environment (idempotently), then hands off to PM2.
+> **Process supervision**: on macOS/Linux/Windows all processes are managed by **PM2** (`start-mac.sh` (macOS/Linux) / `start.bat` (Windows) + `ecosystem.config.js` — Redis, backend, worker, Celery, frontend, Persona, Hermes). `start-mac.sh` / `start.bat` first run `bootstrap.py` to prepare the env (idempotently), then start everything with PM2. There is one `start-*` and one `stop-*` per platform; the desktop GUI uses `launch-electron-desktop.bat`.
 
 > **About the virtual env**: the repo uses a single virtual env named `prismenv` (the launcher scripts, desktop packaging and Hermes runtime all refer to it). `python3 bootstrap.py` already includes creating `prismenv`; the equivalent manual commands are
 > ```bash
