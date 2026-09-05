@@ -223,7 +223,7 @@
 <body>
     <div class="header">
         <h1>🚀 Prism 启动管理器</h1>
-        <p>Supervisor 进程管理控制台</p>
+        <p>PM2 进程管理控制台</p>
     </div>
 
     <div class="container">
@@ -361,7 +361,7 @@
         // 更新服务状态
         async function updateStatus() {
             try {
-                const status = await window.electronAPI.supervisor.getStatus();
+                const status = await window.electronAPI.pm2.getStatus();
 
                 // 更新各个服务
                 updateServiceStatus('backend', status.backend);
@@ -492,14 +492,14 @@
         // 诊断信息（失败根因）
         async function showDiagnostics() {
             try {
-                const result = await window.electronAPI.supervisor.getDiagnostics();
+                const result = await window.electronAPI.pm2.getDiagnostics();
                 const diagnostics = result?.diagnostics || null;
                 if (!diagnostics) {
-                    addLog('无诊断信息（supervisor 可能未运行）', 'warning');
+                    addLog('无诊断信息（pm2 可能未运行）', 'warning');
                     return;
                 }
-                const supervisor = diagnostics.supervisor || {};
-                addLog(`Supervisor pid=${supervisor.pid} apiPort=${supervisor.apiPort} packaged=${supervisor.isPackaged}`, 'info');
+                const pm2 = diagnostics.pm2 || {};
+                addLog(`PM2 pid=${pm2.pid} apiPort=${pm2.apiPort} packaged=${pm2.isPackaged}`, 'info');
                 for (const [name, service] of Object.entries(diagnostics.services || {})) {
                     if (service.failure) {
                         const detail = String(service.failure.detail || '').slice(0, 200);
@@ -526,7 +526,7 @@
             addLog('启动所有服务...', 'info');
 
             try {
-                const result = await window.electronAPI.supervisor.startAll();
+                const result = await window.electronAPI.pm2.startAll();
                 if (result.success) {
                     addLog('✅ 所有服务启动成功', 'info');
                     startStatusCheck();
@@ -545,7 +545,7 @@
         async function restartAll() {
             addLog('重启所有服务...', 'info');
             try {
-                const result = await window.electronAPI.supervisor.restartAll();
+                const result = await window.electronAPI.pm2.restartAll();
                 if (result.success) {
                     addLog('✅ 所有服务重启成功', 'info');
                 } else {
@@ -561,7 +561,7 @@
         async function stopAll() {
             addLog('停止所有服务...', 'warning');
             try {
-                const result = await window.electronAPI.supervisor.stopAll();
+                const result = await window.electronAPI.pm2.stopAll();
                 if (result.success) {
                     addLog('⏹ 所有服务已停止', 'warning');
                     stopStatusCheck();
@@ -578,7 +578,7 @@
         async function launchApp() {
             addLog('🚀 启动主应用...', 'info');
             try {
-                await window.electronAPI.supervisor.launchMainApp();
+                await window.electronAPI.pm2.launchMainApp();
                 addLog('✅ 主应用已启动', 'info');
             } catch (error) {
                 addLog(`❌ 启动主应用失败: ${error.message}`, 'error');

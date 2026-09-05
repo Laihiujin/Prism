@@ -32,7 +32,7 @@ export function CopyableErrorBanner({ message, onDismiss, className }: CopyableE
       )}
     >
       <div className="flex-1 flex items-center gap-2">
-        <span className="text-sm font-medium">✗ 无法连接到 Supervisor:</span>
+        <span className="text-sm font-medium">✗ 无法连接到 PM2:</span>
         <Button
           variant="ghost"
           size="sm"

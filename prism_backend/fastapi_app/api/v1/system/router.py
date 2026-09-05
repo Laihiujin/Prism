@@ -912,8 +912,8 @@ async def view_logs(lines: int = 100):
             Path(settings.BASE_DIR) / "logs" / "app.log",
             Path(settings.BASE_DIR) / "logs" / "backend.log",
             Path(settings.BASE_DIR) / "logs" / "fastapi_app.log",
-            Path(settings.BASE_DIR).parent / "resources" / "supervisor" / "backend.log",
-            Path(settings.BASE_DIR).parent / "supervisor" / "backend.log",
+            Path(settings.BASE_DIR).parent / "resources" / "pm2" / "backend.log",
+            Path(settings.BASE_DIR).parent / "pm2" / "backend.log",
         ]
         log_file = next((p for p in log_candidates if p.exists()), None)
 
@@ -939,17 +939,17 @@ async def view_logs(lines: int = 100):
         raise HTTPException(status_code=500, detail=f"获取日志失败: {str(e)}")
 
 
-# ========== Supervisor 进程控制 ==========
+# ========== PM2 进程控制 ==========
 
 import aiohttp
 import os
 
-SUPERVISOR_API_URL = os.getenv("SUPERVISOR_API_URL", "http://127.0.0.1:7002/api")
+PM2_API_URL = os.getenv("PM2_API_URL", "http://127.0.0.1:7002/api")
 
 
-async def call_supervisor_api(endpoint: str, method: str = "GET") -> Dict[str, Any]:
-    """调用 Supervisor API"""
-    url = f"{SUPERVISOR_API_URL}{endpoint}"
+async def call_pm2_api(endpoint: str, method: str = "GET") -> Dict[str, Any]:
+    """调用 PM2 API"""
+    url = f"{PM2_API_URL}{endpoint}"
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -959,14 +959,14 @@ async def call_supervisor_api(endpoint: str, method: str = "GET") -> Dict[str, A
                         return await resp.json()
                     else:
                         text = await resp.text()
-                        raise HTTPException(status_code=resp.status, detail=f"Supervisor API error: {text}")
+                        raise HTTPException(status_code=resp.status, detail=f"PM2 API error: {text}")
             elif method == "POST":
                 async with session.post(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                     if 200 <= resp.status < 300:
                         return await resp.json()
                     else:
                         text = await resp.text()
-                        raise HTTPException(status_code=resp.status, detail=f"Supervisor API error: {text}")
+                        raise HTTPException(status_code=resp.status, detail=f"PM2 API error: {text}")
     except (aiohttp.ClientError, asyncio.TimeoutError) as e:
         # 检查是否在 Electron 环境中
         is_electron = os.path.exists(os.path.join(os.path.dirname(__file__), "../../../../../app.asar"))
@@ -977,68 +977,68 @@ async def call_supervisor_api(endpoint: str, method: str = "GET") -> Dict[str, A
                 "status": "unavailable",
                 "message": "在 Electron 环境中,请使用 Electron 提供的系统控制功能",
                 "electron_mode": True,
-                "detail": "Supervisor HTTP API 在打包版本中不可用,进程由 Electron 主进程管理"
+                "detail": "PM2 HTTP API 在打包版本中不可用,进程由 Electron 主进程管理"
             }
         else:
             # 在非 Electron 环境中，返回真实错误
             raise HTTPException(
                 status_code=503,
-                detail=f"无法连接到 Supervisor (http://127.0.0.1:7002): {str(e)}"
+                detail=f"无法连接到 PM2 (http://127.0.0.1:7002): {str(e)}"
             )
 
 
-@router.get("/supervisor/status", summary="获取 Supervisor 服务状态")
-async def get_supervisor_status():
+@router.get("/pm2/status", summary="获取 PM2 服务状态")
+async def get_pm2_status():
     """
-    获取 Supervisor 管理的所有服务状态
+    获取 PM2 管理的所有服务状态
     """
-    result = await call_supervisor_api("/status")
+    result = await call_pm2_api("/status")
     return result
 
 
-@router.get("/supervisor/health", summary="Supervisor 健康检查")
-async def supervisor_health():
+@router.get("/pm2/health", summary="PM2 健康检查")
+async def pm2_health():
     """
-    检查 Supervisor 是否在线
+    检查 PM2 是否在线
     """
-    result = await call_supervisor_api("/health")
+    result = await call_pm2_api("/health")
     return result
 
 
-@router.post("/supervisor/start", summary="启动所有服务")
+@router.post("/pm2/start", summary="启动所有服务")
 async def start_all_services():
     """
-    通过 Supervisor 启动所有后端服务
+    通过 PM2 启动所有后端服务
     """
-    result = await call_supervisor_api("/start", method="POST")
+    result = await call_pm2_api("/start", method="POST")
     return result
 
 
-@router.post("/supervisor/stop", summary="停止所有服务")
+@router.post("/pm2/stop", summary="停止所有服务")
 async def stop_all_services():
     """
-    通过 Supervisor 停止所有后端服务
+    通过 PM2 停止所有后端服务
     """
-    result = await call_supervisor_api("/stop", method="POST")
+    result = await call_pm2_api("/stop", method="POST")
     return result
 
 
-@router.post("/supervisor/restart", summary="重启所有服务")
+@router.post("/pm2/restart", summary="重启所有服务")
 async def restart_all_services():
     """
-    通过 Supervisor 重启所有后端服务
+    通过 PM2 重启所有后端服务
     """
-    result = await call_supervisor_api("/restart", method="POST")
+    result = await call_pm2_api("/restart", method="POST")
     return result
 
 
-@router.post("/supervisor/restart/{service_name}", summary="重启单个服务")
+@router.post("/pm2/restart/{service_name}", summary="重启单个服务")
 async def restart_service(service_name: str):
     """
     重启指定的服务
     可用服务: backend, automation-worker, celery-worker, hermes-gateway
     """
-    result = await call_supervisor_api(f"/restart/{service_name}", method="POST")
+    result = await call_pm2_api(f"/restart/{service_name}", method="POST")
     return result
 
 
