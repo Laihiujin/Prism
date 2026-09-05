@@ -1,136 +1,41 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions
-
 set "ROOT=%~dp0"
-set "MODE=%~1"
-set "LAUNCHERS=%ROOT%scripts\launchers"
-set "PRISMENV_DIR=%ROOT%prismenv"
-set "PRISMENV_PY=%PRISMENV_DIR%\Scripts\python.exe"
-set "REQ_FILE=%ROOT%requirements.txt"
-set "REQ_STAMP=%PRISMENV_DIR%\.requirements-ready"
+cd /d "%ROOT%"
 
-if /I "%MODE%"=="help" goto usage
-if /I "%MODE%"=="/?" goto usage
-if /I "%MODE%"=="-h" goto usage
-if /I "%MODE%"=="--help" goto usage
+rem ============================================================
+rem  Prism Windows 一键启动 (bootstrap + PM2)
+rem  用法: start.bat
+rem  先运行 bootstrap.py 做环境准备（幂等），再交给 start-pm2.bat 用 PM2 启动整套服务。
+rem ============================================================
 
-if /I not "%MODE%"=="conda" (
-    call :ensure_prismenv
-    if errorlevel 1 exit /b %ERRORLEVEL%
-)
-
-if /I "%MODE%"=="prismenv" (
-    echo [INFO] Using prismenv launcher from repo root.
-    call "%LAUNCHERS%\start_stack_prismenv.bat"
-    exit /b %ERRORLEVEL%
-)
-
-if /I "%MODE%"=="conda" (
-    echo [INFO] Using conda launcher from repo root.
-    call "%LAUNCHERS%\start_stack_conda.bat"
-    exit /b %ERRORLEVEL%
-)
-
-if /I "%MODE%"=="supervisor" (
-    echo [INFO] Using supervisor launcher from repo root.
-    call "%LAUNCHERS%\start_stack_supervisor.bat"
-    exit /b %ERRORLEVEL%
-)
-
-if "%MODE%"=="" (
-    echo [INFO] prismenv ready. Starting full stack in prismenv mode.
-    call "%LAUNCHERS%\start_stack_prismenv.bat"
-    exit /b %ERRORLEVEL%
-)
-
-echo [ERROR] Unknown startup mode: %MODE%
-echo.
-goto usage_error
-
-:ensure_prismenv
-if exist "%PRISMENV_PY%" goto ensure_requirements
-
-echo [BOOTSTRAP] prismenv not found. Resolving system Python...
-call :resolve_bootstrap_python
-if not defined BOOTSTRAP_PY (
-    echo [ERROR] No usable Python interpreter found.
-    echo Install Python 3.11+ or ensure `py` / `python` is available in PATH.
-    exit /b 1
-)
-
-echo [BOOTSTRAP] Creating prismenv with:
-echo   %BOOTSTRAP_PY%
-"%BOOTSTRAP_PY%" -m venv "%PRISMENV_DIR%"
-if errorlevel 1 (
-    echo [ERROR] Failed to create prismenv.
-    exit /b 1
-)
-
-:ensure_requirements
-set "NEED_INSTALL=1"
-if exist "%REQ_STAMP%" (
-    for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "$req = Get-Item '%REQ_FILE%'; $stamp = Get-Item '%REQ_STAMP%'; if ($req.LastWriteTimeUtc -le $stamp.LastWriteTimeUtc) { '0' } else { '1' }"`) do set "NEED_INSTALL=%%I"
-)
-
-if "%NEED_INSTALL%"=="0" (
-    echo [BOOTSTRAP] Python dependencies already up to date.
-    exit /b 0
-)
-
-echo [BOOTSTRAP] Installing Python dependencies from requirements.txt...
-"%PRISMENV_PY%" -m pip install --upgrade pip
-if errorlevel 1 (
-    echo [ERROR] Failed to upgrade pip in prismenv.
-    exit /b 1
-)
-
-"%PRISMENV_PY%" -m pip install -r "%REQ_FILE%"
-if errorlevel 1 (
-    echo [ERROR] Failed to install Python dependencies.
-    exit /b 1
-)
-
-powershell -NoProfile -Command "Set-Content -Path '%REQ_STAMP%' -Value (Get-Date).ToString('o') -Encoding ascii"
-echo [BOOTSTRAP] Python dependencies ready.
-exit /b 0
-
-:resolve_bootstrap_python
-set "BOOTSTRAP_PY="
+rem ---- resolve a system python to run bootstrap.py ----
+set "PY=py"
 py -3.11 -c "import sys" >nul 2>&1
-if not errorlevel 1 (
-    for /f "usebackq delims=" %%I in (`py -3.11 -c "import sys; print(sys.executable)"`) do if not defined BOOTSTRAP_PY set "BOOTSTRAP_PY=%%I"
-)
-if defined BOOTSTRAP_PY exit /b 0
-
-py -3 -c "import sys" >nul 2>&1
-if not errorlevel 1 (
-    for /f "usebackq delims=" %%I in (`py -3 -c "import sys; print(sys.executable)"`) do if not defined BOOTSTRAP_PY set "BOOTSTRAP_PY=%%I"
-)
-if defined BOOTSTRAP_PY exit /b 0
-
+if not errorlevel 1 goto have_py
+set "PY=python"
 python -c "import sys" >nul 2>&1
-if not errorlevel 1 (
-    for /f "usebackq delims=" %%I in (`python -c "import sys; print(sys.executable)"`) do if not defined BOOTSTRAP_PY set "BOOTSTRAP_PY=%%I"
+if errorlevel 1 (
+  echo [ERROR] Python not found. Install Python 3.11+ and ensure py/python is in PATH.
+  exit /b 1
 )
-exit /b 0
+:have_py
 
-:usage
-echo Prism root launcher
-echo.
-echo Usage:
-echo   start.bat
-echo   start.bat prismenv
-echo   start.bat conda
-echo   start.bat supervisor
-echo.
-echo Modes:
-echo   start.bat            Ensure prismenv and requirements, then start full stack in prismenv mode.
-echo   start.bat prismenv     Ensure prismenv and start Redis, Celery, Automation Worker, FastAPI, Frontend.
-echo   start.bat conda      Start the same stack through the conda launcher.
-echo   start.bat supervisor Ensure prismenv and start Redis, Supervisor, and Frontend.
-exit /b 0
+echo [BOOTSTRAP] bootstrap.py (idempotent environment prepare)...
+"%PY%" "%ROOT%bootstrap.py" --no-browsers
+if errorlevel 1 (
+  echo [ERROR] bootstrap failed. See output above.
+  exit /b 1
+)
 
-:usage_error
-call :usage
-exit /b 1
+rem ---- verify prismenv interpreter ----
+if not exist "%ROOT%prismenv\Scripts\python.exe" (
+  echo [ERROR] prismenv interpreter missing: "%ROOT%prismenv\Scripts\python.exe"
+  echo         Run bootstrap first: python "%ROOT%bootstrap.py"
+  exit /b 1
+)
+
+rem ---- hand off to PM2 ----
+call "%ROOT%start-pm2.bat"
+exit /b %ERRORLEVEL%
