@@ -176,25 +176,25 @@ python3 bootstrap.py            # 创建 prismenv + pip 依赖 + 前端依赖 + 
 start.bat
 ```
 
-停止（保留数据与日志，方便下次 `start-*` 重新拉起）：
+仅启动（跳过引导，需已运行过 `bootstrap.py`）：
 
 ```bash
 # macOS / Linux
-./stop.sh
+./start-pm2.sh
 
 # Windows
-stop.bat
+start-pm2.bat
 ```
 
-> **给 AI / 任何机器的一条命令**（等价于启动）：
+> **给 AI / 任何机器的一条命令**（等价于上面）：
 > ```bash
 > python3 bootstrap.py --no-browsers && pm2 start ecosystem.config.js
 > ```
-> 其中 `pm2 start ecosystem.config.js` 用跨平台配置拉起全部 11 个进程（macOS 用 `prismenv/bin/python`，Windows 用 `prismenv\Scripts\python.exe`）。仓库内的 `start-mac.sh` / `start.bat` 是更完整的封装：会自动选后端动态端口、健康检查、失败重试，并打印访问地址。
+> 其中 `pm2 start ecosystem.config.js` 用跨平台配置拉起全部 11 个进程（macOS 用 `prismenv/bin/python`，Windows 用 `prismenv\Scripts\python.exe`）。仓库内的 `start-mac.sh` / `start.bat` / `start-pm2.sh` / `start-pm2.bat` 是更完整的封装：会自动选后端动态端口、健康检查、失败重试，并打印访问地址。
 
 启动顺序为 **Redis → Celery Worker → Automation Worker → FastAPI 后端 → 前端**。控制台地址 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
 
-> **进程托管**：macOS/Linux/Windows 统一由 **PM2** 托管所有进程（`start-mac.sh`（macOS/Linux）/ `start.bat`（Windows）+ `ecosystem.config.js`，含 Redis、后端、Worker、Celery、前端、Persona、Hermes）。`start-mac.sh` / `start.bat` 会先跑 `bootstrap.py` 做环境准备（幂等），再用 PM2 启动整套服务。启动脚本只保留一套：`start-*`（启动）与 `stop-*`（停止）各一个；桌面客户端 GUI 用 `launch-electron-desktop.bat`。
+> **进程托管**：macOS/Linux/Windows 统一由 **PM2** 托管所有进程（`start-pm2.sh`（macOS/Linux）/ `start-pm2.bat`（Windows）+ `ecosystem.config.js`，含 Redis、后端、Worker、Celery、前端、Persona、Hermes）。`start-mac.sh` 只负责把环境准备好（幂等），然后交给 PM2 启动。
 
 > **关于虚拟环境**：仓库统一使用名为 `prismenv` 的虚拟环境（启动脚本、桌面打包、Hermes 运行时都叫它）。`python3 bootstrap.py` 已包含创建 `prismenv` 的步骤；等价的手工命令为
 > ```bash
