@@ -135,62 +135,69 @@ All processes are supervised via PM2 (macOS) or a bundled Supervisor (Windows), 
 
 ## Quick start
 
-Requirements: **Python 3.11, Node 18+, Redis** (required). A browser (Chromium/Firefox) is used for account login and automation and is prepared automatically on first run.
+**Zero-dependency one-command deploy**: you don’t need to preinstall **Python / Node / Redis** — the bundled deployer installs anything missing and brings the whole stack up. Use `deploy.sh` on macOS/Linux and `deploy.cmd` on Windows (both are entry points to the same `deploy/deploy.py` engine — idempotent, safe to re-run, logs to `runtime-data/deploy.log`).
 
-### ① Install system dependencies
-
-- **Python 3.11**
-  - macOS: `brew install python@3.11`
-  - Ubuntu: `sudo apt install python3.11`
-  - Windows: install from python.org and check *Add to PATH*
-- **Node 18+**: from nodejs.org or `brew install node`
-- **Redis** (required — Prism's Celery queue and per-account distributed locks depend on it)
-  - macOS: `brew install redis && redis-server --daemonize yes`
-  - Ubuntu: `sudo apt install redis-server` (then `redis-server --daemonize yes`)
-  - Windows: download the `Redis-x64-*.zip` from [tporadowski/redis](https://github.com/tporadowski/redis/releases) and add it to PATH
-
-### ② One-command environment bootstrap (cross-platform)
+### macOS / Linux
 
 ```bash
 git clone https://github.com/Laihiujin/Prism.git
 cd Prism
-python3 bootstrap.py            # creates prismenv + pip deps + frontend deps + .env + checks Redis
+./deploy.sh            # == ./deploy.sh full — deploy everything and start
 ```
 
-`bootstrap.py` is the single "recipe" entry point — it is idempotent and safe to re-run:
+`deploy.sh` first resolves a usable Python (system `python3`, otherwise a bundled micromamba builds a `.deployenv` — no manual Python install needed), then forwards the command to the deploy engine.
 
-| Command | Effect |
-|---|---|
-| `python3 bootstrap.py` | full bootstrap |
-| `python3 bootstrap.py --dev` | also install development/test deps |
-| `python3 bootstrap.py --no-browsers` | skip browser install (large on first run) |
-| `python3 bootstrap.py --check` | check only, change nothing |
+### Windows
 
-### ③ Start everything
+```bat
+git clone https://github.com/Laihiujin/Prism.git
+cd Prism
+deploy.cmd full
+```
+
+`deploy.cmd` is just a thin wrapper around `deploy.ps1`: if no system Python is found, it auto-downloads a portable Python (python-build-standalone, into `.tools\python`) and runs the same `deploy\deploy.py` engine.
+
+### What `full` does
+
+`full = plan → install-tools → bootstrap → start`, each step idempotent (ready items are skipped):
+
+- **plan**: probes only what’s missing (Python / Node / Redis / browser / deps), changes nothing; `--json` for machine-readable output
+- **install-tools**: installs missing external tools such as **Node / Redis**
+- **bootstrap**: the Prism runtime — `prismenv` + backend/frontend deps + generate `.env` + browser
+- **start**: **PM2** brings up the whole set of processes + health check
+
+### Deploy Web UI (visual, click-through)
 
 ```bash
-# macOS / Linux (bootstraps the env, then lets PM2 manage every process)
-./start-mac.sh
-
-# Windows
-start.bat
-
-# Start only (skips bootstrap; must have run bootstrap.py first): macOS uses PM2
-./start-pm2.sh
+./deploy.sh webui        # macOS / Linux
+deploy.cmd               # Windows: no argument = launch the deploy Web UI
 ```
 
-This brings up Redis → Celery worker → automation worker → FastAPI backend → frontend, in that order. Console at `http://localhost:3000`, API docs at `http://localhost:7000/api/docs`.
+Open `http://127.0.0.1:8440` to run `plan` / `install-tools` / `bootstrap` / `start` / `stop` / `status` step by step; logs stream via SSE (also written to `runtime-data/deploy.log`).
 
-> **Process supervision**: on macOS/Linux/Windows all processes are managed by **PM2** (`start-pm2.sh` (macOS/Linux) / `start-pm2.bat` (Windows) + `ecosystem.config.js` — Redis, backend, worker, Celery, frontend, Persona, Hermes). `start-mac.sh` only prepares the environment (idempotently), then hands off to PM2.
+### Common subcommands
 
-> **About the virtual env**: the repo uses a single virtual env named `prismenv` (the launcher scripts, desktop packaging and Hermes runtime all refer to it). `python3 bootstrap.py` already includes creating `prismenv`; the equivalent manual commands are
+| Subcommand | Effect |
+|---|---|
+| `./deploy.sh` (no arg, macOS/Linux) / `deploy.cmd full` (Windows) | full one-command deploy (plan → install-tools → bootstrap → start) |
+| `./deploy.sh start` / `deploy.cmd start` | fast start when the env is ready (skips browser) |
+| `./deploy.sh stop` / `deploy.cmd stop` | stop (`pm2 delete all`, keeps data) |
+| `./deploy.sh status` / `deploy.cmd status` | process + endpoint liveness snapshot |
+| `./deploy.sh check` / `./deploy.sh plan` | probe only / print the deploy plan, change nothing |
+| `./deploy.sh bootstrap` | lightweight bootstrap (venv path, no component-env rebuild) |
+| `./deploy.sh webui` / `deploy.cmd` (no arg, Windows) | open the deploy Web UI (`127.0.0.1:8440`) |
+
+Start order: **Redis → Celery worker → automation worker → backend → frontend**. Console at `http://localhost:3000`, API docs at `http://localhost:7000/api/docs`.
+
+> **Process supervision**: on macOS/Linux/Windows all processes are managed by **PM2** (`ecosystem.config.js`, cross-platform). `full` brings up the whole set together by default so that a missing process fails loudly rather than silently degrading (e.g. backend up but worker down — the console still opens, but scheduling silently breaks).
+
+> **About the virtual env**: the repo uses a single virtual env named `prismenv` (the deployer, desktop packaging and Hermes runtime all refer to it). `full` already includes creating `prismenv` and installing deps; the equivalent manual commands are
 > ```bash
 > python3.11 -m venv prismenv
 > prismenv/bin/python -m pip install -r requirements.txt   # Windows: prismenv\Scripts\python.exe
 > cd prism_frontend && npm install && cd ..
 > cp env.example .env
 > ```
-
 ## Build the Electron desktop client locally (optional)
 
 `desktop-electron/` is a desktop shell wrapping the web console. When packaging it bundles `prismenv`, `prism_backend`, `tools/hermes-agent`, `tools/hermes-webui`, `config`, plus `prism_frontend/.next/standalone`, `prism_frontend/.next/static` and `prism_frontend/public`. So you **must build the Next.js frontend first (`standalone` output)**, or `electron-builder` will fail on the missing resources.
