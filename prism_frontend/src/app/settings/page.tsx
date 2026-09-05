@@ -73,6 +73,8 @@ const statusLabels: Record<string, string> = {
   hermes_gateway: "Hermes Gateway",
   hermes_dashboard: "Hermes Dashboard",
   hermes_webui: "Hermes WebUI",
+  prism_frontend: "Web 前端",
+  redis: "Redis",
 }
 
 const sectionMeta: Array<{
