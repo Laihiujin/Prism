@@ -165,11 +165,14 @@ desktop-electron/build/*
 !desktop-electron/build/icon.ico
 !desktop-electron/build/installer.nsh
 desktop-electron/.cache/
+# PM2 控制器/生态与 pm2 运行时锁文件（构建时由 CI npm ci 安装 node_modules）
 desktop-electron/resources/*
-!desktop-electron/resources/supervisor/
-desktop-electron/resources/supervisor/*
-!desktop-electron/resources/supervisor/pm2_controller.js
-!desktop-electron/resources/supervisor/ecosystem.desktop.config.js
+!desktop-electron/resources/pm2/
+desktop-electron/resources/pm2/*
+!desktop-electron/resources/pm2/pm2_controller.js
+!desktop-electron/resources/pm2/ecosystem.desktop.config.js
+!desktop-electron/resources/package.json
+!desktop-electron/resources/package-lock.json
 desktop-electron/syn_backend/
 desktop-electron/dump.rdb
 
