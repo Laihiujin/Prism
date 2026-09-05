@@ -19,7 +19,7 @@ pip install -r requirements.txt
 cd prism_frontend && npm install && cd ..
 
 cp env.example .env        # 按需改
-./start-pm2.sh             # macOS；Windows 用 start.bat
+./start-mac.sh               # macOS；Windows 用 start.bat
 ```
 
 万一跑不起来，直接发 issue 问就行，不用一个人跟报错死磕。
