@@ -105,6 +105,17 @@ jobs:
           Expand-Archive -Path $zip -DestinationPath $dest -Force
           Get-ChildItem $dest | Select-Object -ExpandProperty Name
 
+      - name: 拉取外部工具 (tools/)
+        shell: bash
+        run: |
+          mkdir -p tools
+          git clone https://github.com/NousResearch/hermes-agent.git tools/hermes-agent
+          git -C tools/hermes-agent checkout 71f8c60f6a6ab8f2fab1e4d5c22d6dd9c856b63e
+          git clone https://github.com/nesquena/hermes-webui.git tools/hermes-webui
+          git -C tools/hermes-webui checkout e168b67e4278df618d1cab61fdb3a8dc55b29a81
+          git clone https://github.com/TechQaiser/persona-studio.git tools/persona-studio
+          git -C tools/persona-studio checkout fec16315cb2d3b67878e76d5bd95e6520846b011
+
       - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron
         run: npx electron-builder --win --x64 --publish never
@@ -182,6 +193,17 @@ jobs:
       - name: 安装 PM2 运行时 (desktop-electron/resources)
         working-directory: desktop-electron/resources
         run: npm ci
+
+      - name: 拉取外部工具 (tools/)
+        shell: bash
+        run: |
+          mkdir -p tools
+          git clone https://github.com/NousResearch/hermes-agent.git tools/hermes-agent
+          git -C tools/hermes-agent checkout 71f8c60f6a6ab8f2fab1e4d5c22d6dd9c856b63e
+          git clone https://github.com/nesquena/hermes-webui.git tools/hermes-webui
+          git -C tools/hermes-webui checkout e168b67e4278df618d1cab61fdb3a8dc55b29a81
+          git clone https://github.com/TechQaiser/persona-studio.git tools/persona-studio
+          git -C tools/persona-studio checkout fec16315cb2d3b67878e76d5bd95e6520846b011
 
       - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron
