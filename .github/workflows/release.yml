@@ -114,7 +114,8 @@ jobs:
           git clone https://github.com/nesquena/hermes-webui.git tools/hermes-webui
           git -C tools/hermes-webui checkout e168b67e4278df618d1cab61fdb3a8dc55b29a81
           git clone https://github.com/TechQaiser/persona-studio.git tools/persona-studio
-          git -C tools/persona-studio checkout fec16315cb2d3b67878e76d5bd95e6520846b011
+          git -C tools/persona-studio checkout 36ef3e7dc603a6edf39eb5d45cbee3990f49e67f
+          git -C tools/persona-studio apply "${GITHUB_WORKSPACE}/scripts/patches/persona-studio.patch"
 
       - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron
@@ -203,7 +204,8 @@ jobs:
           git clone https://github.com/nesquena/hermes-webui.git tools/hermes-webui
           git -C tools/hermes-webui checkout e168b67e4278df618d1cab61fdb3a8dc55b29a81
           git clone https://github.com/TechQaiser/persona-studio.git tools/persona-studio
-          git -C tools/persona-studio checkout fec16315cb2d3b67878e76d5bd95e6520846b011
+          git -C tools/persona-studio checkout 36ef3e7dc603a6edf39eb5d45cbee3990f49e67f
+          git -C tools/persona-studio apply "${GITHUB_WORKSPACE}/scripts/patches/persona-studio.patch"
 
       - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron

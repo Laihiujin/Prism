@@ -1,0 +1,1934 @@
+diff --git a/dashboard/index.html b/dashboard/index.html
+index 1030085..4074c42 100644
+--- a/dashboard/index.html
++++ b/dashboard/index.html
+@@ -1,5 +1,5 @@
+ <!doctype html>
+-<html lang="en">
++<html lang="zh-CN">
+   <head>
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+@@ -11,7 +11,7 @@
+       rel="stylesheet"
+     />
+   </head>
+-  <body style="margin:0; background:#0B0B10;">
++  <body style="margin:0; background:#000000;">
+     <div id="root"></div>
+     <script type="module" src="/src/main.jsx"></script>
+   </body>
+diff --git a/dashboard/src/App.jsx b/dashboard/src/App.jsx
+index 0da883c..4806e34 100644
+--- a/dashboard/src/App.jsx
++++ b/dashboard/src/App.jsx
+@@ -21,19 +21,19 @@ import {
+ 
+ /* ---- design tokens: "ink violet" identity console ---------------- */
+ const DARK = {
+-  bg: "#0B0B10", bg2: "#101017", surface: "#15151F", surface2: "#1C1C2A",
+-  line: "#282840", lineSoft: "#1E1E2E",
++  bg: "#000000", bg2: "#050506", surface: "#0A0A0C", surface2: "#131316",
++  line: "#2B2B2B", lineSoft: "#1C1C1E",
+   text: "#ECEDF5", muted: "#989BB6", dim: "#5B5E7A",
+-  violet: "#8B7CFF", violetDeep: "#6D5CE8", violetDim: "#2C265221",
+-  lilac: "#B7ADFF", mint: "#4FE0B0", mintDim: "#123A31",
++  violet: "#ECEDF5", violetDeep: "#FFFFFF", violetDim: "rgba(255,255,255,0.10)",
++  lilac: "#C7C9D4", mint: "#4FE0B0", mintDim: "#123A31",
+   amber: "#F2B84B", amberDim: "rgba(240,180,80,.14)", red: "#FF6B7A", grey: "#6B6E88",
+ };
+ const LIGHT = {
+   bg: "#F5F5FB", bg2: "#FFFFFF", surface: "#FFFFFF", surface2: "#F0F0F8",
+   line: "#E3E3EE", lineSoft: "#EDEDF5",
+   text: "#171826", muted: "#5C5F79", dim: "#9A9DB8",
+-  violet: "#6D5CE8", violetDeep: "#5A48D6", violetDim: "#ECE9FB",
+-  lilac: "#6D5CE8", mint: "#12B886", mintDim: "#DCF5EC",
++  violet: "#2C2C34", violetDeep: "#1A1A22", violetDim: "#E9E9EF",
++  lilac: "#2C2C34", mint: "#12B886", mintDim: "#DCF5EC",
+   amber: "#B7860B", amberDim: "#FBEFD3", red: "#E5484D", grey: "#8A8DA6",
+ };
+ // A live palette the whole app reads. Switching theme mutates it in place and
+@@ -48,12 +48,12 @@ const FONT = {
+ 
+ /* ---- warm-up verticals (mirrors persona/warmup.py PRESETS) ------- */
+ const WARMUP_PRESETS = [
+-  { key: "general", label: "General" },
+-  { key: "ads", label: "Ads / media" },
+-  { key: "ecommerce", label: "E-commerce" },
+-  { key: "crypto", label: "Crypto" },
+-  { key: "social", label: "Social" },
+-  { key: "news", label: "News" },
++  { key: "general", label: "通用" },
++  { key: "ads", label: "广告 / 媒体" },
++  { key: "ecommerce", label: "电商" },
++  { key: "crypto", label: "加密货币" },
++  { key: "social", label: "社媒" },
++  { key: "news", label: "新闻" },
+ ];
+ 
+ /* ---- device data (mirrors persona/devices.py) -------------------- */
+@@ -102,28 +102,28 @@ const MODES = {
+ const ENGINE_ORDER = ["cloak", "camoufox", "patchright", "playwright"];
+ const ENGINE_META = {
+   cloak: {
+-    label: "CloakBrowser", kind: "Patched Chromium", strength: 4, recommended: true,
+-    tagline: "Fingerprints patched at the C++ source level.",
+-    desc: "A real Chromium binary, not JavaScript tricks. Reaches TLS/CDP-grade detection (Cloudflare, DataDome, reCAPTCHA v3) that injection can't touch.",
++    label: "CloakBrowser", kind: "修补版 Chromium", strength: 4, recommended: true,
++    tagline: "在 C++ 源代码层面对指纹进行修补。",
++    desc: "真正的 Chromium 二进制，而非 JavaScript 技巧。可达到 TLS/CDP 级检测（Cloudflare、DataDome、reCAPTCHA v3），这是注入脚本无法触及的。",
+     install: "pip install cloakbrowser", docs: "https://github.com/CloakHQ/CloakBrowser",
+   },
+   camoufox: {
+-    label: "Camoufox", kind: "Patched Firefox", strength: 4, recommended: true,
+-    tagline: "Engine-level spoofing with its own coherent fingerprint.",
+-    desc: "A patched Firefox that spoofs at the C++ level and generates its own consistent identity. Among the strongest open options.",
++    label: "Camoufox", kind: "修补版 Firefox", strength: 4, recommended: true,
++    tagline: "引擎级伪装，自带一致的指纹。",
++    desc: "一个在 C++ 层伪装、并生成自身一致身份的修补版 Firefox。是最强大的开源方案之一。",
+     install: 'pip install "camoufox[geoip]" && camoufox fetch', docs: "https://github.com/daijro/camoufox",
+   },
+   patchright: {
+-    label: "Patchright", kind: "Patched Playwright", strength: 3, recommended: false,
+-    tagline: "Drop-in patched Playwright.",
+-    desc: "Closes navigator.webdriver and CDP leaks the stock engine leaves behind. Same API you already know, meaningfully stealthier.",
++    label: "Patchright", kind: "修补版 Playwright", strength: 3, recommended: false,
++    tagline: "可直接替换的修补版 Playwright。",
++    desc: "关闭原生引擎遗留的 navigator.webdriver 与 CDP 泄漏。API 与你熟悉的相同，隐蔽性更强。",
+     install: "pip install patchright && patchright install chromium",
+     docs: "https://github.com/Kaliiiiiiiiii-Vinyzu/patchright-python",
+   },
+   playwright: {
+-    label: "Playwright", kind: "Stock Chromium", strength: 2, recommended: false, builtin: true,
+-    tagline: "Built in. Works out of the box.",
+-    desc: "Stock Chromium plus Persona's injected stealth script. Clears basic bot tests (BrowserScan, sannysoft); not Cloudflare-grade.",
++    label: "Playwright", kind: "原生 Chromium", strength: 2, recommended: false, builtin: true,
++    tagline: "内置，开箱即用。",
++    desc: "原生 Chromium 加上 Persona 注入的隐身脚本。可通过基础机器人检测（BrowserScan、sannysoft）；达不到 Cloudflare 级别。",
+     install: null, docs: null,
+   },
+ };
+@@ -152,21 +152,21 @@ function screenPlausible(os, screen) {
+ function coherence(p) {
+   const issues = [];
+   if (p.webglRenderer && !webglPlausible(p.os, p.webglRenderer))
+-    issues.push("GPU doesn't belong to " + p.os);
++    issues.push("GPU 不属于 " + p.os);
+   if (p.screen && !screenPlausible(p.os, p.screen))
+-    issues.push("Screen resolution unusual for " + p.os);
++    issues.push("屏幕分辨率对 " + p.os + " 来说不常见");
+   if (p.locale && p.timezone && LOCALES[p.locale] !== p.timezone)
+-    issues.push("Timezone doesn't match locale");
++    issues.push("时区与区域设置不匹配");
+   if (p.cores && !(Number(p.cores) >= 2 && Number(p.cores) <= 128))
+-    issues.push("CPU cores atypical for " + p.os);
++    issues.push("CPU 核心数对 " + p.os + " 来说不典型");
+   if (p.proxy?.country && COUNTRY_LOCALE[p.proxy.country] &&
+       COUNTRY_LOCALE[p.proxy.country] !== p.locale)
+-    issues.push("Locale differs from proxy country (" + p.proxy.country + ")");
++    issues.push("区域设置与代理国家不一致 (" + p.proxy.country + ")");
+   return issues;
+ }
+ 
+ /* ---- seed data --------------------------------------------------- */
+-const FOLDERS = ["All profiles", "Facebook Ads", "Amazon Stores", "Crypto", "QA Testing"];
++const FOLDERS = ["全部配置", "Facebook Ads", "Amazon Stores", "Crypto", "QA Testing"];
+ let uid = 100;
+ // Collision-resistant local id: a counter (unique within a page load) plus a
+ // random suffix (so ids don't repeat across reloads / other sessions). In live
+@@ -204,20 +204,20 @@ function uaFor(os, chrome = "128.0.0.0") {
+   return `Mozilla/5.0 (${tok}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome}${mob} Safari/537.36`;
+ }
+ // Human labels for session status and activity-log events.
+-const SESS_LABEL = { ok: "Healthy", empty: "No cookies", stale: "Stale", expiring: "Expiring soon" };
++const SESS_LABEL = { ok: "健康", empty: "无 Cookie", stale: "已过期", expiring: "即将过期" };
+ const ACT_LABEL = {
+-  launch: "Launched", "session-end": "Session ended", warmup: "Warmed up",
+-  trust: "Trust check", align: "Auto-adjusted", cookies: "Cookies imported",
+-  session: "Session checked", created: "Created",
++  launch: "已启动", "session-end": "会话结束", warmup: "已预热",
++  trust: "信任检测", align: "已自动校准", cookies: "已导入 Cookie",
++  session: "已检查会话", created: "已创建",
+ };
+ // Relative "time ago" from a unix timestamp (seconds), mirroring the server's.
+ function relTime(ts) {
+   if (!ts) return "";
+   const secs = Math.max(0, Date.now() / 1000 - ts);
+-  if (secs < 60) return "just now";
+-  const m = secs / 60; if (m < 60) return `${Math.floor(m)}m ago`;
+-  const h = m / 60; if (h < 24) return `${Math.floor(h)}h ago`;
+-  return `${Math.floor(h / 24)}d ago`;
++  if (secs < 60) return "刚刚";
++  const m = secs / 60; if (m < 60) return `${Math.floor(m)} 分钟前`;
++  const h = m / 60; if (h < 24) return `${Math.floor(h)} 小时前`;
++  return `${Math.floor(h / 24)} 天前`;
+ }
+ 
+ // Guess the WebGL vendor string from a renderer's GPU family (mirrors server).
+@@ -287,7 +287,7 @@ function Toaster() {
+ export default function App() {
+   const [profiles, setProfiles] = useState(seed);
+   const [view, setView] = useState("profiles");
+-  const [folder, setFolder] = useState("All profiles");
++  const [folder, setFolder] = useState("全部配置");
+   const [query, setQuery] = useState("");
+   const [sel, setSel] = useState(new Set());
+   const [editor, setEditor] = useState(null);
+@@ -298,7 +298,7 @@ export default function App() {
+   const [engines, setEngines] = useState(null);      // {name: installed} from API
+   const [defaultEngine, setDefaultEngine] = useState(ENGINE_ORDER[0]); // new-profile default
+   const [config, setConfig] = useState(null);        // {root, version, ...} from API
+-  const [folders, setFolders] = useState(() => FOLDERS.filter(f => f !== "All profiles"));
++  const [folders, setFolders] = useState(() => FOLDERS.filter(f => f !== "全部配置"));
+   const [palette, setPalette] = useState(() => {     // "dark" | "light"
+     const t = (typeof localStorage !== "undefined" && localStorage.getItem("ps-theme")) || "dark";
+     Object.assign(T, t === "light" ? LIGHT : DARK);  // paint before children render
+@@ -367,7 +367,7 @@ export default function App() {
+ 
+   const filtered = useMemo(() =>
+     profiles.filter(p =>
+-      (folder === "All profiles" || p.folder === folder) &&
++      (folder === "全部配置" || p.folder === folder) &&
+       (p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.tags.some(t => t.includes(query.toLowerCase()))) &&
+       (!filters.status || p.status === filters.status) &&
+@@ -399,7 +399,7 @@ export default function App() {
+     const p = profiles.find(x => x.id === id);
+     if (live) {
+       try { await (p?.status === "running" ? api.stop(id) : api.launch(id)); await refresh(); }
+-      catch (e) { toast.error("Launch failed: " + e.message); }
++      catch (e) { toast.error("启动失败: " + e.message); }
+       return;
+     }
+     setProfiles(ps => ps.map(x => x.id === id ? { ...x, status: x.status === "running" ? "stopped" : "running", lastActive: "now" } : x));
+@@ -408,25 +408,25 @@ export default function App() {
+     // A duplicate keeps the settings but gets a *fresh* fingerprint, so the copy
+     // is a distinct device — not a fingerprint twin that could link the two.
+     if (live) {
+-      try { const dup = await api.duplicate(p.id); await refresh(); toast.success(`Duplicated "${p.name}".`); return dup; }
+-      catch (e) { toast.error("Duplicate failed: " + e.message); return; }
++      try { const dup = await api.duplicate(p.id); await refresh(); toast.success(`已复制 "${p.name}"。`); return dup; }
++      catch (e) { toast.error("复制失败: " + e.message); return; }
+     }
+     const copy = {
+       ...p, ...freshDevice(p.os, p.locale), id: nid(),
+       name: p.name + " copy", status: "stopped", lastActive: "never",
+     };
+     setProfiles(ps => [...ps, copy]);
+-    toast.success(`Duplicated "${p.name}".`);
++    toast.success(`已复制 "${p.name}"。`);
+   };
+   const remove = async (id) => {
+-    if (live) { try { await api.remove(id); await refresh(); } catch (e) { toast.error("Delete failed: " + e.message); } return; }
++    if (live) { try { await api.remove(id); await refresh(); } catch (e) { toast.error("删除失败: " + e.message); } return; }
+     setProfiles(ps => ps.filter(p => p.id !== id));
+   };
+   const save = async (p) => {
+     if (p.engine) setDefaultEngine(p.engine);   // "last engine wins" for the next new profile
+     if (live) {
+       try { const exists = profiles.some(x => x.id === p.id) && !p._new; await (exists ? api.update(p) : api.create({ ...p, id: undefined })); await refresh(); }
+-      catch (e) { toast.error("Save failed: " + e.message); }
++      catch (e) { toast.error("保存失败: " + e.message); }
+       return;
+     }
+     setProfiles(ps => ps.some(x => x.id === p.id) ? ps.map(x => x.id === p.id ? p : x) : [...ps, p]);
+@@ -435,38 +435,38 @@ export default function App() {
+   // ---- folder management (used by the Folders tab) ----
+   const createFolder = async (name) => {
+     name = (name || "").trim();
+-    if (!name || folderList.includes(name)) { if (name) toast.info(`Folder "${name}" already exists.`); return; }
++    if (!name || folderList.includes(name)) { if (name) toast.info(`文件夹 "${name}" 已存在。`); return; }
+     setFolders(f => [...f, name]);
+-    if (live) { try { await api.createFolder(name); } catch (e) { toast.error("Create folder failed: " + e.message); } }
+-    else toast.success(`Folder "${name}" created.`);
++    if (live) { try { await api.createFolder(name); } catch (e) { toast.error("创建文件夹失败: " + e.message); } }
++    else toast.success(`文件夹 "${name}" 已创建。`);
+   };
+   const renameFolder = async (from, to) => {
+     to = (to || "").trim();
+     if (!to || to === from) return;
+-    if (folderList.includes(to)) { toast.info(`Folder "${to}" already exists.`); return; }
++    if (folderList.includes(to)) { toast.info(`文件夹 "${to}" 已存在。`); return; }
+     setFolders(f => f.map(x => x === from ? to : x));
+     setProfiles(ps => ps.map(p => p.folder === from ? { ...p, folder: to } : p));
+     if (folder === from) setFolder(to);
+-    if (live) { try { const r = await api.renameFolder(from, to); if (r?.folders) setFolders(r.folders); await refresh(); } catch (e) { toast.error("Rename failed: " + e.message); } }
++    if (live) { try { const r = await api.renameFolder(from, to); if (r?.folders) setFolders(r.folders); await refresh(); } catch (e) { toast.error("重命名失败: " + e.message); } }
+   };
+   const deleteFolder = async (name) => {
+     setFolders(f => f.filter(x => x !== name));
+     setProfiles(ps => ps.map(p => p.folder === name ? { ...p, folder: "Unfiled" } : p));
+-    if (folder === name) setFolder("All profiles");
+-    if (live) { try { const r = await api.deleteFolder(name); if (r?.folders) setFolders(r.folders); await refresh(); } catch (e) { toast.error("Delete folder failed: " + e.message); } }
+-    else toast.success(`Folder "${name}" removed — its profiles moved to Unfiled.`);
++    if (folder === name) setFolder("全部配置");
++    if (live) { try { const r = await api.deleteFolder(name); if (r?.folders) setFolders(r.folders); await refresh(); } catch (e) { toast.error("删除文件夹失败: " + e.message); } }
++    else toast.success(`文件夹 "${name}" 已删除——其中的配置移到了未分类。`);
+   };
+ 
+   // Change the engine used for every new profile (Settings tab).
+   const changeDefaultEngine = async (name) => {
+     setDefaultEngine(name);
+-    if (live) { try { await api.setDefaultEngine(name); toast.success(`New profiles will use ${ENGINE_META[name]?.label || name}.`); } catch (e) { toast.error("Couldn't save default engine: " + e.message); } }
+-    else toast.info("Connect the engine (persona serve) to save this setting.");
++    if (live) { try { await api.setDefaultEngine(name); toast.success(`新配置将使用 ${ENGINE_META[name]?.label || name}。`); } catch (e) { toast.error("无法保存默认引擎: " + e.message); } }
++    else toast.info("连接引擎（persona serve）以保存此设置。");
+   };
+ 
+   // Import profiles exported from GoLogin / AdsPower / Multilogin.
+   const importProfiles = () => {
+-    if (!live) { toast.info("Start the engine (persona serve) to import profiles."); return; }
++    if (!live) { toast.info("启动引擎（persona serve）以导入配置。"); return; }
+     const inp = document.createElement("input");
+     inp.type = "file"; inp.accept = ".json,application/json";
+     inp.onchange = async () => {
+@@ -476,9 +476,9 @@ export default function App() {
+         const res = await api.importProfiles(await f.text());
+         await refresh();
+         const flagged = (res.results || []).filter(r => r.issues?.length).length;
+-        toast.success(`Imported ${res.imported} profile${res.imported === 1 ? "" : "s"}.`
+-          + (flagged ? ` ${flagged} flagged for review — open them to see the coherence notes.` : ""));
+-      } catch (e) { toast.error("Import failed: " + e.message); }
++        toast.success(`已导入 ${res.imported} 个配置。`
++          + (flagged ? ` 有 ${flagged} 个标记为待复核——打开它们查看一致性说明。` : ""));
++      } catch (e) { toast.error("导入失败: " + e.message); }
+     };
+     inp.click();
+   };
+@@ -502,14 +502,14 @@ export default function App() {
+ 
+           <nav className="ps-nav">
+             {[
+-              ["profiles", Layers, "Profiles"],
+-              ["health", Activity, "Health"],
+-              ["engines", Blocks, "Engines"],
+-              ["proxies", Globe, "Proxies"],
+-              ["folders", FolderTree, "Folders"],
+-              ["automation", Zap, "Automation"],
+-              ["team", Users, "Team"],
+-              ["settings", Settings, "Settings"],
++              ["profiles", Layers, "配置文件"],
++              ["health", Activity, "健康"],
++              ["engines", Blocks, "引擎"],
++              ["proxies", Globe, "代理"],
++              ["folders", FolderTree, "文件夹"],
++              ["automation", Zap, "自动化"],
++              ["team", Users, "团队"],
++              ["settings", Settings, "设置"],
+             ].map(([k, Ic, label]) => (
+               <button key={k} onClick={() => setView(k)} className={"ps-navitem" + (view === k ? " active" : "")}>
+                 <Ic size={16} /> <span>{label}</span>
+@@ -520,22 +520,22 @@ export default function App() {
+ 
+           <div className="ps-folders">
+             <div className="ps-folders-h">
+-              <span style={{ flex: 1 }}>Folders</span>
+-              <button className="ps-folders-manage" title="Manage folders" onClick={() => setView("folders")}>Manage</button>
++              <span style={{ flex: 1 }}>文件夹</span>
++              <button className="ps-folders-manage" title="管理文件夹" onClick={() => setView("folders")}>管理</button>
+             </div>
+-            {["All profiles", ...folderList].map(f => (
++            {["全部配置", ...folderList].map(f => (
+               <button key={f} onClick={() => { setView("profiles"); setFolder(f); }}
+                 className={"ps-folder" + (folder === f && view === "profiles" ? " active" : "")}>
+                 <FolderTree size={13} />
+                 <span style={{ flex: 1, textAlign: "left" }}>{f}</span>
+-                <span className="ps-count">{f === "All profiles" ? profiles.length : profiles.filter(p => p.folder === f).length}</span>
++                <span className="ps-count">{f === "全部配置" ? profiles.length : profiles.filter(p => p.folder === f).length}</span>
+               </button>
+             ))}
+           </div>
+ 
+-          <div className={"ps-side-foot " + mode} title={live ? "Connected to the engine — launching opens a real browser." : "Engine API not found — sample data only. Start it with: persona serve"}>
++          <div className={"ps-side-foot " + mode} title={live ? "已连接引擎 —— 启动将打开真实浏览器。" : "未找到引擎 API —— 仅使用示例数据。用 persona serve 启动。"}>
+             <span className="ps-foot-dot" />
+-            <span>{mode === "connecting" ? "Connecting…" : live ? "Engine online" : "Demo mode"}</span>
++            <span>{mode === "connecting" ? "连接中…" : live ? "引擎在线" : "演示模式"}</span>
+             <span className="ps-foot-ver">v0.1.0</span>
+           </div>
+         </aside>
+@@ -543,17 +543,17 @@ export default function App() {
+         {/* ---- Main ---- */}
+         <main className="ps-main">
+           <div className="ps-stats">
+-            <Stat icon={<Boxes size={16} />} label="Profiles" value={profiles.length} />
+-            <Stat icon={<Activity size={16} />} label="Running" value={running} accent={T.mint} pulse={running > 0} />
+-            <Stat icon={<Server size={16} />} label="Proxies" value={proxyCount} accent={T.lilac} />
+-            <Stat icon={<ShieldCheck size={16} />} label="Coherent"
++            <Stat icon={<Boxes size={16} />} label="配置" value={profiles.length} />
++            <Stat icon={<Activity size={16} />} label="运行中" value={running} accent={T.mint} pulse={running > 0} />
++            <Stat icon={<Server size={16} />} label="代理" value={proxyCount} accent={T.lilac} />
++            <Stat icon={<ShieldCheck size={16} />} label="一致"
+               value={coherentCount + "/" + profiles.length} accent={T.violet} />
+             <div style={{ flex: 1 }} />
+-            <button className="ps-btn ghost" onClick={importProfiles}><Download size={14} /> Import</button>
+-            <button className="ps-btn ghost" onClick={() => setBulk(true)}><Boxes size={14} /> Bulk create</button>
+-            <button className="ps-btn primary" onClick={() => setEditor(newProfile(folder, defaultEngine))}><Plus size={15} /> New profile</button>
+-            <button className="ps-iconbtn" title="Command palette (⌘K / Ctrl-K)" onClick={() => setCmdOpen(true)}><Command size={15} /></button>
+-            <button className="ps-iconbtn" title={palette === "light" ? "Switch to dark" : "Switch to light"} onClick={toggleTheme}>
++            <button className="ps-btn ghost" onClick={importProfiles}><Download size={14} /> 导入</button>
++            <button className="ps-btn ghost" onClick={() => setBulk(true)}><Boxes size={14} /> 批量创建</button>
++            <button className="ps-btn primary" onClick={() => setEditor(newProfile(folder, defaultEngine))}><Plus size={15} /> 新建配置</button>
++            <button className="ps-iconbtn" title="命令面板 (⌘K / Ctrl-K)" onClick={() => setCmdOpen(true)}><Command size={15} /></button>
++            <button className="ps-iconbtn" title={palette === "light" ? "切换到深色" : "切换到浅色"} onClick={toggleTheme}>
+               {palette === "light" ? <Moon size={15} /> : <Sun size={15} />}
+             </button>
+           </div>
+@@ -585,7 +585,7 @@ export default function App() {
+         const ids = [...sel];
+         if (live) {
+           try { await api.bulkUpdate(ids, patch); await refresh(); }
+-          catch (e) { toast.error("Bulk edit failed: " + e.message); }
++          catch (e) { toast.error("批量编辑失败: " + e.message); }
+         } else {
+           const { addTags, ...fields } = patch;
+           setProfiles(ps => ps.map(p => !ids.includes(p.id) ? p : {
+@@ -630,7 +630,7 @@ function ProfilesView({ filtered, query, setQuery, folder, sel, setSel, toggleSe
+   // Warm up every selected profile (live only — it opens real headless browsers).
+   const warmSelected = async () => {
+     const ids = [...sel];
+-    if (!live) { toast.info("Warm-up runs against the live engine — start `persona serve` first."); return; }
++    if (!live) { toast.info("预热依赖在线引擎——请先运行 persona serve。"); return; }
+     setSel(new Set());
+     await Promise.all(ids.map(id => api.warmup(id, 5, "general").catch(() => {})));
+     await refresh();
+@@ -672,43 +672,43 @@ function ProfilesView({ filtered, query, setQuery, folder, sel, setSel, toggleSe
+       <div className="ps-toolbar">
+         <div className="ps-search">
+           <Search size={15} color={T.dim} />
+-          <input placeholder="Search profiles, tags…" value={query} onChange={e => setQuery(e.target.value)} />
++          <input placeholder="搜索配置、标签…" value={query} onChange={e => setQuery(e.target.value)} />
+         </div>
+         <div className="ps-crumb"><FolderTree size={13} /> {folder}</div>
+         <div style={{ flex: 1 }} />
+         {sel.size > 0 && (
+           <div className="ps-bulkbar">
+-            <span>{sel.size} selected</span>
+-            <button onClick={() => { sel.forEach(toggleRun); setSel(new Set()); }}><Play size={13} /> Launch</button>
+-            <button onClick={warmSelected}><Flame size={13} /> Warm up</button>
+-            <button onClick={() => setSync(true)}><Copy size={13} /> Edit all</button>
+-            <button onClick={exportSelected}><Download size={13} /> Export</button>
+-            <button className="danger" onClick={async () => { const ids = [...sel]; setSel(new Set()); if (live) { for (const id of ids) { try { await api.remove(id); } catch {} } await refresh(); } else { setProfiles(ps => ps.filter(p => !ids.includes(p.id))); } }}><Trash2 size={13} /> Delete</button>
++            <span>{sel.size} 已选择</span>
++            <button onClick={() => { sel.forEach(toggleRun); setSel(new Set()); }}><Play size={13} /> 启动</button>
++            <button onClick={warmSelected}><Flame size={13} /> 预热</button>
++            <button onClick={() => setSync(true)}><Copy size={13} /> 批量编辑</button>
++            <button onClick={exportSelected}><Download size={13} /> 导出</button>
++            <button className="danger" onClick={async () => { const ids = [...sel]; setSel(new Set()); if (live) { for (const id of ids) { try { await api.remove(id); } catch {} } await refresh(); } else { setProfiles(ps => ps.filter(p => !ids.includes(p.id))); } }}><Trash2 size={13} /> 删除</button>
+           </div>
+         )}
+         <div className="ps-filter-wrap">
+           <button className={"ps-btn ghost sm" + (activeFilters ? " active" : "")}
+             onClick={() => setFilterOpen(o => !o)}>
+-            <Filter size={13} /> Filter{activeFilters ? ` · ${activeFilters}` : ""}
++            <Filter size={13} /> 筛选{activeFilters ? ` · ${activeFilters}` : ""}
+           </button>
+           {filterOpen && (
+             <>
+               <div className="ps-filter-scrim" onClick={() => setFilterOpen(false)} />
+               <div className="ps-filter-pop">
+                 <div className="ps-filter-head">
+-                  <span>Filter profiles</span>
+-                  {activeFilters > 0 && <button className="ps-filter-clear" onClick={clearFilters}>Clear all</button>}
++                  <span>筛选配置</span>
++                  {activeFilters > 0 && <button className="ps-filter-clear" onClick={clearFilters}>清除全部</button>}
+                 </div>
+-                <FilterRow label="Status" value={filters.status} onPick={v => setFilter("status", v)}
+-                  options={[["running", "Running"], ["stopped", "Stopped"]]} />
+-                <FilterRow label="Engine" value={filters.engine} onPick={v => setFilter("engine", v)}
++                <FilterRow label="状态" value={filters.status} onPick={v => setFilter("status", v)}
++                  options={[["running", "运行中"], ["stopped", "已停止"]]} />
++                <FilterRow label="引擎" value={filters.engine} onPick={v => setFilter("engine", v)}
+                   options={ENGINE_ORDER.map(en => [en, ENGINE_META[en].label])} />
+-                <FilterRow label="OS" value={filters.os} onPick={v => setFilter("os", v)}
++                <FilterRow label="操作系统" value={filters.os} onPick={v => setFilter("os", v)}
+                   options={OS_LIST.map(o => [o, o])} />
+-                <FilterRow label="Proxy" value={filters.proxy} onPick={v => setFilter("proxy", v)}
+-                  options={[["with", "With proxy"], ["without", "Direct"]]} />
++                <FilterRow label="代理" value={filters.proxy} onPick={v => setFilter("proxy", v)}
++                  options={[["with", "带代理"], ["without", "直连"]]} />
+                 {allTags.length > 0 && (
+-                  <FilterRow label="Tag" value={filters.tag} onPick={v => setFilter("tag", v)}
++                  <FilterRow label="标签" value={filters.tag} onPick={v => setFilter("tag", v)}
+                     options={allTags.map(t => [t, t])} />
+                 )}
+               </div>
+@@ -722,16 +722,16 @@ function ProfilesView({ filtered, query, setQuery, folder, sel, setSel, toggleSe
+           (activeFilters || query) ? (
+             <div className="ps-empty">
+               <Filter size={28} color={T.dim} />
+-              <div>No profiles match your {activeFilters ? "filters" : "search"}.</div>
++              <div>没有匹配你的{activeFilters ? "筛选条件" : "搜索"}的配置。</div>
+               <button className="ps-btn ghost sm" onClick={() => { clearFilters(); setQuery(""); }}>
+-                <X size={14} /> Clear {activeFilters ? "filters" : "search"}
++                <X size={14} /> 清除{activeFilters ? "筛选条件" : "搜索"}
+               </button>
+             </div>
+           ) : (
+           <div className="ps-empty">
+             <Layers size={28} color={T.dim} />
+-            <div>No profiles here yet.</div>
+-            <button className="ps-btn primary sm" onClick={() => setEditor(newProfile(folder))}><Plus size={14} /> Create one</button>
++            <div>这里还没有配置。</div>
++            <button className="ps-btn primary sm" onClick={() => setEditor(newProfile(folder))}><Plus size={14} /> 创建一个</button>
+           </div>
+           )
+         ) : (
+@@ -741,8 +741,8 @@ function ProfilesView({ filtered, query, setQuery, folder, sel, setSel, toggleSe
+                 <th style={{ width: 34 }}>
+                   <input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(filtered.map(p => p.id)))} />
+                 </th>
+-                <th>Profile</th><th>Environment</th><th>Engine</th><th>Proxy</th>
+-                <th>Coherence</th><th>Last active</th><th style={{ width: 150, textAlign: "right" }}>Actions</th>
++                <th>配置</th><th>环境</th><th>引擎</th><th>代理</th>
++                <th>一致性</th><th>最近活动</th><th style={{ width: 150, textAlign: "right" }}>操作</th>
+               </tr>
+             </thead>
+             <tbody>
+@@ -758,7 +758,7 @@ function ProfilesView({ filtered, query, setQuery, folder, sel, setSel, toggleSe
+                           <div className="ps-pname">{p.name}</div>
+                           <div className="ps-tags">{p.tags.map(t => (
+                             <span key={t} className={"ps-tag clickable" + (filters.tag === t ? " on" : "")}
+-                              title={filters.tag === t ? "Clear tag filter" : `Filter by "${t}"`}
++                              title={filters.tag === t ? "清除标签筛选" : `按 "${t}" 筛选`}
+                               onClick={() => setFilter("tag", t)}>{t}</span>
+                           ))}</div>
+                         </div>
+@@ -775,22 +775,22 @@ function ProfilesView({ filtered, query, setQuery, folder, sel, setSel, toggleSe
+                     <td>
+                       {p.proxy
+                         ? <div className="ps-proxy"><Wifi size={13} color={T.mint} /><span className="ps-mono">{p.proxy.country}</span><span className="ps-mono dim">{p.proxy.type}</span></div>
+-                        : <div className="ps-proxy off"><WifiOff size={13} color={T.dim} /> <span className="dim">Direct</span></div>}
++                        : <div className="ps-proxy off"><WifiOff size={13} color={T.dim} /> <span className="dim">直连</span></div>}
+                     </td>
+                     <td>
+                       {iss.length === 0
+-                        ? <span className="ps-pill ok"><ShieldCheck size={12} /> Coherent</span>
+-                        : <span className="ps-pill warn" title={iss.join("\n")}><ShieldAlert size={12} /> {iss.length} issue{iss.length > 1 ? "s" : ""}</span>}
++                        ? <span className="ps-pill ok"><ShieldCheck size={12} /> 一致</span>
++                        : <span className="ps-pill warn" title={iss.join("\n")}><ShieldAlert size={12} /> {iss.length} 个问题</span>}
+                     </td>
+                     <td><span className="ps-mono dim">{p.lastActive}</span></td>
+                     <td>
+                       <div className="ps-actions">
+-                        <button title={p.status === "running" ? "Stop" : "Launch"} className={p.status === "running" ? "stop" : "run"} onClick={() => toggleRun(p.id)}>
++                        <button title={p.status === "running" ? "停止" : "启动"} className={p.status === "running" ? "stop" : "run"} onClick={() => toggleRun(p.id)}>
+                           {p.status === "running" ? <Square size={13} /> : <Play size={13} />}
+                         </button>
+-                        <button title="Edit" onClick={() => setEditor({ ...p })}><Pencil size={13} /></button>
+-                        <button title="Duplicate (fresh fingerprint)" onClick={() => clone(p)}><Copy size={13} /></button>
+-                        <button title="Delete" className="del" onClick={() => remove(p.id)}><Trash2 size={13} /></button>
++                        <button title="编辑" onClick={() => setEditor({ ...p })}><Pencil size={13} /></button>
++                        <button title="复制（全新指纹）" onClick={() => clone(p)}><Copy size={13} /></button>
++                        <button title="删除" className="del" onClick={() => remove(p.id)}><Trash2 size={13} /></button>
+                       </div>
+                     </td>
+                   </tr>
+@@ -801,13 +801,13 @@ function ProfilesView({ filtered, query, setQuery, folder, sel, setSel, toggleSe
+         )}
+         {pageCount > 1 && (
+           <div className="ps-pager">
+-            <button className="ps-btn ghost sm" disabled={cur === 0} onClick={() => setPage(0)}>« First</button>
+-            <button className="ps-btn ghost sm" disabled={cur === 0} onClick={() => setPage(cur - 1)}>‹ Prev</button>
++            <button className="ps-btn ghost sm" disabled={cur === 0} onClick={() => setPage(0)}>« 首页</button>
++            <button className="ps-btn ghost sm" disabled={cur === 0} onClick={() => setPage(cur - 1)}>‹ 上一页</button>
+             <span className="ps-pager-info">
+-              Page <b>{cur + 1}</b> of {pageCount} · <b>{filtered.length.toLocaleString()}</b> profiles
++              第 <b>{cur + 1}</b> 页，共 {pageCount} 页 · <b>{filtered.length.toLocaleString()}</b> 个配置
+             </span>
+-            <button className="ps-btn ghost sm" disabled={cur >= pageCount - 1} onClick={() => setPage(cur + 1)}>Next ›</button>
+-            <button className="ps-btn ghost sm" disabled={cur >= pageCount - 1} onClick={() => setPage(pageCount - 1)}>Last »</button>
++            <button className="ps-btn ghost sm" disabled={cur >= pageCount - 1} onClick={() => setPage(cur + 1)}>下一页 ›</button>
++            <button className="ps-btn ghost sm" disabled={cur >= pageCount - 1} onClick={() => setPage(pageCount - 1)}>末页 »</button>
+           </div>
+         )}
+       </div>
+@@ -822,34 +822,33 @@ function EnginesView({ engines, live }) {
+   return (
+     <div className="ps-scroll">
+       <div className="ps-eng-hero ps-rise">
+-        <div className="ps-eng-hero-badge"><Blocks size={13} /> Pluggable engines</div>
+-        <h1 className="ps-eng-title">Persona manages the identity.<br /><span className="grad">The engine renders it.</span></h1>
++        <div className="ps-eng-hero-badge"><Blocks size={13} /> 可插拔引擎</div>
++        <h1 className="ps-eng-title">Persona 管理身份。<br /><span className="grad">引擎负责渲染。</span></h1>
+         <p className="ps-eng-lead">
+-          Every profile carries a coherent fingerprint, a proxy and a session — that part is Persona's job.
+-          Plug in the stealth backend that matches your target. Install it, pick it per profile, launch.
++          每个配置都带有一致的指纹、代理与会话——那是 Persona 的职责。接入与你目标匹配的隐身后端。安装它、按配置选择它、启动它。
+         </p>
+         <div className="ps-eng-flow">
+-          <span className="ps-flow-node"><Fingerprint size={14} /> Identity</span>
++          <span className="ps-flow-node"><Fingerprint size={14} /> 身份</span>
+           <ArrowRight size={15} color={T.dim} />
+-          <span className="ps-flow-node"><Blocks size={14} /> Engine</span>
++          <span className="ps-flow-node"><Blocks size={14} /> 引擎</span>
+           <ArrowRight size={15} color={T.dim} />
+-          <span className="ps-flow-node"><MonitorSmartphone size={14} /> Real browser</span>
++          <span className="ps-flow-node"><MonitorSmartphone size={14} /> 真实浏览器</span>
+         </div>
+       </div>
+ 
+-      <SectionHead icon={<Star size={13} />} text="Recommended" note="Strongest against modern detection" />
++      <SectionHead icon={<Star size={13} />} text="推荐" note="对现代检测最强" />
+       <div className="ps-eng-grid">
+         {recommended.map((k, i) => <EngineCard key={k} id={k} status={engines?.[k]} live={live} delay={i * 60} featured />)}
+       </div>
+ 
+-      <SectionHead icon={<Blocks size={13} />} text="Also available" />
++      <SectionHead icon={<Blocks size={13} />} text="其他可用" />
+       <div className="ps-eng-grid">
+         {others.map((k, i) => <EngineCard key={k} id={k} status={engines?.[k]} live={live} delay={i * 60} />)}
+       </div>
+ 
+       <div className="ps-eng-note">
+         <Sparkles size={14} color={T.violet} />
+-        <span>Add your own backend by registering it in <code>engine/persona/drivers.py</code> — one function, one decorator.</span>
++        <span>通过注册到 <code>engine/persona/drivers.py</code> 添加你自己的后端——一个函数、一个装饰器。</span>
+       </div>
+     </div>
+   );
+@@ -865,7 +864,7 @@ function EngineCard({ id, status, live, delay, featured }) {
+     <div className={"ps-eng-card ps-rise" + (featured ? " featured" : "")} style={{ animationDelay: `${delay}ms` }}>
+       <div className="ps-eng-card-top">
+         <div>
+-          <div className="ps-eng-name">{m.label} {m.recommended && <span className="ps-rec"><Star size={10} /> Recommended</span>}</div>
++          <div className="ps-eng-name">{m.label} {m.recommended && <span className="ps-rec"><Star size={10} /> 推荐</span>}</div>
+           <div className="ps-eng-kind">{m.kind}</div>
+         </div>
+         <StatusDot state={state} />
+@@ -875,20 +874,20 @@ function EngineCard({ id, status, live, delay, featured }) {
+       {m.install ? (
+         <div className="ps-eng-install">
+           <code>{m.install}</code>
+-          <button onClick={copy} title="Copy install command">{copied ? <Check size={13} color={T.mint} /> : <Clipboard size={13} />}</button>
++          <button onClick={copy} title="复制安装命令">{copied ? <Check size={13} color={T.mint} /> : <Clipboard size={13} />}</button>
+         </div>
+       ) : (
+-        <div className="ps-eng-builtin"><Check size={13} color={T.mint} /> Ships with Persona — nothing to install.</div>
++        <div className="ps-eng-builtin"><Check size={13} color={T.mint} /> 随 Persona 内置——无需安装。</div>
+       )}
+-      {m.docs && <a className="ps-eng-docs" href={m.docs} target="_blank" rel="noreferrer">Setup guide <ArrowRight size={12} /></a>}
++      {m.docs && <a className="ps-eng-docs" href={m.docs} target="_blank" rel="noreferrer">安装指南 <ArrowRight size={12} /></a>}
+     </div>
+   );
+ }
+ 
+ function StatusDot({ state }) {
+   const map = {
+-    builtin: [T.mint, "Built-in"], ready: [T.mint, "Installed"],
+-    missing: [T.dim, "Not installed"], unknown: [T.violet, "Available"],
++    builtin: [T.mint, "内置"], ready: [T.mint, "已安装"],
++    missing: [T.dim, "未安装"], unknown: [T.violet, "可用"],
+   };
+   const [c, label] = map[state];
+   return <span className="ps-eng-status" style={{ color: c }}><span className="ps-eng-status-dot" style={{ background: c }} />{label}</span>;
+@@ -896,8 +895,8 @@ function StatusDot({ state }) {
+ 
+ function StrengthMeter({ value }) {
+   return (
+-    <div className="ps-strength" title={`Stealth strength ${value}/4`}>
+-      <span className="ps-strength-label">Stealth</span>
++    <div className="ps-strength" title={`隐身强度 ${value}/4`}>
++      <span className="ps-strength-label">隐身</span>
+       <div className="ps-strength-bars">
+         {[1, 2, 3, 4].map(n => <span key={n} className={"ps-sb" + (n <= value ? " on" : "")} />)}
+       </div>
+@@ -921,7 +920,7 @@ function Stat({ icon, label, value, accent, pulse }) {
+ function newProfile(folder, defaultEngine = ENGINE_ORDER[0]) {
+   const os = "Windows";
+   return {
+-    id: nid(), name: "", folder: folder === "All profiles" ? "Facebook Ads" : folder,
++    id: nid(), name: "", folder: folder === "全部配置" ? "Facebook Ads" : folder,
+     status: "stopped", os, tags: [], engine: defaultEngine, browser: "Chrome", browserVersion: "128.0.0.0",
+     userAgent: uaFor(os), screen: SCREENS[os][0], cores: CORES[os][1], memory: RAM[os][1],
+     webglVendor: "Google Inc. (NVIDIA)", webglRenderer: GPUS[os][0],
+@@ -936,7 +935,7 @@ function newProfile(folder, defaultEngine = ENGINE_ORDER[0]) {
+ function ProbePanel({ probe, kind }) {
+   if (!probe || probe.kind !== kind) return null;
+   if (probe.state === "running")
+-    return <div className="ps-hint"><RefreshCw size={12} className="ps-spin" /> Opening the profile in the background — this takes a few seconds.</div>;
++    return <div className="ps-hint"><RefreshCw size={12} className="ps-spin" /> 正在后台打开配置——需要几秒钟。</div>;
+   if (probe.state === "error")
+     return <div className="ps-hint"><ShieldAlert size={12} /> {probe.data}</div>;
+ 
+@@ -950,15 +949,15 @@ function ProbePanel({ probe, kind }) {
+           <span className="ps-probe-score" style={{ color: gColor(d.before.score) }}>{d.before.grade} {d.before.score}%</span>
+           <ArrowRight size={14} color={T.dim} />
+           <span className="ps-probe-score" style={{ color: gColor(d.after.score) }}>{d.after.grade} {d.after.score}%</span>
+-          <span>{d.after.passed}/{d.after.total} checks passed</span>
++          <span>{d.after.passed}/{d.after.total} 项检测通过</span>
+         </div>
+       )}
+       {d.changed && (
+         <div className="ps-check ok">
+           <Sparkles size={12} />
+           <span>{d.changed.length
+-            ? <>Aligned <em>{d.changed.join(", ")}</em> to the real browser{d.os ? ` · now reads as ${d.os}` : ""}.</>
+-            : "Already matched the browser — nothing to change."}</span>
++            ? <>已将 <em>{d.changed.join(", ")}</em> 对齐到真实浏览器{d.os ? ` · 现在显示为 ${d.os}` : ""}。</>
++            : "已与浏览器匹配——无需改动。"}</span>
+         </div>
+       )}
+       {d.score !== undefined && (
+@@ -966,7 +965,7 @@ function ProbePanel({ probe, kind }) {
+           <span className="ps-probe-score" style={{ color: d.score >= 95 ? T.mint : d.score >= 70 ? T.amber : T.red }}>
+             {d.score}%
+           </span>
+-          <span>grade {d.grade} · {d.passed}/{d.total} checks passed</span>
++          <span>等级 {d.grade} · {d.passed}/{d.total} 项检测通过</span>
+         </div>
+       )}
+       {d.ip && (
+@@ -984,9 +983,9 @@ function ProbePanel({ probe, kind }) {
+       {kind === "dns" && d.countries && (
+         <div className="ps-probe-head">
+           <span className="ps-probe-score" style={{ color: T.lilac, fontSize: 14 }}>
+-            {d.resolvers?.length || 0} resolver{(d.resolvers?.length || 0) === 1 ? "" : "s"}
++            {d.resolvers?.length || 0} 个解析器
+           </span>
+-          <span>{d.countries.join(", ") || "unknown"}</span>
++          <span>{d.countries.join(", ") || "未知"}</span>
+         </div>
+       )}
+       {d.error && <div className="ps-check">{d.error}</div>}
+@@ -1029,8 +1028,8 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+       a.download = `${(p.name || "profile").replace(/[^\w.-]+/g, "-")}-cookies.json`;
+       a.click();
+       URL.revokeObjectURL(a.href);
+-      setCkMsg(`Exported ${cookies.length} cookie${cookies.length === 1 ? "" : "s"}.`);
+-    } catch (e) { setCkMsg("Export failed: " + e.message); }
++      setCkMsg(`已导出 ${cookies.length} 个 Cookie。`);
++    } catch (e) { setCkMsg("导出失败: " + e.message); }
+     setCkBusy("");
+   };
+ 
+@@ -1067,7 +1066,7 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+   const checkSession = async () => {
+     setSessBusy(true);
+     try { setSess(await api.sessionCheck(p.id)); await loadActivity(); }
+-    catch (e) { toast.error("Session check failed: " + e.message); }
++    catch (e) { toast.error("会话检查失败: " + e.message); }
+     setSessBusy(false);
+   };
+   useEffect(() => { if (tab === "session") loadActivity(); }, [tab, p.id]);   // eslint-disable-line
+@@ -1084,22 +1083,22 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+ 
+   const warmNow = () =>
+     api.warmup(p.id, 5, preset)
+-      .then(() => setCkMsg(`Warm-up started (${preset}) — runs in the background for ~5 minutes.`))
+-      .catch(e => setCkMsg("Warm-up failed: " + e.message));
++      .then(() => setCkMsg(`预热已启动（${preset}）——约 5 分钟在后台运行。`))
++      .catch(e => setCkMsg("预热失败: " + e.message));
+ 
+   const toggleSchedule = async () => {
+     setSchedBusy(true);
+     try {
+       if (sched) { await api.deleteSchedule(sched.id); setSched(null); }
+       else { setSched(await api.addSchedule({ profileId: p.id, everyHours: 12, minutes: 5, preset })); }
+-    } catch (e) { setCkMsg("Schedule failed: " + e.message); }
++    } catch (e) { setCkMsg("计划失败: " + e.message); }
+     setSchedBusy(false);
+   };
+   const patchSchedule = async (patch) => {
+     if (!sched) return;
+     setSchedBusy(true);
+     try { setSched(await api.updateSchedule(sched.id, patch)); }
+-    catch (e) { setCkMsg("Schedule failed: " + e.message); }
++    catch (e) { setCkMsg("计划失败: " + e.message); }
+     setSchedBusy(false);
+   };
+ 
+@@ -1108,8 +1107,8 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+     setCkBusy("import"); setCkMsg("");
+     try {
+       const res = await api.importCookies(p.id, await file.text(), ckReplace);
+-      setCkMsg(`Imported ${res.imported} cookie${res.imported === 1 ? "" : "s"} from ${file.name}.`);
+-    } catch (e) { setCkMsg("Import failed: " + e.message); }
++      setCkMsg(`从 ${file.name} 导入 ${res.imported} 个 Cookie。`);
++    } catch (e) { setCkMsg("导入失败: " + e.message); }
+     setCkBusy("");
+   };
+ 
+@@ -1118,8 +1117,8 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+       <div className="ps-drawer" onClick={e => e.stopPropagation()}>
+         <div className="ps-drawer-h">
+           <div>
+-            <div className="ps-eyebrow">{p._new ? "New profile" : "Edit profile"}</div>
+-            <div className="ps-drawer-title">{p.name || "Untitled profile"}</div>
++            <div className="ps-eyebrow">{p._new ? "新建配置" : "编辑配置"}</div>
++            <div className="ps-drawer-title">{p.name || "未命名配置"}</div>
+           </div>
+           <button className="ps-x" onClick={onClose}><X size={18} /></button>
+         </div>
+@@ -1128,200 +1127,200 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+           <div className="ps-coh-top">
+             <span className="ps-coh-h">
+               {iss.length === 0 ? <ShieldCheck size={14} color={T.mint} /> : <ShieldAlert size={14} color={T.amber} />}
+-              Fingerprint coherence
++              指纹一致性
+             </span>
+             <span className="ps-coh-score" style={{ color: iss.length ? T.amber : T.mint }}>{score}%</span>
+           </div>
+           <div className="ps-coh-bar"><div style={{ width: score + "%", background: iss.length ? T.amber : T.mint }} /></div>
+           {iss.length > 0
+             ? <div className="ps-coh-iss">{iss.map((i, k) => <div key={k}>· {i}</div>)}</div>
+-            : <div className="ps-coh-ok">All signals agree — this identity reads like one real device.</div>}
++            : <div className="ps-coh-ok">所有信号一致——这个身份看起来就像一台真实设备。</div>}
+         </div>
+ 
+         <div className="ps-tabs">
+           {["general", "fingerprint", "proxy", "advanced", "session"].map(t => (
+-            <button key={t} className={"ps-tab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{t}</button>
++            <button key={t} className={"ps-tab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{{general:"通用",fingerprint:"指纹",proxy:"代理",advanced:"高级",session:"会话"}[t]}</button>
+           ))}
+         </div>
+ 
+         <div className="ps-drawer-body">
+           {tab === "general" && (
+             <>
+-              <Field label="Profile name"><input className="ps-in" value={p.name} onChange={e => set({ name: e.target.value })} placeholder="e.g. FB-Ads-03" /></Field>
++              <Field label="配置名称"><input className="ps-in" value={p.name} onChange={e => set({ name: e.target.value })} placeholder="例如 FB-Ads-03" /></Field>
+               <Row>
+-                <Field label="Folder">
++                <Field label="文件夹">
+                   <select className="ps-in" value={p.folder} onChange={e => set({ folder: e.target.value })}>
+-                    {[...new Set([p.folder, ...folders].filter(f => f && f !== "All profiles"))].map(f => <option key={f}>{f}</option>)}
++                    {[...new Set([p.folder, ...folders].filter(f => f && f !== "全部配置"))].map(f => <option key={f}>{f}</option>)}
+                   </select>
+                 </Field>
+-                <Field label="Tags (comma separated)">
++                <Field label="标签（逗号分隔）">
+                   <input className="ps-in" value={p.tags.join(", ")} onChange={e => set({ tags: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })} placeholder="client-a, priority" />
+                 </Field>
+               </Row>
+-              <Field label="Notes"><textarea className="ps-in" rows={3} value={p.notes} onChange={e => set({ notes: e.target.value })} placeholder="Anything worth remembering about this account…" /></Field>
+-              <Field label="Launch engine">
++              <Field label="备注"><textarea className="ps-in" rows={3} value={p.notes} onChange={e => set({ notes: e.target.value })} placeholder="值得记住的关于该账号的信息…" /></Field>
++              <Field label="启动引擎">
+                 <select className="ps-in" value={p.engine || "playwright"} onChange={e => set({ engine: e.target.value })}>
+-                  {ENGINE_ORDER.map(en => <option key={en} value={en}>{ENGINE_META[en].label}{ENGINE_META[en].recommended ? "  ★ recommended" : ""}</option>)}
++                  {ENGINE_ORDER.map(en => <option key={en} value={en}>{ENGINE_META[en].label}{ENGINE_META[en].recommended ? "  ★ 推荐" : ""}</option>)}
+                 </select>
+               </Field>
+-              <div className="ps-hint"><Blocks size={12} /> Persona manages this profile; the engine renders it. Manage engines in the <b style={{ color: T.text }}>Engines</b> tab.</div>
++              <div className="ps-hint"><Blocks size={12} /> Persona 管理这个配置；引擎负责渲染。在 <b style={{ color: T.text }}>引擎</b> 标签页管理引擎。</div>
+             </>
+           )}
+ 
+           {tab === "fingerprint" && (
+             <>
+-              <SectionLabel icon={<MonitorSmartphone size={13} />} text="Operating system & browser" />
++              <SectionLabel icon={<MonitorSmartphone size={13} />} text="操作系统与浏览器" />
+               <Row>
+-                <Field label="Operating system">
++                <Field label="操作系统">
+                   <select className="ps-in" value={p.os} onChange={e => changeOS(e.target.value)}>{OS_LIST.map(o => <option key={o}>{o}</option>)}</select>
+                 </Field>
+-                <Field label="Browser version"><input className="ps-in" value={p.browserVersion} onChange={e => set({ browserVersion: e.target.value })} /></Field>
++                <Field label="浏览器版本"><input className="ps-in" value={p.browserVersion} onChange={e => set({ browserVersion: e.target.value })} /></Field>
+               </Row>
+               <Field label="User-Agent"><textarea className="ps-in mono" rows={2} value={p.userAgent} onChange={e => set({ userAgent: e.target.value })} /></Field>
+ 
+-              <SectionLabel icon={<Cpu size={13} />} text="Hardware" />
++              <SectionLabel icon={<Cpu size={13} />} text="硬件" />
+               <Row>
+-                <Field label="Screen resolution">
++                <Field label="屏幕分辨率">
+                   <select className="ps-in" value={p.screen} onChange={e => set({ screen: e.target.value })}>{[...new Set([p.screen, ...SCREENS[p.os]])].map(s => <option key={s}>{s}</option>)}</select>
+                 </Field>
+-                <Field label="CPU cores">
++                <Field label="CPU 核心数">
+                   <select className="ps-in" value={p.cores} onChange={e => set({ cores: Number(e.target.value) })}>{[...new Set([p.cores, ...CORES[p.os]])].map(c => <option key={c}>{c}</option>)}</select>
+                 </Field>
+-                <Field label="Memory (GB)">
++                <Field label="内存 (GB)">
+                   <select className="ps-in" value={p.memory} onChange={e => set({ memory: Number(e.target.value) })}>{[...new Set([p.memory, ...RAM[p.os]])].map(m => <option key={m}>{m}</option>)}</select>
+                 </Field>
+               </Row>
+-              <Field label="WebGL renderer (GPU)">
++              <Field label="WebGL 渲染器 (GPU)">
+                 <select className="ps-in mono" value={p.webglRenderer} onChange={e => set({ webglRenderer: e.target.value })}>{[...new Set([p.webglRenderer, ...GPUS[p.os]])].map(g => <option key={g}>{g}</option>)}</select>
+               </Field>
+ 
+-              <SectionLabel icon={<Fingerprint size={13} />} text="Spoofing modes" />
++              <SectionLabel icon={<Fingerprint size={13} />} text="伪装模式" />
+               <Row><Pick label="Canvas" opts={MODES.canvas} val={p.canvas} on={v => set({ canvas: v })} /><Pick label="WebRTC" opts={MODES.webrtc} val={p.webrtc} on={v => set({ webrtc: v })} /></Row>
+-              <Row><Pick label="Audio context" opts={MODES.audio} val={p.audio} on={v => set({ audio: v })} /><Pick label="Fonts" opts={MODES.fonts} val={p.fonts} on={v => set({ fonts: v })} /></Row>
++              <Row><Pick label="音频上下文" opts={MODES.audio} val={p.audio} on={v => set({ audio: v })} /><Pick label="字体" opts={MODES.fonts} val={p.fonts} on={v => set({ fonts: v })} /></Row>
+ 
+-              <SectionLabel icon={<Globe size={13} />} text="Geo & language" />
++              <SectionLabel icon={<Globe size={13} />} text="地理与语言" />
+               <Row>
+-                <Field label="Locale"><select className="ps-in" value={p.locale} onChange={e => changeLocale(e.target.value)}>{Object.keys(LOCALES).map(l => <option key={l}>{l}</option>)}</select></Field>
+-                <Field label={<span><Clock size={11} /> Timezone</span>}><input className="ps-in mono" value={p.timezone} onChange={e => set({ timezone: e.target.value })} /></Field>
+-                <Pick label="Geolocation" opts={MODES.geo} val={p.geo} on={v => set({ geo: v })} />
++                <Field label="区域设置"><select className="ps-in" value={p.locale} onChange={e => changeLocale(e.target.value)}>{Object.keys(LOCALES).map(l => <option key={l}>{l}</option>)}</select></Field>
++                <Field label={<span><Clock size={11} /> 时区</span>}><input className="ps-in mono" value={p.timezone} onChange={e => set({ timezone: e.target.value })} /></Field>
++                <Pick label="地理位置" opts={MODES.geo} val={p.geo} on={v => set({ geo: v })} />
+               </Row>
+               <Row>
+-                <Field label={<span><Camera size={11} /> Cameras</span>}><input type="number" className="ps-in" value={p.mediaVideo} onChange={e => set({ mediaVideo: Number(e.target.value) })} /></Field>
+-                <Field label={<span><Mic size={11} /> Microphones</span>}><input type="number" className="ps-in" value={p.mediaAudio} onChange={e => set({ mediaAudio: Number(e.target.value) })} /></Field>
+-                <Field label="Do Not Track">
+-                  <button className={"ps-toggle" + (p.dnt ? " on" : "")} onClick={() => set({ dnt: !p.dnt })}><span className="knob" /> <em>{p.dnt ? "On" : "Off"}</em></button>
++                <Field label={<span><Camera size={11} /> 摄像头</span>}><input type="number" className="ps-in" value={p.mediaVideo} onChange={e => set({ mediaVideo: Number(e.target.value) })} /></Field>
++                <Field label={<span><Mic size={11} /> 麦克风</span>}><input type="number" className="ps-in" value={p.mediaAudio} onChange={e => set({ mediaAudio: Number(e.target.value) })} /></Field>
++                <Field label="禁追踪">
++                  <button className={"ps-toggle" + (p.dnt ? " on" : "")} onClick={() => set({ dnt: !p.dnt })}><span className="knob" /> <em>{p.dnt ? "开" : "关"}</em></button>
+                 </Field>
+               </Row>
+ 
+-              <SectionLabel icon={<ShieldCheck size={13} />} text="Trust check" />
++              <SectionLabel icon={<ShieldCheck size={13} />} text="信任检测" />
+               <div className="ps-cookie-actions">
+                 <button className="ps-btn ghost sm" disabled={!cookiesReady || probe?.state === "running"}
+                   onClick={() => runProbe("trust", () => api.trust(p.id))}>
+-                  <ShieldCheck size={13} /> Run trust check
++                  <ShieldCheck size={13} /> 运行信任检测
+                 </button>
+                 <button className="ps-btn ghost sm" disabled={!cookiesReady || probe?.state === "running"}
+                   onClick={() => runProbe("tls", () => api.tls(p.id))}>
+-                  <Wifi size={13} /> Check TLS / JA3
++                  <Wifi size={13} /> 检测 TLS / JA3
+                 </button>
+                 <button className="ps-btn primary sm" disabled={!cookiesReady || probe?.state === "running"}
+-                  onClick={autoAdjust} title="Rewrite mismatched values to match what the browser actually presents">
+-                  <Sparkles size={13} /> Auto-adjust
++                  onClick={autoAdjust} title="重写不匹配的值，使其匹配浏览器实际呈现的内容">
++                  <Sparkles size={13} /> 自动校准
+                 </button>
+               </div>
+               <ProbePanel probe={probe} kind="trust" />
+               <ProbePanel probe={probe} kind="tls" />
+               <ProbePanel probe={probe} kind="align" />
+               <div className="ps-hint"><ShieldCheck size={12} /> {cookiesReady
+-                ? "Trust check grades the real browser; TLS/JA3 reads the handshake JavaScript can't touch. Auto-adjust closes the gap — it rewrites platform, CPU, GPU, fonts and the rest to what the browser actually shows (regenerating the OS identity if the engine renders a different one), so nothing contradicts."
+-                : "Save the profile and start the engine to grade — and auto-adjust — the real browser."}</div>
++                ? "信任检测给真实浏览器打分；TLS/JA3 读取 JavaScript 无法触及的握手信息。自动校准弥合差距——它会将平台、CPU、GPU、字体等改为浏览器实际显示的内容（若引擎渲染出不同的操作系统身份则重新生成），使所有信号互不矛盾。"
++                : "保存配置并启动引擎，即可对真实浏览器进行打分——并自动校准。"}</div>
+             </>
+           )}
+ 
+           {tab === "proxy" && (
+             <>
+               <div className="ps-proxy-toggle">
+-                <span style={{ fontSize: 13, fontWeight: 600 }}>Use proxy for this profile</span>
++                <span style={{ fontSize: 13, fontWeight: 600 }}>为此配置使用代理</span>
+                 <button className={"ps-toggle" + (p.proxy ? " on" : "")} onClick={() => set({ proxy: p.proxy ? null : { type: "HTTP", host: "", port: "", user: "", pass: "", country: "US" } })}>
+-                  <span className="knob" /> <em>{p.proxy ? "On" : "Off"}</em>
++                  <span className="knob" /> <em>{p.proxy ? "开" : "关"}</em>
+                 </button>
+               </div>
+               {p.proxy ? (
+                 <>
+                   <Row>
+-                    <Field label="Type"><select className="ps-in" value={p.proxy.type} onChange={e => setProxy({ type: e.target.value })}>{["HTTP", "HTTPS", "SOCKS5"].map(t => <option key={t}>{t}</option>)}</select></Field>
+-                    <Field label="Country"><select className="ps-in" value={p.proxy.country} onChange={e => setProxy({ country: e.target.value })}>{Object.keys(COUNTRY_LOCALE).map(c => <option key={c}>{c}</option>)}</select></Field>
++                    <Field label="类型"><select className="ps-in" value={p.proxy.type} onChange={e => setProxy({ type: e.target.value })}>{["HTTP", "HTTPS", "SOCKS5"].map(t => <option key={t}>{t}</option>)}</select></Field>
++                    <Field label="国家"><select className="ps-in" value={p.proxy.country} onChange={e => setProxy({ country: e.target.value })}>{Object.keys(COUNTRY_LOCALE).map(c => <option key={c}>{c}</option>)}</select></Field>
+                   </Row>
+                   <Row>
+-                    <Field label="Host"><input className="ps-in mono" value={p.proxy.host} onChange={e => setProxy({ host: e.target.value })} placeholder="host.proxy.io" /></Field>
+-                    <Field label="Port"><input className="ps-in mono" value={p.proxy.port} onChange={e => setProxy({ port: e.target.value })} placeholder="8080" /></Field>
++                    <Field label="主机"><input className="ps-in mono" value={p.proxy.host} onChange={e => setProxy({ host: e.target.value })} placeholder="host.proxy.io" /></Field>
++                    <Field label="端口"><input className="ps-in mono" value={p.proxy.port} onChange={e => setProxy({ port: e.target.value })} placeholder="8080" /></Field>
+                   </Row>
+                   <Row>
+-                    <Field label="Username"><input className="ps-in mono" value={p.proxy.user} onChange={e => setProxy({ user: e.target.value })} /></Field>
+-                    <Field label="Password"><input className="ps-in mono" type="password" value={p.proxy.pass} onChange={e => setProxy({ pass: e.target.value })} /></Field>
++                    <Field label="用户名"><input className="ps-in mono" value={p.proxy.user} onChange={e => setProxy({ user: e.target.value })} /></Field>
++                    <Field label="密码"><input className="ps-in mono" type="password" value={p.proxy.pass} onChange={e => setProxy({ pass: e.target.value })} /></Field>
+                   </Row>
+                   <div className="ps-cookie-actions" style={{ marginTop: 4 }}>
+                     <button className="ps-btn ghost sm"
+                       disabled={!cookiesReady || probe?.state === "running"}
+                       onClick={() => runProbe("proxy", () => api.proxyTest(p.id))}>
+-                      <RefreshCw size={13} /> Test connection
++                      <RefreshCw size={13} /> 测试连接
+                     </button>
+                     <button className="ps-btn ghost sm"
+                       disabled={!cookiesReady || probe?.state === "running"}
+                       onClick={() => runProbe("dns", () => api.dns(p.id))}
+-                      title="Do the profile's DNS lookups exit through the proxy, or leak to your real ISP?">
+-                      <Globe size={13} /> DNS leak test
++                      title="配置的 DNS 查询是否走代理退出，还是泄漏到你的真实 ISP？">
++                      <Globe size={13} /> DNS 泄漏测试
+                     </button>
+                   </div>
+                   <ProbePanel probe={probe} kind="proxy" />
+                   <ProbePanel probe={probe} kind="dns" />
+                   <div className="ps-hint"><MapPin size={12} /> {cookiesReady
+-                    ? "Test connection routes a real request and reports the exit IP, country and WebRTC leaks. DNS leak test checks whether name lookups escape the proxy to your real ISP's resolver."
+-                    : "Save the profile and start the engine to test the connection for real."}</div>
++                    ? "测试连接会发出真实请求，并报告出口 IP、国家和 WebRTC 泄漏。DNS 泄漏测试检查域名查询是否绕过代理、落到你真实 ISP 的解析器上。"
++                    : "保存配置并启动引擎，即可真实地测试连接。"}</div>
+                 </>
+-              ) : <div className="ps-hint">No proxy — this profile connects directly. Turn it on to route through a residential or datacenter proxy.</div>}
++              ) : <div className="ps-hint">无代理——此配置直连。开启后可走住宅或数据中心代理。</div>}
+             </>
+           )}
+ 
+           {tab === "advanced" && (
+             <>
+-              <Field label="Startup URLs (one per line)"><textarea className="ps-in mono" rows={3} value={p.startupUrls} onChange={e => set({ startupUrls: e.target.value })} placeholder={"https://facebook.com\nhttps://business.facebook.com"} /></Field>
+-              <Field label="WebGL vendor"><input className="ps-in mono" value={p.webglVendor} onChange={e => set({ webglVendor: e.target.value })} /></Field>
+-              <div className="ps-hint"><Fingerprint size={12} /> Seed & canvas noise are managed by the engine and stay stable across launches for this profile.</div>
++              <Field label="启动 URL（每行一个）"><textarea className="ps-in mono" rows={3} value={p.startupUrls} onChange={e => set({ startupUrls: e.target.value })} placeholder={"https://facebook.com\nhttps://business.facebook.com"} /></Field>
++              <Field label="WebGL 供应商"><input className="ps-in mono" value={p.webglVendor} onChange={e => set({ webglVendor: e.target.value })} /></Field>
++              <div className="ps-hint"><Fingerprint size={12} /> 种子与 canvas 噪点由引擎管理，并在该配置的多次启动间保持稳定。</div>
+ 
+-              <SectionLabel icon={<Blocks size={13} />} text="Extensions" />
+-              <Field label="Unpacked extension folders (one per line)">
++              <SectionLabel icon={<Blocks size={13} />} text="扩展" />
++              <Field label="未解压扩展文件夹（每行一个）">
+                 <textarea className="ps-in mono" rows={2} value={p.extensions || ""}
+                   onChange={e => set({ extensions: e.target.value })}
+                   placeholder={"C:\\\\tools\\\\metamask\\n/home/me/ext/ublock"} />
+               </Field>
+-              <div className="ps-hint"><Blocks size={12} /> Point at the folder containing <code>manifest.json</code>. Only these extensions load, so nothing carries over between profiles.</div>
++              <div className="ps-hint"><Blocks size={12} /> 指向包含 <code>manifest.json</code> 的文件夹。只加载这些扩展，因此配置之间不会相互带入任何东西。</div>
+ 
+-              <SectionLabel icon={<Sparkles size={13} />} text="Warm-up" />
++              <SectionLabel icon={<Sparkles size={13} />} text="预热" />
+               <Row>
+-                <Field label="Vertical (which sites to browse)">
++                <Field label="垂直领域（浏览哪些站点）">
+                   <select className="ps-in" value={preset} onChange={e => setPreset(e.target.value)}>
+                     {WARMUP_PRESETS.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+                   </select>
+                 </Field>
+-                <Field label="Run now">
++                <Field label="立即运行">
+                   <button className="ps-btn ghost sm" disabled={!cookiesReady} onClick={warmNow} style={{ width: "100%", justifyContent: "center" }}>
+-                    <Sparkles size={13} /> Warm up 5 min
++                    <Sparkles size={13} /> 预热 5 分钟
+                   </button>
+                 </Field>
+               </Row>
+               <div className="ps-proxy-toggle" style={{ marginTop: 8 }}>
+-                <span style={{ fontSize: 13, fontWeight: 600 }}>Schedule recurring warm-up</span>
++                <span style={{ fontSize: 13, fontWeight: 600 }}>定期重复预热</span>
+                 <button className={"ps-toggle" + (sched ? " on" : "")} disabled={!cookiesReady || schedBusy} onClick={toggleSchedule}>
+-                  <span className="knob" /> <em>{sched ? "On" : "Off"}</em>
++                  <span className="knob" /> <em>{sched ? "开" : "关"}</em>
+                 </button>
+               </div>
+               {sched && (
+                 <Row>
+-                  <Field label="Every (hours)">
++                  <Field label="间隔（小时）">
+                     <input type="number" min="1" className="ps-in" value={sched.everyHours}
+                       disabled={schedBusy} onChange={e => patchSchedule({ everyHours: Number(e.target.value) })} />
+                   </Field>
+-                  <Field label="Vertical">
++                  <Field label="垂直领域">
+                     <select className="ps-in" value={sched.preset} disabled={schedBusy}
+                       onChange={e => patchSchedule({ preset: e.target.value })}>
+                       {WARMUP_PRESETS.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+@@ -1329,77 +1328,77 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+                   </Field>
+                 </Row>
+               )}
+-              <div className="ps-hint"><Sparkles size={12} /> A profile created minutes ago with no history is a signal in itself. Warm-up browses that vertical's sites at human pace so the session arrives with a plausible past. Scheduling reruns it unattended (the engine must be running) so the session never goes cold. {cookiesReady ? "" : "Save the profile and start the engine to enable it."}</div>
++              <div className="ps-hint"><Sparkles size={12} /> 几分钟前创建、毫无历史的配置本身就是一种信号。预热以人类速度浏览该垂直领域的站点，让会话带着可信的过去出现。定期预热会在无人看管下重复运行（引擎必须运行），使会话永不过期。{cookiesReady ? "" : "保存配置并启动引擎以启用。"}</div>
+ 
+-              <SectionLabel icon={<Cookie size={13} />} text="Session cookies" />
++              <SectionLabel icon={<Cookie size={13} />} text="会话 Cookie" />
+               {cookiesReady ? (
+                 <>
+                   <div className="ps-cookie-actions">
+                     <button className="ps-btn ghost sm" disabled={!!ckBusy} onClick={exportCookies}>
+-                      <Download size={13} /> {ckBusy === "export" ? "Reading session…" : "Export cookies"}
++                      <Download size={13} /> {ckBusy === "export" ? "正在读取会话…" : "导出 Cookie"}
+                     </button>
+                     <label className={"ps-btn ghost sm" + (ckBusy ? " disabled" : "")}>
+-                      <Upload size={13} /> {ckBusy === "import" ? "Writing session…" : "Import cookies"}
++                      <Upload size={13} /> {ckBusy === "import" ? "正在写入会话…" : "导入 Cookie"}
+                       <input type="file" accept=".json,.txt" style={{ display: "none" }} disabled={!!ckBusy}
+                         onChange={e => { importCookies(e.target.files?.[0]); e.target.value = ""; }} />
+                     </label>
+                     <button className={"ps-toggle sm" + (ckReplace ? " on" : "")} onClick={() => setCkReplace(v => !v)}>
+-                      <span className="knob" /> <em>Replace existing</em>
++                      <span className="knob" /> <em>替换现有</em>
+                     </button>
+                   </div>
+                   {ckMsg && <div className="ps-hint">{ckMsg}</div>}
+-                  <div className="ps-hint"><Cookie size={12} /> Reads and writes the profile's real cookie jar. Accepts Cookie-Editor / EditThisCookie JSON, Playwright storage state, and Netscape <code>cookies.txt</code>. Stop the profile first — its session can't be open twice.</div>
++                  <div className="ps-hint"><Cookie size={12} /> 读取并写入配置的真实 cookie 库。支持 Cookie-Editor / EditThisCookie JSON、Playwright 存储状态以及 Netscape <code>cookies.txt</code>。请先停止该配置——它的会话不能同时打开两次。</div>
+                 </>
+               ) : (
+                 <div className="ps-hint"><Cookie size={12} /> {p._new
+-                  ? "Save this profile first, then you can move a session in or out."
+-                  : "Cookie transfer needs the engine running — start it with persona serve."}</div>
++                  ? "请先保存此配置，然后才能导入或导出会话。"
++                  : "Cookie 传输需要引擎运行——请用 persona serve 启动。"}</div>
+               )}
+             </>
+           )}
+ 
+           {tab === "session" && (
+             <>
+-              <SectionLabel icon={<Cookie size={13} />} text="Session health" />
++              <SectionLabel icon={<Cookie size={13} />} text="会话健康" />
+               {cookiesReady ? (
+                 <>
+                   <button className="ps-btn primary sm" disabled={sessBusy} onClick={checkSession}>
+-                    <ShieldCheck size={13} /> {sessBusy ? "Reading session…" : "Check session"}
++                    <ShieldCheck size={13} /> {sessBusy ? "正在读取会话…" : "检查会话"}
+                   </button>
+                   {sess && (
+                     <div className={"ps-sess ps-sess-" + sess.status}>
+                       <div className="ps-sess-top">
+                         <span className={"ps-pill sess " + sess.status}>{SESS_LABEL[sess.status] || sess.status}</span>
+-                        <span className="ps-mono dim">{sess.total} cookies · {sess.persistent} persistent · {sess.session} session</span>
++                        <span className="ps-mono dim">{sess.total} 个 Cookie · {sess.persistent} 持久 · {sess.session} 会话</span>
+                       </div>
+                       {(sess.expired > 0 || sess.expiringSoon > 0) && (
+                         <div className="ps-sess-warn">
+-                          {sess.expired > 0 && <span>{sess.expired} expired</span>}
+-                          {sess.expiringSoon > 0 && <span>{sess.expiringSoon} expiring within {sess.soonDays}d</span>}
++                          {sess.expired > 0 && <span>{sess.expired} 个已过期</span>}
++                          {sess.expiringSoon > 0 && <span>{sess.expiringSoon} 个将在 {sess.soonDays} 天内过期</span>}
+                         </div>
+                       )}
+                       <div className="ps-sess-logins">
+                         {sess.logins.length
+-                          ? <>Live logins: {sess.logins.map(s => <span key={s} className="ps-tag on">{s}</span>)}</>
+-                          : <span className="dim">No known live logins detected.</span>}
++                          ? <>在线登录：{sess.logins.map(s => <span key={s} className="ps-tag on">{s}</span>)}</>
++                          : <span className="dim">未检测到任何在线登录。</span>}
+                       </div>
+                     </div>
+                   )}
+-                  <div className="ps-hint"><Cookie size={12} /> Opens the profile headlessly and reads its real cookie jar — flags expired / soon-to-expire cookies and which accounts are still logged in. Stop the profile first.</div>
++                  <div className="ps-hint"><Cookie size={12} /> 无头打开配置并读取其真实 cookie 库——标出已过期/即将过期的 Cookie 以及仍然登录的账号。请先停止该配置。</div>
+                 </>
+               ) : (
+                 <div className="ps-hint"><Cookie size={12} /> {p._new
+-                  ? "Save the profile first, then run a session check."
+-                  : "Session check needs the engine running — start it with persona serve."}</div>
++                  ? "请先保存配置，再运行会话检查。"
++                  : "会话检查需要引擎运行——请用 persona serve 启动。"}</div>
+               )}
+ 
+-              <SectionLabel icon={<Activity size={13} />} text="Activity" />
++              <SectionLabel icon={<Activity size={13} />} text="活动" />
+               {!cookiesReady ? (
+-                <div className="ps-hint"><Clock size={12} /> The activity log records launches, warm-ups, trust runs and more once the profile is saved on a live server.</div>
++                <div className="ps-hint"><Clock size={12} /> 一旦配置在在线服务器上保存，活动日志就会记录启动、预热、信任检测等。</div>
+               ) : activity === null ? (
+-                <div className="ps-hint"><Clock size={12} /> Loading…</div>
++                <div className="ps-hint"><Clock size={12} /> 加载中…</div>
+               ) : activity.length === 0 ? (
+-                <div className="ps-hint"><Clock size={12} /> Nothing yet — launch or warm up the profile and it'll show here.</div>
++                <div className="ps-hint"><Clock size={12} /> 尚无记录——启动或预热该配置，它就会显示在这里。</div>
+               ) : (
+                 <div className="ps-timeline">
+                   {activity.map((e, k) => (
+@@ -1417,9 +1416,9 @@ function Editor({ profile, live, folders = [], onClose, onSave }) {
+         </div>
+ 
+         <div className="ps-drawer-foot">
+-          <button className="ps-btn ghost" onClick={onClose}>Cancel</button>
++          <button className="ps-btn ghost" onClick={onClose}>取消</button>
+           <button className="ps-btn primary" disabled={!p.name} onClick={() => onSave({ ...p, _new: false })}>
+-            <Check size={15} /> {p._new ? "Create profile" : "Save changes"}
++            <Check size={15} /> {p._new ? "创建配置" : "保存更改"}
+           </button>
+         </div>
+       </div>
+@@ -1448,43 +1447,43 @@ function SyncModal({ ids, folders = [], onClose, onApply }) {
+       <div className="ps-modal ps-pop" onClick={e => e.stopPropagation()}>
+         <div className="ps-drawer-h">
+           <div>
+-            <div className="ps-eyebrow">Edit {ids.length} profiles</div>
+-            <div className="ps-drawer-title">Change once, apply to all</div>
++            <div className="ps-eyebrow">编辑 {ids.length} 个配置</div>
++            <div className="ps-drawer-title">改一次，应用到全部</div>
+           </div>
+           <button className="ps-x" onClick={onClose}><X size={18} /></button>
+         </div>
+         <div style={{ padding: 20 }}>
+           <Row>
+-            <Field label="Launch engine">
++            <Field label="启动引擎">
+               <select className="ps-in" value={engine} onChange={e => setEngine(e.target.value)}>
+-                <option value="">— leave unchanged —</option>
++                <option value="">— 保持不变 —</option>
+                 {ENGINE_ORDER.map(en => <option key={en} value={en}>{ENGINE_META[en].label}</option>)}
+               </select>
+             </Field>
+-            <Field label="Locale (moves timezone too)">
++            <Field label="区域设置（同时与时区联动）">
+               <select className="ps-in" value={locale} onChange={e => setLocale(e.target.value)}>
+-                <option value="">— leave unchanged —</option>
++                <option value="">— 保持不变 —</option>
+                 {Object.keys(LOCALES).map(l => <option key={l}>{l}</option>)}
+               </select>
+             </Field>
+           </Row>
+           <Row>
+-            <Field label="Move to folder">
++            <Field label="移动到文件夹">
+               <select className="ps-in" value={folder} onChange={e => setFolder(e.target.value)}>
+-                <option value="">— leave unchanged —</option>
+-                {folders.filter(f => f !== "All profiles").map(f => <option key={f}>{f}</option>)}
++                <option value="">— 保持不变 —</option>
++                {folders.filter(f => f !== "全部配置").map(f => <option key={f}>{f}</option>)}
+               </select>
+             </Field>
+-            <Field label="Add tags (comma separated)">
++            <Field label="添加标签（逗号分隔）">
+               <input className="ps-in" value={tag} onChange={e => setTag(e.target.value)} placeholder="q3-campaign" />
+             </Field>
+           </Row>
+-          <div className="ps-hint"><Copy size={12} /> Blank fields are left alone, so you can run this again later to change one more thing.</div>
++          <div className="ps-hint"><Copy size={12} /> 空白字段不会被改动，因此你之后可以再次运行它来改变另一项。</div>
+         </div>
+         <div className="ps-drawer-foot">
+-          <button className="ps-btn ghost" onClick={onClose}>Cancel</button>
++          <button className="ps-btn ghost" onClick={onClose}>取消</button>
+           <button className="ps-btn primary" disabled={!count} onClick={() => onApply(patch)}>
+-            <Check size={15} /> Apply to {ids.length}
++            <Check size={15} /> 应用到 {ids.length}
+           </button>
+         </div>
+       </div>
+@@ -1535,7 +1534,7 @@ function BulkModal({ onClose, onCreate, folder, defaultEngine }) {
+       const locale = COUNTRY_LOCALE[country] || "en-US";
+       list[i] = {
+         name: `${prefix}-${String(start + i).padStart(pad, "0")}`,
+-        folder: folder === "All profiles" ? "Facebook Ads" : folder,
++        folder: folder === "全部配置" ? "Facebook Ads" : folder,
+         status: "stopped", os, tags, engine, browser: "Chrome", browserVersion: chrome,
+         userAgent: uaFor(os, chrome), screen: pick(SCREENS[os]),
+         cores: pick(CORES[os], CORES[os][1]), memory: pick(RAM[os], RAM[os][1]),
+@@ -1552,50 +1551,50 @@ function BulkModal({ onClose, onCreate, folder, defaultEngine }) {
+   const create = async () => {
+     setBusy(true); setProg(0);
+     try { await onCreate(build(), (done) => setProg(done)); onClose(); }
+-    catch (e) { toast.error("Bulk create failed: " + e.message); setBusy(false); }
++    catch (e) { toast.error("批量创建失败: " + e.message); setBusy(false); }
+   };
+ 
+   return (
+     <div className="ps-overlay center" onClick={busy ? undefined : onClose}>
+       <div className="ps-modal ps-pop" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+         <div className="ps-drawer-h">
+-          <div><div className="ps-eyebrow">Bulk create</div><div className="ps-drawer-title">Generate profiles at scale</div></div>
++          <div><div className="ps-eyebrow">批量创建</div><div className="ps-drawer-title">大规模生成配置</div></div>
+           <button className="ps-x" onClick={onClose} disabled={busy}><X size={18} /></button>
+         </div>
+         <div style={{ padding: 20, maxHeight: "62vh", overflowY: "auto" }}>
+           <Row>
+-            <Field label="How many (up to 10,000)">
++            <Field label="数量（最多 10,000）">
+               <input type="number" className="ps-in" value={n} min={1} max={10000}
+                 onChange={e => setN(Math.min(10000, Math.max(1, Number(e.target.value) || 1)))} />
+             </Field>
+-            <Field label="Launch engine">
++            <Field label="启动引擎">
+               <select className="ps-in" value={engine} onChange={e => setEngine(e.target.value)}>
+                 {ENGINE_ORDER.map(en => <option key={en} value={en}>{ENGINE_META[en].label}{ENGINE_META[en].recommended ? "  ★" : ""}</option>)}
+               </select>
+             </Field>
+           </Row>
+ 
+-          <Field label="Operating systems (spread across)"><ChipPick options={OS_LIST} value={oses} onToggle={toggle(setOses)} /></Field>
+-          <Field label="Countries / locales (spread across)"><ChipPick options={Object.keys(COUNTRY_LOCALE)} value={countries} onToggle={toggle(setCountries)} /></Field>
+-          <Field label="Browser versions (Chrome)"><ChipPick options={CHROME_VERSIONS} value={browsers} onToggle={toggle(setBrowsers)} /></Field>
++          <Field label="操作系统（分布）"><ChipPick options={OS_LIST} value={oses} onToggle={toggle(setOses)} /></Field>
++          <Field label="国家 / 区域（分布）"><ChipPick options={Object.keys(COUNTRY_LOCALE)} value={countries} onToggle={toggle(setCountries)} /></Field>
++          <Field label="浏览器版本（Chrome）"><ChipPick options={CHROME_VERSIONS} value={browsers} onToggle={toggle(setBrowsers)} /></Field>
+ 
+           <Row>
+-            <Field label="Name prefix"><input className="ps-in" value={prefix} onChange={e => setPrefix(e.target.value)} /></Field>
+-            <Field label="Start number"><input type="number" className="ps-in" value={start} min={0} onChange={e => setStart(Math.max(0, Number(e.target.value) || 0))} /></Field>
+-            <Field label="Tags"><input className="ps-in" value={tagStr} onChange={e => setTagStr(e.target.value)} placeholder="bulk, q3" /></Field>
++            <Field label="名称前缀"><input className="ps-in" value={prefix} onChange={e => setPrefix(e.target.value)} /></Field>
++            <Field label="起始编号"><input type="number" className="ps-in" value={start} min={0} onChange={e => setStart(Math.max(0, Number(e.target.value) || 0))} /></Field>
++            <Field label="标签"><input className="ps-in" value={tagStr} onChange={e => setTagStr(e.target.value)} placeholder="bulk, q3" /></Field>
+           </Row>
+ 
+-          <Field label="Vary GPU / screen / CPU / RAM">
+-            <button className={"ps-toggle" + (randomize ? " on" : "")} onClick={() => setRandomize(v => !v)}><span className="knob" /> <em>{randomize ? "Randomized per profile" : "Fixed per OS"}</em></button>
++          <Field label="变化 GPU / 屏幕 / CPU / RAM">
++            <button className={"ps-toggle" + (randomize ? " on" : "")} onClick={() => setRandomize(v => !v)}><span className="knob" /> <em>{randomize ? "每个配置随机" : "每个操作系统固定"}</em></button>
+           </Field>
+ 
+-          <div className="ps-hint"><Boxes size={12} /> Each profile gets its own coherent fingerprint, seed & session — {randomize ? "hardware varies per profile" : "hardware fixed per OS"}. Preview: <b style={{ color: T.text }}>{prefix}-{String(start).padStart(pad, "0")} … {prefix}-{String(start + n - 1).padStart(pad, "0")}</b> · {oses.join("/")} · {countries.join("/")}</div>
+-          <div className="ps-hint"><Globe size={12} /> These are created without a proxy. Attach real proxies in bulk from <b style={{ color: T.text }}>Proxies → Assign to profiles</b> (round-robin, aligns locale to each proxy's country).</div>
++          <div className="ps-hint"><Boxes size={12} /> 每个配置都有自己一致的指纹、种子与会话——{randomize ? "硬件每个配置随机" : "硬件每个操作系统固定"}。预览：<b style={{ color: T.text }}>{prefix}-{String(start).padStart(pad, "0")} … {prefix}-{String(start + n - 1).padStart(pad, "0")}</b> · {oses.join("/")} · {countries.join("/")}</div>
++          <div className="ps-hint"><Globe size={12} /> 这些配置创建时不含代理。可从 <b style={{ color: T.text }}>代理 → 分配到配置</b> 以批量挂接真实代理（轮询，并将区域与时区对齐到每个代理的国家）。</div>
+         </div>
+         <div className="ps-drawer-foot">
+-          <button className="ps-btn ghost" onClick={onClose} disabled={busy}>Cancel</button>
++          <button className="ps-btn ghost" onClick={onClose} disabled={busy}>取消</button>
+           <button className="ps-btn primary" onClick={create} disabled={busy}>
+-            {busy ? <><RefreshCw size={15} className="ps-spin" /> Creating {prog}/{n}…</> : <><Plus size={15} /> Create {n} profile{n > 1 ? "s" : ""}</>}
++            {busy ? <><RefreshCw size={15} className="ps-spin" /> 创建中 {prog}/{n}…</> : <><Plus size={15} /> 创建 {n} 个配置</>}
+           </button>
+         </div>
+       </div>
+@@ -1606,10 +1605,10 @@ function BulkModal({ onClose, onCreate, folder, defaultEngine }) {
+ /* ---- Proxies view: a managed pool (import, test, assign) --------- */
+ function ProxyStatus({ p }) {
+   const s = p.status;
+-  if (s === "ok") return <span className="ps-pill ok" title={p.lastCheck?.ip || ""}><Check size={12} /> {p.lastCheck?.country || "OK"}{p.lastCheck?.latencyMs ? ` · ${p.lastCheck.latencyMs}ms` : ""}</span>;
+-  if (s === "failed") return <span className="ps-pill warn" title={p.lastCheck?.error || ""}><ShieldAlert size={12} /> Failed</span>;
++  if (s === "ok") return <span className="ps-pill ok" title={p.lastCheck?.ip || ""}><Check size={12} /> {p.lastCheck?.country || "正常"}{p.lastCheck?.latencyMs ? ` · ${p.lastCheck.latencyMs}ms` : ""}</span>;
++  if (s === "failed") return <span className="ps-pill warn" title={p.lastCheck?.error || ""}><ShieldAlert size={12} /> 失败</span>;
+   if (s === "skipped") return <span className="ps-pill" title={p.lastCheck?.error || ""} style={{ background: T.violetDim, color: T.lilac }}><Circle size={10} /> SOCKS</span>;
+-  return <span className="ps-pill" style={{ color: T.dim }}><Circle size={10} /> Untested</span>;
++  return <span className="ps-pill" style={{ color: T.dim }}><Circle size={10} /> 未测试</span>;
+ }
+ 
+ /* ---- Health overview --------------------------------------------- */
+@@ -1634,21 +1633,21 @@ function HealthView({ profiles, live, refresh, setEditor }) {
+     return (
+       <div className="ps-scroll">
+         <div className="ps-health-summary">
+-          <HealthChip label="Profiles" value={rows.length} />
+-          <HealthChip label="Coherent" value={`${coherent}/${rows.length}`} color={T.mint} />
+-          <HealthChip label="With proxy" value={rows.filter(r => r.proxy).length} color={T.lilac} />
+-          <HealthChip label="Shared FP" value={colliding.size} color={colliding.size ? T.amber : T.mint} />
++          <HealthChip label="配置" value={rows.length} />
++          <HealthChip label="一致" value={`${coherent}/${rows.length}`} color={T.mint} />
++          <HealthChip label="带代理" value={rows.filter(r => r.proxy).length} color={T.lilac} />
++          <HealthChip label="共享指纹" value={colliding.size} color={colliding.size ? T.amber : T.mint} />
+         </div>
+-        <div className="ps-hint"><Activity size={12} /> Start the engine (<code>persona serve</code>) for live trust grades, DNS/proxy status and warm-up schedules. Showing coherence and fingerprint collisions derived from the sample profiles.</div>
++        <div className="ps-hint"><Activity size={12} /> 启动引擎（<code>persona serve</code>）可获得在线信任评分、DNS/代理状态与预热计划。当前显示基于示例配置推导的一致性与指纹冲突。</div>
+         <table className="ps-table" style={{ marginTop: 12 }}>
+-          <thead><tr><th>Profile</th><th>Engine</th><th>OS</th><th>Coherence</th><th>Proxy</th></tr></thead>
++          <thead><tr><th>配置</th><th>引擎</th><th>操作系统</th><th>一致性</th><th>代理</th></tr></thead>
+           <tbody>{rows.map((r, i) => (
+             <tr key={r.id || i} className={r.collides ? "ps-attention" : ""}>
+               <td>{r.name}{r.collides && <SharedTag />}</td>
+               <td className="ps-mono dim">{r.engine || "—"}</td>
+               <td><span className="ps-os">{r.os}</span></td>
+-              <td>{r.coherent ? <span className="ps-check ok" style={{ padding: 0, background: "none" }}><Check size={12} /> coherent</span>
+-                : <span className="ps-check" style={{ padding: 0, background: "none" }}><ShieldAlert size={12} /> {r.issues.length} issue(s)</span>}</td>
++              <td>{r.coherent ? <span className="ps-check ok" style={{ padding: 0, background: "none" }}><Check size={12} /> 一致</span>
++                : <span className="ps-check" style={{ padding: 0, background: "none" }}><ShieldAlert size={12} /> {r.issues.length} 个问题</span>}</td>
+               <td className="ps-mono">{r.proxy ? (r.proxy.country || r.proxy.host) : "—"}</td>
+             </tr>
+           ))}</tbody>
+@@ -1662,33 +1661,33 @@ function HealthView({ profiles, live, refresh, setEditor }) {
+   const act = async (id, label, fn) => {
+     setBusy(b => ({ ...b, [id]: label }));
+     try { await fn(); await load(); await refresh(); }
+-    catch (e) { toast.error(`${label} failed: ` + e.message); }
++    catch (e) { toast.error(`${label} 失败: ` + e.message); }
+     setBusy(b => { const n = { ...b }; delete n[id]; return n; });
+   };
+ 
+   return (
+     <div className="ps-scroll">
+       <div className="ps-health-summary">
+-        <HealthChip label="Profiles" value={s.total ?? "—"} />
+-        <HealthChip label="Coherent" value={`${s.coherent ?? 0}/${s.total ?? 0}`} color={T.mint} />
+-        <HealthChip label="With proxy" value={`${s.withProxy ?? 0}/${s.total ?? 0}`} color={T.lilac} />
+-        <HealthChip label="Scheduled" value={s.scheduled ?? 0} color={T.violet} />
+-        <HealthChip label="Shared FP" value={s.colliding ?? 0} color={s.colliding ? T.amber : T.mint} />
++        <HealthChip label="配置" value={s.total ?? "—"} />
++        <HealthChip label="一致" value={`${s.coherent ?? 0}/${s.total ?? 0}`} color={T.mint} />
++        <HealthChip label="带代理" value={`${s.withProxy ?? 0}/${s.total ?? 0}`} color={T.lilac} />
++        <HealthChip label="已计划" value={s.scheduled ?? 0} color={T.violet} />
++        <HealthChip label="共享指纹" value={s.colliding ?? 0} color={s.colliding ? T.amber : T.mint} />
+         {(() => { const bad = rows.filter(r => r.session && (r.session.status === "stale" || r.session.status === "expiring")).length;
+-          return <HealthChip label="Session alerts" value={bad} color={bad ? T.amber : T.mint} />; })()}
+-        <HealthChip label="Needs attention" value={s.needsAttention ?? 0} color={s.needsAttention ? T.amber : T.mint} />
++          return <HealthChip label="会话提醒" value={bad} color={bad ? T.amber : T.mint} />; })()}
++        <HealthChip label="需注意" value={s.needsAttention ?? 0} color={s.needsAttention ? T.amber : T.mint} />
+         <div style={{ flex: 1 }} />
+-        <button className="ps-btn ghost sm" onClick={load}><RefreshCw size={13} /> Refresh</button>
++        <button className="ps-btn ghost sm" onClick={load}><RefreshCw size={13} /> 刷新</button>
+       </div>
+ 
+       {rows.length === 0
+-        ? <div className="ps-empty"><Activity size={26} color={T.dim} /><div>No profiles yet.</div></div>
++        ? <div className="ps-empty"><Activity size={26} color={T.dim} /><div>还没有配置。</div></div>
+         : (
+           <table className="ps-table">
+             <thead><tr>
+-              <th>Profile</th><th>Engine</th><th>Coherence</th><th>Proxy</th>
+-              <th>Trust</th><th>Session</th><th>Warm-up</th><th>Last active</th>
+-              <th style={{ width: 180, textAlign: "right" }}>Actions</th>
++              <th>配置</th><th>引擎</th><th>一致性</th><th>代理</th>
++              <th>信任</th><th>会话</th><th>预热</th><th>最近活动</th>
++              <th style={{ width: 180, textAlign: "right" }}>操作</th>
+             </tr></thead>
+             <tbody>
+               {rows.map((r, i) => (
+@@ -1696,38 +1695,38 @@ function HealthView({ profiles, live, refresh, setEditor }) {
+                     style={{ animationDelay: `${Math.min(i, 12) * 28}ms` }}>
+                   <td>
+                     <button className="ps-linkish" onClick={() => setEditor(profiles.find(p => p.id === r.id) || null)}>{r.name}</button>
+-                    {r.status === "running" && <span className="ps-runtag">live</span>}
++                    {r.status === "running" && <span className="ps-runtag">在线</span>}
+                     {r.collides && <SharedTag />}
+                   </td>
+                   <td className="ps-mono dim">{r.engine}</td>
+                   <td>{r.coherent
+-                    ? <span style={{ color: T.mint, display: "inline-flex", gap: 5, alignItems: "center" }}><Check size={13} /> ok</span>
++                    ? <span style={{ color: T.mint, display: "inline-flex", gap: 5, alignItems: "center" }}><Check size={13} /> 正常</span>
+                     : <span style={{ color: T.amber, display: "inline-flex", gap: 5, alignItems: "center" }} title={(r.issues || []).join("; ")}><ShieldAlert size={13} /> {r.issues.length}</span>}</td>
+-                  <td className="ps-mono">{r.proxy?.set ? (r.proxy.country || r.proxy.type || "set") : <span className="dim">none</span>}</td>
++                  <td className="ps-mono">{r.proxy?.set ? (r.proxy.country || r.proxy.type || "set") : <span className="dim">无</span>}</td>
+                   <td><GradeBadge grade={r.trust?.grade} /></td>
+                   <td>{r.session
+                     ? <span className={"ps-pill sess " + r.session.status}
+-                        title={(r.session.logins || []).length ? "Live: " + r.session.logins.join(", ") : "No known live logins"}>
++                        title={(r.session.logins || []).length ? "在线: " + r.session.logins.join(", ") : "没有已知的在线登录"}>
+                         {SESS_LABEL[r.session.status] || r.session.status}
+                       </span>
+                     : <span className="dim">—</span>}</td>
+                   <td className="ps-mono dim">{r.schedule
+-                    ? <span title={`${r.schedule.preset}, every ${r.schedule.everyHours}h`} style={{ color: r.schedule.enabled ? T.lilac : T.dim }}><Clock size={11} /> {r.schedule.everyHours}h</span>
++                    ? <span title={`${r.schedule.preset}, 每 ${r.schedule.everyHours} 小时`} style={{ color: r.schedule.enabled ? T.lilac : T.dim }}><Clock size={11} /> {r.schedule.everyHours}h</span>
+                     : "—"}</td>
+                   <td className="ps-mono dim">{r.lastActive}</td>
+                   <td>
+                     <div className="ps-actions">
+-                      <button title="Run trust check" className="run" disabled={!!busy[r.id] || r.status === "running"}
+-                        onClick={() => act(r.id, "Trust check", () => api.trust(r.id))}>
+-                        {busy[r.id] === "Trust check" ? <RefreshCw size={13} className="ps-spin" /> : <ShieldCheck size={13} />}
++                      <button title="运行信任检测" className="run" disabled={!!busy[r.id] || r.status === "running"}
++                        onClick={() => act(r.id, "信任检测", () => api.trust(r.id))}>
++                        {busy[r.id] === "信任检测" ? <RefreshCw size={13} className="ps-spin" /> : <ShieldCheck size={13} />}
+                       </button>
+-                      <button title="Auto-adjust to grade A" className="run" disabled={!!busy[r.id] || r.status === "running"}
+-                        onClick={() => act(r.id, "Auto-adjust", () => api.align(r.id))}>
+-                        {busy[r.id] === "Auto-adjust" ? <RefreshCw size={13} className="ps-spin" /> : <Sparkles size={13} />}
++                      <button title="自动校准到等级 A" className="run" disabled={!!busy[r.id] || r.status === "running"}
++                        onClick={() => act(r.id, "自动校准", () => api.align(r.id))}>
++                        {busy[r.id] === "自动校准" ? <RefreshCw size={13} className="ps-spin" /> : <Sparkles size={13} />}
+                       </button>
+-                      <button title="Check session health" className="run" disabled={!!busy[r.id] || r.status === "running"}
+-                        onClick={() => act(r.id, "Session check", () => api.sessionCheck(r.id))}>
+-                        {busy[r.id] === "Session check" ? <RefreshCw size={13} className="ps-spin" /> : <Cookie size={13} />}
++                      <button title="检查会话健康" className="run" disabled={!!busy[r.id] || r.status === "running"}
++                        onClick={() => act(r.id, "会话检查", () => api.sessionCheck(r.id))}>
++                        {busy[r.id] === "会话检查" ? <RefreshCw size={13} className="ps-spin" /> : <Cookie size={13} />}
+                       </button>
+                     </div>
+                   </td>
+@@ -1736,7 +1735,7 @@ function HealthView({ profiles, live, refresh, setEditor }) {
+             </tbody>
+           </table>
+         )}
+-      <div className="ps-hint"><Activity size={12} /> Coherence and proxy are read from each profile instantly; the <b style={{ color: T.text }}>trust grade is the last one measured</b> (a live check opens a real browser). Use <ShieldCheck size={11} /> to grade a profile and <Sparkles size={11} /> to auto-adjust it to grade A. Rows needing attention (incoherent, grade C/D, or a <Link2 size={11} /> shared fingerprint) are highlighted — regenerate one side of a shared pair so the accounts can't be linked.</div>
++      <div className="ps-hint"><Activity size={12} /> 一致性与代理从每个配置即时读取；<b style={{ color: T.text }}>信任评分是最近一次测量值</b>（在线检查会打开真实浏览器）。用 <ShieldCheck size={11} /> 给配置打分，用 <Sparkles size={11} /> 自动校准到等级 A。需要关注的行（不一致、C/D 等级，或 <Link2 size={11} /> 共享指纹）会被高亮——重新生成共享指纹对中的一侧，以免账号被关联。</div>
+     </div>
+   );
+ }
+@@ -1753,8 +1752,8 @@ function HealthChip({ label, value, color }) {
+ // Small "shared FP" flag for a profile that isn't fingerprint-unique.
+ function SharedTag() {
+   return (
+-    <span className="ps-shared" title="Shares a fingerprint with another profile — a linkage risk">
+-      <Link2 size={10} /> shared FP
++    <span className="ps-shared" title="与另一个配置共享指纹——存在关联风险">
++      <Link2 size={10} /> 共享指纹
+     </span>
+   );
+ }
+@@ -1789,12 +1788,12 @@ function ProxiesView({ profiles, live, refresh }) {
+     return (
+       <div className="ps-scroll">
+         <div className="ps-toolbar" style={{ paddingLeft: 0, paddingRight: 0 }}>
+-          <div style={{ fontSize: 13, fontWeight: 600, color: T.muted }}>Proxy pool</div>
++          <div style={{ fontSize: 13, fontWeight: 600, color: T.muted }}>代理池</div>
+         </div>
+-        <div className="ps-hint"><Globe size={12} /> Start the engine (<code>persona serve</code>) to import, test and assign a real proxy pool. Showing proxies in use by current profiles.</div>
++        <div className="ps-hint"><Globe size={12} /> 启动引擎（<code>persona serve</code>）以导入、测试并分配真实代理池。当前显示各配置正在使用的代理。</div>
+         {derived.length > 0 && (
+           <table className="ps-table" style={{ marginTop: 12 }}>
+-            <thead><tr><th>Host</th><th>Type</th><th>Country</th><th>Used by</th></tr></thead>
++            <thead><tr><th>主机</th><th>类型</th><th>国家</th><th>使用数</th></tr></thead>
+             <tbody>{derived.map((x, i) => (
+               <tr key={i}><td className="ps-mono">{x.host}:{x.port}</td><td><span className="ps-os">{x.type}</span></td><td className="ps-mono">{x.country}</td><td className="ps-mono dim">{x.used}</td></tr>
+             ))}</tbody>
+@@ -1807,7 +1806,7 @@ function ProxiesView({ profiles, live, refresh }) {
+   const testOne = async (id) => {
+     setTesting(s => new Set(s).add(id));
+     try { await api.testProxy(id); await load(); }
+-    catch (e) { toast.error("Test failed: " + e.message); }
++    catch (e) { toast.error("测试失败: " + e.message); }
+     setTesting(s => { const n = new Set(s); n.delete(id); return n; });
+   };
+   const testAll = async () => {
+@@ -1818,10 +1817,10 @@ function ProxiesView({ profiles, live, refresh }) {
+   const del = async (id) => { try { await api.deleteProxy(id); await load(); } catch (e) { toast.error(e.message); } };
+   const assign = async () => {
+     if (!pool.length) return;
+-    if (!confirm(`Assign these ${pool.length} proxies round-robin across all ${profiles.length} profiles? Each profile's locale/timezone will align to its proxy's country.`)) return;
++    if (!confirm(`将这 ${pool.length} 个代理按轮询分配到全部 ${profiles.length} 个配置？每个配置的区域/时区将对齐到其代理所在国家。`)) return;
+     setBusy("assign");
+-    try { const r = await api.assignProxies(); toast.success(`Assigned proxies to ${r.assigned} profile(s).`); await refresh(); }
+-    catch (e) { toast.error("Assign failed: " + e.message); }
++    try { const r = await api.assignProxies(); toast.success(`已为 ${r.assigned} 个配置分配代理。`); await refresh(); }
++    catch (e) { toast.error("分配失败: " + e.message); }
+     setBusy("");
+   };
+ 
+@@ -1830,38 +1829,38 @@ function ProxiesView({ profiles, live, refresh }) {
+     <div className="ps-scroll">
+       <div className="ps-toolbar" style={{ paddingLeft: 0, paddingRight: 0 }}>
+         <div style={{ fontSize: 13, fontWeight: 600, color: T.muted }}>
+-          Proxy pool <span className="ps-mono dim">· {pool.length} total{okCount ? ` · ${okCount} live` : ""}</span>
++          代理池 <span className="ps-mono dim">· {pool.length} 总计{okCount ? ` · ${okCount} 在线` : ""}</span>
+         </div>
+         <div style={{ flex: 1 }} />
+         <button className="ps-btn ghost sm" disabled={!pool.length || busy === "test"} onClick={testAll}>
+-          {busy === "test" ? <><RefreshCw size={13} className="ps-spin" /> Testing…</> : <><Wifi size={13} /> Test all</>}
++          {busy === "test" ? <><RefreshCw size={13} className="ps-spin" /> 测试中…</> : <><Wifi size={13} /> 测试全部</>}
+         </button>
+         <button className="ps-btn ghost sm" disabled={!pool.length || !profiles.length || busy === "assign"} onClick={assign}>
+-          {busy === "assign" ? <><RefreshCw size={13} className="ps-spin" /> Assigning…</> : <><ArrowRight size={13} /> Assign to profiles</>}
++          {busy === "assign" ? <><RefreshCw size={13} className="ps-spin" /> 分配中…</> : <><ArrowRight size={13} /> 分配到配置</>}
+         </button>
+-        <button className="ps-btn primary sm" onClick={() => setImportOpen(true)}><Plus size={13} /> Import proxies</button>
++        <button className="ps-btn primary sm" onClick={() => setImportOpen(true)}><Plus size={13} /> 导入代理</button>
+       </div>
+ 
+       {pool.length === 0
+-        ? <div className="ps-empty"><Globe size={26} color={T.dim} /><div>No proxies yet.</div>
+-            <button className="ps-btn primary sm" onClick={() => setImportOpen(true)}><Plus size={14} /> Import proxies</button></div>
++        ? <div className="ps-empty"><Globe size={26} color={T.dim} /><div>还没有代理。</div>
++            <button className="ps-btn primary sm" onClick={() => setImportOpen(true)}><Plus size={14} /> 导入代理</button></div>
+         : (
+           <table className="ps-table">
+-            <thead><tr><th>Host</th><th>Type</th><th>Country</th><th>Auth</th><th>Status</th><th style={{ width: 120, textAlign: "right" }}>Actions</th></tr></thead>
++            <thead><tr><th>主机</th><th>类型</th><th>国家</th><th>认证</th><th>状态</th><th style={{ width: 120, textAlign: "right" }}>操作</th></tr></thead>
+             <tbody>
+               {pool.map((x, i) => (
+                 <tr key={x.id} className="ps-rise" style={{ animationDelay: `${Math.min(i, 12) * 28}ms` }}>
+                   <td className="ps-mono">{x.host}:{x.port}</td>
+                   <td><span className="ps-os">{x.type}</span></td>
+                   <td className="ps-mono">{x.country || "—"}</td>
+-                  <td className="ps-mono dim">{x.user ? "user:•••" : "none"}</td>
++                  <td className="ps-mono dim">{x.user ? "user:•••" : "无"}</td>
+                   <td><ProxyStatus p={x} /></td>
+                   <td>
+                     <div className="ps-actions">
+-                      <button title="Test" className="run" disabled={testing.has(x.id)} onClick={() => testOne(x.id)}>
++                      <button title="测试" className="run" disabled={testing.has(x.id)} onClick={() => testOne(x.id)}>
+                         {testing.has(x.id) ? <RefreshCw size={13} className="ps-spin" /> : <Wifi size={13} />}
+                       </button>
+-                      <button title="Delete" className="del" onClick={() => del(x.id)}><Trash2 size={13} /></button>
++                      <button title="删除" className="del" onClick={() => del(x.id)}><Trash2 size={13} /></button>
+                     </div>
+                   </td>
+                 </tr>
+@@ -1869,7 +1868,7 @@ function ProxiesView({ profiles, live, refresh }) {
+             </tbody>
+           </table>
+         )}
+-      <div className="ps-hint"><Globe size={12} /> Import a list, test which are live, then <b style={{ color: T.text }}>Assign to profiles</b> spreads them round-robin and aligns each profile's locale/timezone to its proxy country. Health checks run over HTTP(S); SOCKS proxies are tested when you run a profile's proxy test.</div>
++      <div className="ps-hint"><Globe size={12} /> 导入一份列表、测试哪些在线，然后 <b style={{ color: T.text }}>分配到配置</b> 会轮询分发，并把每个配置的区域/时区对齐到其代理国家。健康检查走 HTTP(S)；SOCKS 代理在你运行配置的代理测试时才测试。</div>
+ 
+       {importOpen && <ImportProxiesModal onClose={() => setImportOpen(false)} onImport={async (text) => {
+         const r = await api.addProxies(text); await load(); return r;
+@@ -1884,32 +1883,32 @@ function ImportProxiesModal({ onClose, onImport }) {
+   const lines = text.split("\n").filter(l => l.trim() && !l.trim().startsWith("#")).length;
+   const submit = async () => {
+     setBusy(true);
+-    try { const r = await onImport(text); toast.success(`Added ${r.added} proxy(ies). Pool now has ${r.total}.`); onClose(); }
+-    catch (e) { toast.error("Import failed: " + e.message); setBusy(false); }
++    try { const r = await onImport(text); toast.success(`已添加 ${r.added} 个代理。代理池现有 ${r.total} 个。`); onClose(); }
++    catch (e) { toast.error("导入失败: " + e.message); setBusy(false); }
+   };
+   return (
+     <div className="ps-overlay center" onClick={busy ? undefined : onClose}>
+       <div className="ps-modal ps-pop" onClick={e => e.stopPropagation()} style={{ maxWidth: 540 }}>
+         <div className="ps-drawer-h">
+-          <div><div className="ps-eyebrow">Proxy pool</div><div className="ps-drawer-title">Import proxies</div></div>
++          <div><div className="ps-eyebrow">代理池</div><div className="ps-drawer-title">导入代理</div></div>
+           <button className="ps-x" onClick={onClose} disabled={busy}><X size={18} /></button>
+         </div>
+         <div style={{ padding: 20 }}>
+-          <Field label="Paste one proxy per line">
++          <Field label="每行粘贴一个代理">
+             <textarea className="ps-in mono" rows={9} value={text} onChange={e => setText(e.target.value)}
+               placeholder={"host:port\nhost:port:user:pass\nuser:pass@host:port\nhttp://user:pass@host:port\nsocks5://host:port\nhost:port:user:pass:US"} />
+           </Field>
+           <label className={"ps-btn ghost sm" + (busy ? " disabled" : "")} style={{ marginTop: 8 }}>
+-            <Upload size={13} /> Load from file
++            <Upload size={13} /> 从文件加载
+             <input type="file" accept=".txt,.csv,.json" style={{ display: "none" }} disabled={busy}
+               onChange={async e => { const f = e.target.files?.[0]; if (f) setText(await f.text()); e.target.value = ""; }} />
+           </label>
+-          <div className="ps-hint"><Server size={12} /> Understands <code>host:port</code>, <code>host:port:user:pass</code>, <code>user:pass@host:port</code> and <code>scheme://…</code>, with an optional trailing country code. {lines > 0 ? <b style={{ color: T.text }}>{lines} line{lines === 1 ? "" : "s"} detected.</b> : ""}</div>
++          <div className="ps-hint"><Server size={12} /> 支持 <code>host:port</code>、<code>host:port:user:pass</code>、<code>user:pass@host:port</code>、<code>scheme://…</code>，可带可选的结尾国家代码。{lines > 0 ? <b style={{ color: T.text }}>已检测到 {lines} 行。</b> : ""}</div>
+         </div>
+         <div className="ps-drawer-foot">
+-          <button className="ps-btn ghost" onClick={onClose} disabled={busy}>Cancel</button>
++          <button className="ps-btn ghost" onClick={onClose} disabled={busy}>取消</button>
+           <button className="ps-btn primary" onClick={submit} disabled={busy || !lines}>
+-            {busy ? <><RefreshCw size={15} className="ps-spin" /> Importing…</> : <><Plus size={15} /> Add {lines || ""} prox{lines === 1 ? "y" : "ies"}</>}
++            {busy ? <><RefreshCw size={15} className="ps-spin" /> 导入中…</> : <><Plus size={15} /> 添加 {lines || ""} 个代理</>}
+           </button>
+         </div>
+       </div>
+@@ -1945,20 +1944,20 @@ function AutomationView({ profiles, live, refresh }) {
+     try {
+       const r = await api.attach(id, headless);
+       setInfo(m => ({ ...m, [id]: r }));
+-      toast.success(`Attached on :${r.port}${r.headless ? " (headless)" : ""}`);
++      toast.success(`已在 :${r.port} 附加${r.headless ? "（无头）" : ""}`);
+       await refresh();
+-    } catch (e) { toast.error("Attach failed: " + e.message); }
++    } catch (e) { toast.error("附加失败: " + e.message); }
+     setBusy("");
+   };
+   const detach = async (id) => {
+     setBusy(id);
+     try { await api.stop(id); setInfo(m => { const n = { ...m }; delete n[id]; return n; }); await refresh(); }
+-    catch (e) { toast.error("Detach failed: " + e.message); }
++    catch (e) { toast.error("分离失败: " + e.message); }
+     setBusy("");
+   };
+ 
+   const intro = (
+-    <div className="ps-hint"><Zap size={12} /> Persona opens the browser wearing the identity; your script <b style={{ color: T.text }}>attaches to that same window</b> over the Chrome DevTools Protocol — so the session, cookies, proxy and fingerprint stay exactly as set. (A browser your automation launches itself would be un-spoofed.) Chromium engines only — <code>cloak</code>, <code>patchright</code>, <code>playwright</code>.</div>
++    <div className="ps-hint"><Zap size={12} /> Persona 以该身份打开浏览器；你的脚本通过 Chrome DevTools 协议 <b style={{ color: T.text }}>附加到同一个窗口</b>——因此会话、Cookie、代理与指纹都保持原样。（你自己启动的自动化浏览器不会被伪装。）仅用于 Chromium 引擎——<code>cloak</code>、<code>patchright</code>、<code>playwright</code>。</div>
+   );
+ 
+   // Demo mode: no engine to attach to, so show how it works with the CLI and a
+@@ -1968,14 +1967,14 @@ function AutomationView({ profiles, live, refresh }) {
+       <div className="ps-scroll">
+         {intro}
+         <div className="ps-cdp" style={{ marginTop: 12 }}>
+-          <div className="ps-cdp-h"><Server size={13} /> Start the engine, then attach</div>
++          <div className="ps-cdp-h"><Server size={13} /> 启动引擎，然后附加</div>
+           <pre className="ps-code">persona attach acct-01 --port 9222</pre>
+           <div className="ps-lang-tabs">{CDP_LANGS.map(l => (
+             <button key={l} className={"ps-chip" + (lang === l ? " on" : "")} onClick={() => setLang(l)}>{l}</button>
+           ))}</div>
+           <pre className="ps-code">{cdpSnippet(lang, 9222)}</pre>
+         </div>
+-        <div className="ps-hint"><Activity size={12} /> Start <code>persona serve</code> to attach a real profile from here with one click.</div>
++        <div className="ps-hint"><Activity size={12} /> 启动 <code>persona serve</code> 即可从这里一键附加一个真实配置。</div>
+       </div>
+     );
+   }
+@@ -1985,15 +1984,15 @@ function AutomationView({ profiles, live, refresh }) {
+       {intro}
+       <label className="ps-hcheck">
+         <input type="checkbox" checked={headless} onChange={e => setHeadless(e.target.checked)} />
+-        <span>Headless — attach without a visible window (for servers / CI)</span>
++        <span>无头——无可见窗口附加（用于服务器 / CI）</span>
+       </label>
+       {profiles.length === 0
+-        ? <div className="ps-empty"><Zap size={26} color={T.dim} /><div>No profiles to attach yet.</div></div>
++        ? <div className="ps-empty"><Zap size={26} color={T.dim} /><div>还没有可附加的配置。</div></div>
+         : (
+           <table className="ps-table" style={{ marginTop: 12 }}>
+             <thead><tr>
+-              <th>Profile</th><th>Engine</th><th>Status</th>
+-              <th style={{ width: 160, textAlign: "right" }}>Automation</th>
++              <th>配置</th><th>引擎</th><th>状态</th>
++              <th style={{ width: 160, textAlign: "right" }}>自动化</th>
+             </tr></thead>
+             <tbody>
+               {profiles.map((p, i) => {
+@@ -2007,27 +2006,27 @@ function AutomationView({ profiles, live, refresh }) {
+                       <td className="ps-pname">{p.name}</td>
+                       <td><span className="ps-engine-chip">{ENGINE_META[p.engine]?.label || p.engine || "Playwright"}</span></td>
+                       <td>{attachedHere
+-                        ? <span style={{ color: T.mint, display: "inline-flex", gap: 5, alignItems: "center" }}><Circle size={9} /> attached :{conn.port}</span>
+-                        : running ? <span className="ps-mono dim">running</span> : <span className="ps-mono dim">stopped</span>}</td>
++                        ? <span style={{ color: T.mint, display: "inline-flex", gap: 5, alignItems: "center" }}><Circle size={9} /> 已附加 :{conn.port}</span>
++                        : running ? <span className="ps-mono dim">运行中</span> : <span className="ps-mono dim">已停止</span>}</td>
+                       <td>
+                         <div className="ps-actions" style={{ justifyContent: "flex-end" }}>
+                           {attachedHere
+-                            ? <button className="danger" title="Close the attached browser" disabled={busy === p.id}
+-                                onClick={() => detach(p.id)}>{busy === p.id ? <RefreshCw size={13} className="ps-spin" /> : <Square size={13} />} Detach</button>
++                            ? <button className="danger" title="关闭已附加的浏览器" disabled={busy === p.id}
++                                onClick={() => detach(p.id)}>{busy === p.id ? <RefreshCw size={13} className="ps-spin" /> : <Square size={13} />} 分离</button>
+                             : <button className="run" disabled={!canAttach || running || busy === p.id}
+-                                title={!canAttach ? "This engine has no DevTools — switch to cloak/patchright/playwright"
+-                                       : running ? "Stop the profile first" : "Open with a CDP endpoint"}
+-                                onClick={() => attach(p.id)}>{busy === p.id ? <RefreshCw size={13} className="ps-spin" /> : <Zap size={13} />} Attach</button>}
++                                title={!canAttach ? "此引擎没有 DevTools——请切换到 cloak/patchright/playwright"
++                                       : running ? "请先停止该配置" : "以 CDP 端口打开"}
++                                onClick={() => attach(p.id)}>{busy === p.id ? <RefreshCw size={13} className="ps-spin" /> : <Zap size={13} />} 附加</button>}
+                         </div>
+                       </td>
+                     </tr>
+                     {attachedHere && (
+                       <tr className="ps-cdp-row"><td colSpan={4}>
+                         <div className="ps-cdp">
+-                          <div className="ps-cdp-h"><Server size={13} /> Connect your automation
++                          <div className="ps-cdp-h"><Server size={13} /> 连接你的自动化
+                             <span style={{ flex: 1 }} />
+                             <button className="ps-copy" onClick={() => copy(`http://127.0.0.1:${conn.port}`, p.id + "url")}>
+-                              <Clipboard size={12} /> {copied === p.id + "url" ? "Copied" : `127.0.0.1:${conn.port}`}</button>
++                              <Clipboard size={12} /> {copied === p.id + "url" ? "已复制" : `127.0.0.1:${conn.port}`}</button>
+                           </div>
+                           <div className="ps-lang-tabs">{CDP_LANGS.map(l => (
+                             <button key={l} className={"ps-chip" + (lang === l ? " on" : "")} onClick={() => setLang(l)}>{l}</button>
+@@ -2035,7 +2034,7 @@ function AutomationView({ profiles, live, refresh }) {
+                           <div className="ps-code-wrap">
+                             <pre className="ps-code">{cdpSnippet(lang, conn.port)}</pre>
+                             <button className="ps-copy floaty" onClick={() => copy(cdpSnippet(lang, conn.port), p.id + lang)}>
+-                              <Clipboard size={12} /> {copied === p.id + lang ? "Copied" : "Copy"}</button>
++                              <Clipboard size={12} /> {copied === p.id + lang ? "已复制" : "复制"}</button>
+                           </div>
+                         </div>
+                       </td></tr>
+@@ -2059,23 +2058,23 @@ function CommandPalette({ onClose, profiles, setView, setEditor, toggleRun, togg
+ 
+   const cmds = useMemo(() => {
+     const nav = [
+-      ["Go to Profiles", () => setView("profiles"), Layers],
+-      ["Go to Health", () => setView("health"), Activity],
+-      ["Go to Engines", () => setView("engines"), Blocks],
+-      ["Go to Proxies", () => setView("proxies"), Globe],
+-      ["Go to Automation", () => setView("automation"), Zap],
+-      ["Go to Folders", () => setView("folders"), FolderTree],
+-      ["Go to Settings", () => setView("settings"), Settings],
+-    ].map(([label, run, Ic]) => ({ label, run, Ic, group: "Navigate" }));
++      ["前往配置", () => setView("profiles"), Layers],
++      ["前往健康", () => setView("health"), Activity],
++      ["前往引擎", () => setView("engines"), Blocks],
++      ["前往代理", () => setView("proxies"), Globe],
++      ["前往自动化", () => setView("automation"), Zap],
++      ["前往文件夹", () => setView("folders"), FolderTree],
++      ["前往设置", () => setView("settings"), Settings],
++    ].map(([label, run, Ic]) => ({ label, run, Ic, group: "导航" }));
+     const actions = [
+-      ["New profile", () => newProfile(), Plus],
+-      ["Toggle light / dark theme", () => toggleTheme(), Sun],
+-    ].map(([label, run, Ic]) => ({ label, run, Ic, group: "Action" }));
++      ["新建配置", () => newProfile(), Plus],
++      ["切换浅色 / 深色主题", () => toggleTheme(), Sun],
++    ].map(([label, run, Ic]) => ({ label, run, Ic, group: "操作" }));
+     // Cap the per-profile commands so a 10k list doesn't build 20k entries.
+     const profs = profiles.slice(0, 150).flatMap(p => ([
+-      { label: `Open ${p.name}`, run: () => setEditor(p), Ic: Pencil, group: "Profile" },
+-      { label: `${p.status === "running" ? "Stop" : "Launch"} ${p.name}`, run: () => toggleRun(p.id),
+-        Ic: p.status === "running" ? Square : Play, group: "Profile" },
++      { label: `打开 ${p.name}`, run: () => setEditor(p), Ic: Pencil, group: "配置" },
++      { label: `${p.status === "running" ? "停止" : "启动"} ${p.name}`, run: () => toggleRun(p.id),
++        Ic: p.status === "running" ? Square : Play, group: "配置" },
+     ]));
+     return [...nav, ...actions, ...profs];
+   }, [profiles]);
+@@ -2099,11 +2098,11 @@ function CommandPalette({ onClose, profiles, setView, setEditor, toggleRun, togg
+         <div className="ps-cmd-in">
+           <Search size={16} color={T.dim} />
+           <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey}
+-            placeholder="Search commands and profiles…" />
++            placeholder="搜索命令与配置…" />
+           <kbd className="ps-kbd">esc</kbd>
+         </div>
+         <div className="ps-cmd-list">
+-          {filtered.length === 0 && <div className="ps-cmd-empty">No matches</div>}
++          {filtered.length === 0 && <div className="ps-cmd-empty">无匹配</div>}
+           {filtered.map((c, i) => (
+             <button key={i} className={"ps-cmd-item" + (i === sel ? " on" : "")}
+               onMouseEnter={() => setSel(i)} onClick={() => runAt(i)}>
+@@ -2140,16 +2139,15 @@ function FoldersView({ folders, profiles, onOpen, onCreate, onRename, onDelete }
+     <div className="ps-scroll">
+       <div className="ps-view-head">
+         <div>
+-          <h2 className="ps-view-title">Folders</h2>
+-          <p className="ps-view-sub">Group profiles by client, platform or project. Renaming or deleting a
+-            folder moves the profiles inside it — nothing is deleted.</p>
++          <h2 className="ps-view-title">文件夹</h2>
++          <p className="ps-view-sub">按客户、平台或项目对配置分组。重命名或删除文件夹会移动其中的配置——不会删除任何东西。</p>
+         </div>
+         <div className="ps-newfold">
+           <FolderPlus size={15} color={T.muted} />
+-          <input className="ps-in" placeholder="New folder name" value={newName}
++          <input className="ps-in" placeholder="新文件夹名称" value={newName}
+             onChange={e => setNewName(e.target.value)}
+             onKeyDown={e => e.key === "Enter" && submitNew()} />
+-          <button className="ps-btn primary sm" onClick={submitNew}><Plus size={14} /> Add</button>
++          <button className="ps-btn primary sm" onClick={submitNew}><Plus size={14} /> 添加</button>
+         </div>
+       </div>
+ 
+@@ -2157,7 +2155,7 @@ function FoldersView({ folders, profiles, onOpen, onCreate, onRename, onDelete }
+         {folders.length === 0 && (
+           <div className="ps-empty" style={{ gridColumn: "1/-1", padding: 48 }}>
+             <div className="ps-empty-ic"><FolderTree size={26} color={T.violet} /></div>
+-            <div style={{ color: T.muted, fontSize: 13 }}>No folders yet — add one above.</div>
++            <div style={{ color: T.muted, fontSize: 13 }}>还没有文件夹——在上方添加一个。</div>
+           </div>
+         )}
+         {folders.map(f => {
+@@ -2172,22 +2170,22 @@ function FoldersView({ folders, profiles, onOpen, onCreate, onRename, onDelete }
+                     onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") { setEditing(null); setDraft(""); } }}
+                     onBlur={commitRename} />
+                 ) : (
+-                  <button className="ps-fold-name" onClick={() => onOpen(f)} title="Open in Profiles">{f}</button>
++                  <button className="ps-fold-name" onClick={() => onOpen(f)} title="在配置中打开">{f}</button>
+                 )}
+               </div>
+               <div className="ps-fold-stats">
+-                <span><b>{s.total}</b> profile{s.total === 1 ? "" : "s"}</span>
+-                {s.running > 0 && <span className="ps-fold-run"><Circle size={7} fill={T.mint} color={T.mint} /> {s.running} running</span>}
++                <span><b>{s.total}</b> 个配置</span>
++                {s.running > 0 && <span className="ps-fold-run"><Circle size={7} fill={T.mint} color={T.mint} /> {s.running} 运行中</span>}
+                 <span className="ps-fold-coh"><ShieldCheck size={12} /> {s.coherent}/{s.total}</span>
+               </div>
+               <div className="ps-fold-actions">
+-                <button className="ps-btn ghost sm" onClick={() => onOpen(f)}>Open <ArrowRight size={13} /></button>
++                <button className="ps-btn ghost sm" onClick={() => onOpen(f)}>打开 <ArrowRight size={13} /></button>
+                 <div style={{ flex: 1 }} />
+-                <button className="ps-iconbtn sm" title="Rename" onClick={() => { setEditing(f); setDraft(f); }}><Pencil size={13} /></button>
++                <button className="ps-iconbtn sm" title="重命名" onClick={() => { setEditing(f); setDraft(f); }}><Pencil size={13} /></button>
+                 {confirm === f ? (
+-                  <button className="ps-btn danger sm" onClick={() => { onDelete(f); setConfirm(null); }} onMouseLeave={() => setConfirm(null)}>Confirm?</button>
++                  <button className="ps-btn danger sm" onClick={() => { onDelete(f); setConfirm(null); }} onMouseLeave={() => setConfirm(null)}>确认？</button>
+                 ) : (
+-                  <button className="ps-iconbtn sm danger" title="Delete folder" onClick={() => setConfirm(f)}><Trash2 size={13} /></button>
++                  <button className="ps-iconbtn sm danger" title="删除文件夹" onClick={() => setConfirm(f)}><Trash2 size={13} /></button>
+                 )}
+               </div>
+             </div>
+@@ -2204,64 +2202,64 @@ function SettingsView({ live, config, engines, defaultEngine, onChangeEngine, pa
+     <div className="ps-scroll">
+       <div className="ps-view-head">
+         <div>
+-          <h2 className="ps-view-title">Settings</h2>
+-          <p className="ps-view-sub">Defaults for new profiles, appearance, and where Persona keeps your data.</p>
++          <h2 className="ps-view-title">设置</h2>
++          <p className="ps-view-sub">新配置的默认值、外观，以及 Persona 存放数据的位置。</p>
+         </div>
+       </div>
+ 
+       <div className="ps-set-grid">
+         <div className="ps-set-card">
+-          <div className="ps-set-h"><Palette size={15} color={T.violet} /> Appearance</div>
++          <div className="ps-set-h"><Palette size={15} color={T.violet} /> 外观</div>
+           <div className="ps-set-row">
+             <div>
+-              <div className="ps-set-label">Theme</div>
+-              <div className="ps-set-note">Switch the whole console between light and dark.</div>
++              <div className="ps-set-label">主题</div>
++              <div className="ps-set-note">在整个控制台深浅色之间切换。</div>
+             </div>
+             <button className="ps-btn ghost" onClick={toggleTheme}>
+-              {palette === "light" ? <><Moon size={14} /> Dark</> : <><Sun size={14} /> Light</>}
++              {palette === "light" ? <><Moon size={14} /> 深色</> : <><Sun size={14} /> 浅色</>}
+             </button>
+           </div>
+         </div>
+ 
+         <div className="ps-set-card">
+-          <div className="ps-set-h"><Blocks size={15} color={T.violet} /> Default launch engine</div>
+-          <div className="ps-set-note" style={{ marginBottom: 12 }}>Every new profile starts on this engine — you can still change it per profile.</div>
++          <div className="ps-set-h"><Blocks size={15} color={T.violet} /> 默认启动引擎</div>
++          <div className="ps-set-note" style={{ marginBottom: 12 }}>每个新配置都从该引擎开始——你仍可按配置单独更改。</div>
+           <div className="ps-seg wrap">
+             {ENGINE_ORDER.map(en => (
+               <button key={en} className={defaultEngine === en ? "on" : ""} onClick={() => onChangeEngine(en)}
+-                title={engines && engines[en] === false ? "Not installed" : ""}>
++                title={engines && engines[en] === false ? "未安装" : ""}>
+                 {ENGINE_META[en].label}{ENGINE_META[en].recommended ? " ★" : ""}
+-                {engines && engines[en] === false && <span className="ps-set-missing"> · not installed</span>}
++                {engines && engines[en] === false && <span className="ps-set-missing"> · 未安装</span>}
+               </button>
+             ))}
+           </div>
+         </div>
+ 
+         <div className="ps-set-card">
+-          <div className="ps-set-h"><HardDrive size={15} color={T.violet} /> Storage</div>
++          <div className="ps-set-h"><HardDrive size={15} color={T.violet} /> 存储</div>
+           {live && config?.root ? (
+             <>
+-              <div className="ps-set-label">Data location</div>
++              <div className="ps-set-label">数据位置</div>
+               <pre className="ps-code" style={{ marginTop: 6 }}>{config.root}</pre>
+-              <div className="ps-set-note" style={{ marginTop: 8 }}>Profiles, sessions, proxies and settings all live here on your machine. Back up this folder to move everything to another computer.</div>
++              <div className="ps-set-note" style={{ marginTop: 8 }}>配置、会话、代理与设置都存放在这台机器的这里。备份此文件夹即可把所有内容迁移到另一台电脑。</div>
+             </>
+           ) : (
+-            <div className="ps-set-note">Connect the engine (<code>persona serve</code>) to see where your data is stored. In demo mode nothing is written to disk.</div>
++            <div className="ps-set-note">连接引擎（<code>persona serve</code>）以查看数据存储位置。演示模式下不会写入磁盘。</div>
+           )}
+           <div className="ps-set-counts">
+-            <span><b>{counts.profiles}</b> profiles</span>
+-            <span><b>{counts.folders}</b> folders</span>
+-            <span><b>{counts.proxies}</b> proxies</span>
++            <span><b>{counts.profiles}</b> 个配置</span>
++            <span><b>{counts.folders}</b> 个文件夹</span>
++            <span><b>{counts.proxies}</b> 个代理</span>
+           </div>
+         </div>
+ 
+         <div className="ps-set-card">
+-          <div className="ps-set-h"><Info size={15} color={T.violet} /> About</div>
++          <div className="ps-set-h"><Info size={15} color={T.violet} /> 关于</div>
+           <div className="ps-set-row">
+             <div className="ps-set-label">Persona Studio</div>
+             <span className="ps-pill" style={{ background: T.violetDim, color: T.lilac }}>v{config?.version || "0.1.0"}</span>
+           </div>
+-          <div className="ps-set-note" style={{ marginTop: 6 }}>Open-source, self-hosted anti-detect browser &amp; profile manager. {live ? "Engine connected." : "Running in demo mode — start persona serve to go live."}</div>
++          <div className="ps-set-note" style={{ marginTop: 6 }}>开源、自托管的反检测浏览器与配置管理器。{live ? "引擎已连接。" : "正在以演示模式运行——启动 persona serve 以进入在线模式。"}</div>
+         </div>
+       </div>
+     </div>
+@@ -2270,16 +2268,16 @@ function SettingsView({ live, config, engines, defaultEngine, onChangeEngine, pa
+ 
+ function Placeholder({ view }) {
+   const map = {
+-    team: [Users, "Team", "Invite members, set roles, and share profiles securely."],
++    team: [Users, "团队", "邀请成员、设置角色，并安全地共享配置。"],
+   };
+-  const [Ic, title, desc] = map[view] || [Boxes, "Soon", ""];
++  const [Ic, title, desc] = map[view] || [Boxes, "即将上线", ""];
+   return (
+     <div className="ps-scroll">
+       <div className="ps-empty" style={{ marginTop: 48 }}>
+         <div className="ps-empty-ic"><Ic size={26} color={T.violet} /></div>
+         <div style={{ fontSize: 16, fontWeight: 600, fontFamily: FONT.display }}>{title}</div>
+         <div style={{ color: T.muted, fontSize: 13, maxWidth: 360, textAlign: "center", lineHeight: 1.6 }}>{desc}</div>
+-        <span className="ps-pill" style={{ background: T.violetDim, color: T.lilac }}>On the roadmap</span>
++        <span className="ps-pill" style={{ background: T.violetDim, color: T.lilac }}>在路线图上</span>
+       </div>
+     </div>
+   );
+@@ -2322,7 +2320,7 @@ a { color: inherit; }
+ /* sidebar */
+ .ps-side { width: 244px; flex-shrink: 0; background: linear-gradient(180deg, ${T.bg2}, ${T.bg}); border-right: 1px solid ${T.line}; display: flex; flex-direction: column; padding: 18px 13px; position: sticky; top: 0; height: 100vh; }
+ .ps-brand { display: flex; align-items: center; gap: 12px; padding: 4px 6px 20px; }
+-.ps-logo { position: relative; width: 36px; height: 36px; border-radius: 11px; background: linear-gradient(135deg, ${T.violet}, ${T.violetDeep}); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 4px 18px ${T.violet}44; }
++.ps-logo { position: relative; width: 36px; height: 36px; border-radius: 11px; background: linear-gradient(135deg, ${T.surface2}, ${T.surface}); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+ .ps-logo-glow { position: absolute; inset: -40%; background: conic-gradient(from 0deg, ${T.mint}00, ${T.mint}88, ${T.mint}00 40%); animation: haloshift 6s linear infinite; opacity: .5; }
+ .ps-brand-name { font-family: ${FONT.display}; font-weight: 700; font-size: 16px; letter-spacing: -.2px; }
+ .ps-brand-sub { font-size: 10px; color: ${T.dim}; letter-spacing: 3px; text-transform: uppercase; margin-top: 1px; }
+@@ -2354,7 +2352,7 @@ a { color: inherit; }
+ 
+ .ps-btn { display: inline-flex; align-items: center; gap: 7px; border-radius: 10px; padding: 9px 15px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: .14s; font-family: inherit; }
+ .ps-btn.sm { padding: 7px 11px; font-size: 12px; }
+-.ps-btn.primary { background: linear-gradient(135deg, ${T.violet}, ${T.violetDeep}); color: #fff; box-shadow: 0 3px 14px ${T.violet}33; }
++.ps-btn.primary { background: linear-gradient(135deg, ${T.violet}, ${T.violetDeep}); color: ${T.bg}; box-shadow: 0 3px 14px ${T.violet}33; }
+ .ps-btn.primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+ .ps-btn.primary:active { transform: none; }
+ .ps-btn.primary:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; transform: none; }
+@@ -2554,7 +2552,7 @@ select.ps-in { cursor: pointer; }
+ .ps-toggle .knob { width: 32px; height: 18px; border-radius: 10px; background: ${T.line}; position: relative; transition: .18s; flex-shrink: 0; }
+ .ps-toggle .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: ${T.muted}; transition: .18s; }
+ .ps-toggle.on .knob { background: ${T.violet}; }
+-.ps-toggle.on .knob::after { left: 16px; background: #fff; }
++.ps-toggle.on .knob::after { left: 16px; background: ${T.bg}; }
+ .ps-toggle em { font-style: normal; font-size: 12px; color: ${T.text}; }
+ .ps-toggle.sm { padding: 6px 10px; }
+ .ps-toggle.sm .knob { width: 26px; height: 15px; }
+@@ -2591,7 +2589,7 @@ select.ps-in { cursor: pointer; }
+   padding: 5px 10px; font-size: 12px; color: ${T.muted}; cursor: pointer;
+   font-family: inherit; transition: .12s; }
+ .ps-chip:hover { border-color: #33334f; color: ${T.text}; }
+-.ps-chip.on { background: ${T.violet}; border-color: ${T.violet}; color: #fff; }
++.ps-chip.on { background: ${T.violet}; border-color: ${T.violet}; color: ${T.bg}; }
+ .ps-chiprow { display: flex; flex-wrap: wrap; gap: 7px; }
+ .ps-chip-btn { display: inline-flex; align-items: center; gap: 5px; background: ${T.bg};
+   border: 1px solid ${T.line}; border-radius: 8px; padding: 6px 11px; font-size: 12px;
