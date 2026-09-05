@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prism · 本地一键部署</title>
+<style>
+  :root{
+    --bg:#0b0f1a; --card:#12182a; --card2:#0e1424; --line:#1f2a44;
+    --fg:#e6edf7; --muted:#8b97b5; --accent:#40c4ff; --ok:#22c55e;
+    --warn:#f59e0b; --bad:#ef4444; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,Segoe UI,Roboto,"PingFang SC",sans-serif;padding:24px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .logo{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-weight:800;color:#06202f;background:linear-gradient(135deg,#40c4ff,#7c3aed)}
+  h1{font-size:19px;margin:0}
+  .sub{color:var(--muted);font-size:12px}
+  .pill{font-size:11px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+  .pill.ok{color:var(--ok);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08)}
+  .pill.busy{color:var(--warn);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.12)}
+  .pill.bad{color:var(--bad);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.1)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 20px}
+  button{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--fg);
+    padding:9px 16px;border-radius:10px;font-weight:600;font-size:13px;transition:.15s}
+  button:hover{border-color:var(--accent);transform:translateY(-1px)}
+  button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  button.primary{background:linear-gradient(135deg,#2563eb,#06b6d4);border:none;color:#fff}
+  button.primary:hover{filter:brightness(1.1)}
+  button.danger{border-color:rgba(239,68,68,.4);color:#fca5a5}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+  .svc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .svc .name{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .svc .st{font-weight:700;font-size:15px}
+  .svc .st.up{color:var(--ok)} .svc .st.down{color:var(--bad)}
+  .svc a{display:block;font-size:11px;color:var(--accent);margin-top:6px;text-decoration:none}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
+  .card h3{font-size:13px;margin:0;padding:12px 16px;background:var(--card2);border-bottom:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 16px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  td.status{font-family:var(--mono);font-size:12px}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  #log{background:#070a12;border-top:1px solid var(--line);height:280px;overflow:auto;
+    padding:12px 16px;font-family:var(--mono);font-size:12px;line-height:1.6;color:#c7d3ea}
+  #log .L{white-space:pre-wrap;word-break:break-word}
+  #log .E{color:#f8b4b4} #log .W{color:#fcd78d}
+  .hint{color:var(--muted);font-size:12px;margin:14px 0 0}
+  .hint code{background:var(--card2);border:1px solid var(--line);padding:1px 6px;border-radius:6px;font-family:var(--mono)}
+  .flex{display:flex;gap:16px;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">P</div>
+    <div>
+      <h1>Prism · 本地一键部署</h1>
+      <div class="sub" id="meta">正在读取环境…</div>
+    </div>
+    <div style="margin-left:auto" class="pill" id="statusPill">—</div>
+  </header>
+
+  <div class="actions">
+    <button class="primary" id="btnFull">▶ 一键部署 (full)</button>
+    <button id="btnPlan">探测 (plan)</button>
+    <button id="btnTools">补齐工具</button>
+    <button id="btnBootstrap">引导运行时</button>
+    <button id="btnStart">启动</button>
+    <button id="btnStatus">刷新状态</button>
+    <button id="btnStop" class="danger">停止</button>
+  </div>
+
+  <div class="grid" id="svcGrid"></div>
+
+  <div class="card">
+    <h3>服务进程（PM2）</h3>
+    <div style="max-height:260px;overflow:auto">
+      <table id="pm2"><thead><tr><th>Name</th><th>Status</th><th>Restarts</th><th>内存</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>部署日志（实时）</h3>
+    <div id="log"></div>
+  </div>
+
+  <p class="hint">
+    本机命令等价物：<code>python3 deploy/deploy.py full</code> ·
+    <code>./deploy.sh</code> (macOS/Linux) ·
+    <code>deploy.cmd</code> (Windows) ·
+    状态只读：<code>python3 deploy/deploy.py status</code>
+  </p>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+let busy=false;
+function setPill(txt,cls){const p=$("#statusPill");p.textContent=txt;p.className="pill "+(cls||"");}
+function setBusy(b){busy=b;document.querySelectorAll("button").forEach(x=>x.disabled=b);
+  setPill(b?"BUILDING…":"READY",b?"busy":"ok");}
+
+async function post(cmd){
+  setBusy(true);
+  try{
+    const r=await fetch(`/api/action?cmd=${cmd}`,{method:"POST"});
+    const j=await r.json();
+    if(r.status===409){setPill("BUSY","busy");}
+    else if(!j.ok){setPill("FAILED","bad");}
+  }catch(e){setPill("ERR","bad");}
+}
+
+async function refreshStatus(){
+  try{
+    const r=await fetch("/api/status");const j=await r.json();
+    $("#meta").textContent=`${j.time||""} · 后端 ${(j.backend&&j.backend.backend_url)||"未配置"}`;
+    // endpoints grid
+    const g=$("#svcGrid");g.innerHTML="";
+    (j.endpoints||[]).forEach(ep=>{
+      const d=document.createElement("div");d.className="svc";
+      const url=ep.url||(ep.label==="backend"&&j.backend?j.backend.backend_url+"/health":"");
+      d.innerHTML=`<div class="name">${ep.name}</div>
+        <div class="st ${ep.ok?'up':'down'}">${ep.ok?'UP':'DOWN'}</div>
+        ${url?`<a href="${url}" target="_blank">${ep.label}</a>`:""}`;
+      g.appendChild(d);
+    });
+    // pm2 table
+    const tb=$("#pm2 tbody");tb.innerHTML="";
+    if(j.pm2&&j.pm2.length){
+      j.pm2.forEach(a=>{
+        const st=a.pm2_env&&a.pm2_env.status;
+        const cls=st==="online"?"ok":(st==="stopped"?"bad":"warn");
+        const mem=Math.round((a.monit&&a.monit.memory||0)/1048576);
+        tb.insertAdjacentHTML("beforeend",`<tr><td>${a.name||"?"}</td>
+          <td class="status ${cls}">${st||"?"}</td><td>${(a.pm2_env&&a.pm2_env.restart_time)||0}</td>
+          <td>${mem}MB</td></tr>`);
+      });
+    }else{
+      tb.insertAdjacentHTML("beforeend",`<tr><td colspan="4" style="color:var(--muted)">pm2 未运行或无进程（先点「一键部署」或「启动」）</td></tr>`);
+    }
+  }catch(e){$("#meta").textContent="状态读取失败";}
+}
+
+function appendLog(line){
+  const el=$("#log");const d=document.createElement("div");
+  d.className="L";d.textContent=line;
+  if(/\[ERROR\]|failed|失败/.test(line))d.className="L E";
+  else if(/\[warn\]|WARN/.test(line))d.className="L W";
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+function stream(){
+  const es=new EventSource("/api/logs");
+  es.addEventListener("log",e=>appendLog(e.data));
+  es.addEventListener("ping",e=>{});
+  es.addEventListener("done",e=>{
+    const j=JSON.parse(e.data);setBusy(false);
+    setPill(j.ok?"READY":"FAILED",j.ok?"ok":"bad");refreshStatus();
+  });
+  es.onerror=()=>{es.close();setTimeout(stream,1500);};
+}
+
+$("#btnFull").onclick=()=>post("full");
+$("#btnPlan").onclick=()=>post("plan");
+$("#btnTools").onclick=()=>post("install-tools");
+$("#btnBootstrap").onclick=()=>post("bootstrap");
+$("#btnStart").onclick=()=>post("start");
+$("#btnStop").onclick=()=>post("stop");
+$("#btnStatus").onclick=()=>refreshStatus();
+refreshStatus();stream();setTimeout(refreshStatus,3000);
+</script>
+</body>
+</html>

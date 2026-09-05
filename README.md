@@ -135,68 +135,63 @@ tools/               自托管组件：hermes-agent、persona-studio、代理网
 
 ## 快速开始
 
-依赖：**Python 3.11、Node 18+、Redis**（必须）。浏览器（Chromium/Firefox）用于账号登录与自动化，首次运行会自动准备。
+**零依赖一键部署**：无需预装 **Python / Node / Redis** —— 仓库自带的部署器会自动补齐并把整套拉起来。macOS/Linux 用 `deploy.sh`，Windows 用 `deploy.cmd`（两者都是同一个 `deploy/deploy.py` 引擎的入口，幂等、可重复执行，日志写入 `runtime-data/deploy.log`）。
 
-### ① 安装系统依赖
-
-- **Python 3.11**
-  - macOS：`brew install python@3.11`
-  - Ubuntu：`sudo apt install python3.11`
-  - Windows：官网安装并勾选 *Add to PATH*
-- **Node 18+**：官网或 `brew install node`
-- **Redis**（必需，Prism 的 Celery 队列与账号分布式锁依赖它）
-  - macOS：`brew install redis && redis-server --daemonize yes`
-  - Ubuntu：`sudo apt install redis-server`（装完 `redis-server --daemonize yes`）
-  - Windows：下载 [tporadowski/redis](https://github.com/tporadowski/redis/releases) 的 `Redis-x64-*.zip`，解压到 PATH
-
-### ② 一键环境引导（跨平台）
+### macOS / Linux
 
 ```bash
 git clone https://github.com/Laihiujin/Prism.git
 cd Prism
-python3 bootstrap.py            # 创建 prismenv + pip 依赖 + 前端依赖 + 生成 .env + 检查 Redis
+./deploy.sh            # 等价于 ./deploy.sh full —— 一键部署整套并启动
 ```
 
-`bootstrap.py` 是统一的“配方”入口，幂等、可重复执行：
+`deploy.sh` 会先解析一个可用的 Python（优先系统 `python3`，否则用仓库内嵌的 micromamba 自动造一个 `.deployenv`，全程无需你手动装 Python），再把命令转发给部署引擎。
 
-| 命令 | 作用 |
+### Windows
+
+```bat
+git clone https://github.com/Laihiujin/Prism.git
+cd Prism
+deploy.cmd full
+```
+
+`deploy.cmd` 只是转到 `deploy.ps1`：没有系统 Python 时会自动下载一份便携 Python（python-build-standalone，放到 `.tools\python`），再运行同一个 `deploy\deploy.py` 引擎。
+
+### `full` 一键部署会做什么
+
+`full = plan → install-tools → bootstrap → start`，每一步幂等，已就绪的自动跳过：
+
+- **plan**：只探测本机缺什么（Python / Node / Redis / 浏览器 / 依赖），不改动，可用 `--json` 输出机器可读结果
+- **install-tools**：补齐缺失的 **Node / Redis** 等外部工具
+- **bootstrap**：Prism 运行时 —— `prismenv` + 后端/前端依赖 + 生成 `.env` + 浏览器
+- **start**：**PM2** 拉起整套进程 + 健康检查
+
+### 部署 Web UI（可视化，逐条点按）
+
+```bash
+./deploy.sh webui        # macOS / Linux
+deploy.cmd               # Windows：不带参数 = 启动部署 Web UI
+```
+
+打开 `http://127.0.0.1:8440`，可逐条执行 `plan` / `install-tools` / `bootstrap` / `start` / `stop` / `status`，日志以 SSE 流式展示（同时写入 `runtime-data/deploy.log`）。
+
+### 常用子命令
+
+| 子命令 | 作用 |
 |---|---|
-| `python3 bootstrap.py` | 完整引导 |
-| `python3 bootstrap.py --dev` | 另装开发/测试依赖 |
-| `python3 bootstrap.py --no-browsers` | 跳过浏览器安装（首次较大） |
-| `python3 bootstrap.py --check` | 只检查环境，不改动 |
+| `./deploy.sh`（无参，macOS/Linux）/ `deploy.cmd full`（Windows）| 完整一键部署（plan → install-tools → bootstrap → start）|
+| `./deploy.sh start` / `deploy.cmd start` | 环境就绪时快速启动（跳过浏览器）|
+| `./deploy.sh stop` / `deploy.cmd stop` | 停止（pm2 delete all，保留数据）|
+| `./deploy.sh status` / `deploy.cmd status` | 进程 + 端点存活快照 |
+| `./deploy.sh check` / `./deploy.sh plan` | 只探测环境 / 打印部署计划，不改动 |
+| `./deploy.sh bootstrap` | 轻量引导（venv 路径，不重建组件环境）|
+| `./deploy.sh webui` / `deploy.cmd`（无参，Windows）| 打开部署 Web UI（`127.0.0.1:8440`）|
 
-### ③ 一键启动（PM2，跨平台）
+启动顺序：**Redis → Celery Worker → Automation Worker → 后端 → 前端**。控制台 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
 
-```bash
-# macOS / Linux（先引导环境，再交给 PM2 托管所有进程）
-./start-mac.sh
+> **进程托管**：macOS/Linux/Windows 统一由 **PM2** 托管全部进程（`ecosystem.config.js`，跨平台）。`full` 默认整套一起拉起，进程缺失会"显性报错"而非"静默降级"（比如后端在跑、Worker 没起，控制台虽能打开但调度会悄悄失效）。
 
-# Windows（先引导环境，再交给 PM2 托管所有进程）
-start.bat
-```
-
-仅启动（跳过引导，需已运行过 `bootstrap.py`）：
-
-```bash
-# macOS / Linux
-./start-pm2.sh
-
-# Windows
-start-pm2.bat
-```
-
-> **给 AI / 任何机器的一条命令**（等价于上面）：
-> ```bash
-> python3 bootstrap.py --no-browsers && pm2 start ecosystem.config.js
-> ```
-> 其中 `pm2 start ecosystem.config.js` 用跨平台配置拉起全部 11 个进程（macOS 用 `prismenv/bin/python`，Windows 用 `prismenv\Scripts\python.exe`）。仓库内的 `start-mac.sh` / `start.bat` / `start-pm2.sh` / `start-pm2.bat` 是更完整的封装：会自动选后端动态端口、健康检查、失败重试，并打印访问地址。
-
-启动顺序为 **Redis → Celery Worker → Automation Worker → FastAPI 后端 → 前端**。控制台地址 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
-
-> **进程托管**：macOS/Linux/Windows 统一由 **PM2** 托管所有进程（`start-pm2.sh`（macOS/Linux）/ `start-pm2.bat`（Windows）+ `ecosystem.config.js`，含 Redis、后端、Worker、Celery、前端、Persona、Hermes）。`start-mac.sh` 只负责把环境准备好（幂等），然后交给 PM2 启动。
-
-> **关于虚拟环境**：仓库统一使用名为 `prismenv` 的虚拟环境（启动脚本、桌面打包、Hermes 运行时都叫它）。`python3 bootstrap.py` 已包含创建 `prismenv` 的步骤；等价的手工命令为
+> **虚拟环境**：仓库统一用名为 `prismenv` 的虚拟环境（部署器、桌面打包、Hermes 运行时都用它）。`full` 已包含创建 `prismenv` 并安装依赖；等价的手工命令为
 > ```bash
 > python3.11 -m venv prismenv
 > prismenv/bin/python -m pip install -r requirements.txt   # Windows: prismenv\Scripts\python.exe

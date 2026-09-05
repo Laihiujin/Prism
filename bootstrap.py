@@ -5,18 +5,21 @@
 用一个命令就把 Python venv（prismenv）、Python 依赖、前端/根目录 npm 依赖
 （根目录提供 macOS 用的 pm2）、.env、Redis、浏览器（Chromium / Firefox）一次性准备到可运行状态。
 
-它把之前散落在 README / start.bat / start-mac.sh 里的手工步骤统一起来，
+它把之前散落在 README / 命令行里的手工步骤统一起来，
 并保证可重复执行（幂等）：已经做过的步骤会跳过，不会重复装。
 
-用法
+用法（单命令，跨平台）
 ----
-    python3 bootstrap.py                 # 完整引导
-    python3 bootstrap.py --dev           # 额外安装 requirements-dev.txt（开发/测试用）
-    python3 bootstrap.py --no-browsers   # 跳过浏览器安装（首次装 Chromium 较大）
-    python3 bootstrap.py --check         # 只检查环境，不改动任何东西
+    python3 bootstrap.py                 # 一键部署：装齐 Node/npm、Redis、依赖、浏览器 + PM2 启动
+    python3 bootstrap.py start           # 快速启动（假定环境已就绪，跳过浏览器）
+    python3 bootstrap.py stop            # 停止（pm2 delete all，保留数据）
+    python3 bootstrap.py status          # 查看 PM2 进程状态
+    python3 bootstrap.py --dev           # 部署时额外安装开发依赖 requirements-dev.txt
+    python3 bootstrap.py --no-browsers   # 部署时跳过浏览器安装（首次装 Chromium 较大）
+    python3 bootstrap.py --check         # 只检查环境，不改动
 
-之后启动：
-    一键启动见仓库根目录：./start-mac.sh （macOS/Linux） 或 start.bat （Windows）。
+唯一前提：机器上有一个 Python 3.11+（macOS 自带；Windows 装一次官方安装包即可）。
+其余（Node/npm、Redis、pip 依赖、前端与根目录依赖、浏览器、整套服务）都由本命令自动装齐并拉起。
 
 设计约定
 --------
@@ -29,6 +32,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -200,10 +204,47 @@ def _npm_install(dirpath: Path) -> None:
         _run(["npm", "install"], cwd=str(dirpath), env=env)
 
 
+def _node_install_hint() -> str:
+    if shutil.which("brew"):
+        return "brew install node"
+    if shutil.which("apt-get"):
+        return "sudo apt-get install -y nodejs npm"
+    if os.name == "nt":
+        for m in ("winget", "choco", "scoop"):
+            if shutil.which(m):
+                return f"{m} install nodejs"
+        return "从 https://nodejs.org/ 下载 Node LTS 安装包"
+    return "从 https://nodejs.org/ 安装 Node 18+"
+
+
+def _ensure_node() -> None:
+    """确保 Node.js 18+ 与 npm 可用；缺失则尽量用系统包管理器自动安装。"""
+    if shutil.which("node") and shutil.which("npm"):
+        _log("Node/npm 已就绪")
+        return
+    _log("未检测到 Node.js，尝试用系统包管理器安装 ...")
+    try:
+        if shutil.which("brew"):
+            _run(["brew", "install", "node"], check=False)
+        elif shutil.which("apt-get"):
+            _run(["sudo", "apt-get", "install", "-y", "nodejs", "npm"], check=False)
+        elif os.name == "nt" and shutil.which("winget"):
+            _run(["winget", "install", "-e", "--id", "OpenJS.NodeJS.LTS"], check=False)
+        elif os.name == "nt" and shutil.which("choco"):
+            _run(["choco", "install", "nodejs", "-y"], check=False)
+    except Exception as exc:
+        _log(f"安装 Node 失败: {exc}")
+    if shutil.which("node") and shutil.which("npm"):
+        _log("OK Node/npm 已安装")
+    else:
+        _log(f"仍找不到 Node，请手动安装: {_node_install_hint()}")
+
+
 def ensure_node_deps() -> None:
     """安装前端依赖（prism_frontend）与根目录依赖（提供 pm2 等进程管理工具）。"""
+    _ensure_node()
     if shutil.which("npm") is None:
-        _log("警告: 未找到 npm，跳过 Node 依赖安装。请先安装 Node 18+。")
+        _log("警告: 仍无法使用 npm，跳过 Node 依赖安装。请先安装 Node 18+。")
         return
     # 前端依赖
     if (FRONTEND_DIR / "node_modules").exists():
@@ -258,6 +299,42 @@ def check_redis() -> bool:
     return False
 
 
+def ensure_redis() -> bool:
+    """确保 Redis 可用；缺失则尽量自动安装，已装未运行则尝试拉起。"""
+    running, state = _redis_status()
+    if running:
+        return True
+    if shutil.which("redis-server"):
+        _log("检测到 redis-server 未运行，尝试启动 ...")
+        _run(["redis-server", "--daemonize", "yes"], check=False, capture_output=True)
+        running, _ = _redis_status()
+        if running:
+            _log("OK Redis 已启动")
+            return True
+        _log("未能自动启动 Redis，请手动: redis-server --daemonize yes")
+        return False
+    _log("未安装 Redis，尝试自动安装 ...")
+    try:
+        if shutil.which("brew"):
+            _run(["brew", "install", "redis"], check=False)
+        elif shutil.which("apt-get"):
+            _run(["sudo", "apt-get", "install", "-y", "redis-server"], check=False)
+        elif os.name == "nt" and shutil.which("winget"):
+            _run(["winget", "install", "-e", "--id", "Redis.Redis"], check=False)
+        elif os.name == "nt" and shutil.which("choco"):
+            _run(["choco", "install", "redis", "-y"], check=False)
+    except Exception as exc:
+        _log(f"自动安装 Redis 失败: {exc}")
+    if shutil.which("redis-server"):
+        _run(["redis-server", "--daemonize", "yes"], check=False, capture_output=True)
+    running, _ = _redis_status()
+    if running:
+        _log("OK Redis 已安装并启动")
+        return True
+    _log(f"Redis 未能就绪。请手动安装/启动: {_redis_install_hint()}")
+    return False
+
+
 def _chrome_executable() -> str | None:
     for p in _SYSTEM_CHROME_PATHS:
         if Path(p).is_file():
@@ -305,45 +382,168 @@ def ensure_browsers(*, auto: bool) -> bool:
         return False
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Prism 一键环境引导")
-    parser.add_argument("--dev", action="store_true", help="同时安装开发依赖 requirements-dev.txt")
-    parser.add_argument("--no-browsers", action="store_true", help="跳过浏览器安装")
-    parser.add_argument("--check", action="store_true", help="仅检查环境，不做改动")
-    args = parser.parse_args()
+# --------------------------------------------------------------------------
+# PM2 子命令（跨平台，单命令入口：start / stop / status）
+# --------------------------------------------------------------------------
+def _pm2_bin() -> Path | None:
+    exe = "pm2.cmd" if os.name == "nt" else "pm2"
+    for base in (REPO_ROOT / "node_modules" / ".bin", FRONTEND_DIR / "node_modules" / ".bin"):
+        p = base / exe
+        if p.exists():
+            return p
+    found = shutil.which("pm2")
+    return Path(found) if found else None
 
-    print("=" * 60)
-    print("  Prism 环境引导 (bootstrap)")
-    print("=" * 60)
 
-    if args.check:
+def _pm2_env() -> dict:
+    env = dict(os.environ)
+    env["PM2_HOME"] = str(REPO_ROOT / "runtime-data" / "pm2")
+    return env
+
+
+def _pm2_start() -> int:
+    """用 PM2 拉起整套服务（假定环境已就绪）。"""
+    pm2 = _pm2_bin()
+    if pm2 is None:
+        _log("[ERROR] 未找到 pm2。请先运行: python3 bootstrap.py")
+        return 1
+    env = _pm2_env()
+    pm2 = str(pm2)
+    py = str(_venv_python())
+    runtime = str(REPO_ROOT / "scripts" / "prism_runtime.py")
+
+    _run([pm2, "delete", "all"], check=False, env=env)
+    _run([py, runtime, "prepare"], check=False, env=env, capture_output=True)
+
+    _log("启动 PM2 栈（Redis + 后端 ...）")
+    _run([pm2, "start", "ecosystem.config.js", "--only", "prism-redis,prism-backend", "--update-env"], check=False, env=env)
+    if _run([py, runtime, "health", "--timeout", "60"], check=False, env=env, capture_output=True).returncode != 0:
+        _log("[WARN] 后端未绑定所选端口，重选端口并重试一次 ...")
+        _run([pm2, "delete", "prism-backend"], check=False, env=env)
+        _run([py, runtime, "prepare"], check=False, env=env, capture_output=True)
+        _run([pm2, "start", "ecosystem.config.js", "--only", "prism-backend", "--update-env"], check=False, env=env)
+        if _run([py, runtime, "health", "--timeout", "60"], check=False, env=env, capture_output=True).returncode != 0:
+            _log("[ERROR] 后端健康检查仍失败")
+            return 1
+
+    _log("启动其余服务（Worker/Celery/前端/Persona/Hermes ...）")
+    _run([pm2, "start", "ecosystem.config.js", "--only",
+          "prism-worker,prism-celery,prism-frontend,persona-api,persona-proxy,persona-dashboard,hermes-dashboard,hermes-webui,deepseek-harness",
+          "--update-env"], check=False, env=env)
+
+    try:
+        backend_url = json.loads((REPO_ROOT / "runtime-data" / "runtime.json").read_text()).get("backend_url", "http://127.0.0.1:7000")
+    except Exception:
+        backend_url = "http://127.0.0.1:7000"
+
+    print()
+    _run([pm2, "list"], check=False, env=env)
+    print()
+    print("访问:")
+    print("  前端        http://localhost:3000")
+    print("  后端        " + backend_url + "/api/docs")
+    print("  Worker      http://127.0.0.1:7001/health")
+    print("  Persona API http://127.0.0.1:8787")
+    print()
+    print("  停止: python3 bootstrap.py stop   |   日志: pm2 logs")
+    return 0
+
+
+def _pm2_stop() -> int:
+    pm2 = _pm2_bin()
+    if pm2 is None:
+        _log("[ERROR] 未找到 pm2")
+        return 1
+    _log("停止 Prism PM2 栈 ...")
+    _run([str(pm2), "delete", "all"], check=False, env=_pm2_env())
+    _log("完成。数据与日志保留在 runtime-data/pm2")
+    return 0
+
+
+def _pm2_status() -> int:
+    pm2 = _pm2_bin()
+    if pm2 is None:
+        _log("[ERROR] 未找到 pm2")
+        return 1
+    return _run([str(pm2), "list"], check=False, env=_pm2_env()).returncode
+
+
+# --------------------------------------------------------------------------
+# 环境引导
+# --------------------------------------------------------------------------
+def _bootstrap(*, dev: bool, no_browsers: bool, check: bool) -> int:
+    if check:
         _log("检查模式（只读）...")
         running, state = _redis_status()
         _log(f"Redis: {state}")
         _log(f"prismenv python: {_venv_python()} -> {'存在' if _venv_python().exists() else '不存在'}")
         _log(f"前端 node_modules: {'存在' if (FRONTEND_DIR / 'node_modules').exists() else '不存在'}")
-        _log(f"根目录 pm2: {'存在' if (REPO_ROOT / 'node_modules' / '.bin' / ('pm2.cmd' if os.name == 'nt' else 'pm2')).exists() else '不存在'}")
+        _log(f"根目录 pm2: {'存在' if _pm2_bin() else '不存在'}")
         _log(f"浏览器: {'可用' if (_chrome_executable() or _chromium_in_browsers()) else '需安装'}")
         return 0
 
     ensure_venv()
-    ensure_python_deps(dev=args.dev)
+    ensure_python_deps(dev=dev)
     ensure_env()
     ensure_node_deps()
-    if not args.no_browsers:
+    ensure_redis()
+    if not no_browsers:
         ensure_browsers(auto=True)
 
     _log("=" * 60)
     running, state = _redis_status()
     if running:
         _log(f"全部就绪。Redis {state}。")
-        _log("启动:  ./start-mac.sh  （macOS/Linux） 或  start.bat  （Windows）")
+        _log("部署:  python3 bootstrap.py   |   下次启动:  python3 bootstrap.py start")
     else:
-        _log("环境基本就绪，但 Redis 尚未运行。")
+        _log("环境基本就绪，但 Redis 尚未就绪。")
         _log(f"    {_redis_install_hint()}")
-        _log("启动 Redis 后再运行 ./start-mac.sh 或 start.bat。")
     _log("=" * 60)
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Prism 一键部署（跨平台）：装齐依赖 + PM2 启动/停止 + Web UI")
+    parser.add_argument("command", nargs="?", default="bootstrap",
+                        choices=("bootstrap", "start", "stop", "status", "webui"),
+                        help="bootstrap=完整部署(默认) | start=快速启动(假定环境已就绪) | stop=停止 | status=状态 | webui=打开部署 Web UI")
+    parser.add_argument("--dev", action="store_true", help="环境引导时同时安装开发依赖 requirements-dev.txt")
+    parser.add_argument("--no-browsers", action="store_true", help="跳过浏览器安装")
+    parser.add_argument("--check", action="store_true", help="仅检查环境，不改动")
+    parser.add_argument("--port", type=int, default=8440, help="webui 监听端口")
+    parser.add_argument("--host", default="127.0.0.1", help="webui 监听地址")
+    parser.add_argument("--no-open", action="store_true", help="webui 不自动打开浏览器")
+    args = parser.parse_args()
+
+    if args.command == "webui":
+        import importlib.util
+        p = REPO_ROOT / "deploy" / "webui_server.py"
+        spec = importlib.util.spec_from_file_location("prismwebui", p)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.serve(port=args.port, host=args.host, no_open=args.no_open)
+    if args.command == "stop":
+        return _pm2_stop()
+    if args.command == "status":
+        return _pm2_status()
+    if args.command == "start":
+        if args.check:
+            return _bootstrap(dev=False, no_browsers=True, check=True)
+        if _bootstrap(dev=False, no_browsers=True, check=False) != 0:
+            _log("[ERROR] 环境未就绪，请先运行: python3 bootstrap.py")
+            return 1
+        return _pm2_start()
+
+    # default: bootstrap = 完整一键部署（装齐依赖 + 启动）
+    print("=" * 60)
+    print("  Prism 一键部署 (bootstrap + PM2)")
+    print("=" * 60)
+    if args.check:
+        return _bootstrap(dev=args.dev, no_browsers=args.no_browsers, check=True)
+    if _bootstrap(dev=args.dev, no_browsers=args.no_browsers, check=False) != 0:
+        _log("[ERROR] 环境引导失败")
+        return 1
+    return _pm2_start()
 
 
 if __name__ == "__main__":

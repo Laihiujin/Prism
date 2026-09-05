@@ -198,6 +198,10 @@ data/videos/
 tmp-runtime-data/
 /tmp-runtime-data/
 /runtime-data/
+# Deploy toolbar/one-click portables (downloaded at deploy time, not committed)
+/.tools/
+/.deployenv/
+/deploy/webui/*.log
 /docker-data/
 /gcm-diagnose.log
 tools/hermes-agent/
