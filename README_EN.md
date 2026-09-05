@@ -38,10 +38,6 @@
 
 ![walkthrough](docs/demos/prism_wrap.gif)
 
-**14-Screen Feature Tour / 14 页功能巡览**
-
-![tour](docs/demos/prism_hyperframes_demo.gif)
-
 ---
 
 [Quick Start](#quick-start) · [Architecture](#architecture) · [CLI](#cli) · [API](#api) · [Project Layout](#project-layout) · [Contributing](#contributing) — [简体中文版 ↓](README.md)
@@ -406,6 +402,6 @@ Thanks to the LINUX DO community for providing developers with a platform for te
 
 <div align="right">
 
-[⬆ Back to top](#prism) · [简体中文版 ↓](README.md)
+[Back to top](#prism) · [简体中文版 ↓](README.md)
 
 </div>
