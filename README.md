@@ -135,7 +135,7 @@ tools/               自托管组件：hermes-agent、persona-studio、代理网
 | `persona-proxy` | mihomo per-country 网关（可选） | `:7771`–`:7776` |
 | HermesAgent | 内置 AI Agent 面板/WebUI | `:9119` / `:9131` |
 
-所有进程由 PM2（macOS）或内置 Supervisor（Windows）统一托管，目的是让进程缺失"显性报错"而不是"静默降级"——比如后端在跑、Worker 没起，控制台依然能打开，但任务调度会悄悄失效，因此启动脚本默认整套一起拉起。
+所有进程统一由 **PM2（macOS/Linux/Windows）** 托管（`ecosystem.config.js`，跨平台），目的是让进程缺失"显性报错"而不是"静默降级"——比如后端在跑、Worker 没起，控制台依然能打开，但任务调度会悄悄失效，因此启动脚本默认整套一起拉起。
 
 ## 快速开始
 
@@ -170,18 +170,31 @@ python3 bootstrap.py            # 创建 prismenv + pip 依赖 + 前端依赖 + 
 | `python3 bootstrap.py --no-browsers` | 跳过浏览器安装（首次较大） |
 | `python3 bootstrap.py --check` | 只检查环境，不改动 |
 
-### ③ 一键启动
+### ③ 一键启动（PM2，跨平台）
 
 ```bash
 # macOS / Linux（先引导环境，再交给 PM2 托管所有进程）
 ./start-mac.sh
 
-# Windows
+# Windows（先引导环境，再交给 PM2 托管所有进程）
 start.bat
-
-# 仅启动（跳过引导，需已运行过 bootstrap.py）：macOS 用 PM2 统一托管
-./start-pm2.sh
 ```
+
+仅启动（跳过引导，需已运行过 `bootstrap.py`）：
+
+```bash
+# macOS / Linux
+./start-pm2.sh
+
+# Windows
+start-pm2.bat
+```
+
+> **给 AI / 任何机器的一条命令**（等价于上面）：
+> ```bash
+> python3 bootstrap.py --no-browsers && pm2 start ecosystem.config.js
+> ```
+> 其中 `pm2 start ecosystem.config.js` 用跨平台配置拉起全部 11 个进程（macOS 用 `prismenv/bin/python`，Windows 用 `prismenv\Scripts\python.exe`）。仓库内的 `start-mac.sh` / `start.bat` / `start-pm2.sh` / `start-pm2.bat` 是更完整的封装：会自动选后端动态端口、健康检查、失败重试，并打印访问地址。
 
 启动顺序为 **Redis → Celery Worker → Automation Worker → FastAPI 后端 → 前端**。控制台地址 `http://localhost:3000`，API 文档 `http://localhost:7000/api/docs`。
 
@@ -248,14 +261,14 @@ npm run build               :: NSIS 安装包 → dist-build\Prism-<version>-set
 npm run build:dir           :: 仅目录包 → dist-build\win-unpacked\（便于本地测试）
 ```
 
-- Windows 一键打包脚本（构建前端 + 后端服务 exe + supervisor + Inno/NSIS 安装包）：
+- Windows 一键打包脚本（构建前端 + 后端服务 + pm2_controller + Inno/NSIS 安装包）：
   ```bat
   scripts\packaging\build-package.bat
   ```
 - Windows 打包前置依赖：
-  - `desktop-electron\resources\redis\`：放入 `redis-server.exe`、`redis-cli.exe`、`redis.windows*.conf`（从 [tporadowski/redis](https://github.com/tporadowski/redis/releases) 下载，或先跑 `scripts\packaging\prepare-supervisor-build.bat` 自动准备）。
-  - Chromium：`scripts\launchers\setup_browser.bat`。
-  - supervisor.exe：由 `scripts\packaging\build-supervisor.bat`（PyInstaller）生成。
+  - `desktop-electron\resources\redis\`：放入 `redis-server.exe`、`redis-cli.exe`、`redis.windows*.conf`（从 [tporadowski/redis](https://github.com/tporadowski/redis/releases) 下载后放入）。
+  - Chromium：由 `python bootstrap.py --browsers` 准备。
+  - 进程托管：`pm2_controller.js`（electron-builder 从 `resources\pm2` 打包），不再是 supervisor。
   - 需要 `prismenv\Scripts\python.exe` 与 `prismenv\_python\python.exe`（`bootstrap.py` 已建好）。
 
 ### 3. 本地联调（不打包，直接跑 Electron 壳）
