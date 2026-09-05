@@ -83,17 +83,9 @@ jobs:
           prismenv/Scripts/python.exe -m pip install --upgrade pip
           prismenv/Scripts/python.exe -m pip install -r requirements.txt
 
-      - name: 构建 supervisor.exe (PyInstaller)
-        run: |
-          prismenv/Scripts/python.exe -m pip install pyinstaller
-          prismenv/Scripts/python.exe -m PyInstaller build/supervisor.spec --clean --noconfirm
-          if (Test-Path "dist/supervisor/supervisor.exe") {
-            Copy-Item "dist/supervisor/supervisor.exe" "desktop-electron/resources/supervisor/supervisor.exe"
-          } elseif (Test-Path "dist/supervisor.exe") {
-            Copy-Item "dist/supervisor.exe" "desktop-electron/resources/supervisor/supervisor.exe"
-          } else {
-            throw "supervisor.exe 未生成"
-          }
+      - name: 安装 PM2 运行时 (desktop-electron/resources)
+        working-directory: desktop-electron/resources
+        run: npm ci
 
       - name: 安装打包依赖 (desktop-electron)
         working-directory: desktop-electron
@@ -112,10 +104,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path $dest | Out-Null
           Expand-Archive -Path $zip -DestinationPath $dest -Force
           Get-ChildItem $dest | Select-Object -ExpandProperty Name
-
-      - name: 准备占位目录 (services)
-        run: |
-          New-Item -ItemType Directory -Force -Path "dist/services" | Out-Null
 
       - name: electron-builder 打包 (不发布)
         working-directory: desktop-electron
@@ -189,6 +177,10 @@ jobs:
 
       - name: 安装打包依赖 (desktop-electron)
         working-directory: desktop-electron
+        run: npm ci
+
+      - name: 安装 PM2 运行时 (desktop-electron/resources)
+        working-directory: desktop-electron/resources
         run: npm ci
 
       - name: electron-builder 打包 (不发布)
