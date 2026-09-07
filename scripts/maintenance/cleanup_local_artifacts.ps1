@@ -37,10 +37,6 @@ $targets = @(
   (New-CleanupTarget "desktop-electron\\out" "safe" "Electron packager output")
 )
 
-if ($IncludePackagingCache) {
-  $targets += New-CleanupTarget "build\\supervisor" "optional" "PyInstaller intermediate cache"
-}
-
 if ($IncludeNodeModules) {
   $targets += New-CleanupTarget "node_modules" "optional" "root node modules"
   $targets += New-CleanupTarget "prism_frontend\\node_modules" "optional" "frontend node modules"

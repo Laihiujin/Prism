@@ -146,7 +146,6 @@ for %%F in (
     start_all_services.bat
     start_celery_worker_prismenv.bat
     start_celery_worker.bat
-    start_supervisor_prismenv.bat
 ) do (
     if exist "%%F" (
         move /y "%%F" "scripts\archived\" >nul 2>&1
@@ -171,7 +170,6 @@ set "ARCHIVED=0"
 if not exist "scripts\maintenance" mkdir "scripts\maintenance" 2>nul
 
 for %%F in (
-    diagnose-supervisor.bat
     fix_agent_tools.py
     manual_fix_instructions.py
 ) do (

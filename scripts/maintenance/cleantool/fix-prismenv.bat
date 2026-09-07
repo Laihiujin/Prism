@@ -85,8 +85,7 @@ if "%ERRORLEVEL%"=="0" (
         echo ============================================
         echo.
         echo 下一步:
-        echo   1. 编译 supervisor: scripts\packaging\build-supervisor.bat
-        echo   2. 运行打包: scripts\packaging\build-package.bat
+        echo   1. 运行打包: scripts\packaging\build-package.bat
         echo.
         pause
         exit /b 0

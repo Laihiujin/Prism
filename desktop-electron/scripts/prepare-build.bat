@@ -8,7 +8,7 @@ echo.
 set "ROOT=%~dp0.."
 cd /d "%ROOT%"
 
-echo [步骤 1/3] 构建前端 (Next.js standalone)...
+echo [步骤 1/2] 构建前端 (Next.js standalone)...
 echo.
 cd ..\prism_frontend
 
@@ -32,7 +32,7 @@ echo.
 echo ✅ 前端构建完成
 echo.
 
-echo [步骤 2/3] 验证前端输出...
+echo [步骤 2/2] 验证前端输出...
 if not exist ".next\standalone\server.js" (
     echo ❌ 前端 server.js 未生成
     echo 请检查 next.config.ts 中是否设置了 output: "standalone"
@@ -40,19 +40,6 @@ if not exist ".next\standalone\server.js" (
     exit /b 1
 )
 echo ✅ 前端 standalone 输出验证通过
-echo.
-
-echo [步骤 3/3] 构建 Supervisor...
-cd ..\..
-if exist "scripts\packaging\build-supervisor.bat" (
-    echo 🔨 构建 Supervisor...
-    call scripts\packaging\build-supervisor.bat
-    if errorlevel 1 (
-        echo ⚠️ Supervisor 构建失败，但继续打包流程
-    )
-) else (
-    echo ⚠️ 未找到 Supervisor 构建脚本
-)
 echo.
 
 cd desktop-electron

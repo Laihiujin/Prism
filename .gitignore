@@ -136,8 +136,6 @@ browsers/firefox/winldd-1007/*
 dist/
 /dist/
 dist-out/
-build/supervisor/
-/build/supervisor/
 build_output/
 scripts/packaging/*
 !scripts/packaging/provision/
@@ -149,7 +147,6 @@ scripts/packaging/*
 scripts/packaging/provision/micromamba/*
 scripts/packaging/provision/.mamba/
 !scripts/packaging/build-package.bat
-!scripts/packaging/build-supervisor.bat
 !scripts/packaging/build-version.json
 !scripts/packaging/build_exclude.txt
 !scripts/packaging/build_services.ps1
