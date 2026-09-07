@@ -4,13 +4,13 @@ REM Set UTF-8 encoding environment
 set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 set "ROOT_DIR=%~dp0..\..\.."
-REM 清理 Supervisor 日志文件脚本
+REM 清理 Prism 日志文件脚本
 echo ========================================
 echo   Prism 日志清理工具
 echo ========================================
 echo.
 
-set "LOG_DIR=%ROOT_DIR%\dist\win-unpacked\resources\supervisor"
+set "LOG_DIR=%ROOT_DIR%\dist\win-unpacked\resources"
 
 if not exist "%LOG_DIR%" (
     echo [ERROR] 找不到日志目录: %LOG_DIR%

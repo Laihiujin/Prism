@@ -13,7 +13,7 @@ This repository mixes long-lived source trees, local runtimes, and generated bui
 - `data/`: repo-local persistent data.
 - `tools/`: vendored or locally managed tool integrations.
 - `browsers/`: browser installers plus downloaded browser payloads used by local runtime and packaging.
-- `build/`: packaging specs and intermediate build material. `build/supervisor.spec` is source-like; `build/supervisor/` is disposable cache.
+- `build/`: PyInstaller build material (disposable).
 
 ## Root entrypoints
 
@@ -49,7 +49,6 @@ Delete these only when you intentionally want to rebuild local dependencies:
 - `prism_frontend/node_modules/`
 - `prismenv/`
 - browser payload folders under `browsers/`
-- `build/supervisor/`
 
 ## Recommended cleanup command
 

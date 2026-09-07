@@ -28,7 +28,7 @@ set "ELECTRON_DIST=dist-build"
 :: ============================================
 :: 0. Sanitize release workspace
 :: ============================================
-echo [0/7] Sanitize release workspace...
+echo [0/6] Sanitize release workspace...
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%scripts\release\prepare-release.ps1" -ProjectRoot "%PROJECT_ROOT_ARG%"
 if errorlevel 1 (
@@ -144,7 +144,7 @@ echo.
 :: ============================================
 :: 1. Check and stop running process
 :: ============================================
-echo [1/7] Check and stop running process...
+echo [1/6] Check and stop running process...
 echo.
 tasklist /FI "IMAGENAME eq Prism.exe" 2>NUL | find /I /N "Prism.exe">NUL
 if "%ERRORLEVEL%"=="0" (
@@ -172,69 +172,9 @@ echo.
 powershell -Command "Get-Process | Where-Object { $_.Path -and ( $_.Path -like '*\dist-build\win-unpacked\resources\services\*' -or $_.Path -like '*\dist\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\services\*' -or $_.Path -like '*\dist-build\win-unpacked\resources\prism_backend\*' -or $_.Path -like '*\dist\win-unpacked\resources\prism_backend\*' -or $_.Path -like '*\dist-out\*\win-unpacked\resources\prism_backend\*' ) } | Stop-Process -Force" >nul 2>&1
 
 :: ============================================
-:: 2. Check Supervisor
+:: 2. Read and update version info
 :: ============================================
-echo [2/7] Check Supervisor status...
-echo.
-
-set "SUPERVISOR_PATH="
-set "SUPERVISOR_FOUND=0"
-
-:: Location 1: build\supervisor\supervisor.exe (standard)
-if exist "%PROJECT_ROOT%build\supervisor\supervisor.exe" (
-    set "SUPERVISOR_PATH=%PROJECT_ROOT%build\supervisor\supervisor.exe"
-    set "SUPERVISOR_FOUND=1"
-)
-
-:: Location 2: dist\supervisor.exe (PyInstaller output)
-if "%SUPERVISOR_FOUND%"=="0" (
-    if exist "%PROJECT_ROOT%dist\supervisor.exe" (
-        set "SUPERVISOR_PATH=%PROJECT_ROOT%dist\supervisor.exe"
-        set "SUPERVISOR_FOUND=1"
-        echo INFO: supervisor.exe found in dist
-        echo Copying to standard location...
-        if not exist "%PROJECT_ROOT%build\supervisor" mkdir "%PROJECT_ROOT%build\supervisor"
-        copy /Y "%PROJECT_ROOT%dist\supervisor.exe" "%PROJECT_ROOT%build\supervisor\supervisor.exe" >nul
-        set "SUPERVISOR_PATH=%PROJECT_ROOT%build\supervisor\supervisor.exe"
-    )
-)
-
-if "%SUPERVISOR_FOUND%"=="0" (
-    echo WARNING: Supervisor not found
-    echo.
-    echo Checked locations:
-    echo   - %PROJECT_ROOT%build\supervisor\supervisor.exe
-    echo   - %PROJECT_ROOT%dist\supervisor.exe
-    echo.
-    if /I "%AUTO_YES%"=="1" (
-        echo Auto mode: continue without Supervisor
-    ) else (
-        choice /C YN /M "Supervisor not built. Continue anyway (not recommended)"
-        if errorlevel 2 (
-            echo ERROR: packaging canceled by user
-            pause
-            exit /b 1
-        )
-    )
-    echo WARNING: continuing without Supervisor...
-) else (
-    echo OK: Supervisor ready
-    echo Path: %SUPERVISOR_PATH%
-
-    tasklist /FI "IMAGENAME eq supervisor.exe" 2>NUL | find /I /N "supervisor.exe">NUL
-    if "%ERRORLEVEL%"=="0" (
-        echo INFO: Supervisor is running
-        taskkill /F /IM supervisor.exe >nul 2>&1
-        timeout /t 1 >nul
-        echo OK: Supervisor stopped
-    )
-)
-echo.
-
-:: ============================================
-:: 3. Read and update version info
-:: ============================================
-echo [3/7] Read version info...
+echo [2/6] Read version info...
 echo.
 
 set "VERSION_FILE=%PROJECT_ROOT%scripts\packaging\build-version.json"
@@ -259,7 +199,7 @@ echo.
 :: ============================================
 :: 4. Clean old build output
 :: ============================================
-echo [4/7] Clean old build output...
+echo [3/6] Clean old build output...
 echo.
 
 if exist "%ELECTRON_DIST%\win-unpacked" (
@@ -279,7 +219,7 @@ echo.
 :: ============================================
 :: 5. Check icon file
 :: ============================================
-echo [5/7] Check icon file...
+echo [4/6] Check icon file...
 echo.
 
 if not exist "icon.ico" (
@@ -298,7 +238,7 @@ if not exist "icon.ico" (
 :: ============================================
 :: 6. Build frontend (Next.js standalone)
 :: ============================================
-echo [6/7] Building frontend (Next.js standalone)...
+echo [5/6] Building frontend (Next.js standalone)...
 echo.
 
 set "FRONTEND_DIR=%PROJECT_ROOT%prism_frontend"
@@ -336,7 +276,7 @@ echo.
 :: ============================================
 :: 7. Packaging
 :: ============================================
-echo [7/7] Packaging
+echo [6/6] Packaging
 echo.
 
 :: ============================================
@@ -503,7 +443,7 @@ echo Output directory: %OUTPUT_DIR%\win-unpacked
 echo.
 echo Please test:
 echo   1. Run: %OUTPUT_DIR%\win-unpacked\Prism.exe
-echo   2. Check Supervisor starts
+echo   2. Check PM2 services start
 echo   3. Check backend service status
 echo   4. Check frontend access
 echo.

@@ -19,7 +19,7 @@ Patchright 等依赖一次性装进去；可按需再加 per-component 环境
     python3 scripts/packaging/provision/provision.py --dry-run
 
 产物：<env-dir>/prism-runtime.json —— 记录该环境实际 python 路径、镜像、
-管理器类型，供 Electron 壳 / supervisor 读取，而不是靠猜 venv 布局。
+管理器类型，供 Electron 壳 / PM2 读取，而不是靠猜 venv 布局。
 
 约定：
     - 共享运行时环境默认落在 REPO_ROOT/prismenv（与现有命名一致）。
