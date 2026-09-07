@@ -8,7 +8,6 @@
 !macro customInit
   ; Stop the packaged app and all managed child processes before install.
   !insertmacro KillPrismProcess "Prism.exe"
-  !insertmacro KillPrismProcess "supervisor.exe"
   !insertmacro KillPrismProcess "backend.exe"
   !insertmacro KillPrismProcess "automation-worker.exe"
   !insertmacro KillPrismProcess "celery-worker.exe"

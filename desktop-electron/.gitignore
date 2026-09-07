@@ -37,8 +37,6 @@ test_*.log
 
 # 资源文件 (太大,不提交)
 resources/redis/*.exe
-resources/supervisor/*.exe
-resources/supervisor/__pycache__/
 
 # Python
 __pycache__/

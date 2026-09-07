@@ -27,26 +27,22 @@ echo   查看启动日志
 echo ============================================
 echo.
 
-echo [1] Supervisor 主日志:
-type "%RES%\supervisor\supervisor.log" 2>nul | tail -50
+echo [1] Backend 日志:
+type "%RES%\backend.log" 2>nul | tail -30
 echo.
 
-echo [2] Backend 日志:
-type "%RES%\supervisor\backend.log" 2>nul | tail -30
+echo [2] Automation Worker 日志:
+type "%RES%\automation-worker.log" 2>nul | tail -20
 echo.
 
-echo [3] Automation Worker 日志:
-type "%RES%\supervisor\automation-worker.log" 2>nul | tail -20
-echo.
-
-echo [4] Celery Worker 日志:
-type "%RES%\supervisor\celery-worker.log" 2>nul | tail -20
+echo [3] Celery Worker 日志:
+type "%RES%\celery-worker.log" 2>nul | tail -20
 echo.
 
 echo ============================================
 echo   检查进程状态
 echo ============================================
-tasklist | findstr /I "python.exe supervisor.exe redis"
+tasklist | findstr /I "python.exe redis"
 echo.
 
 echo ============================================

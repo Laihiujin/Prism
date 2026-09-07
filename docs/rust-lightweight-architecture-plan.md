@@ -143,7 +143,7 @@ prism/
 
 验收：Web、桌面端、Docker、CLI 都使用相同的 `PRISM_*` 配置，并能完成至少一个平台的登录、检查与发布模拟。
 
-### Phase 1：Rust Supervisor（最小可行迁移）
+### Phase 1：Rust 服务守护器（prism-core，最小可行迁移）
 
 新建 `prism-core`，仅做服务守护，不接管业务调度：
 

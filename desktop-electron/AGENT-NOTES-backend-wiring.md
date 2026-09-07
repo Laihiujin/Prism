@@ -1,5 +1,11 @@
 # Desktop app backend/Redis wiring — investigation notes
 
+> **Historic note**: this doc captures the earlier `supervisor`-based architecture
+> (supervisor.py / api_server.py, HTTP on `:7002`). All services are now managed by
+> **PM2** (see `resources/pm2/` and `ecosystem.desktop.config.js`); `supervisor` has
+> been removed. The ports/`supervisorApiPort`/`start_redis` references below are
+> **historic** and no longer describe current behavior.
+
 FINAL: fresh `electron-builder --dir` rebuild successful. App relaunched and VERIFIED:
 backend:9200 RUN (accounts 200), automation-worker:7003, celery-worker, hermes-dashboard:9119,
 hermes-webui:9131 (gateway disabled expected), redis:6379 (system fallback), frontend :3001

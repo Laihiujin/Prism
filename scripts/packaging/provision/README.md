@@ -98,7 +98,7 @@ python3 scripts/packaging/provision/provision.py --force
 4. 运行 `python3 scripts/packaging/provision/provision.py --component <name> --mirror tuna` 建环境，
    `--verify` 确认该组件入口为 `[ok]`。卸载 = 删除 `prism_components/<name>/`（留出空间给下一个组件）。
 
-## 运行时清单（供壳 / supervisor 读取）
+## 运行时清单（供壳 / PM2 读取）
 
 供给完成后写出 `prismenv/prism-runtime.json`：
 
