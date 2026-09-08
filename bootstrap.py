@@ -342,6 +342,33 @@ def _chrome_executable() -> str | None:
     return None
 
 
+def _xurl_available() -> bool:
+    """xurl CLI（推特/X 发布依赖）是否可用。"""
+    return shutil.which("xurl") is not None
+
+
+def ensure_xurl() -> bool:
+    """确保 xurl CLI 可用；缺失时用 npm 全局安装（Prism 已确保 npm）。"""
+    if _xurl_available():
+        _log("xurl 已就绪")
+        return True
+    npm = shutil.which("npm")
+    if npm is None:
+        _log("警告: 找不到 npm，无法自动安装 xurl。请手动: npm install -g @xdevplatform/xurl")
+        return False
+    _log("未找到 xurl，用 npm 全局安装 @xdevplatform/xurl ...")
+    try:
+        _run([npm, "install", "-g", "@xdevplatform/xurl"],
+             check=False, env=dict(os.environ, npm_config_cache=str(NPM_CACHE)))
+    except Exception as exc:
+        _log(f"自动安装 xurl 失败: {exc}")
+    if _xurl_available():
+        _log("OK xurl 已安装")
+        return True
+    _log("xurl 仍未就绪。请手动安装: npm install -g @xdevplatform/xurl")
+    return False
+
+
 def _chromium_in_browsers() -> bool:
     runtime_data = Path(os.environ.get("PRISM_RUNTIME_DATA_DIR", REPO_ROOT / "runtime-data"))
     chromium_dir = runtime_data / "components" / "browsers"
@@ -480,12 +507,14 @@ def _bootstrap(*, dev: bool, no_browsers: bool, check: bool) -> int:
         _log(f"前端 node_modules: {'存在' if (FRONTEND_DIR / 'node_modules').exists() else '不存在'}")
         _log(f"根目录 pm2: {'存在' if _pm2_bin() else '不存在'}")
         _log(f"浏览器: {'可用' if (_chrome_executable() or _chromium_in_browsers()) else '需安装'}")
+        _log(f"xurl: {'可用' if _xurl_available() else '需安装 (npm install -g @xdevplatform/xurl)'}")
         return 0
 
     ensure_venv()
     ensure_python_deps(dev=dev)
     ensure_env()
     ensure_node_deps()
+    ensure_xurl()
     ensure_redis()
     if not no_browsers:
         ensure_browsers(auto=True)
