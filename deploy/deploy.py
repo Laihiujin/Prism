@@ -234,6 +234,32 @@ def _detect_git() -> dict:
     return {"present": which("git") is not None, "path": which("git")}
 
 
+def _detect_xurl() -> dict:
+    """在「运行后端的进程实际使用的 PATH」下探测 xurl（推特/X 发布依赖）。"""
+    live_path = _live_env()["PATH"]
+    found = shutil.which("xurl", path=live_path)
+    return {"present": found is not None, "path": found}
+
+
+def install_xurl() -> bool:
+    """确保 xurl CLI 可用；缺失时用 npm 全局安装（Prism 已确保 npm）。"""
+    d = _detect_xurl()
+    if d["present"]:
+        log("xurl 已存在，跳过安装")
+        return True
+    npm = which("npm")
+    if not npm:
+        warn("未找到 npm，无法自动安装 xurl。请手动: npm install -g @xdevplatform/xurl")
+        return False
+    log("用 npm 全局安装 xurl (@xdevplatform/xurl)...")
+    run([npm, "install", "-g", "@xdevplatform/xurl"], check=False)
+    if _detect_xurl()["present"]:
+        log("OK xurl 已安装")
+        return True
+    warn("xurl 未自动就绪，请手动: npm install -g @xdevplatform/xurl")
+    return False
+
+
 def _system_chrome() -> str | None:
     cands = [
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -286,6 +312,8 @@ def compute_plan() -> dict:
     data["redis"] = {**redis, "running": redis_running}
     git = _detect_git()
     data["git"] = git
+    xurl = _detect_xurl()
+    data["xurl"] = xurl
     data["micromamba"] = {"embedded": (REPO_ROOT / "scripts" / "packaging" / "provision" /
                                         "micromamba" / "micromamba").exists(),
                           "path": which("micromamba")}
@@ -314,6 +342,8 @@ def compute_plan() -> dict:
                                 if IS_WIN else "安装 Redis(brew/apt)。见提示"))},
         "git":     {"ok": git_ok, "need": not git_ok, "soft": True,
                     "action": "可选：仅克隆/更新仓库时需要"},
+        "xurl":    {"ok": xurl.get("present", False), "need": not xurl.get("present", False), "soft": True,
+                    "action": "npm install -g @xdevplatform/xurl" if not xurl.get("present", False) else "已可用"},
         "browser": {"ok": browser_ok, "need": not browser_ok, "soft": True,
                     "action": "未发现本机/受管浏览器，可稍后 patchright install chromium"},
         "env":     {"ok": (REPO_ROOT / ".env").exists(), "need": not (REPO_ROOT / ".env").exists(),
@@ -355,6 +385,9 @@ def cmd_plan(args) -> int:
             detail = ("内嵌" if v.get("embedded") else "缺失") + (f" | PATH={v['path']}" if v.get("path") else "")
         mark = "✓" if present else ("⚠" if v.get("soft") or key in ("git",) else "✗")
         print(f"  {mark} {label:<11} {detail}")
+    xurl_v = data.get("xurl", {})
+    xurl_mark = "✓" if xurl_v.get("present") else "⚠"
+    print(f"  {xurl_mark} xurl{'':<8} {'已就绪' if xurl_v.get('present') else '需安装 (npm install -g @xdevplatform/xurl)'}")
     print("-" * 70)
     for key, s in data["stages"].items():
         mark = "✓" if s["ok"] else ("⚠" if s.get("soft") else "✗")
@@ -449,6 +482,8 @@ def cmd_install_tools(args) -> int:
             ok &= install_redis()
     if data["git"]["present"] is False:
         warn("git 缺失（可选，仅在需要克隆/更新仓库时需要）。")
+    if not _detect_xurl()["present"]:
+        install_xurl()
     if data["python"]["kind"] == "missing" and _prismenv_python() is None:
         warn("未找到 Python：将由 bootstrap 阶段用内嵌 micromamba 自供给 prismenv。")
     log("install-tools 完成。继续: python3 deploy/deploy.py bootstrap")
