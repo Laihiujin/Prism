@@ -6,8 +6,7 @@
 - 分P/多P发布与稿件级配置（copyright/source/cover_local/dynamic）：走
   python biliup 库（platforms/bilibili/upload.py 的 BilibiliUploader，
   支持 files 列表分P + 本地封面上传）。
-- 登录：本地交互终端 biliup login；另有多方式 API（/api/v1/auth/bilibili/*：
-  扫码/短信/账密/Cookie），见 docs 或 skill。
+- 登录：本地交互终端 biliup login；或走账号页统一扫码流程。短信/账密登录已移除。
 """
 
 from __future__ import annotations
@@ -207,7 +206,7 @@ def _login_handler() -> Callable[..., Any]:
         from uploader.bilibili_uploader.runtime import run_biliup_command
         if not sys.stdin.isatty() or not sys.stdout.isatty():
             return {"success": False, "account_file": account_file,
-                    "message": "Bilibili 登录需要本地交互终端（biliup）；亦可使用 API /api/v1/auth/bilibili/*（扫码/短信/账密/Cookie）"}
+                    "message": "Bilibili 登录需要本地交互终端（biliup）；或走账号页扫码登录"}
         ok = run_biliup_command(["-u", str(account_file), "login"], interactive=True).returncode == 0
         return {"success": bool(ok), "account_file": account_file}
 
@@ -239,7 +238,7 @@ SPECS = [
              parameters=_multipart_params(), handler=_multipart_handler(), category="bilibili_publish",
              output_summary="向B站发布分P稿件；成功返回 success=True"),
     ToolSpec(name="login_to_bilibili",
-             description="登录B站账号（biliup）。必须在本机交互终端执行；非交互环境返回失败并提示改用 /api/v1/auth/bilibili/*。",
+             description="登录B站账号（biliup）。必须在本机交互终端执行；非交互环境返回失败并提示改用账号页扫码。",
              parameters=login_params(), handler=_login_handler(), category="bilibili_login",
              output_summary="登录B站账号；成功返回 success=True"),
     ToolSpec(name="check_account_bilibili",
