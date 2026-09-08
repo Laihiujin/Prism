@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     #   http    = 逆向 HTTP API 登录（DouyinHttpAdapter，测试路径）
     PRISM_DOUYIN_LOGIN_MODE: str = "browser"
 
+    # B站备选登录（短信/账密）开关（风控敏感）：
+    # 默认开启（短信/账密可用）；需要关闭时设 ALLOW_BILIBILI_ALT_LOGIN=false。
+    ALLOW_BILIBILI_ALT_LOGIN: bool = True
+
     # ── Account Runtime 分布式锁（Redis per-account）──
     PRISM_RUNTIME_LOCK_ENABLED: bool = True      # 是否启用 Runtime 锁
     PRISM_RUNTIME_LOCK_TTL: int = 300            # 锁 TTL（秒），长任务靠 heartbeat 续期
