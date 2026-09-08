@@ -2,7 +2,7 @@
  * 平台特定元数据配置和适配器
  */
 
-export type PlatformKey = "douyin" | "kuaishou" | "xiaohongshu" | "bilibili" | "channels" | "tiktok" | "youtube"
+export type PlatformKey = "douyin" | "kuaishou" | "xiaohongshu" | "bilibili" | "channels" | "tiktok" | "youtube" | "twitter"
 
 /**
  * 平台字段配置
@@ -205,6 +205,25 @@ export const PLATFORM_CONFIGS: Record<PlatformKey, PlatformFieldConfig> = {
             tags: { enabled: true, maxCount: 15, label: "Tags" }
         },
         layout: "separate"
+    },
+    // X/Twitter：官方 API 发布，标题/描述/话题由 publish_tools twitter.py 处理，
+    // 元数据仅保留 title + description（无网页端话题字段约束）
+    twitter: {
+        name: "推特",
+        code: 9,
+        fields: {
+            title: { enabled: true, maxLength: 280, placeholder: "推文内容", label: "内容" },
+            description: {
+                enabled: false,
+                maxLength: 280,
+                placeholder: "",
+                label: "内容",
+                supportsHashtags: true,
+                supportsNewline: true
+            },
+            tags: { enabled: false, label: "话题" }
+        },
+        layout: "title-description"
     }
 }
 
@@ -387,6 +406,13 @@ export class PlatformMetadataAdapter {
                     title: "A video worth watching",
                     description: "A clear description that helps viewers find the video.",
                     tags: ["video", "creator"]
+                }
+
+            case "twitter":
+                return {
+                    title: "A tweet worth sharing",
+                    description: "A short message with #hashtags",
+                    tags: ["creator", "video"]
                 }
 
             default:
