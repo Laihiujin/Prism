@@ -43,6 +43,29 @@ class BilibiliUpload(BasePlatform):
         account_file = resolve_cookie_file(account_file)
         file_path = resolve_video_file(file_path)
 
+        # 分P：video_parts = 其余 P2..Pn 的本地路径（可选），P1 = file_path
+        video_parts: list = kwargs.get("video_parts") or []
+        if isinstance(video_parts, (list, tuple)):
+            video_parts = [resolve_video_file(p) for p in video_parts]
+        part_titles: list = kwargs.get("part_titles") or []
+
+        # 稿件级配置：从 platform_settings.bilibili 解包（面板字段见 skill）
+        ps = kwargs.get("platform_settings") or {}
+        if not isinstance(ps, dict):
+            ps = {}
+        extra = {
+            "copyright": kwargs.get("copyright") or ps.get("copyright"),
+            "source": kwargs.get("source") or ps.get("source"),
+            "cover": kwargs.get("cover") or ps.get("cover"),
+            "dynamic": kwargs.get("dynamic") or ps.get("dynamic"),
+            "open_subtitle": kwargs.get("open_subtitle", ps.get("open_subtitle", False)),
+        }
+        # cover_local：本地封面文件路径（优先于 URL）
+        cover_local = kwargs.get("cover_local") or ps.get("cover_local")
+        if cover_local:
+            extra["cover_local"] = str(cover_local)
+        extra = {k: v for k, v in extra.items() if v not in (None, "", False)}
+
         dtime: Optional[int] = None
         if publish_date:
             if isinstance(publish_date, datetime):
@@ -92,11 +115,15 @@ class BilibiliUpload(BasePlatform):
             tid=category_id,
             tags=tags or [],
             dtime=dtime,
+            files=[Path(p) for p in video_parts] or None,
+            part_titles=part_titles,
+            extra=extra or None,
         )
 
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, uploader.upload)
-        return {"success": True, "message": "上传成功"}
+        parts_desc = f"（含 {1 + len(video_parts)} 个分P）" if video_parts else ""
+        return {"success": True, "message": f"上传成功{parts_desc}"}
 
 
 bilibili_upload = BilibiliUpload()

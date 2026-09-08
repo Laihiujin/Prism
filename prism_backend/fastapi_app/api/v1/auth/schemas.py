@@ -35,7 +35,7 @@ class QRCodeResponse(BaseModel):
 class LoginStatusResponse(BaseModel):
     """登录状态响应"""
     success: bool = Field(..., description="是否成功")
-    status: Literal["waiting", "scanned", "confirmed", "expired", "failed"] = Field(..., description="登录状态")
+    status: Literal["waiting", "scanned", "confirmed", "expired", "failed", "risk_control"] = Field(..., description="登录状态")
     message: str = Field(default="", description="状态描述")
     data: Optional[dict] = Field(default=None, description="额外数据")
 
