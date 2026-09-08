@@ -7,7 +7,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw, MonitorSmartphone, Search } from "lucide-react"
 
 import { AccountEnvironmentSheet } from "@/components/account-environment-sheet"
-import { BilibiliLoginPanel } from "@/components/account/bilibili-login-panel"
 import { TwitterBindPanel } from "@/components/account/twitter-bind-panel"
 
 import {
@@ -1113,17 +1112,6 @@ function AccountPageContent() {
                         解析后会自动预填频道名和 ID；登录完成后真实信息将自动回填
                       </p>
                     </div>
-                  )}
-                  {!formState.id && formState.platform === "bilibili" && bindingStatus === "idle" && (
-                    <BilibiliLoginPanel
-                      accountId={formState.name || bindAccountId}
-                      onLoginDone={() => {
-                        stopPolling()
-                        setBindingStatus("success")
-                        queryClient.invalidateQueries({ queryKey: ["accounts"] })
-                        void refetch()
-                      }}
-                    />
                   )}
                   {!formState.id && formState.platform === "twitter" && (
                     <TwitterBindPanel
