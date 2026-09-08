@@ -10,10 +10,13 @@ import {
     ShieldCheck,
     Database,
     Globe,
+    EyeOff,
+    Eye,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import { cn } from "@/lib/utils"
@@ -24,6 +27,13 @@ interface CmsSettings {
     headless: boolean
 }
 
+interface ChannelItem {
+    code: number
+    name: string
+    alias: string
+    hidden: boolean
+}
+
 export default function CmsPage() {
     const { toast } = useToast()
     const [settings, setSettings] = useState<CmsSettings>({
@@ -31,23 +41,29 @@ export default function CmsPage() {
         browserBackend: "patchright",
         headless: true,
     })
+    const [channels, setChannels] = useState<ChannelItem[]>([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState<string | null>(null)
 
     const load = async () => {
         setLoading(true)
         try {
-            const [modeRes, headlessRes] = await Promise.all([
+            const [modeRes, headlessRes, channelsRes] = await Promise.all([
                 fetch("/api/v1/system/douyin-login-mode", { cache: "no-store" }),
                 fetch("/api/v1/system/browser-headless", { cache: "no-store" }),
+                fetch("/api/v1/system/channels", { cache: "no-store" }),
             ])
             const mode = await modeRes.json().catch(() => ({}))
             const headless = await headlessRes.json().catch(() => ({}))
+            const channelData = await channelsRes.json().catch(() => ({}))
             setSettings((s) => ({
                 ...s,
                 douyinLoginMode: mode?.mode || s.douyinLoginMode,
                 headless: headless?.headless ?? s.headless,
             }))
+            if (Array.isArray(channelData?.platforms)) {
+                setChannels(channelData.platforms)
+            }
         } catch (err) {
             toast({ variant: "destructive", title: "加载失败", description: String(err) })
         } finally {
@@ -94,6 +110,40 @@ export default function CmsPage() {
             if (!res.ok) throw new Error(payload?.detail || "保存失败")
             setSettings((s) => ({ ...s, headless }))
             toast({ title: "无头模式已保存", description: "需重启后端生效" })
+        } catch (err) {
+            toast({ variant: "destructive", title: "保存失败", description: String(err) })
+        } finally {
+            setSaving(null)
+        }
+    }
+
+    const toggleChannel = async (item: ChannelItem, hidden: boolean) => {
+        setSaving(`channel_${item.code}`)
+        try {
+            const nextHidden = channels
+                .filter((c) => c.code !== item.code && c.hidden)
+                .map((c) => c.alias)
+            if (hidden) nextHidden.push(item.alias)
+            const res = await fetch("/api/v1/system/channels/visibility", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hidden: nextHidden }),
+            })
+            const payload = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(payload?.detail || "保存失败")
+            if (Array.isArray(payload?.platforms)) {
+                setChannels(payload.platforms)
+            } else {
+                setChannels((prev) =>
+                    prev.map((c) => (c.code === item.code ? { ...c, hidden } : c))
+                )
+            }
+            toast({
+                title: hidden ? `已隐藏「${item.name}」渠道` : `已显示「${item.name}」渠道`,
+                description: hidden
+                    ? "该平台在账号管理/矩阵发布/统计中不可见（账号数据保留）"
+                    : "该平台恢复可见",
+            })
         } catch (err) {
             toast({ variant: "destructive", title: "保存失败", description: String(err) })
         } finally {
@@ -223,6 +273,55 @@ export default function CmsPage() {
                                     当前：{settings.headless ? "无头（后台）" : "有头（显示窗口）"}
                                 </Badge>
                                 {saving === "headless" && <Loader2 className="h-4 w-4 animate-spin" />}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* 平台渠道可见性（隐藏开关） */}
+                    <Card className="border-border/70 bg-card lg:col-span-2">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <EyeOff className="h-4 w-4" />
+                                平台渠道（隐藏开关）
+                            </CardTitle>
+                            <CardDescription className="text-muted-foreground">
+                                勾选隐藏后，该平台在账号管理、矩阵发布与统计中不可见且不可选（账号与数据保留，不会删除）。B站固定展示。
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                {channels.filter((c) => c.code !== 5).map((item) => (
+                                    <div
+                                        key={item.code}
+                                        className={cn(
+                                            "flex items-center justify-between gap-3 rounded-xl border px-4 py-3",
+                                            item.hidden
+                                                ? "border-border/60 bg-black opacity-80"
+                                                : "border-border/70 bg-card"
+                                        )}
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                                <Badge variant="outline" className="text-[10px]">{item.code}</Badge>
+                                                {item.name}
+                                                {item.hidden && (
+                                                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                                        <EyeOff className="h-3 w-3" /> 已隐藏
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                                                {item.alias}
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            checked={item.hidden}
+                                            disabled={saving === `channel_${item.code}`}
+                                            onCheckedChange={(checked) => void toggleChannel(item, checked)}
+                                            aria-label={`隐藏${item.name}`}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </CardContent>
                     </Card>
