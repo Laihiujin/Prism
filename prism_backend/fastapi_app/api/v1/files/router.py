@@ -953,13 +953,16 @@ async def get_ai_content(
                     "ai_title": None,
                     "ai_description": None,
                     "ai_tags": [],
+                    "ai_tag_groups": [],
                     "ai_generated_at": None
                 }
             )
 
         # 查询AI内容
-        cursor.execute("""
-            SELECT ai_title, ai_description, ai_tags, ai_generated_at
+        has_groups_col = 'ai_tag_groups' in columns
+        select_cols = "ai_title, ai_description, ai_tags, ai_generated_at" + (", ai_tag_groups" if has_groups_col else "")
+        cursor.execute(f"""
+            SELECT {select_cols}
             FROM file_records
             WHERE id = ?
         """, (file_id,))
@@ -970,6 +973,14 @@ async def get_ai_content(
 
         import json
         ai_tags = json.loads(row[2]) if row[2] else []
+        ai_tag_groups = []
+        if has_groups_col and row[4]:
+            try:
+                parsed_groups = json.loads(row[4])
+                if isinstance(parsed_groups, list):
+                    ai_tag_groups = parsed_groups
+            except Exception:
+                ai_tag_groups = []
 
         return Response(
             success=True,
@@ -979,6 +990,7 @@ async def get_ai_content(
                 "ai_title": row[0],
                 "ai_description": row[1],
                 "ai_tags": ai_tags,
+                "ai_tag_groups": ai_tag_groups,
                 "ai_generated_at": row[3]
             }
         )
@@ -1063,6 +1075,17 @@ async def batch_generate_ai_metadata(
     try:
         from ai_service.metadata_generation_service import generate_metadata_for_files
 
+        # 确保 ai_tag_groups 列存在（旧库升级）
+        try:
+            cursor = db.cursor()
+            cursor.execute("PRAGMA table_info(file_records)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'ai_tag_groups' not in columns:
+                cursor.execute("ALTER TABLE file_records ADD COLUMN ai_tag_groups TEXT")
+                db.commit()
+        except Exception as e:
+            logger.warning(f"ensure ai_tag_groups column failed: {e}")
+
         summary = await generate_metadata_for_files(
             db=db,
             file_ids=request.file_ids,
@@ -1070,6 +1093,8 @@ async def batch_generate_ai_metadata(
             platform=request.platform,
             language=request.language,
             logger=logger,
+            group_count=request.group_count,
+            tags_only_groups=request.tags_only_groups,
         )
 
         return AIMetadataGenerateResponse(

@@ -358,6 +358,31 @@ export default function SettingsPage() {
         />
       </div>
 
+      {/* CMS 后台入口：登录模式 / 无头等系统配置都在 CMS 页 */}
+      <Card className="border-border/70 bg-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Globe className="h-5 w-5 text-foreground/70" />
+            CMS 后台
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            抖音登录模式与浏览器无头模式等运行配置集中在 CMS 后台页。
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => window.open("/cms", "_self")} variant="secondary" className="border-border/70 bg-card text-foreground hover:bg-accent/40">
+              <Activity className="mr-2 h-4 w-4" />
+              打开 CMS 后台
+            </Button>
+            <Button onClick={() => window.open("/cms", "_blank")} variant="ghost" className="border-border/70 bg-black text-foreground hover:bg-accent/40">
+              <FileText className="mr-2 h-4 w-4" />
+              新标签页打开
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-border/70 bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
