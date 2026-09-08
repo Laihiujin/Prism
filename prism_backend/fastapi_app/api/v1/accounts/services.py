@@ -45,6 +45,13 @@ class AccountService:
         try:
             accounts = self.manager.list_flat_accounts()
 
+            # 平台渠道可见性：隐藏平台的账号在列表中不可见（数据保留）
+            try:
+                from platforms.channels import apply_hidden_filter
+                accounts = apply_hidden_filter(accounts)
+            except Exception as _hide_err:
+                pass
+
             # 过滤
             if platform:
                 accounts = [a for a in accounts if a['platform'] == platform]

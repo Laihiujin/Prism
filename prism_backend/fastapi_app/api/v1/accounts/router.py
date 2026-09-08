@@ -157,6 +157,94 @@ async def resolve_youtube_channel(payload: dict = Body(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/twitter/whoami", response_model=Response[dict], summary="查询本机 xurl 默认账号信息")
+async def twitter_whoami(payload: dict = Body(default={})):
+    """用 xurl 当前默认账号 / 指定 app 查询推特账号 handle，用于前端预填。"""
+    try:
+        from platforms.twitter import xurl_client
+
+        app = str((payload or {}).get("app") or "").strip() or None
+        if not xurl_client.xurl_available():
+            return Response(success=False, data={"ok": False, "reason": "未找到 xurl 命令，请先安装并完成 xurl auth"})
+        await xurl_client.auth_status()
+        handle = await xurl_client.whoami(app=app)
+        return Response(success=True, data={"ok": True, "handle": handle, "app": app})
+    except Exception as exc:  # noqa: BLE001
+        return Response(success=False, data={"ok": False, "reason": str(exc)})
+
+
+@router.post("/twitter/login", response_model=Response[dict], summary="启动推特 OAuth 浏览器登录")
+async def twitter_login(payload: dict = Body(...)):
+    """在「运行后端的主机」上启动 xurl OAuth 2.0 PKCE 流程，弹出浏览器让用户授权。
+
+    前置：用户已一次性 `xurl auth apps add my-app --client-id ... --client-secret ...` 注册 app。
+    本接口**不接收任何密钥**；浏览器授权完成后 token 自动写入 ~/.xurl，
+    前端可轮询 `/twitter/whoami`（带同一 app）确认就绪后再绑定。
+    """
+    try:
+        from platforms.twitter import xurl_client
+
+        app = str((payload or {}).get("app") or "").strip() or None
+        if not app:
+            raise BadRequestException("app 必填（xurl app 名）")
+
+        if not xurl_client.xurl_available():
+            raise BadRequestException("未找到 xurl 命令，请先安装并完成 `xurl auth apps add`")
+
+        xurl_client.start_oauth_browser(app)
+        return Response(success=True, data={"ok": True, "app": app, "message": "浏览器授权流程已启动，请在弹出的浏览器中完成授权"})
+    except BadRequestException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"启动推特 OAuth 登录失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/twitter/bind", response_model=Response[dict], summary="绑定一个推特账号（校验 xurl 认证后写入账号库）")
+async def bind_twitter_account(payload: dict = Body(...)):
+    """注册/绑定一个推特账号。
+
+    前置条件：用户已在运行后端的主机上用 `xurl auth oauth2 --app <app>` 完成一次登录。
+    这里只是校验并入库（cookie_file 记为 xurl app 名，发布时直接用 xurl CLI）。
+    """
+    try:
+        from platforms.twitter import xurl_client
+
+        app = str((payload or {}).get("app") or "").strip() or None
+        if not app:
+            raise BadRequestException("app 必填（xurl app 名）")
+
+        if not xurl_client.xurl_available():
+            raise BadRequestException("未找到 xurl 命令，请先安装并完成 xurl auth")
+
+        await xurl_client.auth_status()
+        handle = await xurl_client.whoami(app=app)
+        if not handle:
+            raise BadRequestException(f"xurl 未能取到该 app 的账号（app={app}）。请用 `xurl auth oauth2 --app {app}` 登录。")
+
+        account_id = f"twitter_{handle}"
+        cookie_manager.add_account(
+            "twitter",
+            {
+                "id": account_id,
+                "account_id": account_id,
+                "name": f"@{handle}",
+                "cookie_file": app,
+                "status": "valid",
+                "user_id": handle,
+            },
+        )
+        return Response(
+            success=True,
+            data={"account_id": account_id, "handle": handle, "app": app, "platform": "twitter"},
+        )
+    except BadRequestException as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"绑定推特账号失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/{account_id}/enrich-tikhub", response_model=Response[dict], summary="用 TikHub 反查补全账号真实信息")
 async def enrich_account_tikhub(account_id: str):
     """
