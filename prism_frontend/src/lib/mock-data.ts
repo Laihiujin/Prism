@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 // Platform types
-export type PlatformKey = "all" | "kuaishou" | "douyin" | "channels" | "xiaohongshu" | "bilibili" | "tiktok" | "youtube"
+export type PlatformKey = "all" | "kuaishou" | "douyin" | "channels" | "xiaohongshu" | "bilibili" | "tiktok" | "youtube" | "twitter"
 
 // Material interface
 export interface Material {
