@@ -35,6 +35,12 @@ class BatchTaskItem(BaseModel):
     random_cover: Optional[bool] = Field(None, description="随机封面")
     miniprogram_link: Optional[str] = Field(None, description="小程序链接")
     miniprogram_title: Optional[str] = Field(None, description="小程序标题")
+    # 🆕 NEW: AI 多组标签/话题 — 指定本任务使用素材 ai_tag_groups 中的第几组
+    #（0=不指定，使用文件默认标题/话题；n>=1 取第 n 组；后端也可按账号自动轮转）
+    tag_group_index: Optional[int] = Field(None, ge=1, le=5, description="使用素材 ai_tag_groups 第几组（从1起）")
+    # 🆕 NEW: AI 多组标签/话题 — 本素材参与自动轮转（按账号/任务顺序取不同组）；
+    # 开启后本素材的 title/topics 若为页面自动填充的默认值将被忽略，以 DB 存储组为准。
+    use_ai_tag_group: Optional[bool] = Field(None, description="本素材启用多组自动轮转（true=自动取组）")
 
 
 class BatchPublishRequest(BaseModel):
@@ -132,6 +138,13 @@ class BatchPublishRequest(BaseModel):
         validation_alias=AliasChoices("platform_settings", "platformSettings"),
     )
 
+    # 🆕 NEW: AI 多组标签/话题 — 让不同账号自动使用素材 ai_tag_groups 的不同组
+    use_ai_tag_groups: bool = Field(
+        default=False,
+        description="启用后：某素材存在 ai_tag_groups 时，按账号/任务顺序自动轮转取第 N 组标题+话题（配合多组生成实现一视频多话题分发）",
+        validation_alias=AliasChoices("use_ai_tag_groups", "useAiTagGroups"),
+    )
+
     @field_validator('file_ids')
     @classmethod
     def validate_file_ids(cls, v):
@@ -168,6 +181,52 @@ class BatchPublishRequest(BaseModel):
                         "description": "特定描述"
                     }
                 ]
+            }
+        }
+
+
+class NotePublishRequest(BaseModel):
+    """图文/图集（一组图片 = 一条内容）发布请求。
+
+    与视频批量（一个素材 = 一个任务）不同：image_ids 是同一篇图文内的多张图片，
+    每个账号只会收到一个图文任务。
+    """
+
+    platform: int = Field(..., ge=1, le=8, description="目标平台代码（抖音3/小红书1/快手4）")
+    accounts: List[str] = Field(..., min_length=1, description="账号ID列表")
+    image_ids: List[int] = Field(..., min_length=1, description="图片素材ID列表（顺序即图序）")
+    title: str = Field(..., description="图文标题")
+    description: Optional[str] = Field(None, description="图文正文/描述")
+    topics: Optional[List[str]] = Field(
+        default_factory=list,
+        description="话题标签",
+        validation_alias=AliasChoices("topics", "tags", "hashtag"),
+    )
+    scheduled_time: Optional[str] = Field(None, description="定时发布时间 YYYY-MM-DD HH:MM")
+    cover_image_id: Optional[int] = Field(None, description="封面图（图片素材ID，默认第一张）")
+    platform_settings: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="该平台专属配置（写入 platform_settings.<platform>，透传到图文任务）",
+        validation_alias=AliasChoices("platform_settings", "platformSettings"),
+    )
+
+    @field_validator("platform")
+    @classmethod
+    def validate_note_platform(cls, v):
+        if v not in (1, 3, 4):
+            raise ValueError("图文发布仅支持：抖音(3)/小红书(1)/快手(4)")
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "platform": 1,
+                "accounts": ["account_123"],
+                "image_ids": [11, 12, 13],
+                "title": "图文标题",
+                "description": "正文描述",
+                "topics": ["生活"],
+                "scheduled_time": "2026-01-01 10:00",
             }
         }
 

@@ -43,6 +43,7 @@ class PublishService:
         6: "tiktok",
         7: "youtube",
         8: "baijiahao",
+        9: "twitter",
     }
 
     def __init__(self, task_manager=None):
@@ -117,24 +118,32 @@ class PublishService:
                 account = cookie_manager.get_account_by_user_id(account_id, platform=platform_name)
             if not account:
                 raise NotFoundException(f"未找到账号: {account_id}")
-            normalized_cookie = cookie_manager.ensure_cookie_file(account)
-            if normalized_cookie:
-                account["cookie_file"] = normalized_cookie
 
-            # 检查 cookie_file 是否存在
-            if not account.get('cookie_file'):
-                logger.error(f"账号 {account_id} 的 cookie_file 为空")
-                raise BadRequestException(
-                    f"账号 {account_id} 的 Cookie 文件路径为空，无法发布。"
-                    f"请重新导入该账号或联系管理员。"
-                )
+            # 推特(Twitter/X)：无网页 cookie，`cookie_file` 字段存的是 xurl app 名，
+            # 不走 cookie 文件存在性校验。
+            is_twitter = (platform_code == 9) or (str(account.get("platform") or "").lower() == "twitter")
+            if is_twitter:
+                if not account.get("cookie_file"):
+                    account["cookie_file"] = str(account.get("name") or account.get("account_id") or "default")
+            else:
+                normalized_cookie = cookie_manager.ensure_cookie_file(account)
+                if normalized_cookie:
+                    account["cookie_file"] = normalized_cookie
 
-            cookie_path = resolve_cookie_file(account.get("cookie_file"))
-            if not cookie_path or not Path(cookie_path).exists():
-                cookie_manager.update_account_status(account.get("platform"), account_id, "file_missing")
-                raise BadRequestException(
-                    f"账号 {account_id} 的 Cookie 文件不存在: {account.get('cookie_file')}"
-                )
+                # 检查 cookie_file 是否存在
+                if not account.get('cookie_file'):
+                    logger.error(f"账号 {account_id} 的 cookie_file 为空")
+                    raise BadRequestException(
+                        f"账号 {account_id} 的 Cookie 文件路径为空，无法发布。"
+                        f"请重新导入该账号或联系管理员。"
+                    )
+
+                cookie_path = resolve_cookie_file(account.get("cookie_file"))
+                if not cookie_path or not Path(cookie_path).exists():
+                    cookie_manager.update_account_status(account.get("platform"), account_id, "file_missing")
+                    raise BadRequestException(
+                        f"账号 {account_id} 的 Cookie 文件不存在: {account.get('cookie_file')}"
+                    )
 
             # 如果指定了平台，检查平台是否匹配
             if platform_code is not None and account.get('platform_code') != platform_code:
@@ -151,6 +160,175 @@ class PublishService:
             valid_accounts.append(account)
 
         return valid_accounts
+
+    def _validate_note_images(self, db, image_ids: List[int]) -> List[str]:
+        """校验图片素材并把顺序转换为本地路径列表。返回顺序与 image_ids 一致。"""
+        paths: List[str] = []
+        for image_id in image_ids:
+            record = self.validate_file(db, int(image_id))
+            raw = record.get("file_path") or record.get("path") or ""
+            if not raw:
+                raise BadRequestException(f"图片素材 {image_id} 缺少文件路径")
+            portable = self._portable_video_path(str(raw))
+            resolved = resolve_video_file(portable) if not Path(portable).exists() else portable
+            if not resolved or not Path(str(resolved)).exists():
+                # 素材可能是图片但存在性校验交给 worker（跨主机迁移场景）
+                logger.warning(f"[Note] 图片素材 {image_id} 本地不存在（{resolved}），交由 worker 解析")
+            paths.append(portable)
+        return paths
+
+    async def publish_note(
+        self,
+        db,
+        platform: int,
+        accounts: List[str],
+        image_ids: List[int],
+        title: str,
+        description: Optional[str] = None,
+        topics: Optional[List[str]] = None,
+        scheduled_time: Optional[str] = None,
+        cover_image_id: Optional[int] = None,
+        platform_settings: Optional[Dict[str, Any]] = None,
+        interval_seconds: int = 0,
+        priority: int = 5,
+    ) -> Dict[str, Any]:
+        """
+        图文/图集发布：一组图片 = 一条内容。
+        每个账号生成一个图文任务（不按单图拆分），经 Celery publish_single_task 走图文分支。
+        """
+        from platforms.channels import is_hidden
+
+        if is_hidden(platform):
+            raise BadRequestException(f"平台 {platform} 已隐藏，无法发布")
+
+        # 1. 校验账号（按平台过滤）
+        valid_accounts = await self.validate_accounts(accounts, platform_code=platform)
+        valid_accounts = [
+            acc for acc in valid_accounts
+            if not is_hidden(acc.get("platform_code") or acc.get("platform") or acc.get("platform_name"))
+        ]
+        if not valid_accounts:
+            raise BadRequestException(f"所选账号均不可用于平台 {platform}（可能已被隐藏）")
+
+        # 2. 校验图片素材（顺序即图序）
+        if not image_ids:
+            raise BadRequestException("图文发布至少需要 1 张图片")
+        if len(image_ids) > 18:
+            raise BadRequestException("图文发布最多支持 18 张图片")
+        image_paths = self._validate_note_images(db, image_ids)
+        cover_portable = ""
+        if cover_image_id:
+            cover_portable = (self._validate_note_images(db, [cover_image_id]) or [""])[0]
+
+        # 3. 逐账号提交一个图文任务
+        from fastapi_app.tasks.publish_tasks import publish_single_task
+        from fastapi_app.tasks.task_state_manager import task_state_manager
+
+        ps = dict(platform_settings or {})
+        platform_key = self.PLATFORM_MAP.get(platform, f"platform_{platform}")
+        note_ps = dict(ps.get(platform_key) or {})
+        note_ps["contentKind"] = "note"
+        note_ps["images"] = image_paths
+        if cover_portable:
+            note_ps["coverFile"] = cover_portable
+        if scheduled_time:
+            note_ps["scheduled_time"] = scheduled_time
+        ps[platform_key] = note_ps
+
+        batch_id = f"note_{uuid.uuid4().hex[:12]}"
+        title_first_line = str(title or "").splitlines()[0].strip()
+        results: Dict[str, Any] = {
+            "batch_id": batch_id,
+            "kind": "note",
+            "platform": platform,
+            "total_tasks": 0,
+            "success_count": 0,
+            "failed_count": 0,
+            "pending_count": 0,
+            "tasks": [],
+        }
+
+        for account in valid_accounts:
+            task_data = {
+                "batch_id": batch_id,
+                "file_id": None,
+                "video_path": "",  # 图文分支不依赖 video_path
+                "images": image_paths,
+                "account_id": account["account_id"],
+                "account_name": account.get("original_name") or account.get("name") or account.get("account_id"),
+                "cookie_file": account.get("cookie_file", ""),
+                "platform": platform,
+                "title": title_first_line,
+                "description": description or "",
+                "tags": [str(t) for t in (topics or [])],
+                "publish_date": scheduled_time or 0,
+                "platform_settings": ps,
+                "content_kind": "note",
+            }
+            task_id = f"publish_{batch_id}_{platform}_{account['account_id']}"
+            try:
+                apply_kwargs: Dict[str, Any] = {
+                    "kwargs": {"task_data": task_data},
+                    "priority": priority,
+                }
+                scheduled_ts = _parse_note_schedule(scheduled_time)
+                if scheduled_ts:
+                    apply_kwargs["eta"] = scheduled_ts
+                result = publish_single_task.apply_async(**apply_kwargs)
+                task_state_manager.create_task(
+                    task_id=result.id, task_type="publish", data=task_data, priority=priority
+                )
+
+                # 持久化到 SQLite publish_tasks（material_id 用首图素材，保证历史/统计可见）
+                try:
+                    cursor = db.cursor()
+                    cursor.execute(
+                        """
+                        INSERT INTO publish_tasks (
+                            celery_task_id, platform, account_id, material_id, title, tags,
+                            status, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            result.id,
+                            str(platform),
+                            str(account["account_id"]),
+                            str(image_ids[0]) if image_ids else None,
+                            title_first_line,
+                            json.dumps([str(t) for t in (topics or [])], ensure_ascii=False) if topics else None,
+                            "pending",  # 初始状态
+                            now_beijing_naive().isoformat(),
+                            now_beijing_naive().isoformat()
+                        )
+                    )
+                    db.commit()
+                except Exception as e:
+                    logger.error(f"[NotePublish] Failed to save task to SQLite: {e}")
+                    # 不影响任务提交
+
+                results["total_tasks"] += 1
+                results["success_count"] += 1
+                results["pending_count"] += 1
+                results["tasks"].append({
+                    "task_id": result.id,
+                    "account_id": account["account_id"],
+                    "platform": platform,
+                    "status": "pending",
+                    "kind": "note",
+                })
+            except Exception as e:
+                logger.error(f"[NotePublish] 提交账号 {account['account_id']} 图文任务失败: {e}")
+                results["total_tasks"] += 1
+                results["failed_count"] += 1
+                results["tasks"].append({
+                    "task_id": f"failed_{account['account_id']}",
+                    "account_id": account["account_id"],
+                    "platform": platform,
+                    "status": "failed",
+                    "error_message": str(e),
+                })
+
+        return results
 
     async def publish_batch(
         self,
@@ -184,6 +362,8 @@ class PublishService:
         miniprogram_title: str = "",
         # 🆕 NEW: 每平台专属配置（透传到发布任务，供各平台 worker 读取）
         platform_settings: Optional[Dict[str, Any]] = None,
+        # 🆕 NEW: AI 多组标签/话题分发
+        use_ai_tag_groups: bool = False,
     ) -> Dict[str, Any]:
         """
         logger.info(
@@ -223,6 +403,20 @@ class PublishService:
         except Exception as e:
             logger.error(f"批量发布账号验证失败: {e}")
             raise
+
+        # 平台渠道可见性（CMS 隐藏渠道）：已隐藏平台的账号/请求不参与发布
+        try:
+            from platforms.channels import is_hidden
+            valid_accounts = [
+                acc for acc in valid_accounts
+                if not is_hidden(acc.get("platform_code") or acc.get("platform") or acc.get("platform_name"))
+            ]
+            if platform is not None and is_hidden(platform):
+                raise BadRequestException(f"平台渠道已被隐藏，无法发布（platform={platform}）")
+        except BadRequestException:
+            raise
+        except Exception as _hide_err:
+            logger.warning(f"[PublishService] channel visibility filter failed (ignored): {_hide_err}")
 
         # 如果是多平台发布，按平台分组账号
         if platform is None:
@@ -265,6 +459,7 @@ class PublishService:
                     miniprogram_link=miniprogram_link,
                     miniprogram_title=miniprogram_title,
                     platform_settings=platform_settings,
+                    use_ai_tag_groups=use_ai_tag_groups,
                 )
         else:
             # 单平台发布
@@ -294,6 +489,8 @@ class PublishService:
                 random_cover=random_cover,
                 miniprogram_link=miniprogram_link,
                 miniprogram_title=miniprogram_title,
+                platform_settings=platform_settings,
+                use_ai_tag_groups=use_ai_tag_groups,
             )
 
         logger.info(
@@ -338,6 +535,8 @@ class PublishService:
         miniprogram_title: str = "",
         # 🆕 NEW: 每平台专属配置
         platform_settings: Optional[Dict[str, Any]] = None,
+        # 🆕 NEW: AI 多组标签/话题分发（账号轮转取组）
+        use_ai_tag_groups: bool = False,
     ):
         """创建批量发布任务的内部方法"""
         import random  # 导入 random 模块用于随机偏移
@@ -495,6 +694,20 @@ class PublishService:
                     except Exception as e:
                         logger.warning(f"Failed to parse ai_tags for file {file_id}: {e}")
 
+                # 🆕 AI 多组标签/话题：解析素材存储的 ai_tag_groups（JSON 数组 [{title,tags},...]）
+                stored_ai_groups: List[Dict[str, Any]] = []
+                if file_record.get('ai_tag_groups'):
+                    try:
+                        raw_groups = file_record.get('ai_tag_groups')
+                        parsed_groups = json.loads(raw_groups) if isinstance(raw_groups, str) else raw_groups
+                        if isinstance(parsed_groups, list):
+                            stored_ai_groups = [
+                                g for g in parsed_groups
+                                if isinstance(g, dict) and (g.get('tags') or g.get('title'))
+                            ]
+                    except Exception as e:
+                        logger.warning(f"Failed to parse ai_tag_groups for file {file_id}: {e}")
+
                 # 查找是否有独立配置
                 item_config = next((i for i in (items or []) if (i.file_id if hasattr(i, 'file_id') else i.get('file_id')) == file_id), None)
 
@@ -548,6 +761,51 @@ class PublishService:
                 if (not final_topics) and parsed_ai_tags:
                     final_topics = parsed_ai_tags
 
+                # 🆕 AI 多组标签/话题分发：让同一视频在不同账号上使用不同组的标题+话题。
+                # 优先级：item.tag_group_index 显式指定 > use_ai_tag_groups 自动轮转 > 单组默认。
+                picked_group: Optional[Dict[str, Any]] = None
+                task_tag_group_idx: Optional[int] = None
+                if stored_ai_groups:
+                    # 1) 显式指定第 N 组（item 级）
+                    explicit_idx = _item_value(item_config, "tag_group_index")
+                    try:
+                        explicit_idx = int(explicit_idx) if explicit_idx not in (None, "") else None
+                    except (TypeError, ValueError):
+                        explicit_idx = None
+                    if explicit_idx is not None and 1 <= explicit_idx <= len(stored_ai_groups):
+                        picked_group = stored_ai_groups[explicit_idx - 1]
+                        logger.info(
+                            f"🎯 [AITagGroups] file={file_id} 使用显式第 {explicit_idx} 组 "
+                            f"(共 {len(stored_ai_groups)} 组)"
+                        )
+                    elif use_ai_tag_groups or bool(_item_value(item_config, "use_ai_tag_group")):
+                        # 2) 自动轮转：同一文件按账号顺序取不同组，使矩阵发布话题差异化。
+                        #    与 account_first 节奏对齐：账号 idx 主序，视频 idx 次序。
+                        rotation = (account_idx + file_idx) % len(stored_ai_groups)
+                        picked_group = stored_ai_groups[rotation]
+                        logger.info(
+                            f"🎯 [AITagGroups] file={file_id} 自动轮转取第 {rotation + 1} 组 "
+                            f"(account_idx={account_idx}, file_idx={file_idx}, 共 {len(stored_ai_groups)} 组)"
+                        )
+
+                if picked_group:
+                    # 组内容（自动轮转或显式 tag_group_index）覆盖默认标题/话题。
+                    # 说明：矩阵发布页面 items 里的 title/topics 通常是页面自动回填的
+                    # 第 1 组或全局默认值，并非操作者逐条手写；启用多组轮转即表达
+                    # “让不同账号使用不同组”。唯一保留的显式覆盖通道是
+                    # platform_titles/platform_topics（平台级专门覆盖）。
+                    group_title = str(picked_group.get("title") or "").strip()
+                    group_topics = _coerce_topics(picked_group.get("tags"))
+                    if group_title and not (platform_titles and _pick_platform_override(platform_titles, platform)):
+                        final_title = group_title
+                    if group_topics and not (platform_topics and _pick_platform_override(platform_topics, platform)):
+                        final_topics = group_topics
+                    # 记录用的组索引，供平台 adapter/上传日志追踪
+                    task_tag_group_idx = stored_ai_groups.index(picked_group) + 1 if picked_group in stored_ai_groups else None
+                    logger.info(
+                        f"🎯 [AITagGroups] file={file_id} task 使用第 {task_tag_group_idx} 组: "
+                        f"title={final_title}, tags={final_topics}"
+                    )
                 logger.info(f"✅ [Publish Debug] final_title={final_title}")
                 logger.info(f"✅ [Publish Debug] final_desc={final_desc}")
                 logger.info(f"✅ [Publish Debug] final_topics={final_topics}")
@@ -606,6 +864,8 @@ class PublishService:
                     "miniprogram_link": final_miniprogram_link,
                     "miniprogram_title": final_miniprogram_title,
                     "platform_settings": platform_settings or {},
+                    # 🆕 AI 多组标签/话题：记录本任务实际使用的组索引（1 起；None=未用多组）
+                    "ai_tag_group_index": task_tag_group_idx,
                 }
 
                 task_id = f"publish_{batch_id}_{file_id}_{account['account_id']}"
@@ -745,11 +1005,32 @@ class PublishService:
                 from fastapi_app.tasks.publish_tasks import publish_single_task
                 from fastapi_app.tasks.task_state_manager import task_state_manager
 
-                result = publish_single_task.apply_async(
-                    kwargs={'task_data': task_data},
-                    priority=priority,
-                    task_id=task_id  # 使用自定义 task_id
-                )
+                # ⏰ 间隔控制落地：把 interval 计算出的 not_before 转成 Celery eta，
+                # 让任务真正延时投递（此前只写 not_before 日志、立即执行，间隔从未生效）。
+                apply_kwargs: Dict[str, Any] = {
+                    'kwargs': task_data,
+                    'priority': priority,
+                    'task_id': task_id,
+                }
+                nb_value = task_data.get("not_before")
+                if nb_value:
+                    try:
+                        eta_dt = datetime.fromisoformat(str(nb_value).replace("Z", ""))
+                        # Celery timezone=Asia/Shanghai + enable_utc=False，与 naive 北京时一致
+                        if eta_dt > now_beijing_naive():
+                            apply_kwargs['eta'] = eta_dt
+                            logger.info(
+                                f"⏰ [IntervalControl] Celery eta 投递 {task_id} → {eta_dt.strftime('%Y-%m-%d %H:%M:%S')}"
+                            )
+                        else:
+                            task_data.pop("not_before", None)
+                            logger.info(
+                                f"⏰ [IntervalControl] {task_id} 已过 not_before({eta_dt})，立即执行"
+                            )
+                    except Exception as e:
+                        logger.warning(f"⏰ [IntervalControl] 解析 eta 失败，立即执行: {e}")
+
+                result = publish_single_task.apply_async(**apply_kwargs)
 
                 # 保存任务状态到 Redis（实时状态）
                 task_state_manager.create_task(
@@ -1100,6 +1381,27 @@ class PublishService:
 
         except ValueError as e:
             raise BadRequestException(f"定时时间格式错误: {str(e)}")
+
+
+def _parse_note_schedule(scheduled_time: Optional[str]):
+    """把图文定时字符串解析成 Celery eta（datetime）；无法解析/为空返回 None（立即发）。"""
+    if not scheduled_time:
+        return None
+    s = str(scheduled_time).strip().replace("T", " ").replace("Z", "")
+    if not s:
+        return None
+    try:
+        parsed = datetime.fromisoformat(s)
+    except Exception:
+        parsed = None
+    if parsed is None:
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+            try:
+                parsed = datetime.strptime(s, fmt)
+                break
+            except Exception:
+                continue
+    return parsed
 
 
 # 全局服务实例工厂

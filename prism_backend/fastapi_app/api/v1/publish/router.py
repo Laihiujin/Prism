@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 from fastapi_app.db.session import get_main_db
 from fastapi_app.schemas.publish import (
     BatchPublishRequest,
+    NotePublishRequest,
     PublishPreset,
     PresetResponse,
     PublishHistoryResponse,
@@ -113,6 +114,8 @@ async def publish_batch_videos(
             miniprogram_title=request.miniprogram_title,
             # 🆕 NEW: 每平台专属配置
             platform_settings=request.platform_settings,
+            # 🆕 NEW: AI 多组标签/话题分发
+            use_ai_tag_groups=request.use_ai_tag_groups,
         )
 
         return Response(
@@ -177,6 +180,8 @@ async def publish_single_video(
             miniprogram_title=request.miniprogram_title,
             # 🆕 NEW: 每平台专属配置
             platform_settings=request.platform_settings,
+            # 🆕 NEW: AI 多组标签/话题分发
+            use_ai_tag_groups=request.use_ai_tag_groups,
         )
 
         return Response(
@@ -190,6 +195,56 @@ async def publish_single_video(
     except Exception as e:
         logger.error(f"单次发布失败: {e}")
         raise HTTPException(status_code=500, detail=f"发布失败: {str(e)}")
+
+
+@router.post(
+    "/note",
+    response_model=Response[BatchPublishResponse],
+    summary="图文/图集发布（一组图片 = 一条内容）",
+    description="""
+    图文/图集统一入口：把多张图片素材作为同一条内容发布到单平台多账号。
+
+    与视频批量（每素材一个任务）不同：这里的 image_ids 是同一篇图文内的图片顺序，
+    每个账号只会创建 1 个图文任务（抖音/小红书/快手）。
+
+    - platform: 1=小红书, 3=抖音, 4=快手
+    - image_ids: 图片素材 ID 列表（顺序即图序，最多 18 张）
+    - platform_settings: 该平台发布配置（bgm/declaration/location/whoCanSee 等，写入 platform_settings.<平台>）
+    """
+)
+async def publish_note(
+    request: NotePublishRequest,
+    db=Depends(get_main_db),
+    service: PublishService = Depends(get_service)
+):
+    """图文发布入口"""
+    try:
+        logger.info(
+            f"[PublishRouter] Note publish request: platform={request.platform}, "
+            f"accounts={len(request.accounts)}, images={len(request.image_ids)}"
+        )
+        result = await service.publish_note(
+            db=db,
+            platform=request.platform,
+            accounts=request.accounts,
+            image_ids=request.image_ids,
+            title=request.title,
+            description=request.description,
+            topics=request.topics,
+            scheduled_time=request.scheduled_time,
+            cover_image_id=request.cover_image_id,
+            platform_settings=request.platform_settings,
+        )
+        return Response(
+            success=True,
+            message=f"图文任务已创建: 成功 {result['success_count']}, 失败 {result['failed_count']}",
+            data=result
+        )
+    except (NotFoundException, BadRequestException) as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        logger.error(f"图文发布失败: {e}")
+        raise HTTPException(status_code=500, detail=f"图文发布失败: {str(e)}")
 
 
 @router.get(
