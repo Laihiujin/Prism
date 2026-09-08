@@ -10,7 +10,7 @@
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import json
 
 from myUtils.exceptions import CaptchaRequiredException, AccountBlockedException
@@ -30,6 +30,7 @@ PLATFORM_SETTINGS_KEY_BY_CODE = {
     6: "tiktok",
     7: "youtube",
     8: "baijiahao",
+    9: "twitter",
 }
 
 
@@ -87,12 +88,6 @@ class BatchPublishService:
         logger.info(f"   标签: {tags}")
         logger.info(f"   视频: {video_path}")
 
-        # 检查必需字段是否为 None
-        if not video_path:
-            error_msg = f"视频路径为空: file_id={data.get('file_id')}, account_id={account_id}"
-            logger.error(f"[Publish] {error_msg}")
-            raise ValueError(error_msg)
-
         if not cookie_file:
             error_msg = f"Cookie文件路径为空: file_id={data.get('file_id')}, account_id={account_id}"
             logger.error(f"[Publish] {error_msg}")
@@ -117,7 +112,61 @@ class BatchPublishService:
                 upload_title = upload_title.split("#", 1)[0].strip()
 
             # 兼容旧数据：cookie_file/video_path 可能只有文件名（相对路径）
+            raw_cookie_file = cookie_file
             cookie_file = resolve_cookie_file(cookie_file)
+
+            # 推特(Twitter/X)没有网页 cookie：account_file 是 xurl app 名，
+            # 不能被 resolve_cookie_file 拼成 cookiesFile 目录下的文件路径。
+            if platform == 9:
+                cookie_file = raw_cookie_file
+
+            # P0：解包 platform_settings 里对应平台的配置，并让顶层扁平字段优先被覆盖
+            ps = _platform_settings_for(data, platform) or {}
+
+            # 图文/图集（笔记）发布：platform_settings.<platform>.contentKind / contentType = "note"
+            # （兼容 "image"/"image_note" 写法）。仅抖音(3)/小红书(1)/快手(4) 支持；其余平台报错。
+            # 多张图片 = 一条图文内容（不需要 video_path / file_id）。
+            content_kind = str(
+                ps.get("contentKind") or ps.get("contentType") or data.get("content_kind") or ""
+            ).strip().lower()
+            if content_kind in {"note", "image", "image_note"}:
+                if platform not in (1, 3, 4):
+                    raise ValueError(f"平台 {platform} 暂不支持图文发布（支持：抖音/小红书/快手）")
+                images_raw = ps.get("images") or data.get("images") or []
+                if isinstance(images_raw, str):
+                    images_raw = [images_raw]
+                images_raw = [i for i in (images_raw or []) if str(i).strip()]
+                if not images_raw:
+                    raise ValueError("图文发布需要 images 图片路径列表（platform_settings.<平台>.images）")
+                note_result = await self._publish_note(
+                    platform=platform,
+                    account_id=account_id,
+                    cookie_file=cookie_file,
+                    title=upload_title,
+                    description=description or "",
+                    tags=tags or [],
+                    publish_date=publish_date,
+                    images=images_raw,
+                    ps=ps,
+                    data=data,
+                )
+                cookie_manager.update_account(account_id, status='valid')
+                return {
+                    "success": True,
+                    "account_id": account_id,
+                    "platform": platform,
+                    "video_url": None,
+                    "published_at": now_beijing_iso(),
+                    "kind": "note",
+                    **note_result,
+                }
+
+            # 视频发布：必须有 video_path
+            if not video_path:
+                error_msg = f"视频路径为空: file_id={data.get('file_id')}, account_id={account_id}"
+                logger.error(f"[Publish] {error_msg}")
+                raise ValueError(error_msg)
+
             video_path = resolve_video_file(video_path)
 
             # Fail fast with a clear error if file path is still invalid after resolution.
@@ -127,14 +176,29 @@ class BatchPublishService:
             except Exception as e:
                 raise FileNotFoundError(f"视频文件不存在: {video_path}") from e
 
-            # P0：解包 platform_settings 里对应平台的配置，并让顶层扁平字段优先被覆盖
-            ps = _platform_settings_for(data, platform) or {}
             poi_name = ""
             if isinstance(ps.get("poi"), dict):
                 poi_name = ps.get("poi", {}).get("name", "")
             elif isinstance(ps.get("location"), dict):
                 poi_name = ps.get("location", {}).get("name", "")
             mini_program = ps.get("miniProgram") or ps.get("mini_program") or None
+
+            # B站分P：platform_settings.bilibili.video_parts = [{path,title}...]（可选）
+            # 若存在，P1 = 主视频，P2..Pn = video_parts 顺序；part_titles 可缺省。
+            bili_parts_raw = []
+            bili_part_titles = []
+            if platform == 5 and isinstance(ps.get("video_parts"), list):
+                for entry in ps.get("video_parts") or []:
+                    if isinstance(entry, dict) and entry.get("path"):
+                        bili_parts_raw.append(str(entry["path"]))
+                        bili_part_titles.append(str(entry.get("title") or ""))
+                    elif isinstance(entry, str) and entry:
+                        bili_parts_raw.append(entry)
+                        bili_part_titles.append("")
+
+            # B站发布配置：面板 tid/copyright/source/dynamic 经 platform_settings 透传
+            bili_tid = ps.get("tid") or data.get("category_id")
+            bili_category_id = int(bili_tid) if str(bili_tid or "").isdigit() else 160
 
             result = await uploader.upload(
                 account_file=cookie_file,
@@ -146,7 +210,7 @@ class BatchPublishService:
                 product_link=data.get("product_link", "") or data.get("productLink", ""),
                 product_title=data.get("product_title", "") or data.get("productTitle", ""),
                 category=data.get("category"),
-                category_id=data.get("category_id", 160),
+                category_id=bili_category_id if platform == 5 else data.get("category_id", 160),
                 description=description or "",
                 playlist=data.get("playlist"),
                 visibility=data.get("visibility", "public"),
@@ -163,6 +227,10 @@ class BatchPublishService:
                 cover_orientation=ps.get("coverOrientation", "landscape"),
                 cover_file=ps.get("coverFile", ""),
                 miniprogram_object=mini_program,
+                # 🆕 B站分P与稿件级配置（仅 platform 5 上传器消费）
+                video_parts=bili_parts_raw or None,
+                part_titles=bili_part_titles or None,
+                platform_settings=ps,
             )
 
             # 检查结果中是否包含验证码标识
@@ -229,6 +297,139 @@ class BatchPublishService:
             logger.error(f"[Publish] 发布失败: {account_id} @ platform_{platform}")
             logger.error(f"   错误: {str(e)}")
             raise
+
+    async def _publish_note(
+        self,
+        platform: int,
+        account_id: str,
+        cookie_file: str,
+        title: str,
+        description: str,
+        tags: List[str],
+        publish_date: Any,
+        images: List[str],
+        ps: Dict,
+        data: Dict,
+    ) -> Dict:
+        """图文/图集（笔记）发布：抖音(3)/小红书(1)/快手(4) 复用 refactored note uploader。
+
+        images 支持两种形态：
+        - 本地绝对路径列表
+        - 素材库文件名（相对 videoFile 目录，如 abc123.jpg）→ resolve_image_file 解析
+        """
+        from platforms.path_utils import resolve_image_file
+
+        resolved_images = []
+        for img in images:
+            p = resolve_image_file(str(img))
+            if p and Path(p).exists():
+                resolved_images.append(p)
+            else:
+                raise FileNotFoundError(f"图片文件不存在: {img} -> {p}")
+
+        publish_value: Any = 0
+        if publish_date:
+            if isinstance(publish_date, datetime):
+                publish_value = publish_date
+            elif isinstance(publish_date, (int, float)):
+                publish_value = datetime.fromtimestamp(publish_date)
+            elif isinstance(publish_date, str):
+                s = publish_date.strip().replace("T", " ").replace("Z", "")
+                try:
+                    publish_value = datetime.fromisoformat(s)
+                except Exception:
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+                        try:
+                            publish_value = datetime.strptime(s, fmt)
+                            break
+                        except Exception:
+                            continue
+
+        logger.info(
+            f"[Publish] 图文发布: account={account_id} @ platform_{platform}, "
+            f"images={len(resolved_images)}张, title={title!r}"
+        )
+
+        # POI / location 兼容两种面板写法：{name,address} 对象 或 纯字符串
+        poi_obj = ps.get("poi")
+        location_str = str(ps.get("location") or "")
+        if not location_str and isinstance(poi_obj, dict):
+            location_str = str(poi_obj.get("name") or "")
+        elif not location_str and isinstance(ps.get("location"), dict):
+            location_str = str(ps.get("location", {}).get("name") or "")
+
+        if platform == 3:
+            from uploader.douyin_uploader.main_refactored import (
+                DOUYIN_PUBLISH_STRATEGY_IMMEDIATE,
+                DOUYIN_PUBLISH_STRATEGY_SCHEDULED,
+                DouYinNote,
+            )
+
+            strategy = DOUYIN_PUBLISH_STRATEGY_SCHEDULED if publish_value else DOUYIN_PUBLISH_STRATEGY_IMMEDIATE
+            mini_program = ps.get("miniProgram") or ps.get("mini_program") or None
+            app = DouYinNote(
+                resolved_images,
+                description or "",
+                tags or [],
+                publish_value,
+                resolve_cookie_file(cookie_file),
+                title=title or "",
+                publish_strategy=strategy,
+                bgm=str(ps.get("bgm") or ""),
+                declaration=ps.get("declaration") or None,
+                location=location_str,
+                collection=(ps.get("collection") or None),
+                who_can_see=str(ps.get("whoCanSee") or None) or None,
+                save_permission=str(ps.get("savePermission") or None) or None,
+                hotspot=str(ps.get("hotspot") or None) or None,
+                cover_file=str(ps.get("coverFile") or ""),
+                cover_orientation=str(ps.get("coverOrientation") or "landscape"),
+                mini_program=mini_program,
+            )
+        elif platform == 1:
+            from uploader.xiaohongshu_uploader.main_refactored import (
+                XIAOHONGSHU_PUBLISH_STRATEGY_IMMEDIATE,
+                XIAOHONGSHU_PUBLISH_STRATEGY_SCHEDULED,
+                XiaoHongShuNote,
+            )
+
+            strategy = XIAOHONGSHU_PUBLISH_STRATEGY_SCHEDULED if publish_value else XIAOHONGSHU_PUBLISH_STRATEGY_IMMEDIATE
+            app = XiaoHongShuNote(
+                resolved_images,
+                description or "",
+                tags or [],
+                publish_value,
+                resolve_cookie_file(cookie_file),
+                title=title or "",
+                desc=description or "",
+                publish_strategy=strategy,
+            )
+        elif platform == 4:
+            from uploader.ks_uploader.main_refactored import (
+                KUAISHOU_PUBLISH_STRATEGY_IMMEDIATE,
+                KUAISHOU_PUBLISH_STRATEGY_SCHEDULED,
+                KSNote,
+            )
+
+            strategy = KUAISHOU_PUBLISH_STRATEGY_SCHEDULED if publish_value else KUAISHOU_PUBLISH_STRATEGY_IMMEDIATE
+            app = KSNote(
+                resolved_images,
+                description or "",
+                tags or [],
+                publish_value,
+                resolve_cookie_file(cookie_file),
+                title=title or "",
+                publish_strategy=strategy,
+            )
+        else:
+            raise ValueError(f"平台 {platform} 暂不支持图文发布（支持：抖音/小红书/快手）")
+
+        result = app.main()
+        if hasattr(result, "__await__"):
+            await result
+
+        logger.info(f"[Publish] 图文发布成功: {account_id} @ platform_{platform}")
+        return {"message": f"图文发布成功（{len(resolved_images)}张图片）"}
 
     async def handle_batch_publish(self, data: Dict) -> Dict:
         """

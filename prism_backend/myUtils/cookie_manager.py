@@ -64,6 +64,7 @@ PLATFORM_CODES = {
     "tiktok": 6,
     "youtube": 7,
     "baijiahao": 8,
+    "twitter": 9,
 }
 CODE_TO_PLATFORM = {value: key for key, value in PLATFORM_CODES.items()}
 
@@ -581,6 +582,7 @@ class CookieManager:
     def add_account(self, platform_name: str, account_details: Dict[str, Any]):
         platform_code = self._resolve_platform(platform_name)
         normalized_platform = CODE_TO_PLATFORM.get(platform_code, platform_name)
+        is_twitter = normalized_platform == "twitter"
 
         # 尝试从Cookie中提取user_id（如果传入的user_id为空）
         user_id = account_details.get("user_id")
@@ -715,15 +717,25 @@ class CookieManager:
             cookie_file = self._build_cookie_filename(normalized_platform, account_details.get("user_id"))
             logger.info(f"[CookieManager] 校验 Cookie 文件是否存在: {cookie_file}")
 
-        # 写入cookie文件
-        self._write_cookie_file(cookie_file, account_details.get("cookie", {}))
+        # 推特(Twitter/X)没有网页 cookie：account_details["cookie_file"] 存的是 xurl app 名。
+        # 发布链路（batch_publish_service 对 platform=9 特判）会把本字段原样传给 xurl 当 app 名，
+        # 因此必须原样保留，禁止规范成 platform_userid.json，也不落空 cookie 文件。
+        if is_twitter:
+            cookie_file = (account_details.get("cookie_file") or account_details.get("accountFile") or "").strip()
+            if not cookie_file:
+                raise ValueError("twitter account requires cookie_file = xurl app 名")
+            logger.info(f"[CookieManager] 推特账号保留 xurl app 名：{cookie_file}（不写入 cookie 文件）")
+        else:
+            # 写入cookie文件
+            self._write_cookie_file(cookie_file, account_details.get("cookie", {}))
 
-        # 若缺少关键字段，再用快速校验补全（会就地更新 account_details）
-        if (not account_details.get("name") or not account_details.get("user_id") or not account_details.get("avatar")):
+        # 若缺少关键字段，再用快速校验补全（会就地更新 account_details）；推特无 cookie，跳过补全
+        if (not is_twitter and
+                (not account_details.get("name") or not account_details.get("user_id") or not account_details.get("avatar"))):
             self._enrich_with_fast_validator(normalized_platform, cookie_file, account_details)
 
-        # 若通过补全拿到了 user_id，确保 cookie 文件名与 user_id 对齐
-        if account_details.get("user_id"):
+        # 若通过补全拿到了 user_id，确保 cookie 文件名与 user_id 对齐（推特除外，cookie_file 即 xurl app 名）
+        if account_details.get("user_id") and not is_twitter:
             expected_filename = self._build_cookie_filename(normalized_platform, account_details["user_id"])
             if cookie_file != expected_filename:
                 old_path = self.cookies_dir / cookie_file

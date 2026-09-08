@@ -1526,3 +1526,7 @@ class DouYinNote(DouYinBaseUploader):
     async def douyin_upload_note(self):
         async with async_playwright() as playwright:
             await self.upload(playwright)
+
+    async def main(self):
+        """图文（图片笔记）发布入口：与 publish_tools run_main(app) 约定一致。"""
+        await self.douyin_upload_note()
