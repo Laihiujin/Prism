@@ -16,6 +16,7 @@ class LoginStatus(Enum):
     CONFIRMED = "confirmed"       # 已确认/登录成功
     FAILED = "failed"             # 登录失败
     EXPIRED = "expired"           # 二维码过期
+    RISK_CONTROL = "risk_control" # 风控/验证码拦截：需要人工在浏览器里完成验证
 
 
 @dataclass
@@ -91,3 +92,40 @@ class PlatformAdapter(ABC):
     async def supports_api_login(self) -> bool:
         """是否支持纯API登录 (无需Playwright)"""
         return False
+
+
+async def risk_control_detected(page, platform_name: str) -> Optional[str]:
+    """在扫码/登录页检测风控或人工验证码拦截。
+
+    返回 None 表示未检测到风控；返回描述文案表示需要人工验证
+    （例如滑块/图形验证码/安全校验）。各平台 URL 特征不同，
+    本函数只做低误报的启发式判断 —— 宁可漏报也不误报。
+    """
+    try:
+        current_url = (page.url or "").lower()
+    except Exception:
+        return None
+
+    # 域名级特征（各平台登录页遇到风控时常见跳转/校验路径）
+    domain_risk_markers = {
+        "douyin": ("verify", "captcha", "security/verify"),
+        "kuaishou": ("captcha", "verify", "risk"),
+        "xiaohongshu": ("captcha", "verify"),
+        "tencent": ("captcha", "verify"),
+        "bilibili": ("geetest", "captcha", "risk"),
+    }
+    for marker in domain_risk_markers.get(platform_name, ()):
+        if marker in current_url:
+            if "captcha" in current_url and "js" in current_url:
+                continue  # 静态资源不算
+            return f"{platform_name} 触发风控/验证码（{current_url}），请在浏览器中手动完成验证"
+
+    # 页面文案级低误报特征（仅检查 body 文本中的高强度中文词）
+    try:
+        body_text = (await page.inner_text("body"))[:2000].lower()
+    except Exception:
+        return None
+    for marker in ("安全验证", "拖动滑块", "完成验证", "请完成安全验证", "人机验证"):
+        if marker in body_text:
+            return f"{platform_name} 需要人工验证（{marker}），请在浏览器中手动完成"
+    return None
