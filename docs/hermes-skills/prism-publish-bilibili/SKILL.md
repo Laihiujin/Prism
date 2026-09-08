@@ -56,31 +56,9 @@ B站 专属：
 
 ## 登录（`login_to_bilibili`）
 
-必须在本机交互终端 `biliup login`；非交互环境返回失败。备选多方式 API：
-
-| 方式 | 端点 |
-|---|---|
-| 扫码 | 统一 `/api/v1/auth/qrcode/generate?platform=bilibili&account_id=...` |
-| 短信 | `POST /api/v1/auth/bilibili/sms/send` →（若 `need_recaptcha`，前端内嵌极验）`POST .../sms/recaptcha` → `POST .../sms/confirm` |
-| 账密 | `POST /api/v1/auth/bilibili/password/prepare` → `POST .../password`（可带极验/短信二次）→（若 `need_sms`）`POST .../password/sms-confirm` |
-| Cookie 导入 | `POST /api/v1/auth/bilibili/cookie/import` |
-
-短信回传调度（sms_token）：`/sms/send` 返回 `sms_token`（同一会话延续
-buvid/cookie），登录时 `sms_token + code` 走 `/sms/confirm`。若发码返回
-`state=need_recaptcha`，响应同时回传 `geetest_gt`/`geetest_challenge`，
-前端**内嵌 geetest 滑块**（不用手动复制），滑块通过后自动调
-`/sms/recaptcha` 补发验证码，再 `sms/confirm`（契约对齐 biliup rust 客户端；
-登录签名使用 Android appsec）。
-
-账密回传调度（pwd_token）：`/password/prepare` 建会话取 RSA 密钥，返回
-`pwd_token` + `geetest_gt`。`/password` 首次空极验提交，若 B站 返回
-`need_captcha`（如 `-105`/`-450`/`-412` 风控），前端内嵌 geetest，滑块通过后
-以 `challenge/validate/seccode(=validate|jordan)` 重新提交；若返回 `need_sms`，
-先走短信链（send→confirm）取 `sms_token` 与 code，再调 `/password/sms-confirm`
-完成落盘。
-
-短信/账密默认开启；如后端设 `ALLOW_BILIBILI_ALT_LOGIN=false` 则关闭
-（查询开关：`GET /api/v1/auth/bilibili/alt-enabled`）。生产建议扫码 + Cookie 导入。
+必须在本机交互终端 `biliup login`；非交互环境返回失败。也可走账号页统一扫码流程
+（`/api/v1/auth/qrcode/generate?platform=bilibili&account_id=...`）。短信/账密登录已移除，
+B站 脚本发布登录只保留 biliup 终端登录与扫码。
 
 ## 风控 / 人工验证码（各平台登录通用）
 
