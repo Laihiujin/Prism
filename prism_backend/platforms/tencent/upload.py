@@ -35,12 +35,34 @@ class TencentUpload(BasePlatform):
     ) -> Dict[str, Any]:
         """
         上传并发布视频号视频（目前复用旧 uploader 实现）。
+        article_url（公众号文章挂载链接）从 platform_settings.channels.articleUrl 透传。
         """
         from uploader.tencent_uploader.main import TencentVideo
         from utils.constant import TencentZoneTypes
 
         account_file = resolve_cookie_file(account_file)
         file_path = resolve_video_file(file_path)
+
+        # 公众号文章挂载链接：platform_settings.channels.articleUrl / article_url
+        ps = kwargs.get("platform_settings") or {}
+        if not isinstance(ps, dict):
+            ps = {}
+        article_url = (
+            (kwargs.get("article_url") or "")
+            or (ps.get("articleUrl") if isinstance(ps.get("articleUrl"), str) else "")
+            or (ps.get("article_url") if isinstance(ps.get("article_url"), str) else "")
+        )
+        # 小程序（短剧）挂载搜索词：platform_settings.channels.miniProgramName
+        # （面板采集名称；发布页「关联 → 小程序短剧」弹窗按此搜索点选）
+        mini_program = (
+            (kwargs.get("mini_program") or "")
+            or (ps.get("miniProgramName") if isinstance(ps.get("miniProgramName"), str) else "")
+            or (ps.get("miniProgram") if isinstance(ps.get("miniProgram"), dict) else None)
+        )
+        if isinstance(mini_program, dict):
+            mini_program = str(mini_program.get("name") or mini_program.get("title") or "").strip()
+        elif mini_program is None:
+            mini_program = ""
 
         publish_value: Any = 0
         if publish_date:
@@ -70,6 +92,8 @@ class TencentUpload(BasePlatform):
             account_file=account_file,
             category=category or TencentZoneTypes.LIFESTYLE.value,
             thumbnail_path=thumbnail_path,
+            article_url=article_url,
+            mini_program=mini_program,
         )
 
         # 旧实现内部使用 async_playwright；这里直接 await
