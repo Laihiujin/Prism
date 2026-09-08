@@ -1404,7 +1404,7 @@ async def poll_qrcode_status(session_id: str):
                 },
             }
 
-        # 如果登录成功或失败，清理会话
+        # 登录成功/失败/过期才清理会话；风控(risk_control)保持会话让用户手动完成验证
         if result.status in (LoginStatus.CONFIRMED, LoginStatus.FAILED, LoginStatus.EXPIRED):
             try:
                 await adapter.cleanup_session(session_id)
@@ -1412,6 +1412,8 @@ async def poll_qrcode_status(session_id: str):
                 async with sessions_lock:
                     sessions.pop(session_id, None)
             logger.info(f"[Worker] Session cleaned: {session_id[:8]} status={result.status.value}")
+        elif result.status is LoginStatus.RISK_CONTROL:
+            logger.warning(f"[Worker] Risk control, session kept: {session_id[:8]} msg={result.message}")
 
         return {
             "success": True,
