@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw, MonitorSmartphone, Search } from "lucide-react"
 
 import { AccountEnvironmentSheet } from "@/components/account-environment-sheet"
+import { TwitterBindPanel } from "@/components/account/twitter-bind-panel"
 
 import {
   AlertDialog,
@@ -43,6 +44,7 @@ import { type ColumnDef } from "@tanstack/react-table"
 import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageHeader, PageSection } from "@/components/layout/page-scaffold"
+import { useVisiblePlatforms } from "@/hooks/use-visible-platforms"
 
 const platformTabs: { label: string; value: PlatformKey }[] = [
   { label: "全部", value: "all" },
@@ -53,6 +55,7 @@ const platformTabs: { label: string; value: PlatformKey }[] = [
   { label: "B站", value: "bilibili" },
   { label: "TikTok", value: "tiktok" },
   { label: "YouTube", value: "youtube" },
+  { label: "推特", value: "twitter" },
 ]
 
 const platformLabelMap: Record<PlatformKey, string> = {
@@ -64,6 +67,7 @@ const platformLabelMap: Record<PlatformKey, string> = {
   bilibili: "B站",
   tiktok: "TikTok",
   youtube: "YouTube",
+  twitter: "推特",
 }
 
 function describeApiError(value: unknown): string {
@@ -98,6 +102,7 @@ const platformTypeMap: Record<PlatformKey, string> = {
   bilibili: "5",
   tiktok: "6",
   youtube: "7",
+  twitter: "9",
 }
 
 const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -133,6 +138,18 @@ interface LoginStatusDetail {
 function AccountPageContent() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
+  const { isVisible } = useVisiblePlatforms()
+  const visiblePlatformTabs = useMemo(
+    () => platformTabs.filter((tab) => tab.value === "all" || isVisible(tab.value)),
+    [isVisible]
+  )
+  const visiblePlatformOptions = useMemo(
+    () =>
+      (["kuaishou", "douyin", "channels", "xiaohongshu", "bilibili", "tiktok", "youtube", "twitter"] as PlatformKey[]).filter(
+        (key) => isVisible(key)
+      ),
+    [isVisible]
+  )
   const { data: accountResponse, isLoading, isFetching, refetch, error } = useQuery({
     queryKey: ["accounts"],
     queryFn: async () => {
@@ -176,10 +193,14 @@ function AccountPageContent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [envSheet, setEnvSheet] = useState<{ open: boolean; account: Account | null }>({ open: false, account: null })
   const [formState, setFormState] = useState<AccountFormState>({ name: "", platform: "kuaishou" })
+  // 新绑定账号在本次弹窗会话内的稳定 ID（用于短信/Cookie 导入等需要 account_id 的路径）
+  const [bindAccountId, setBindAccountId] = useState<string>(`account_${Date.now()}`)
   // TikTok/YouTube 不支持扫码，走浏览器登录 / 从本机 Chrome 导入
-  const isQrPlatform = formState.platform !== "tiktok" && formState.platform !== "youtube"
+  const isQrPlatform = formState.platform !== "tiktok" && formState.platform !== "youtube" && formState.platform !== "twitter"
   const [bindingStatus, setBindingStatus] = useState<"idle" | "pending" | "code" | "browser" | "success" | "error">("idle")
   const [qrImage, setQrImage] = useState<string | null>(null)
+  // 风控/人工验证提示（扫码轮询返回 risk_control 时展示；验证完成后清空）
+  const [riskNotice, setRiskNotice] = useState<string | null>(null)
   const [youtubeChannelInput, setYoutubeChannelInput] = useState("")
   const [youtubeResolved, setYoutubeResolved] = useState<{ channel_id: string; name?: string; original_name?: string; avatar?: string } | null>(null)
   const [youtubeResolving, setYoutubeResolving] = useState(false)
@@ -214,6 +235,7 @@ function AccountPageContent() {
     }
     setBindingStatus("idle")
     setQrImage(null)
+    setRiskNotice(null)
   }, [stopPolling])
 
   useEffect(() => {
@@ -260,6 +282,18 @@ function AccountPageContent() {
     }
   }, [searchParams])
 
+  // 平台被隐藏后：活动 tab / 默认选中平台回退到可见平台
+  const visiblePlatformKeyList = visiblePlatformOptions
+  useEffect(() => {
+    if (activeTab !== "all" && !isVisible(activeTab)) {
+      setActiveTab("all")
+    }
+    if (dialogOpen && !formState.id && !isVisible(formState.platform)) {
+      const fallback = visiblePlatformKeyList[0]
+      if (fallback) setFormState((prev) => ({ ...prev, platform: fallback }))
+    }
+  }, [dialogOpen, activeTab, formState.id, formState.platform, isVisible, visiblePlatformKeyList])
+
   const filteredAccounts = useMemo(() => {
     return accounts.filter((account) => {
       const matchTab = activeTab === "all" || account.platform === activeTab
@@ -296,8 +330,10 @@ function AccountPageContent() {
 
   const resetDialogState = () => {
     setFormState({ id: undefined, name: "", platform: "kuaishou" })
+    setBindAccountId(`account_${Date.now()}`)
     setBindingStatus("idle")
     setQrImage(null)
+    setRiskNotice(null)
     setYoutubeChannelInput("")
     setYoutubeResolved(null)
     setYoutubeResolving(false)
@@ -314,14 +350,16 @@ function AccountPageContent() {
   }
 
   const startBinding = async () => {
+    if (formState.platform === "twitter") return  // 推特走专用绑定面板（TwitterBindPanel）
     if (formState.platform === "tiktok" || formState.platform === "youtube") {
       await startBrowserLogin()
       return
     }
     setBindingStatus("pending")
     setQrImage(null)
+    setRiskNotice(null)
 
-    const currentLoginId = formState.name || `account_${Date.now()}`
+    const currentLoginId = formState.name || bindAccountId
 
     try {
       // Step 1: 查询最佳登录方式
@@ -334,6 +372,7 @@ function AccountPageContent() {
         bilibili: "bilibili",
         tiktok: "tiktok",
         youtube: "youtube",
+        twitter: "twitter",
       }
 
       const platform = platformMap[formState.platform]
@@ -485,10 +524,11 @@ function AccountPageContent() {
         bilibili: "bilibili",
         tiktok: "tiktok",
         youtube: "youtube",
+        twitter: "twitter",
       }
 
       const platform = platformMap[formState.platform]
-      const qrRes = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, {
+      const qrRes = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}&headless=false`, {
         method: 'POST'
       })
 
@@ -530,6 +570,7 @@ function AccountPageContent() {
 
           if (statusData.status === 'confirmed') {
             stopPolling()
+            setRiskNotice(null)
             setBindingStatus("success")
             toast({
               variant: "success",
@@ -556,8 +597,14 @@ function AccountPageContent() {
               title: "Scanned",
               description: "Confirm login on your phone.",
             })
+          } else if (statusData.status === 'risk_control') {
+            // 风控/验证码：不停止轮询，展示人工验证横幅并等待用户在本机浏览器完成
+            setRiskNotice(statusData.message || "平台触发风控/验证码，请在本机弹出的浏览器窗口中手动完成验证")
+            // 风控等待人工验证时不断刷新超时，避免 5 分钟到点被误杀
+            armTimeout()
           } else if (statusData.status === 'expired') {
             stopPolling()
+            setRiskNotice(null)
             setBindingStatus("error")
             toast({
               variant: "destructive",
@@ -566,6 +613,7 @@ function AccountPageContent() {
             })
           } else if (statusData.status === 'failed') {
             stopPolling()
+            setRiskNotice(null)
             setBindingStatus("error")
             toast({
               variant: "destructive",
@@ -579,16 +627,21 @@ function AccountPageContent() {
       }, 2000) // Poll every 2 seconds.
 
       // 5 minute timeout
-      pollTimeoutRef.current = setTimeout(() => {
-        if (activeSessionRef.current !== sessionId) return
-        stopPolling()
-        setBindingStatus("error")
-        toast({
-          variant: "destructive",
-          title: "Login timeout",
-          description: "Please get a new QR code.",
-        })
-      }, 300000)
+      const armTimeout = () => {
+        if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+        pollTimeoutRef.current = setTimeout(() => {
+          if (activeSessionRef.current !== sessionId) return
+          stopPolling()
+          setBindingStatus("error")
+          setRiskNotice(null)
+          toast({
+            variant: "destructive",
+            title: "Login timeout",
+            description: "Please get a new QR code.",
+          })
+        }, 300000)
+      }
+      armTimeout()
 
     } catch (error) {
       console.error('API login error:', error)
@@ -690,6 +743,10 @@ function AccountPageContent() {
 
   const handleOpenCreatorCenter = async (account: Account) => {
     const accountId = account.id
+    if (account.platform === "twitter") {
+      toast({ title: "推特无网页创作中心", description: "推特账号通过 xurl 官方 API 发布，无需浏览器创作中心。" })
+      return
+    }
     try {
       const openResponse = await fetch(
         `${backendBaseUrl}/api/v1/accounts/${encodeURIComponent(accountId)}/creator-center/open`,
@@ -960,6 +1017,10 @@ function AccountPageContent() {
               open={dialogOpen}
               onOpenChange={(open) => {
                 setDialogOpen(open)
+                if (open && !formState.id) {
+                  // 新绑定：给本次弹窗会话生成稳定 account_id（短信/Cookie 导入复用）
+                  setBindAccountId(`account_${Date.now()}`)
+                }
                 if (!open) {
                   cancelBinding()
                 }
@@ -992,13 +1053,11 @@ function AccountPageContent() {
                         <SelectValue placeholder="选择平台" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="kuaishou">快手</SelectItem>
-                        <SelectItem value="douyin">抖音</SelectItem>
-                        <SelectItem value="channels">视频号</SelectItem>
-                        <SelectItem value="xiaohongshu">小红书</SelectItem>
-                        <SelectItem value="bilibili">B站</SelectItem>
-                        <SelectItem value="tiktok">TikTok</SelectItem>
-                        <SelectItem value="youtube">YouTube</SelectItem>
+                        {visiblePlatformOptions.map((key) => (
+                          <SelectItem key={key} value={key}>
+                            {platformLabelMap[key] || key}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1054,7 +1113,16 @@ function AccountPageContent() {
                       </p>
                     </div>
                   )}
-                  {!formState.id && (
+                  {!formState.id && formState.platform === "twitter" && (
+                    <TwitterBindPanel
+                      onLoginDone={() => {
+                        setBindingStatus("success")
+                        queryClient.invalidateQueries({ queryKey: ["accounts"] })
+                        void refetch()
+                      }}
+                    />
+                  )}
+                  {!formState.id && formState.platform !== "twitter" && (
                     <div className="rounded-2xl border border-border/70 bg-card p-4">
                       <p className="text-sm font-semibold">{isQrPlatform ? "二维码登录" : "浏览器登录"}</p>
                       <p className="text-xs text-muted-foreground">
@@ -1092,6 +1160,18 @@ function AccountPageContent() {
                               className="h-40 w-40 rounded-2xl border border-border/70 bg-card p-3"
                             />
                             <p className="text-xs text-muted-foreground">请使用 {platformLabelMap[formState.platform]} App 扫码</p>
+                            {riskNotice && (
+                              <div className="flex w-full flex-col gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-left">
+                                <p className="flex items-center gap-1 text-xs font-medium text-amber-400">
+                                  <MonitorSmartphone className="h-3.5 w-3.5 shrink-0" />
+                                  需要手动验证
+                                </p>
+                                <p className="text-[11px] leading-4 text-amber-200/80">{riskNotice}</p>
+                                <p className="text-[10px] leading-4 text-amber-200/50">
+                                  请在本机弹出的浏览器窗口中完成验证；完成后会自动登录并绑定。
+                                </p>
+                              </div>
+                            )}
                             <Button size="sm" variant="ghost" className="rounded-xl bg-black" onClick={startBinding}>
                               刷新二维码
                             </Button>
@@ -1216,7 +1296,7 @@ function AccountPageContent() {
           <div className="ml-auto">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PlatformKey)}>
               <TabsList className="flex flex-wrap gap-2 rounded-2xl bg-card p-1 border border-border/70 backdrop-blur-sm">
-                {platformTabs.map((tab) => (
+                {visiblePlatformTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}

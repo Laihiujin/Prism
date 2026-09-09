@@ -41,9 +41,17 @@ def _video_params() -> Dict[str, Any]:
 def _note_params() -> Dict[str, Any]:
     props = _common_note_params()
     props.update({
-        "bgm": {"type": "string", "description": "BGM（可选）", "default": ""},
+        "bgm": {"type": "string", "description": "BGM 音乐名（可选）", "default": ""},
         "declaration": {"type": "string", "description": "自主声明内容", "default": ""},
         "location": {"type": "string", "description": "地理位置 POI", "default": ""},
+        "collection": {"type": "string", "description": "合集名/不加入合集", "default": ""},
+        "who_can_see": {"type": "string", "description": "谁可以看：公开/好友可见/仅自己可见", "default": ""},
+        "save_permission": {"type": "string", "description": "保存权限：允许/不允许", "default": ""},
+        "hotspot": {"type": "string", "description": "关联热点词", "default": ""},
+        "mini_program_name": {"type": "string", "description": "挂载小程序/游戏/应用名", "default": ""},
+        "mini_program_type": {"type": "string", "description": "挂载对象类型", "default": ""},
+        "cover_file": {"type": "string", "description": "封面图片本地路径（可选）", "default": ""},
+        "cover_orientation": {"type": "string", "enum": ["landscape", "portrait"], "description": "封面朝向", "default": "landscape"},
     })
     return {"type": "object", "properties": props, "required": ["account_file", "images", "title"]}
 
@@ -105,6 +113,17 @@ def _note_handler() -> Callable[..., Any]:
             bgm=str(kwargs.get("bgm") or ""),
             declaration=(kwargs.get("declaration") or None),
             location=str(kwargs.get("location") or ""),
+            collection=(kwargs.get("collection") or None),
+            who_can_see=str(kwargs.get("who_can_see") or None),
+            save_permission=str(kwargs.get("save_permission") or None),
+            hotspot=str(kwargs.get("hotspot") or None),
+            mini_program=(
+                {"name": kwargs.get("mini_program_name"), "type": kwargs.get("mini_program_type")}
+                if kwargs.get("mini_program_name")
+                else None
+            ),
+            cover_file=str(kwargs.get("cover_file") or ""),
+            cover_orientation=str(kwargs.get("cover_orientation") or "landscape"),
         )
         await run_main(app)
         return {"success": True, "platform": NAME, "kind": "note", "message": "抖音 图文/笔记发布成功"}

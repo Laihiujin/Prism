@@ -21,6 +21,8 @@ import {
   Boxes,
   Network,
   MessageCircle,
+  ImageIcon,
+  Layers,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -106,6 +108,8 @@ const navSections: NavSection[] = [
     label: "分发",
     items: [
       { label: "矩阵发布", href: "/publish/matrix", icon: LayoutGrid },
+      { label: "图文发布", href: "/publish/note", icon: ImageIcon },
+      { label: "B站分P", href: "/publish/bilibili", icon: Layers },
       { label: "任务管理", href: "/tasks", icon: ClipboardList },
     ],
   },
@@ -140,6 +144,7 @@ const navSections: NavSection[] = [
     label: "系统",
     items: [
       { label: "系统设置", href: "/settings", icon: Settings },
+      { label: "CMS 后台", href: "/cms", icon: Settings },
     ],
   },
 ]

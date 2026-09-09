@@ -85,6 +85,8 @@ class AIMetadataGenerateRequest(BaseModel):
     force_regenerate: bool = Field(False, description="强制重新生成（即使已有AI内容）")
     platform: Optional[str] = Field(None, description="目标平台（douyin/xiaohongshu/kuaishou/bilibili/video_account 等）；为空则通用生成")
     language: Optional[str] = Field(None, description="输出语言（zh/en/bilingual）；TikTok 默认 bilingual，留空则按平台默认")
+    group_count: int = Field(1, ge=1, le=5, description="为每个视频生成几组差异化标签/话题（每组独立 title+tags）；1=兼容旧行为")
+    tags_only_groups: bool = Field(False, description="True 时每组只换 tags/话题、标题复用第 1 组；False 时每组标题也独立生成")
 
 
 class AIMetadataGenerateResponse(BaseModel):

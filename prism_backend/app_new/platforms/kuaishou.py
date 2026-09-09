@@ -12,7 +12,7 @@ from loguru import logger
 from utils.automation_provider import async_playwright, Page
 from myUtils.automation_context_factory import create_context_with_policy
 
-from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus
+from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus, risk_control_detected
 from ..session_manager import kuaishou_session_manager
 
 
@@ -159,6 +159,15 @@ class KuaishouAdapter(PlatformAdapter):
                     user_info=user_info,
                     full_state=full_state
                 )
+
+            # 风控/人工验证码：会话保持，提示用户手动完成验证
+            try:
+                risk_msg = await risk_control_detected(page, "kuaishou")
+            except Exception:
+                risk_msg = None
+            if risk_msg:
+                logger.warning(f"[Kuaishou] Risk control detected: {risk_msg}")
+                return LoginResult(status=LoginStatus.RISK_CONTROL, message=risk_msg)
 
             return LoginResult(status=LoginStatus.WAITING, message="Waiting for scan")
 

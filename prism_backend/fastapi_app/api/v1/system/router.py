@@ -422,6 +422,36 @@ async def set_douyin_login_mode(mode: str = Body(..., embed=True)):
     return {"success": True, "mode": mode, "restart_required": True}
 
 
+# ---------------------------------------------------------------------------
+# 平台渠道可见性（CMS「隐藏平台渠道」开关）
+# ---------------------------------------------------------------------------
+
+@router.get("/channels", summary="获取全部平台渠道与隐藏状态")
+async def get_channels():
+    """返回全部平台 + 当前是否被隐藏（CMS 渲染勾选开关）。"""
+    try:
+        from platforms.channels import all_platform_meta
+        from platforms import registry as _reg
+        items = all_platform_meta()
+        return {"success": True, "platforms": items, "count": len(items)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"读取平台渠道失败: {str(e)}")
+
+
+@router.put("/channels/visibility", summary="设置隐藏的平台渠道")
+async def set_channels_visibility(hidden: list = Body(..., embed=True, description="要隐藏的平台别名/代码列表，如 ['kuaishou','baijiahao']")):
+    """写入 .env 的 PRISM_HIDDEN_PLATFORMS。即时生效（账号列表/发布/统计过滤）。"""
+    try:
+        from platforms.channels import set_hidden_platforms, all_platform_meta
+        hidden = hidden or []
+        result = set_hidden_platforms(hidden)
+        return {"success": True, "hidden": result["hidden"], "platforms": all_platform_meta()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存渠道设置失败: {str(e)}")
+
+
 @router.post("/manual-sync", summary="????????")
 async def manual_sync(background_tasks: BackgroundTasks):
     """
