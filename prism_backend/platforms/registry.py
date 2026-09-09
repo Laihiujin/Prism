@@ -95,6 +95,17 @@ _PLATFORM_META: dict[int, dict[str, Any]] = {
         "publish_url": "https://baijiahao.baidu.com/builder/rc/edit?type=videoV2",
         "uploader": ("platforms.baijiahao.upload", "baijiahao_upload"),
     },
+    9: {
+        "name": "推特",
+        "aliases": ["twitter", "x", "xitter"],
+        "login_url": "https://x.com",
+        "publish_url": "https://x.com/compose/post",
+        "uploader": ("platforms.twitter.upload", "twitter_upload"),
+        # 发布走 xurl CLI（X 官方开发者 CLI），账号通过 `xurl auth`（OAuth 2.0 PKCE）
+        # 手动绑定到本机 ~/.xurl；这里没有网页 cookie，账号标识是 xurl app 名。
+        "native": True,
+        "kind": "post",
+    },
 }
 
 # 从 _PLATFORM_META 派生别名 → 代码 映射，避免两份列表漂移。

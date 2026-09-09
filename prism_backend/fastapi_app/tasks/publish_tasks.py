@@ -208,6 +208,23 @@ def publish_single_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
     task_id = self.request.id
     logger.info(f"[Celery] Starting publish task {task_id}")
 
+    # ⏰ 调度兜底：任何路径进入 Celery 的任务都尊重 not_before（eta 未设置时也生效）
+    nb_value = (task_data or {}).get("not_before")
+    if nb_value:
+        try:
+            nb_s = str(nb_value).replace("T", " ").replace("Z", "")
+            nb_dt = datetime.fromisoformat(nb_s)
+        except Exception:
+            nb_dt = None
+        if nb_dt is not None and nb_dt > now_beijing_naive():
+            wait_s = int((nb_dt - now_beijing_naive()).total_seconds())
+            logger.info(
+                f"⏰ [Celery] Task {task_id} 未到发布时间（{nb_dt}），countdown={max(wait_s, 1)}s 重投"
+            )
+            # max_retries=0 装饰器默认禁止重试 → 必须显式给 max_retries 覆盖；
+            # 每次重投都以剩余等待时间为 countdown，重试计数只在真正到点后停止。
+            raise self.retry(countdown=max(wait_s, 1), max_retries=12)
+
     # 更新任务状态为运行中
     task_state_manager.update_task_state(
         task_id=task_id,
@@ -229,6 +246,7 @@ def publish_single_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
         6: "tiktok",
         7: "youtube",
         8: "baijiahao",
+        9: "twitter",
     }
     platform_name = PLATFORM_MAP.get(int(platform_id)) if platform_id else None
 

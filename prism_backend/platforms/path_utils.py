@@ -174,6 +174,13 @@ def resolve_video_file(value: str) -> str:
     return str(candidate)
 
 
+def resolve_image_file(value: str) -> str:
+    """图片素材路径解析：与 resolve_video_file 同一套规则（素材库图片同样落在 videoFile 目录）。"""
+    if not value:
+        return value
+    return resolve_video_file(value)
+
+
 def is_existing_file(value: Optional[str]) -> bool:
     if not value:
         return False

@@ -17,7 +17,7 @@ _SCHEDULE_FORMAT = "%Y-%m-%d %H:%M"
 _DISPLAY_NAMES = {
     "douyin": "抖音", "kuaishou": "快手", "xiaohongshu": "小红书",
     "bilibili": "B站", "channels": "视频号", "baijiahao": "百家号",
-    "tiktok": "TikTok", "youtube": "YouTube",
+    "tiktok": "TikTok", "youtube": "YouTube", "twitter": "推特",
 }
 
 

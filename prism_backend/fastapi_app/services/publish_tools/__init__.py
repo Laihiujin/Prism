@@ -13,12 +13,12 @@ from __future__ import annotations
 from typing import List
 
 from . import (
-    baijiahao, bilibili, channels, douyin, kuaishou, tiktok, xiaohongshu, youtube,
+    baijiahao, bilibili, channels, douyin, kuaishou, tiktok, twitter, xiaohongshu, youtube,
 )
 from ..tool_catalog import ToolSpec
 
 _PLATFORM_MODULES = (
-    douyin, kuaishou, xiaohongshu, bilibili, channels, baijiahao, tiktok, youtube,
+    douyin, kuaishou, xiaohongshu, bilibili, channels, baijiahao, tiktok, twitter, youtube,
 )
 
 

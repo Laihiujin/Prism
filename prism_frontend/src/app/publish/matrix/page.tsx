@@ -56,7 +56,7 @@ import {
 import { PageHeader } from "@/components/layout/page-scaffold"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PlatformSelector, PlatformKey, PLATFORMS } from "../components/PlatformSelector"
-import { DouyinConfig, KuaishouConfig, XhsConfig, BilibiliConfig, VideoChannelConfig } from "../components/PlatformConfigs"
+import { DouyinConfig, KuaishouConfig, XhsConfig, BilibiliConfig, VideoChannelConfig, TwitterConfig } from "../components/PlatformConfigs"
 import { MaterialMetadataEditor } from "../components/MaterialMetadataEditor"
 import { PlatformMetadataAdapter } from "@/lib/platform-metadata-adapter"
 import { backendBaseUrl } from "@/lib/env"
@@ -70,6 +70,7 @@ const PLATFORM_CODE_MAP: Record<PlatformKey, number> = {
   channels: 2,
   tiktok: 6,
   youtube: 7,
+  twitter: 9,
 }
 
 type IntervalMode = "account_first" | "video_first"
@@ -122,6 +123,8 @@ interface PublishPlan {
   publishTiming: "immediate" | "scheduled"
   intervalControlEnabled: boolean
   intervalMode: IntervalMode
+  intervalSeconds: number // 发布间隔（秒），后端默认 300
+  randomOffsetSeconds: number // 随机偏移（±秒），0=不随机
   scheduleEnabled: boolean
   scheduleDate?: string
   scheduleTime?: string
@@ -142,6 +145,10 @@ interface PublishPlan {
   randomCover?: boolean
   miniprogramLink?: string
   miniprogramTitle?: string
+  // 🆕 NEW: AI 多组标签/话题
+  aiGroupCount: number       // 批量AI生成为每个素材生成几组差异化标题+话题（1=兼容旧行为）
+  tagsOnlyGroups: boolean    // True：各组只换话题、标题复用第1组
+  useAiTagGroups: boolean    // 发布时让不同账号自动使用不同组（按账号轮转）
 }
 
 export default function PublishPage() {
@@ -232,7 +239,7 @@ export default function PublishPage() {
       : Array.isArray((materialsData as any)?.data)
         ? (materialsData as any).data
         : []
-    return (list as Material[]).filter((m) => m.status === "pending")
+    return (list as Material[]).filter((m) => m.status === "pending" && (m as any).type !== "image")
   }, [materialsData])
 
   // 表单状态
@@ -247,6 +254,8 @@ export default function PublishPage() {
     publishTiming: "immediate",
     intervalControlEnabled: false,
     intervalMode: "account_first",
+    intervalSeconds: 300,
+    randomOffsetSeconds: 0,
     scheduleEnabled: false,
     videosPerDay: 1,
     // 🆕 NEW: Assignment strategy defaults
@@ -263,6 +272,10 @@ export default function PublishPage() {
     randomCover: false,
     miniprogramLink: "",
     miniprogramTitle: "",
+    // 🆕 NEW: AI 多组标签/话题 默认值
+    aiGroupCount: 1,
+    tagsOnlyGroups: false,
+    useAiTagGroups: false,
   })
 
   const [materialPickerOpen, setMaterialPickerOpen] = useState(false)
@@ -425,6 +438,66 @@ export default function PublishPage() {
 
     setIsGeneratingAI(true)
     try {
+      // 🆕 多组标签/话题模式：走后端持久化接口（存 ai_tag_groups），
+      // 单组模式保持旧的 /api/v1/ai/chat 直连（不落库，页面态即可）
+      if (plan.aiGroupCount > 1) {
+        const ids = selectedMaterialsList.map((m) => Number(m.id))
+        const resp = await fetch("/api/v1/files/batch-generate-metadata", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            file_ids: ids,
+            force_regenerate: true,
+            platform: plan.platforms.length === 1 ? plan.platforms[0] : undefined,
+            group_count: plan.aiGroupCount,
+            tags_only_groups: Boolean(plan.tagsOnlyGroups),
+          }),
+        })
+        const data = await resp.json()
+        if (!resp.ok) {
+          throw new Error(data?.detail || data?.message || "多组AI生成失败")
+        }
+        const okResults = (data?.results || []).filter((r: any) => r?.status === "success")
+        if (okResults.length === 0) {
+          throw new Error("多组AI生成未返回任何结果")
+        }
+
+        // 首个成功结果回填全局标题/标签（第 1 组）
+        const first = okResults[0]
+        const firstGroup = Array.isArray(first?.ai_tag_groups) && first.ai_tag_groups.length > 0
+          ? first.ai_tag_groups[0]
+          : null
+        if (firstGroup?.title) {
+          setPlan(prev => ({ ...prev, title: prev.title || String(firstGroup.title) }))
+        }
+        if (Array.isArray(firstGroup?.tags) && firstGroup.tags.length > 0) {
+          setPlan(prev => ({ ...prev, tags: prev.tags.length > 0 ? prev.tags : normalizeTags(firstGroup.tags) }))
+        }
+
+        // 用第 1 组回填每个素材的编辑态（标题/话题即时可见）
+        setMaterialMetadata(prev => {
+          const next = { ...prev }
+          okResults.forEach((res: any) => {
+            const id = String(res.file_id)
+            const g0 = Array.isArray(res?.ai_tag_groups) && res.ai_tag_groups.length > 0 ? res.ai_tag_groups[0] : null
+            if (g0) {
+              next[id] = {
+                ...next[id],
+                title: String(g0.title ?? ""),
+                tags: normalizeTags(g0.tags),
+              }
+            }
+          })
+          return next
+        })
+
+        toast({
+          title: "多组AI生成完成",
+          description: `成功 ${okResults.length}/${selectedMaterialsList.length} 个素材，每组 ${plan.aiGroupCount} 套标题+话题`,
+        })
+        return
+      }
+
       const promises = selectedMaterialsList.map(async (material) => {
         try {
           const draft = materialMetadata[String(material.id)] || {}
@@ -812,7 +885,8 @@ export default function PublishPage() {
         scheduled_time: scheduledTime,
         interval_control_enabled: plan.intervalControlEnabled,
         interval_mode: plan.intervalControlEnabled ? plan.intervalMode : undefined,
-        interval_seconds: plan.intervalControlEnabled ? 300 : undefined,
+        interval_seconds: plan.intervalControlEnabled ? plan.intervalSeconds : undefined,
+        random_offset: plan.intervalControlEnabled ? plan.randomOffsetSeconds : undefined,
         priority: 5,
         items: items.length > 0 ? items : undefined,  // items 包含每个素材的润色信息
         // 🆕 NEW: Assignment strategy parameters
@@ -824,6 +898,8 @@ export default function PublishPage() {
         dedup_window_days: plan.dedupWindowDays,
         // 🆕 NEW: 每平台专属配置（抖音/快手/小红书/B站/视频号面板，写入 platformSettings）
         platform_settings: plan.platformSettings || {},
+        // 🆕 NEW: AI 多组标签/话题 — 发布时按账号自动轮转使用素材 ai_tag_groups 的不同组
+        use_ai_tag_groups: Boolean(plan.useAiTagGroups),
         // 🆕 NEW: 抖音发布选项 (仅抖音平台)
         ...(isDouyin ? {
           declaration: dSettings.declaration ?? "",
@@ -950,6 +1026,7 @@ export default function PublishPage() {
       xiaohongshu: "小红书配置",
       bilibili: "B站配置",
       channels: "视频号配置",
+      twitter: "推特配置",
     }
     let config: ReactNode = null
     switch (platform) {
@@ -958,6 +1035,7 @@ export default function PublishPage() {
       case "xiaohongshu": config = <XhsConfig key="xhs" {...commonProps} />; break
       case "bilibili": config = <BilibiliConfig key="bilibili" {...commonProps} />; break
       case "channels": config = <VideoChannelConfig key="channels" {...commonProps} />; break
+      case "twitter": config = <TwitterConfig key="twitter" {...commonProps} />; break
       // TikTok and YouTube both use the shared metadata editor. Their server-side
       // adapters add platform-specific fields such as visibility / playlist.
       case "tiktok":
@@ -1452,6 +1530,7 @@ export default function PublishPage() {
               </div>
             </div>
             {plan.intervalControlEnabled ? (
+              <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {INTERVAL_OPTIONS.map((option) => {
                   const active = plan.intervalMode === option.key
@@ -1515,6 +1594,49 @@ export default function PublishPage() {
                   )
                 })}
               </div>
+
+              {/* 🆕 发布间隔时长 + 随机偏移 */}
+              <div className="mt-3 flex flex-wrap items-end gap-5 rounded-xl border border-border/60 bg-card/20 px-4 py-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-foreground/60">间隔时长（秒）</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={10}
+                      step={10}
+                      value={plan.intervalSeconds}
+                      onChange={(e) =>
+                        setPlan(prev => ({
+                          ...prev,
+                          intervalSeconds: Math.max(10, parseInt(e.target.value) || 300)
+                        }))
+                      }
+                      className="w-28 h-9 text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground">秒（≥10）</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-foreground/60">随机偏移（±秒）</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={10}
+                      value={plan.randomOffsetSeconds}
+                      onChange={(e) =>
+                        setPlan(prev => ({
+                          ...prev,
+                          randomOffsetSeconds: Math.max(0, parseInt(e.target.value) || 0)
+                        }))
+                      }
+                      className="w-28 h-9 text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground">0=固定间隔</span>
+                  </div>
+                </div>
+              </div>
+              </>
             ) : (
               <div className="rounded-xl border border-border/70 bg-card/20 px-4 py-3 text-xs text-muted-foreground">
                 未开启间隔控制：将按高并发提交任务（同时发布）。如需节奏控制，请开启开关并选择一种排布方式。
@@ -1526,11 +1648,94 @@ export default function PublishPage() {
               <div className="mt-4">
                 <IntervalTimelinePreview
                   mode={plan.intervalMode}
-                  intervalSeconds={300}
-                  randomOffset={0}
+                  intervalSeconds={plan.intervalSeconds}
+                  randomOffset={plan.randomOffsetSeconds}
                   videoCount={plan.materials.length}
                   accountCount={plan.accounts.length}
                 />
+              </div>
+            )}
+          </div>
+
+          {/* 🆕 AI 多组标签/话题：同一视频生成多套差异化标题+话题，发布时按账号轮转分发 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Label className="text-foreground/70">AI 标签/话题</Label>
+                <Badge variant="outline" className="rounded-full border-border/80 bg-black text-[11px] text-foreground/70">
+                  多组分发
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5">
+                <span className="text-xs text-foreground/70">启用多组</span>
+                <Switch
+                  checked={plan.aiGroupCount > 1}
+                  onCheckedChange={(checked) =>
+                    setPlan(prev => ({
+                      ...prev,
+                      aiGroupCount: checked ? 3 : 1,
+                      ...(checked ? {} : { useAiTagGroups: false }),
+                    }))
+                  }
+                  className="scale-90"
+                />
+              </div>
+            </div>
+
+            {plan.aiGroupCount > 1 ? (
+              <div className="rounded-xl border border-border/60 bg-card/20 px-4 py-3 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-foreground/60">每组数量</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={2}
+                        max={5}
+                        value={plan.aiGroupCount}
+                        onChange={(e) => {
+                          const v = Math.min(5, Math.max(2, parseInt(e.target.value) || 3))
+                          setPlan(prev => ({ ...prev, aiGroupCount: v }))
+                        }}
+                        className="w-20 h-9 text-sm"
+                      />
+                      <span className="text-xs text-muted-foreground">组（每组独立 标题+话题）</span>
+                    </div>
+                  </div>
+                  <div className="flex items-end pb-1">
+                    <div className="flex items-center gap-2 rounded-full border border-border/70 bg-black px-3 py-1.5">
+                      <span className="text-xs text-foreground/70">只换话题（标题复用第1组）</span>
+                      <Switch
+                        checked={plan.tagsOnlyGroups}
+                        onCheckedChange={(checked) => setPlan(prev => ({ ...prev, tagsOnlyGroups: checked }))}
+                        className="scale-90"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border/40 bg-black/40 px-3 py-2.5 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="text-xs text-foreground/80">发布时自动轮转不同组</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      同一视频发给多个账号时，账号按顺序使用第 1/2/3… 组标题+话题，实现一稿多话题分发
+                    </div>
+                  </div>
+                  <Switch
+                    checked={plan.useAiTagGroups}
+                    onCheckedChange={(checked) => setPlan(prev => ({ ...prev, useAiTagGroups: checked }))}
+                  />
+                </div>
+
+                <div className="text-[11px] text-muted-foreground leading-relaxed">
+                  点击「批量AI生成」即为每个素材生成 {plan.aiGroupCount} 组差异化标题+话题并持久化到素材。
+                  发布时建议配合「发布间隔控制」使用，避免同一账号短时间内发布多条雷同内容。
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border/70 bg-card/20 px-4 py-3 text-xs text-muted-foreground">
+                单组模式：每个素材只生成一套标题+话题（默认）。
+                开启「多组分发」后，可为同一视频生成多套差异化话题，发布到不同账号时自动轮转使用。
               </div>
             )}
           </div>

@@ -212,6 +212,8 @@ async def _generate_ai_metadata_handler(**kwargs: Any) -> Dict[str, Any]:
             force_regenerate=bool(kwargs.get("force_regenerate", False)),
             platform=kwargs.get("platform"),
             language=kwargs.get("language"),
+            group_count=kwargs.get("group_count", 1),
+            tags_only_groups=bool(kwargs.get("tags_only_groups", False)),
         )
     return {"success": True, "data": summary}
 
@@ -221,7 +223,9 @@ _register(ToolSpec(
     description=(
         "AI 生成视频标题+标签并写入素材，支持平台网感文案规则与中英双语。\n"
         "传 platform=douyin/xiaohongshu/kuaishou/bilibili/video_account/tiktok 时启用对应平台规则；"
-        "language=zh/en/bilingual 控制输出语言（TikTok 默认 bilingual）。"
+        "language=zh/en/bilingual 控制输出语言（TikTok 默认 bilingual）。\n"
+        "group_count>1 时为每个视频生成多组差异化标题+话题（写入 ai_tag_groups，第1组回填 ai_title/ai_tags）；"
+        "tags_only_groups=True 时各组只换话题、标题复用第1组。"
     ),
     parameters={
         "type": "object",
@@ -230,12 +234,14 @@ _register(ToolSpec(
             "force_regenerate": {"type": "boolean", "description": "是否强制重新生成（即使已有AI内容）", "default": False},
             "platform": {"type": "string", "description": "目标平台 douyin/xiaohongshu/kuaishou/bilibili/video_account/tiktok；为空则通用生成", "default": ""},
             "language": {"type": "string", "description": "输出语言 zh/en/bilingual；TikTok 默认 bilingual（中英双语）", "default": ""},
+            "group_count": {"type": "integer", "description": "为每个视频生成几组差异化标题+话题（1-5，1=旧行为）", "default": 1},
+            "tags_only_groups": {"type": "boolean", "description": "True 时每组只换话题、标题复用第1组", "default": False},
         },
         "required": ["file_ids"],
     },
     handler=_generate_ai_metadata_handler,
     category="title_topic",
-    output_summary="返回每条素材的 ai_title / ai_tags（按平台落地）",
+    output_summary="返回每条素材的 ai_title / ai_tags / ai_tag_groups（按平台落地）",
 ))
 
 

@@ -133,7 +133,7 @@ async def weixin_setup(account_file, handle=False):
 
 
 class TencentVideo(object):
-    def __init__(self, title, file_path, tags, publish_date: datetime, account_file, category=None, thumbnail_path=None, proxy=None):
+    def __init__(self, title, file_path, tags, publish_date: datetime, account_file, category=None, thumbnail_path=None, proxy=None, article_url="", mini_program=""):
         self.title = title  # 视频标题
         self.file_path = file_path
         self.tags = tags
@@ -143,6 +143,262 @@ class TencentVideo(object):
         self.thumbnail_path = thumbnail_path
         self.local_executable_path = LOCAL_CHROME_PATH
         self.proxy = proxy
+        self.article_url = (article_url or "").strip()  # 公众号文章挂载链接
+        self.mini_program = (mini_program or "").strip()  # 小程序（短剧）挂载搜索词
+
+    async def add_article_link(self, page):
+        """视频号「关联 → 公众号文章」：打开链接下拉 → 选公众号文章 → 粘贴文章 URL。
+
+        移植自 social-auto-upload-web-ui channels `_link_url(page,'article',url)`：
+        发布表单里「关联」区结构为 `.post-link-wrap > .link-display-wrap`（点击打开下拉），
+        下拉项 `.link-list-options .link-option-item:has-text("公众号文章")`，选中后子区出现
+        ``<input placeholder="粘贴公众号文章链接" class="weui-desktop-form__input">`` 直贴链接、无确认按钮。
+        best-effort：失败仅告警不阻断发布；下拉项不可见说明账号无该关联权限。
+        """
+        url = (self.article_url or "").strip()
+        if not url:
+            return True
+        try:
+            wrap = page.locator(".post-link-wrap").first
+            deadline = 30
+            while deadline > 0:
+                try:
+                    if await wrap.count() > 0 and await wrap.is_visible():
+                        break
+                except Exception:
+                    pass
+                await page.wait_for_timeout(500)
+                deadline -= 1
+            if not await wrap.count() or not await wrap.is_visible():
+                tencent_logger.warning('[公众号文章挂载] 找不到 .post-link-wrap 关联区，跳过')
+                return False
+
+            # 点 .link-display-wrap 打开下拉
+            display = page.locator(".post-link-wrap .link-display-wrap").first
+            await display.wait_for(state="visible", timeout=20000)
+            await display.click()
+            options = page.locator(".post-link-wrap .link-list-options .link-option-item")
+            found = False
+            for _ in range(30):
+                try:
+                    if await options.count() > 0 and await options.first.is_visible():
+                        found = True
+                        break
+                except Exception:
+                    pass
+                await page.wait_for_timeout(300)
+            if not found:
+                tencent_logger.warning('[公众号文章挂载] 链接下拉未展开（或账号无关联区），跳过')
+                await page.keyboard.press("Escape")
+                return False
+
+            # 选「公众号文章」项（菜单可能被遮挡：滚动可见后点）
+            article_opt = page.locator(
+                '.post-link-wrap .link-list-options .link-option-item:has-text("公众号文章")'
+            ).first
+            try:
+                await article_opt.wait_for(state="visible", timeout=15000)
+            except Exception:
+                tencent_logger.warning('[公众号文章挂载] 下拉里没有「公众号文章」项（账号无该关联权限），跳过')
+                await page.keyboard.press("Escape")
+                return False
+            await article_opt.scroll_into_view_if_needed()
+            await page.wait_for_timeout(200)
+            await article_opt.click()
+            await page.wait_for_timeout(600)
+
+            # 子区「粘贴公众号文章链接」输入框（无确认按钮，直接填）
+            inp = page.locator('input[placeholder*="公众号文章链接"]').first
+            await inp.wait_for(state="visible", timeout=15000)
+            await inp.click()
+            await inp.fill("")
+            await inp.fill(url)
+            await page.wait_for_timeout(400)
+            tencent_logger.success(f'[+]公众号文章链接已填入: {url[:80]}')
+            return True
+        except Exception as exc:
+            tencent_logger.warning(f'[公众号文章挂载] 设置失败（不阻断发布）: {exc}')
+            return False
+
+    async def add_mini_program_link(self, page):
+        """视频号「关联 → 小程序短剧」：打开链接下拉 → 选「小程序短剧」→ 弹窗搜索 → 点选。
+
+        移植自 social-auto-upload-web-ui channels `_drama_link_ops.open_drama_panel(page,
+        'mini_drama')` + search/select 流程：
+        - 「关联」区 `.post-link-wrap`（发布表单在 iframe，locator 可穿透）；
+        - 点 `.link-display-wrap` 展开下拉，项 `.link-list-options .link-option-item:has-text("小程序短剧")`；
+        - 选中后子区出现含 placeholder「选择需要添加的短剧」的 `.content-wrap`（可点，点开弹窗）；
+        - 弹窗内容 wrap：`.dialog-wrap:has(.drama-table-wrap)`，行 `tr.drama-row`；搜索框在可见 wrap 内
+          （`.search-wrap input` / `.filter-wrap input`）；点行即选中（无 footer 添加按钮）；
+        - 关闭弹窗：点 `.weui-desktop-dialog__close-btn`，兜底 Esc。
+        best-effort：任一步失败仅告警不阻断发布；下拉无「小程序短剧」项=账号无该关联权限。
+        """
+        kw = (self.mini_program or "").strip()
+        if not kw:
+            return True
+        try:
+            # 1) 等「关联」区
+            wrap = page.locator(".post-link-wrap").first
+            for _ in range(30):
+                try:
+                    if await wrap.count() > 0 and await wrap.is_visible():
+                        break
+                except Exception:
+                    pass
+                await page.wait_for_timeout(500)
+            if not await wrap.count() or not await wrap.is_visible():
+                tencent_logger.warning('[小程序短剧挂载] 找不到 .post-link-wrap 关联区，跳过')
+                return False
+
+            # 2) 展开链接下拉并选「小程序短剧」
+            display = page.locator(".post-link-wrap .link-display-wrap").first
+            await display.wait_for(state="visible", timeout=20000)
+            await display.click()
+            option = page.locator(
+                '.post-link-wrap .link-list-options .link-option-item:has-text("小程序短剧")'
+            ).first
+            try:
+                await option.wait_for(state="visible", timeout=15000)
+            except Exception:
+                tencent_logger.warning('[小程序短剧挂载] 下拉里没有「小程序短剧」项（账号无该关联权限），跳过')
+                await page.keyboard.press("Escape")
+                return False
+            await option.scroll_into_view_if_needed()
+            await page.wait_for_timeout(200)
+            await option.click()
+            await page.wait_for_timeout(600)
+
+            # 3) 点子区入口（含「选择需要添加的短剧」文本的 .content-wrap）
+            entry = page.locator('.content-wrap:has-text("选择需要添加的短剧")').first
+            try:
+                await entry.wait_for(state="visible", timeout=20000)
+            except Exception:
+                tencent_logger.warning('[小程序短剧挂载] 选「小程序短剧」后未出现子区入口（页面改版或无权），跳过')
+                return False
+            await entry.click()
+            await page.wait_for_timeout(1200)
+
+            # 4) 等弹窗内容表（可见 wrap；发布页预渲染多个隐藏弹窗，按「可见+含 .drama-table-wrap」定位）
+            async def _active_mini_dialog():
+                dlgs = page.locator(".weui-desktop-dialog")
+                n = await dlgs.count()
+                for i in range(n):
+                    d = dlgs.nth(i)
+                    try:
+                        if await d.is_visible() and await d.locator(
+                            ".dialog-wrap:has(.drama-table-wrap)"
+                        ).count() > 0:
+                            return d
+                    except Exception:
+                        continue
+                return None
+
+            async def _visible_drama_wrap():
+                d = await _active_mini_dialog()
+                if d is None:
+                    return None
+                wraps = d.locator(".dialog-wrap:has(.drama-table-wrap)")
+                wn = await wraps.count()
+                for i in range(wn):
+                    w = wraps.nth(i)
+                    try:
+                        if await w.is_visible():
+                            return w
+                    except Exception:
+                        continue
+                return None
+
+            ready = False
+            for _ in range(30):
+                w = await _visible_drama_wrap()
+                if w is not None:
+                    rows = w.locator("tr.drama-row")
+                    if await rows.count() > 0:
+                        ready = True
+                        break
+                await page.wait_for_timeout(400)
+            if not ready:
+                tencent_logger.warning('[小程序短剧挂载] 短剧表格弹窗未出现数据行，跳过')
+                await self._close_mini_dialog(page)
+                return False
+
+            # 5) 搜索关键词（可见 wrap 内搜索框，回车触发联想）
+            w = await _visible_drama_wrap()
+            inp = None
+            for sel in (".search-wrap input", ".filter-wrap input", "input.weui-desktop-form__input"):
+                try:
+                    cand = w.locator(sel).first
+                    if await cand.count() > 0 and await cand.is_visible():
+                        inp = cand
+                        break
+                except Exception:
+                    continue
+            if inp is not None:
+                await inp.click()
+                await inp.fill("")
+                await inp.fill(kw)
+                await page.wait_for_timeout(300)
+                await inp.press("Enter")
+                await page.wait_for_timeout(1200)
+
+            # 6) 点第一个匹配行（标题/文本含关键词优先）
+            w = await _visible_drama_wrap()
+            picked = False
+            if w is not None:
+                rows = w.locator("tr.drama-row")
+                n = await rows.count()
+                for i in range(n):
+                    row = rows.nth(i)
+                    try:
+                        txt = ((await row.inner_text()) or "").strip()
+                    except Exception:
+                        continue
+                    if kw in txt:
+                        await row.click()
+                        await page.wait_for_timeout(600)
+                        picked = True
+                        tencent_logger.success(f'[+]已关联小程序短剧（搜索词「{kw}」命中「{(txt[:40].replace(chr(10), " "))}」）')
+                        break
+                if not picked and n > 0:
+                    # 无精确命中：点首行兜底（表格当前为搜索/全量列表）
+                    try:
+                        await rows.first.click()
+                        await page.wait_for_timeout(600)
+                        picked = True
+                        tencent_logger.info('[小程序短剧挂载] 无文本命中，点选表格首行兜底')
+                    except Exception:
+                        pass
+            if not picked:
+                tencent_logger.warning('[小程序短剧挂载] 表格无行可点，跳过')
+            await self._close_mini_dialog(page)
+            return picked
+        except Exception as exc:
+            tencent_logger.warning(f'[小程序短剧挂载] 设置失败（不阻断发布）: {exc}')
+            return False
+
+    async def _close_mini_dialog(self, page):
+        """关短剧弹窗：优先关可见 dialog 的关闭钮，兜底 Esc。"""
+        try:
+            dlgs = page.locator(".weui-desktop-dialog")
+            n = await dlgs.count()
+            for i in range(n):
+                d = dlgs.nth(i)
+                try:
+                    if await d.is_visible() and await d.locator(".dialog-wrap:has(.drama-table-wrap)").count() > 0:
+                        btn = d.locator(".weui-desktop-dialog__close-btn").first
+                        if await btn.count() > 0 and await btn.is_visible():
+                            await btn.click()
+                            await page.wait_for_timeout(400)
+                            return
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        try:
+            await page.keyboard.press("Escape")
+            await page.wait_for_timeout(300)
+        except Exception:
+            pass
 
     async def set_schedule_time_tencent(self, page, publish_date):
         label_element = page.locator("label").filter(has_text="定时").nth(1)
@@ -458,8 +714,12 @@ class TencentVideo(object):
             pass
         # 填充标题和话题
         await self.add_title_tags(page)
-        # 添加商品
-        # await self.add_product(page)
+        # 公众号文章挂载（真实链路：关联下拉 → 公众号文章 → 粘贴链接）
+        if self.article_url:
+            await self.add_article_link(page)
+        # 小程序（短剧）挂载（真实链路：关联下拉 → 小程序短剧 → 弹窗搜索点选）
+        if self.mini_program:
+            await self.add_mini_program_link(page)
         # 合集功能
         await self.add_collection(page)
         # 原创选择

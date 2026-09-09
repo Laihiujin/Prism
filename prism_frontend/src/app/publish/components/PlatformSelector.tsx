@@ -1,5 +1,8 @@
+"use client"
+
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { useVisiblePlatforms } from "@/hooks/use-visible-platforms"
 
 export const PLATFORMS = [
     { key: "douyin", name: "抖音", code: 3, icon: "/douYin.svg", desc: "抖音矩阵多元组合", disabled: false },
@@ -9,6 +12,7 @@ export const PLATFORMS = [
     { key: "bilibili", name: "B站", code: 5, icon: "/bilibili.svg", desc: "B站矩阵多元组合", disabled: false },
     { key: "tiktok", name: "TikTok", code: 6, icon: "/Tiktok.svg", desc: "TikTok Studio 发布", disabled: false },
     { key: "youtube", name: "YouTube", code: 7, icon: "/youtube.svg", desc: "YouTube Studio 发布", disabled: false },
+    { key: "twitter", name: "推特", code: 9, icon: "/x.svg", desc: "X/Twitter 官方 API 发布", disabled: false },
 ] as const
 
 export type PlatformKey = typeof PLATFORMS[number]["key"]
@@ -19,9 +23,11 @@ interface PlatformSelectorProps {
 }
 
 export function PlatformSelector({ selected, onSelect }: PlatformSelectorProps) {
+    const { isVisible } = useVisiblePlatforms()
+    const visible = PLATFORMS.filter((p) => isVisible(p.key))
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {PLATFORMS.map((platform) => {
+            {visible.map((platform) => {
                 const isSelected = selected.includes(platform.key)
                 return (
                     <button
