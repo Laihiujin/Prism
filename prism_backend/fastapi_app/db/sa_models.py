@@ -45,6 +45,7 @@ file_records = Table(
     Column("ai_description", Text),
     Column("ai_tags", Text),
     Column("ai_generated_at", DateTime),
+    Column("ai_tag_groups", Text),
 )
 
 

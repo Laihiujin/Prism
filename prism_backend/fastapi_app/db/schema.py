@@ -74,7 +74,8 @@ def ensure_main_db_schema(conn: sqlite3.Connection) -> None:
             ai_title TEXT,
             ai_description TEXT,
             ai_tags TEXT,
-            ai_generated_at TIMESTAMP
+            ai_generated_at TIMESTAMP,
+            ai_tag_groups TEXT
         )
         """
     )
@@ -99,6 +100,7 @@ def ensure_main_db_schema(conn: sqlite3.Connection) -> None:
         "ai_description": "ALTER TABLE file_records ADD COLUMN ai_description TEXT",
         "ai_tags": "ALTER TABLE file_records ADD COLUMN ai_tags TEXT",
         "ai_generated_at": "ALTER TABLE file_records ADD COLUMN ai_generated_at TIMESTAMP",
+        "ai_tag_groups": "ALTER TABLE file_records ADD COLUMN ai_tag_groups TEXT",
     }
 
     # --- publish_presets ---

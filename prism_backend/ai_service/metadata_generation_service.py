@@ -15,6 +15,41 @@ import re
 from typing import Any, Dict, List, Optional
 
 
+def _extract_json_object(content: str) -> Dict[str, Any]:
+    """Extract the first balanced top-level JSON object from model output.
+
+    The old ``re.search(r"\{[^}]+\}")`` cannot parse nested objects (e.g. the
+    multi-group ``{"groups": [{...}, ...]}`` output), so walk braces instead.
+    """
+    text = content.strip()
+    # Drop markdown fences / prose around the JSON object.
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("no JSON object found in model output")
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return json.loads(text[start : i + 1])
+    raise ValueError("unbalanced JSON object in model output")
+
+
 async def _generate_one(
     cursor: Any,
     db: Any,
@@ -24,8 +59,15 @@ async def _generate_one(
     platform: Optional[str],
     language: Optional[str],
     logger: Any,
+    group_count: int = 1,
+    tags_only_groups: bool = False,
 ) -> Dict[str, Any]:
-    """Generate + persist title/tags for a single file. Returns a result dict."""
+    """Generate + persist title/tags for a single file. Returns a result dict.
+
+    ``group_count`` > 1 asks the model for that many differentiated title+tags
+    variants; they are stored as JSON in ``file_records.ai_tag_groups`` while
+    ``ai_title``/``ai_tags`` keep group #1 (so legacy readers keep working).
+    """
     cursor.execute("""
         SELECT id, filename, file_path, title, tags, ai_title, ai_tags
         FROM file_records
@@ -59,6 +101,8 @@ async def _generate_one(
         platform=platform,
         config=prompt_config,
         language=language,
+        group_count=group_count,
+        tags_only_groups=tags_only_groups,
     )
 
     # 走与 /api/v1/ai/chat 相同的 chat 模型配置（订阅-deepseek-v4-flash-vision-exp）
@@ -67,50 +111,81 @@ async def _generate_one(
     content = await call_chat_model(
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
-        max_tokens=500,
+        max_tokens=1500 if group_count and group_count > 1 else 500,
     )
 
-    json_match = re.search(r"\{[^}]+\}", content, re.DOTALL)
-    metadata = json.loads(json_match.group()) if json_match else json.loads(content)
-
-    ai_title = str(metadata.get("title", "") or "").strip()
-    raw_tags = metadata.get("tags", [])
-    if isinstance(raw_tags, str):
-        raw_tags = [t for t in re.split(r"[\s,，]+", raw_tags) if t and t.strip()]
-    ai_tags: List[str] = []
-    if isinstance(raw_tags, list):
-        for t in raw_tags:
-            s = str(t).strip()
-            if not s:
-                continue
-            s = s.lstrip("#").strip()
-            if s and s not in ai_tags:
-                ai_tags.append(s)
-
-    # 按平台限制做后处理：标题截断到平台上限、话题数上限与去重（只处理标题+标签）
+    try:
+        metadata = _extract_json_object(content)
+    except Exception:
+        # 回退：老的正则提取（单组标题+标签场景足够）
+        json_match = re.search(r"\{[^}]+\}", content, re.DOTALL)
+        metadata = json.loads(json_match.group()) if json_match else json.loads(content)
+    # ── 解析：多组（groups[]）或单组（title+tags）两种输出格式 ──
     from ai_service.title_topic_generator import apply_platform_limits
 
-    ai_title, ai_tags = apply_platform_limits(
-        platform=platform,
-        title=ai_title,
-        tags=ai_tags,
-    )
+    def _clean_tags(raw_tags: Any) -> List[str]:
+        out: List[str] = []
+        if isinstance(raw_tags, str):
+            raw_tags = [t for t in re.split(r"[\s,，]+", raw_tags) if t and t.strip()]
+        if isinstance(raw_tags, list):
+            for t in raw_tags:
+                s = str(t).strip().lstrip("#").strip()
+                if s and s not in out:
+                    out.append(s)
+        return out
+
+    raw_groups: List[Dict[str, Any]] = metadata.get("groups")
+    if isinstance(raw_groups, list) and len(raw_groups) > 0:
+        groups: List[Dict[str, Any]] = []
+        first_title: str = ""
+        first_tags: List[str] = []
+        for idx, g in enumerate(raw_groups):
+            g = g if isinstance(g, dict) else {}
+            title = str(g.get("title", "") or "").strip()
+            tags = _clean_tags(g.get("tags"))
+            # tags_only_groups：第 2 组起复用第 1 组标题
+            if idx > 0 and tags_only_groups and first_title:
+                title = first_title
+            title, tags = apply_platform_limits(platform=platform, title=title, tags=tags)
+            if idx == 0:
+                first_title, first_tags = title, tags
+            groups.append({"title": title, "tags": tags})
+
+        ai_title, ai_tags = first_title, first_tags
+        ai_tag_groups = groups
+    else:
+        raw_title = str(metadata.get("title", "") or "").strip()
+        ai_title, ai_tags = apply_platform_limits(
+            platform=platform,
+            title=raw_title,
+            tags=_clean_tags(metadata.get("tags")),
+        )
+        ai_tag_groups = [{"title": ai_title, "tags": ai_tags}]
 
     cursor.execute("""
         UPDATE file_records
-        SET ai_title = ?, ai_tags = ?, ai_generated_at = CURRENT_TIMESTAMP
+        SET ai_title = ?, ai_tags = ?, ai_tag_groups = ?, ai_generated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (ai_title, json.dumps(ai_tags, ensure_ascii=False), file_id))
+    """, (
+        ai_title,
+        json.dumps(ai_tags, ensure_ascii=False),
+        json.dumps(ai_tag_groups, ensure_ascii=False),
+        file_id,
+    ))
     db.commit()
 
     if logger:
-        logger.info("AI title/tags generated for file %s: %s", file_id, ai_title)
+        logger.info(
+            "AI title/tags generated for file %s: %s (%d groups)",
+            file_id, ai_title, len(ai_tag_groups),
+        )
 
     return {
         "file_id": file_id,
         "status": "success",
         "ai_title": ai_title,
         "ai_tags": ai_tags,
+        "ai_tag_groups": ai_tag_groups,
     }
 
 
@@ -121,17 +196,21 @@ async def generate_metadata_for_files(
     platform: Optional[str] = None,
     language: Optional[str] = None,
     logger: Any = None,
+    group_count: int = 1,
+    tags_only_groups: bool = False,
 ) -> Dict[str, Any]:
     """Generate + persist AI title/tags for a list of file_ids.
 
     ``db`` must expose ``cursor()`` / ``commit()`` (the same connection the
     files router receives). Returns ``{"success_count", "failed_count",
-    "results", "platform"}``.
+    "results", "platform"}``. When ``group_count`` > 1 each file stores
+    ``ai_tag_groups`` (JSON) with that many differentiated title+tags variants.
     """
     from ai_service.title_topic_generator import load_ai_prompts_config, resolve_platform
 
     prompt_config = load_ai_prompts_config()
     resolved_platform = resolve_platform(platform)
+    group_count = max(int(group_count or 1), 1)
 
     cursor = db.cursor()
     results: List[Dict[str, Any]] = []
@@ -149,6 +228,8 @@ async def generate_metadata_for_files(
                 platform=resolved_platform,
                 language=language,
                 logger=logger,
+                group_count=group_count,
+                tags_only_groups=tags_only_groups,
             )
         except Exception as exc:  # noqa: BLE001 - per-file isolation
             if logger:

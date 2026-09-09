@@ -137,6 +137,8 @@ def build_metadata_prompt(
     platform: Optional[str],
     config: Optional[Dict[str, Any]] = None,
     language: Optional[str] = None,
+    group_count: int = 1,
+    tags_only_groups: bool = False,
 ) -> str:
     """Build a platform-aware AI title+tags prompt (NO description).
 
@@ -146,6 +148,11 @@ def build_metadata_prompt(
     that platform. ``language`` (zh/en/bilingual) overrides the output language;
     TikTok defaults to bilingual when not provided. Output is ONLY title + tags
     (the description is a separate field at publish time).
+
+    ``group_count`` > 1 asks for that many DIFFERENT title+tags variants
+    (``tags_only_groups=True`` keeps one title and only varies the tags), so a
+    single video can fan out across accounts with distinct hooks/topics.
+    ``group_count == 1`` keeps the legacy single-object output byte-compatible.
     """
     config = config if config is not None else load_ai_prompts_config()
     meta = (PLATFORM_META or {}).get(platform) if platform else None
@@ -185,6 +192,35 @@ def build_metadata_prompt(
         # Bilingual/en relax the strict 中文-first rule for language tags only.
         final_lang_note = "3) 不要表情符号；避免英文引号包裹标题"
 
+    group_extra = ""
+    if group_count and group_count > 1:
+        group_extra = (
+            "\n4) 多组生成要求：输出 JSON 对象包含 groups 数组，共 "
+            f"{int(group_count)} 组，每组为 {{\"title\", \"tags\"}}；"
+            + ("各组标题须明显不同（结构/信息点/切入角度不同）"
+               if not tags_only_groups
+               else "各组复用同一标题（按第 1 组 title），只变化 tags")
+            + "；各组 tags 从不同角度切入（泛流量/人群/场景、垂直品类、细分话题、内容形态等），"
+              "组间重合话题不超过 1 个；每组单独满足平台话题上限，不得把多组话题堆在一组里"
+        )
+
+    if group_count and group_count > 1:
+        # 多组差异化输出：N 组 title+tags（或 tags_only_groups 时仅换 tags）
+        output_block = f"""{{
+  "groups": [
+    {{
+      "title": "第1组标题（{title_hint}，中文优先）",
+      "tags": ["标签1", "标签2", "标签3"]
+    }}
+    /* …共 {group_count} 组… */
+  ]
+}}"""
+    else:
+        output_block = f"""{{
+  "title": "标题（{title_hint}，中文优先）",
+  "tags": ["标签1", "标签2", "标签3"]
+}}"""
+
     return f"""请基于「文件名」以及「用户已有标题/标签」，生成适合短视频平台的 AI 标题和话题标签，并尽量做"改编优化"而不是完全重写。{platform_block}{language_block}
 
 输入：
@@ -193,17 +229,38 @@ def build_metadata_prompt(
 - 用户标签（可为空，可能为 JSON 数组/空格分隔/逗号分隔）：{user_tags or ""}
 
 输出要求（严格 JSON，禁止 markdown/解释/多余文本，只输出标题+标签，不要描述）：
-{{
-  "title": "标题（{title_hint}，中文优先）",
-  "tags": ["标签1", "标签2", "标签3"]
-}}
+{output_block}
 
 约束：
 1) 如果用户标题/标签存在：保持主题一致、保留核心意思，在其基础上润色优化即可
 2) 如出现英文词：翻译为中文（专有名词可保留原文并加中文释义；中英双语场景下保留英文原文）
 {tags_block}
 {final_lang_note}
+{group_extra}
 """
+
+
+def build_metadata_groups_prompt(
+    filename: str,
+    user_title: Optional[str],
+    user_tags: Optional[str],
+    platform: Optional[str],
+    config: Optional[Dict[str, Any]] = None,
+    language: Optional[str] = None,
+    group_count: int = 3,
+    tags_only_groups: bool = False,
+) -> str:
+    """Thin wrapper over build_metadata_prompt for explicit multi-group use."""
+    return build_metadata_prompt(
+        filename=filename,
+        user_title=user_title,
+        user_tags=user_tags,
+        platform=platform,
+        config=config,
+        language=language,
+        group_count=max(int(group_count or 1), 1),
+        tags_only_groups=tags_only_groups,
+    )
 
 
 def resolve_platform(platform: Optional[str]) -> Optional[str]:

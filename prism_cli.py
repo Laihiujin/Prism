@@ -193,6 +193,10 @@ def build_parser() -> argparse.ArgumentParser:
     video = add_video(actions, "youtube", scheduling=False, thumbnail=True)
     video.add_argument("--playlist")
     video.add_argument("--visibility", choices=("public", "unlisted", "private"), default="public")
+
+    actions = roots.add_parser("twitter", aliases=["x"]).add_subparsers(dest="action", required=True)
+    add_login_check(actions, "twitter", runtime_flags=False)
+    add_video(actions, "twitter", scheduling=False, thumbnail=True)
     return parser
 
 
@@ -385,6 +389,69 @@ async def dispatch_mcp(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+async def dispatch_twitter(args: argparse.Namespace) -> int:
+    """prism twitter login/check/upload-video —— 推特走 xurl CLI，无需 cookie json 文件。"""
+    app = args.account
+
+    if args.action == "login":
+        from platforms.twitter import xurl_client
+        from myUtils.cookie_manager import cookie_manager
+
+        if not xurl_client.xurl_available():
+            result = {"success": False, "account_file": app,
+                      "message": "未找到 xurl 命令；请先安装并 `xurl auth oauth2 --app <app>` 完成登录"}
+        else:
+            try:
+                await xurl_client.auth_status()
+                handle = await xurl_client.whoami(app=app)
+                if not handle:
+                    result = {"success": False, "account_file": app, "message": f"xurl 未取到账号（app={app}）"}
+                else:
+                    account_id = f"twitter_{handle}"
+                    cookie_manager.add_account(
+                        "twitter",
+                        {"id": account_id, "account_id": account_id, "name": f"@{handle}",
+                         "cookie_file": app, "status": "valid", "user_id": handle},
+                    )
+                    result = {"success": True, "account_file": app, "handle": handle, "account_id": account_id}
+            except Exception as exc:  # noqa: BLE001
+                result = {"success": False, "account_file": app, "message": str(exc)}
+        print(json.dumps(result, ensure_ascii=False, default=str))
+        return EXIT_OK if result.get("success") else EXIT_BUSINESS
+
+    if args.action == "check":
+        from platforms.twitter import xurl_client
+
+        try:
+            if not xurl_client.xurl_available():
+                valid, message = False, "未找到 xurl 命令"
+            else:
+                await xurl_client.auth_status()
+                handle = await xurl_client.whoami(app=app)
+                valid, message = bool(handle), (f"@{handle}" if handle else "未认证")
+        except Exception as exc:  # noqa: BLE001
+            valid, message = False, str(exc)
+        print(json.dumps({"success": valid, "account_file": app, "message": message}, ensure_ascii=False))
+        return EXIT_OK if valid else EXIT_BUSINESS
+
+    if args.action == "upload-video":
+        from platforms.twitter.upload import twitter_upload
+
+        result = await twitter_upload.upload(
+            account_file=app,
+            title=args.title,
+            file_path=str(args.file),
+            description=args.desc,
+            tags=parse_tags(args.tags),
+        )
+        ok = bool(result.get("success"))
+        print(json.dumps({"success": ok, "platform": "twitter", "kind": "post", "data": result},
+                         ensure_ascii=False, default=str))
+        return EXIT_OK if ok else EXIT_BUSINESS
+
+    raise RuntimeError(f"Unsupported action: {args.action}")
+
+
 async def dispatch(args: argparse.Namespace) -> int:
     if args.platform == "tool":
         return await dispatch_tool(args)
@@ -394,7 +461,9 @@ async def dispatch(args: argparse.Namespace) -> int:
         return await dispatch_history(args)
     if args.platform == "mcp":
         return await dispatch_mcp(args)
-    platform = {"tencent": "channels", "baijia": "baijiahao", "tk": "tiktok", "yt": "youtube"}.get(args.platform, args.platform)
+    platform = {"tencent": "channels", "baijia": "baijiahao", "tk": "tiktok", "yt": "youtube", "x": "twitter"}.get(args.platform, args.platform)
+    if platform == "twitter":
+        return await dispatch_twitter(args)
     path = account_file(platform, args.account)
     if args.action == "login":
         result = await login(platform, path, args)

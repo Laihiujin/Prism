@@ -19,10 +19,14 @@ export default function PublishLayout({
         }
     }, [pathname, router])
 
-    const activeMode: PublishMode = "matrix"
+    const activeMode: PublishMode = pathname?.startsWith("/publish/note")
+        ? "note"
+        : pathname?.startsWith("/publish/bilibili")
+            ? "bilibili"
+            : "matrix"
 
     const handleModeChange = (mode: PublishMode) => {
-        router.push("/publish/matrix")
+        router.push(mode === "note" ? "/publish/note" : mode === "bilibili" ? "/publish/bilibili" : "/publish/matrix")
     }
 
     return (
