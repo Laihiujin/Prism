@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronDown, Loader2, RefreshCw, Save, TestTube2, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
   SelectContent,
@@ -99,6 +100,8 @@ export function AIServiceProviderCard({
 }: AIServiceProviderCardProps) {
   const { toast } = useToast()
   const [open, setOpen] = useState(defaultOpen)
+  const [modelPickerOpen, setModelPickerOpen] = useState(false)
+  const [modelSearch, setModelSearch] = useState("")
   const [form, setForm] = useState<ServiceFormState>(() => buildDefaultForm(providerOptions))
   const [savedConfig, setSavedConfig] = useState<AIModelConfigResponse | null>(null)
   const [loading, setLoading] = useState({
@@ -107,6 +110,11 @@ export function AIServiceProviderCard({
     test: false,
     clear: false,
   })
+
+  const [models, setModels] = useState<string[]>([])
+  const [modelStatus, setModelStatus] = useState("")
+  const [fetchingModels, setFetchingModels] = useState(false)
+  const modelRequest = useRef<AbortController | null>(null)
 
   const setField = useCallback(<K extends keyof ServiceFormState>(key: K, value: ServiceFormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -152,6 +160,44 @@ export function AIServiceProviderCard({
 
   const resolvedBaseUrl =
     form.baseUrl.trim() || DEFAULT_BASE_URLS[serviceType][form.provider] || ""
+
+  const fetchModels = useCallback(async () => {
+    modelRequest.current?.abort()
+    const controller = new AbortController()
+    modelRequest.current = controller
+    setFetchingModels(true)
+    setModels([])
+    setModelStatus("")
+    try {
+      const response = await fetch(`${API_ENDPOINTS.aiModels}/discover`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base_url: resolvedBaseUrl, api_key: form.apiKey.trim() }),
+        signal: controller.signal,
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload?.detail || "模型列表获取失败")
+      setModels(payload.data || [])
+      setModelStatus(payload.data?.length ? `获取到 ${payload.data.length} 个模型，可选择或手动输入；请确认模型支持当前服务。` : "提供商返回的模型列表为空，可手动输入。")
+    } catch (error) {
+      if (!controller.signal.aborted) setModelStatus(error instanceof Error ? error.message : "模型列表获取失败，可手动输入。")
+    } finally {
+      if (!controller.signal.aborted) setFetchingModels(false)
+    }
+  }, [resolvedBaseUrl, form.apiKey])
+
+  useEffect(() => {
+    modelRequest.current?.abort()
+    setModels([])
+    setModelStatus("")
+    setFetchingModels(false)
+    if (!open || loading.hydrate || !resolvedBaseUrl || !form.apiKey.trim()) return
+    const timer = setTimeout(() => void fetchModels(), 700)
+    return () => {
+      clearTimeout(timer)
+      modelRequest.current?.abort()
+    }
+  }, [open, loading.hydrate, resolvedBaseUrl, form.apiKey, form.provider, fetchModels])
 
   const saveConfig = useCallback(async () => {
     if (!form.modelName.trim()) {
@@ -250,7 +296,7 @@ export function AIServiceProviderCard({
         }),
       })
       const payload = await response.json().catch(() => ({}))
-      if (!response.ok || payload?.connected === false) {
+      if (!response.ok || payload?.connected !== true || payload?.status !== "success") {
         throw new Error(payload?.detail || payload?.message || "连接测试失败")
       }
 
@@ -347,12 +393,53 @@ export function AIServiceProviderCard({
 
               <div className="space-y-2">
                 <Label htmlFor={`${serviceType}-model`}>默认模型</Label>
-                <Input
-                  id={`${serviceType}-model`}
-                  value={form.modelName}
-                  onChange={(event) => setField("modelName", event.target.value)}
-                  placeholder="填写实际调用的模型名"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <Input
+                      id={`${serviceType}-model`}
+                      value={form.modelName}
+                      onChange={(event) => setField("modelName", event.target.value)}
+                      placeholder="选择或手动输入模型名称"
+                      className="pr-10"
+                    />
+                    <Popover open={modelPickerOpen} onOpenChange={(nextOpen) => {
+                      setModelPickerOpen(nextOpen)
+                      if (nextOpen) setModelSearch("")
+                    }}>
+                      <PopoverTrigger asChild>
+                        <button type="button" aria-label="展开模型列表" className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center text-foreground">
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-2">
+                        <Input aria-label="搜索模型" placeholder="搜索模型…" value={modelSearch} onChange={(event) => setModelSearch(event.target.value)} />
+                        <div className="mt-2 max-h-64 overflow-y-auto">
+                          {models.filter((model) => model.toLowerCase().includes(modelSearch.toLowerCase())).map((model) => (
+                            <button key={model} type="button" aria-pressed={form.modelName === model} className="block w-full break-all rounded px-3 py-2 text-left text-sm text-popover-foreground hover:bg-accent focus-visible:bg-accent" onClick={() => {
+                              setField("modelName", model)
+                              setModelPickerOpen(false)
+                            }}>
+                              {model}
+                            </button>
+                          ))}
+                          {models.length === 0 ? <p className="px-3 py-2 text-xs text-muted-foreground">请先获取模型列表，也可以直接输入模型名称。</p> : null}
+                          {models.length > 0 && !models.some((model) => model.toLowerCase().includes(modelSearch.toLowerCase())) ? <p className="px-3 py-2 text-xs text-muted-foreground">没有匹配的模型</p> : null}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => void fetchModels()}
+                    disabled={fetchingModels || loading.hydrate}
+                  >
+                    {fetchingModels ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+                    {fetchingModels ? "获取中…" : "获取模型"}
+                  </Button>
+                </div>
+                {modelStatus ? <p className="text-xs text-muted-foreground" role="status">{modelStatus}</p> : null}
               </div>
 
               <div className="space-y-2">
