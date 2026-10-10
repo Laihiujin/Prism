@@ -69,6 +69,13 @@ with open(f"{path}/config.yaml", "r", encoding="utf-8") as f:
 
 class DouyinWebCrawler:
 
+    def __init__(self):
+        self.cookie_override = None
+
+    async def set_account_cookie(self, cookie: str):
+        """Use account credentials without mutating shared YAML configuration."""
+        self.cookie_override = cookie
+
     # 从配置文件中获取抖音的请求头
     async def get_douyin_headers(self):
         douyin_config = config["TokenManager"]["douyin"]
@@ -77,7 +84,7 @@ class DouyinWebCrawler:
                 "Accept-Language": douyin_config["headers"]["Accept-Language"],
                 "User-Agent": douyin_config["headers"]["User-Agent"],
                 "Referer": douyin_config["headers"]["Referer"],
-                "Cookie": douyin_config["headers"]["Cookie"],
+                "Cookie": self.cookie_override if self.cookie_override is not None else douyin_config["headers"]["Cookie"],
             },
             "proxies": {"http://": douyin_config["proxies"]["http"], "https://": douyin_config["proxies"]["https"]},
         }
@@ -122,7 +129,11 @@ class DouyinWebCrawler:
 
             # 生成一个用户发布作品数据的带有a_bogus加密参数的Endpoint
             params_dict = params.dict()
-            params_dict["msToken"] = ''
+            from http.cookies import SimpleCookie
+            account_cookies = SimpleCookie()
+            account_cookies.load(kwargs["headers"].get("Cookie", ""))
+            if "msToken" in account_cookies:
+                params_dict["msToken"] = account_cookies["msToken"].value
             a_bogus = BogusManager.ab_model_2_endpoint(params_dict, kwargs["headers"]["User-Agent"])
             endpoint = f"{DouyinAPIEndpoints.USER_POST}?{urlencode(params_dict)}&a_bogus={a_bogus}"
 

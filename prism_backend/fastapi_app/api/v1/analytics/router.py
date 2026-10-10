@@ -218,9 +218,9 @@ async def _set_douyin_cookie(crawler: Any, cookie_header: str) -> None:
     if not cookie_header or crawler is None:
         return
     try:
-        await crawler.update_cookie(cookie_header)
-    except Exception:
-        return
+        await crawler.set_account_cookie(cookie_header)
+    except Exception as exc:
+        raise RuntimeError("无法加载账号 Cookie 到抖音采集器") from exc
 
 
 def _read_cookie_file_for_account(account: Dict[str, Any]) -> Dict[str, Any]:
@@ -470,7 +470,13 @@ async def _collect_douyin_tiktok_accounts(
         try:
             while pages < max_pages:
                 pages += 1
-                payload = await crawler.fetch_user_post_videos(sec_user_id=str(sec_user_id), max_cursor=cursor, count=page_size)
+                try:
+                    payload = await crawler.fetch_user_post_videos(sec_user_id=str(sec_user_id), max_cursor=cursor, count=page_size)
+                except Exception as exc:
+                    if cursor != 0 or "403" not in str(exc):
+                        raise
+                    from .douyin_browser_collector import collect_browser_posts
+                    payload = await collect_browser_posts(cookie_data, str(sec_user_id))
                 aweme_list = _parse_douyin_aweme_list(payload)
                 if not aweme_list:
                     break
