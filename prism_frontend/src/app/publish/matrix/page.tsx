@@ -954,7 +954,7 @@ export default function PublishPage() {
       const result = response.data || response
       const submitted = Number(result.success_count || 0)
       const failed = Number(result.failed_count || 0)
-      const error = result.tasks?.find((task: { status: string; error_message?: string }) => task.status === "failed")?.error_message
+      const error = result.tasks?.find((task: { status: string; error_message?: string }) => task.status === "failed")?.error_message || result.tasks?.find((task: { status: string; reason?: string }) => task.status === "skipped")?.reason
       toast({
         title: submitted === 0 ? "任务提交失败" : failed > 0 ? "部分任务提交失败" : "任务已提交",
         description: submitted === 0 ? error || "没有任务成功进入发布队列" : `已提交 ${submitted} 条任务${failed > 0 ? `，失败 ${failed} 条：${error || "请检查任务详情"}` : "，发布结果请在任务管理中查看"}`,

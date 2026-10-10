@@ -330,7 +330,7 @@ class TaskStateManager:
         try:
             # 撤销 Celery 任务
             from fastapi_app.tasks.celery_app import celery_app
-            celery_app.control.revoke(task_id, terminate=True)
+            celery_app.control.revoke(task_id, terminate=False)
 
             # 更新状态为 cancelled
             return self.update_task_state(

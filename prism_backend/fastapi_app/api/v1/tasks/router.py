@@ -123,14 +123,18 @@ def _retry_task_from_redis(task_id: str) -> Optional[Dict[str, Any]]:
         return None
 
     current_status = (redis_task_status.get("status") or "").lower()
-    if current_status not in ["failed", "pending", "retry"]:
+    if current_status not in ["failed", "pending", "retry", "cancelled"]:
         raise HTTPException(
             status_code=400,
             detail=f"Task status not retryable: {current_status}"
         )
 
     task_type = (redis_task_status.get("task_type") or "").lower()
-    task_data = redis_task_status.get("data", {}) or {}
+    task_data = dict(redis_task_status.get("data", {}) or {})
+    # Recover tasks from the old local-timer implementation as platform schedules.
+    if task_data.get("not_before") and not task_data.get("publish_date") and not task_data.get("schedule_delivery"):
+        task_data["publish_date"] = task_data.pop("not_before")
+        task_data["schedule_delivery"] = "platform"
     priority = redis_task_status.get("priority", 5)
     parent_task_id = redis_task_status.get("parent_task_id")
 
@@ -330,6 +334,7 @@ async def task_cancel(
         # 使用 Redis
         ok = task_state_manager.cancel_task(task_id)
         if ok:
+            _publish_tasks_cancel(task_id)
             return {"success": True, "message": f"任务已取消"}
         raise HTTPException(status_code=400, detail="无法取消任务")
 
@@ -489,7 +494,7 @@ async def retry_failed_task(task_id: str, request: Request):
     logger.info(f"[Retry] Task status from task_queue: {current_status}")
 
     # 允许重试 failed、pending、retry 状态的任务
-    if current_status not in ["failed", "pending", "retry"]:
+    if current_status not in ["failed", "pending", "retry", "cancelled"]:
         logger.warning(f"[Retry] Task status not retryable: {current_status}")
         raise HTTPException(status_code=400, detail=f"只能重试失败或待处理的任务，当前状态: {current_status}")
 
@@ -826,7 +831,7 @@ async def batch_retry_tasks(req: BatchTaskRequest, request: Request):
             current_status = task_status.get("status")
 
             # 允许重试 failed、pending、retry 状态的任务
-            if current_status not in ["failed", "pending", "retry"]:
+            if current_status not in ["failed", "pending", "retry", "cancelled"]:
                 failed_count += 1
                 errors.append(f"任务 {task_id} 状态为 {current_status}，只能重试失败或待处理的任务")
                 continue
@@ -897,6 +902,7 @@ async def batch_cancel_tasks(
                 # Redis 任务
                 ok = task_state_manager.cancel_task(task_id)
                 if ok:
+                    _publish_tasks_cancel(task_id)
                     success_count += 1
                     logger.info(f"[Tasks] Cancelled task from Redis: {task_id}")
                 else:

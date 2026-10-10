@@ -2,7 +2,60 @@ import json
 import pathlib
 import random
 import asyncio
-from biliup.plugins.bili_webup import BiliBili, Data
+import aiohttp
+from biliup.plugins.bili_webup import BiliBili as BaseBiliBili, Data
+from uploader.bilibili_uploader.line_probe import probe_upload_lines
+
+
+class BiliBili(BaseBiliBili):
+    def probe(self):
+        return probe_upload_lines(self._BiliBili__session)
+
+    @staticmethod
+    async def _upload(params, file, chunk_size, afunc, tasks=3):
+        completed = set()
+        failures = {}
+
+        async def tracked_upload(session, data, chunk):
+            index = chunk['chunk']
+            try:
+                await afunc(session, data, chunk)
+            except Exception as exc:
+                failures[index] = type(exc).__name__
+                raise
+            completed.add(index)
+
+        # Use the system resolver: aiodns can fail on Windows even when the
+        # same upload host resolves successfully through requests/socket.
+        next_chunk = 0
+
+        async def worker(session):
+            nonlocal next_chunk
+            while True:
+                data = file.read(chunk_size)
+                if not data:
+                    return
+                index = next_chunk
+                next_chunk += 1
+                chunk = dict(params, chunk=index, size=len(data), partNumber=index + 1,
+                             start=index * chunk_size, end=index * chunk_size + len(data))
+                for attempt in range(10):
+                    try:
+                        await tracked_upload(session, data, chunk)
+                        break
+                    except (asyncio.TimeoutError, aiohttp.ClientError):
+                        if attempt < 9:
+                            await asyncio.sleep(min(attempt + 1, 3))
+
+        connector = aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())
+        async with aiohttp.ClientSession(connector=connector, trust_env=True,
+                                        timeout=aiohttp.ClientTimeout(total=120)) as session:
+            await asyncio.gather(*(worker(session) for _ in range(max(1, tasks))))
+        missing = sorted(set(range(params['chunks'])) - completed)
+        if missing:
+            details = ', '.join(f'{index + 1}: {failures.get(index, "未完成")}' for index in missing)
+            raise RuntimeError(f'B站分片上传重试耗尽，停止合并；失败分片：{details}')
+
 
 from utils.log import bilibili_logger
 from .cookie_refresher import refresh_bilibili_cookies, to_biliup_cookie_format
@@ -108,6 +161,7 @@ class BilibiliUploader(object):
 
     def _init_data(self):
         self.data = Data()
+        self.data.title = self.title[:80]
         # 稿件级字段：版权 / 来源 / 封面 / 简介富文本 / 粉丝动态
         # 仅设置 python biliup `Data` 声明过、submit 会随 asdict 提交的字段
         # （biliup-app/Rust 的 no_reprint/open_elec/interactive 等字段在 python
@@ -157,7 +211,7 @@ class BilibiliUploader(object):
         # 抑制 biliup 库的标准输出（防止终端轮询日志爆炸）
         # 创建一个空的输出目标
         # Create a devnull sink for biliup stdout/stderr.
-        devnull = open(os.devnull, 'w')
+        devnull = open(os.devnull, 'w', encoding='utf-8', errors='backslashreplace')
 
         try:
             with redirect_stdout(devnull), redirect_stderr(devnull):
@@ -188,7 +242,7 @@ class BilibiliUploader(object):
                             self.data.cover = bili.cover_up(str(cover_local))
                             bilibili_logger.success(f'[+] 本地封面上传成功: {self.data.cover}')
                         except Exception as e:
-                            bilibili_logger.warning(f'[+] 本地封面上传失败: {e}')
+                            raise RuntimeError('B站封面上传失败，已停止投稿') from e
 
                     # 组装分P：主文件 + files 列表（顺序 = P1..Pn）
                     part_paths = [self.file]
@@ -201,7 +255,25 @@ class BilibiliUploader(object):
                     is_multipart = len(part_paths) > 1
                     for idx, path in enumerate(part_paths):
                         bilibili_logger.info(f'[+] 上传分P {idx + 1}/{len(part_paths)}: {path}')
-                        video_part = bili.upload_file(str(path), lines=self.lines, tasks=self.upload_thread_num)
+                        upload_diagnostics = []
+                        def record_upload_response(response, *args, **kwargs):
+                            if "bilivideo.com" in response.url and response.request.method == "POST":
+                                try:
+                                    payload = response.json()
+                                    details = {key: payload[key] for key in ("code", "message", "msg", "OK") if key in payload}
+                                except ValueError:
+                                    details = {"message": "非JSON响应"}
+                                upload_diagnostics.append({"http_status": response.status_code, **details})
+                                del upload_diagnostics[:-6]
+                            return response
+                        session = bili._BiliBili__session
+                        session.hooks.setdefault("response", []).append(record_upload_response)
+                        try:
+                            video_part = bili.upload_file(str(path), lines=self.lines, tasks=self.upload_thread_num)
+                        finally:
+                            session.hooks["response"].remove(record_upload_response)
+                        if not isinstance(video_part, dict):
+                            raise RuntimeError(f"B站分片上传/合并失败，未获得视频信息；接口诊断：{json.dumps(upload_diagnostics, ensure_ascii=False)}")
                         part_title = ""
                         if is_multipart:
                             part_title = (self.part_titles[idx] if idx < len(self.part_titles) else "") or ""
@@ -210,6 +282,11 @@ class BilibiliUploader(object):
                         video_part['title'] = part_title
                         self.data.append(video_part)
 
+                    execution_id = (self.extra or {}).get("_execution_task_id")
+                    if execution_id:
+                        from fastapi_app.tasks.task_state_manager import task_state_manager
+                        if (task_state_manager.get_task_state(execution_id) or {}).get("status") == "cancelled":
+                            raise RuntimeError("任务已取消，停止向B站提交稿件")
                     # 提交视频
                     ret = bili.submit()
                     if ret.get('code') == 0:
