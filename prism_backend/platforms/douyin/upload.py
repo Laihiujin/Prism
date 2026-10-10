@@ -475,6 +475,13 @@ class DouyinUpload(BasePlatform):
             if not await self._is_cover_modal_open(page):
                 return
             await dismiss_publish_guides(page)
+            recommendation = page.get_by_text(re.compile(r"^设置[横竖]封面获更多流量$"))
+            if await recommendation.count() == 1 and await recommendation.is_visible():
+                skip = page.get_by_role("button", name="暂不设置", exact=True)
+                if await skip.count() == 1 and await skip.is_visible():
+                    await skip.click(timeout=3000)
+                    await page.wait_for_timeout(300)
+                    continue
             containers = self._cover_modal_locator(page)
             for index in range(await containers.count()):
                 container = containers.nth(index)
@@ -941,6 +948,9 @@ class DouyinUpload(BasePlatform):
         await page.keyboard.type(str(publish_date_hour))
         await page.keyboard.press("Enter")
         await asyncio.sleep(1)
+        actual_time = await page.get_by_placeholder("日期和时间", exact=True).input_value()
+        if actual_time != publish_date_hour:
+            raise ValueError(f"抖音定时未生效：期望 {publish_date_hour}，页面显示 {actual_time}")
 
     async def _publish_video(
         self,

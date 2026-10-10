@@ -957,6 +957,12 @@ class DouYinVideo(DouYinBaseUploader):
             if await button.count() == 1 and await button.is_visible() and await button.is_enabled():
                 await button.click(timeout=3000)
                 await page.wait_for_timeout(300)
+        for title in ("设置横封面获更多流量", "设置竖封面获更多流量"):
+            recommendation = page.get_by_text(title, exact=True)
+            if await recommendation.count() == 1 and await recommendation.is_visible():
+                skip = page.get_by_role("button", name="暂不设置", exact=True)
+                if await skip.count() == 1 and await skip.is_visible():
+                    await skip.click(timeout=3000)
         try:
             await cover_locator.wait_for(state="hidden", timeout=6000)
         except Exception as exc:
