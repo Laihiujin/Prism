@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -41,6 +42,7 @@ interface Material {
 export interface MaterialEditorSaveData extends Partial<Material> {
     scheduleTime?: Date
     updateDiskFile?: boolean
+    autoSave?: boolean
 }
 
 interface MaterialEditorSheetProps {
@@ -82,6 +84,7 @@ export function MaterialEditorContent({
     const [aiGenerating, setAiGenerating] = useState<string | null>(null)
     const [coverPrompt, setCoverPrompt] = useState("")
     const [coverJobId, setCoverJobId] = useState<string | null>(null)
+    const coverPollGenerationRef = useRef(0)
     const [coverJobStatus, setCoverJobStatus] = useState<"idle" | "pending" | "running" | "succeeded" | "failed">("idle")
     const [coverJobError, setCoverJobError] = useState("")
     const [coverStage, setCoverStage] = useState("pending")
@@ -99,6 +102,7 @@ export function MaterialEditorContent({
 
     const coverPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [referenceImage, setReferenceImage] = useState<File | null>(null)
+    const [useFirstFrame, setUseFirstFrame] = useState(true)
     const [refPreviewSrc, setRefPreviewSrc] = useState("")
     const [firstFrameSrc, setFirstFrameSrc] = useState("")
     const [firstFrameError, setFirstFrameError] = useState("")
@@ -138,6 +142,13 @@ export function MaterialEditorContent({
     })
 
     const [updateDiskFile, setUpdateDiskFile] = useState(true)
+    const [autoSaveStatus, setAutoSaveStatus] = useState("")
+    const saveCallbackRef = useRef(onSave)
+    saveCallbackRef.current = onSave
+    const hydratedDraftRef = useRef<string | null>(null)
+    const savedSnapshotRef = useRef("")
+    const saveQueueRef = useRef(Promise.resolve())
+
 
     useEffect(() => {
         if (initialData) {
@@ -157,7 +168,51 @@ export function MaterialEditorContent({
         } else if (mode === 'batch') {
             setEditForm(prev => ({ ...prev, group: "none" }))
         }
+        if (material?.id && mode === "edit" && !initialData) {
+            const key = `materialEditorDraft:${material.id}`
+            try {
+                const draft = JSON.parse(localStorage.getItem(key) || "null")
+                if (draft?.form) setEditForm(prev => ({ ...prev, ...draft.form }))
+                if (typeof draft?.coverPrompt === "string") setCoverPrompt(draft.coverPrompt)
+            } catch { /* Ignore invalid drafts. */ }
+            hydratedDraftRef.current = null
+            savedSnapshotRef.current = ""
+        }
     }, [material, mode, initialData])
+
+    useEffect(() => {
+        if (!material?.id || mode !== "edit" || initialData || hideFooter) return
+        const key = `materialEditorDraft:${material.id}`
+        const snapshot = JSON.stringify({ ...editForm, updateDiskFile })
+        if (hydratedDraftRef.current !== key) {
+            hydratedDraftRef.current = key
+            savedSnapshotRef.current = snapshot
+            return
+        }
+        localStorage.setItem(key, JSON.stringify({ form: editForm, coverPrompt }))
+        if (snapshot === savedSnapshotRef.current) return
+        setAutoSaveStatus("等待自动保存…")
+        const data = { ...editForm, group: editForm.group === "none" ? "" : editForm.group, updateDiskFile, autoSave: true }
+        const saveCurrent = saveCallbackRef.current
+        let disposed = false
+        const persist = () => {
+            saveQueueRef.current = saveQueueRef.current.catch(() => {}).then(async () => {
+                if (!disposed) setAutoSaveStatus("自动保存中…")
+                try {
+                    await saveCurrent(data)
+                    savedSnapshotRef.current = snapshot
+                    if (!disposed) setAutoSaveStatus("已自动保存")
+                } catch {
+                    if (!disposed) setAutoSaveStatus("保存失败，输入已保留在本机")
+                }
+            })
+        }
+        const timer = setTimeout(persist, 900)
+        return () => {
+            disposed = true
+            clearTimeout(timer)
+        }
+    }, [editForm, coverPrompt, updateDiskFile, material?.id, mode, initialData, hideFooter])
 
     useEffect(() => {
         setReferenceImage(null)
@@ -190,6 +245,7 @@ export function MaterialEditorContent({
     }, [material?.id])
 
     const stopCoverPolling = useCallback(() => {
+        coverPollGenerationRef.current += 1
         if (coverPollTimerRef.current) {
             clearTimeout(coverPollTimerRef.current)
             coverPollTimerRef.current = null
@@ -199,11 +255,23 @@ export function MaterialEditorContent({
     const pollCoverJob = useCallback(async (jobId: string) => {
         if (!jobId) return
         stopCoverPolling()
+        const generation = coverPollGenerationRef.current
 
         const tick = async () => {
+            if (generation !== coverPollGenerationRef.current) return
             try {
                 const response = await fetch(`/api/v1/files/ai-cover-jobs/${encodeURIComponent(jobId)}`)
                 const payload = await response.json().catch(() => ({}))
+                if (generation !== coverPollGenerationRef.current) return
+                if (response.status === 404) {
+                    stopCoverPolling()
+                    setCoverJobStatus("failed")
+                    setCoverJobError("生成任务已失效（服务可能已重启），请重新生成封面。")
+                    setCoverJobId(null)
+                    if (coverJobStorageKey) localStorage.removeItem(coverJobStorageKey)
+                    return
+                }
+                if (!response.ok) throw new Error(payload?.detail || "无法读取生成进度，请检查后端连接。")
                 const status = payload?.data?.status as typeof coverJobStatus | undefined
                 const coverPath = payload?.data?.cover_path as string | undefined
                 const error = payload?.data?.error as string | undefined
@@ -235,10 +303,11 @@ export function MaterialEditorContent({
                     return
                 }
             } catch (e) {
+                if (generation !== coverPollGenerationRef.current) return
                 setCoverJobError(e instanceof Error ? e.message : "封面生成失败")
             }
 
-            coverPollTimerRef.current = setTimeout(tick, 1200)
+            if (generation === coverPollGenerationRef.current) coverPollTimerRef.current = setTimeout(tick, 1200)
         }
 
         tick()
@@ -285,13 +354,18 @@ export function MaterialEditorContent({
         return () => URL.revokeObjectURL(url)
     }, [referenceImage])
 
-    const handleAIGenerate = async (field: 'title' | 'desc' | 'tags') => {
+    const handleAIGenerate = async (field: 'title' | 'desc' | 'tags' | 'both') => {
+        if (!editForm.description.trim() && !editForm.title.trim() && !editForm.tags.trim()) {
+            toast({ title: "请补充素材内容", description: "请先输入内容说明、标题或标签，帮助 AI 理解素材" })
+            return
+        }
         setAiGenerating(field)
 
         try {
             const instructions = {
                 title: "生成一个准确、吸引人的短视频标题，10-27字；只输出标题，不加引号或表情。",
                 desc: "生成简洁的短视频描述；只输出描述，不加表情。",
+                both: '生成标题和1-4个相关标签，只输出 JSON：{"title":"标题","tags":["标签"]}，标题10-27字。',
                 tags: "提炼1-4个与实际内容相关的标签，空格分隔，不带#；只输出标签。",
             }
             const context = [
@@ -301,9 +375,6 @@ export function MaterialEditorContent({
                 editForm.note.trim() && `补充要求：${editForm.note.trim()}`,
                 `文件名（仅辅助，随机编号不代表内容）：${editForm.filename || material?.filename || ""}`,
             ].filter(Boolean).join("\n")
-            if (!editForm.description.trim() && !editForm.title.trim() && !editForm.tags.trim()) {
-                throw new Error("请先输入内容说明、标题或标签，帮助 AI 理解素材")
-            }
             const prompt = `根据下面的用户信息生成内容，优先遵循内容说明，不编造事实，不添加无关的品牌或游戏名称。\n${instructions[field]}\n${context}`
 
             const response = await fetch(`${backendBaseUrl}/api/v1/ai/chat`, {
@@ -332,7 +403,11 @@ export function MaterialEditorContent({
                 return unique.slice(0, 4)
             }
 
-            if (field === 'title') {
+            if (field === 'both') {
+                const parsed = JSON.parse(content.trim().replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, ""))
+                if (typeof parsed.title !== "string" || !parsed.title.trim() || !Array.isArray(parsed.tags) || !parsed.tags.every((tag: unknown) => typeof tag === "string")) throw new Error("模型返回格式不正确，请重试")
+                setEditForm(prev => ({ ...prev, title: parsed.title.trim(), tags: normalizeTags(parsed.tags.join(" ")).join(" ") }))
+            } else if (field === 'title') {
                 setEditForm(prev => ({ ...prev, title: content.trim() }))
             } else if (field === 'desc') {
                 setEditForm(prev => ({ ...prev, description: content.trim() }))
@@ -370,8 +445,9 @@ export function MaterialEditorContent({
             const formData = new FormData()
             formData.append("platform_name", "全平台")
             formData.append("aspect_ratio", inferredCoverAspect)
+            formData.append("use_first_frame", String(useFirstFrame))
             formData.append("prompt", [
-                "以参考画面为主体，保留视频首帧中的人物、物品和场景特征，设计清晰、有视觉层次的封面；不要添加无关元素。",
+                referenceImage || useFirstFrame ? "以参考画面为主体，保留人物、物品和场景特征，设计清晰、有视觉层次的封面。" : "根据视频内容和设计要求生成清晰、有视觉层次的封面。",
                 editForm.description.trim() && `视频内容：${editForm.description.trim()}`,
                 editForm.title.trim() && `标题主题：${editForm.title.trim()}`,
                 editForm.tags.trim() && `主题标签：${editForm.tags.trim()}`,
@@ -422,7 +498,14 @@ export function MaterialEditorContent({
     return (
         <div className={cn("flex flex-col h-full", className)}>
             {!hideFooter && (
-                <div className="px-6 py-4 border-b border-border/70 bg-black flex justify-end">
+                <div className="px-6 py-4 border-b border-border/70 bg-black flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <Button variant="secondary" onClick={() => void handleAIGenerate("both")} disabled={!!aiGenerating}>
+                            {aiGenerating === "both" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            AI 填充标题、标签
+                        </Button>
+                        <span className="text-xs text-muted-foreground" role="status">{autoSaveStatus}</span>
+                    </div>
                     <Button onClick={handleSave} disabled={isSaving} className="min-w-[100px]">
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (mode === 'create' ? "确认发布" : "保存更改")}
                     </Button>
@@ -625,7 +708,7 @@ export function MaterialEditorContent({
                                 {/* 参考图上传（带缩略图预览） */}
                                 <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs text-muted-foreground">参考图（默认使用视频首帧）</Label>
+                                        <Label className="text-xs text-muted-foreground">参考图</Label>
                                         {referenceImage && (
                                             <Button
                                                 size="sm"
@@ -637,20 +720,25 @@ export function MaterialEditorContent({
                                             </Button>
                                         )}
                                     </div>
-                                    {!referenceImage && firstFrameSrc ? (
+                                    <div className="flex items-center justify-between gap-3 py-2">
+                                        <Label htmlFor="cover-use-first-frame" className="text-xs">使用视频首帧</Label>
+                                        <Switch id="cover-use-first-frame" checked={useFirstFrame} onCheckedChange={setUseFirstFrame} />
+                                    </div>
+                                    {!useFirstFrame && !referenceImage && <p className="text-xs text-muted-foreground">已关闭首帧参考，将按提示词生成封面；也可上传参考图。</p>}
+                                    {useFirstFrame && !referenceImage && firstFrameSrc ? (
                                         <div className="space-y-1 rounded-lg border border-border/70 p-2">
                                             <Image src={firstFrameSrc} alt="视频首帧参考" width={320} height={180} className="max-h-40 w-full object-contain" unoptimized />
                                             <p className="text-xs text-muted-foreground">已自动提取视频首帧；上传图片可替换参考。</p>
                                         </div>
                                     ) : null}
-                                    {!referenceImage && firstFrameError ? <p className="text-xs text-red-400">{firstFrameError}；可上传参考图。</p> : null}
+                                    {useFirstFrame && !referenceImage && firstFrameError ? <p className="text-xs text-red-400">{firstFrameError}；可上传参考图。</p> : null}
                                     {referenceImage ? (
                                         <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card p-2">
-                                            <img
+                                            {refPreviewSrc && <img
                                                 src={refPreviewSrc}
                                                 alt="参考图预览"
                                                 className="h-12 w-12 rounded-md object-cover shrink-0"
-                                            />
+                                            />}
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs text-foreground/80 truncate">{referenceImage.name}</p>
                                                 <p className="text-[10px] text-muted-foreground">将作为图生图参考</p>
@@ -748,7 +836,7 @@ export function MaterialEditorContent({
                                     <p className="text-xs text-red-400">{coverJobError}</p>
                                 )}
                                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    默认以视频首帧为参考，结合内容说明、标题、标签和设计要求生成封面；上传参考图后使用上传图片。完成后自动回填预览。
+                                    可开关视频首帧参考；上传参考图后优先使用上传图片。结合内容说明、标题、标签和设计要求生成封面，完成后自动回填预览。
                                 </p>
                             </div>
                         </div>
@@ -782,7 +870,7 @@ export function MaterialEditorSheet({
                     groupOptions={groupOptions}
                     onSave={async (data) => {
                         await onSave(data)
-                        onOpenChange(false)
+                        if (!data.autoSave) onOpenChange(false)
                     }}
                     mode={mode}
                     showGroupSelector={showGroupSelector}

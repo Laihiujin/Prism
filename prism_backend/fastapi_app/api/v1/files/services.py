@@ -770,6 +770,7 @@ class FileService:
         style_hint: str = "",
         prompt_override: str = "",
         image_bytes_override: Optional[bytes] = None,
+        use_first_frame: bool = True,
         on_progress=None,
     ) -> dict:
         """
@@ -783,15 +784,20 @@ class FileService:
         first_rel = ""
         if image_bytes_override:
             base_image_bytes = image_bytes_override
-        else:
+        elif use_first_frame:
             first_rel = await self.ensure_first_frame(db, file_id)
             first_path = (self.video_dir / Path(first_rel)).resolve()
             if not first_path.exists():
                 raise RuntimeError("first frame not found on disk")
             base_image_bytes = first_path.read_bytes()
+        else:
+            base_image_bytes = None
 
         prompt = (prompt_override or "").strip()
         base_platform = platform_name or "全平台"
+        if not prompt:
+            if not base_image_bytes:
+                prompt = build_unified_cover_prompt(platform_name=base_platform, aspect_ratio=aspect_ratio, extra_style=style_hint)
         if not prompt:
             try:
                 prompt = build_prompt_from_image(

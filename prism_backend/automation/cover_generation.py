@@ -112,7 +112,7 @@ class ImageGenerationResult:
 
 async def generate_cover_image(
     *,
-    image_bytes: bytes,
+    image_bytes: bytes | None,
     prompt: str,
     aspect_ratio: str,
     negative_prompt: str = "",
@@ -144,10 +144,11 @@ async def generate_cover_image(
                 "batch_size": 1, "seed": seed,
                 "num_inference_steps": num_inference_steps,
                 "guidance_scale": guidance_scale, "cfg": cfg,
-                "image": _data_url_png(image_bytes),
             }
+            if image_bytes:
+                payload["image"] = _data_url_png(image_bytes)
             resp = await client.post(f"{base_url}/images/generations", headers=headers, json=payload)
-        else:
+        elif image_bytes:
             # Image editing sends the reference image as multipart, preserving the video subject.
             import io
             from PIL import Image
@@ -161,6 +162,9 @@ async def generate_cover_image(
                 data={"model": model, "prompt": prompt, "size": size, "n": "1"},
                 files={"image": ("reference.png", reference_png, "image/png")},
             )
+        else:
+            size = "1024x1536" if aspect_ratio == "3:4" else "1536x1024"
+            resp = await client.post(f"{base_url}/images/generations", headers=headers, json={"model": model, "prompt": prompt, "size": size, "n": 1})
         if resp.status_code in {401, 403}:
             raise RuntimeError("图片服务认证失败，请检查系统设置中的 API Key 和该模型的访问权限")
         if resp.status_code in {404, 405}:

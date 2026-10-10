@@ -140,6 +140,7 @@ async def _run_ai_cover_job(
     style_hint: str,
     prompt: str,
     ref_image_bytes: Optional[bytes],
+    use_first_frame: bool = True,
 ):
     async with AI_COVER_JOBS_LOCK:
         job = AI_COVER_JOBS.get(job_id)
@@ -166,6 +167,7 @@ async def _run_ai_cover_job(
                 style_hint=style_hint,
                 prompt_override=prompt,
                 image_bytes_override=ref_image_bytes,
+                use_first_frame=use_first_frame,
                 on_progress=report_progress,
             )
 
@@ -240,6 +242,7 @@ async def start_ai_cover_job(
     aspect_ratio: str = Form("3:4"),
     style_hint: str = Form(""),
     prompt: str = Form(""),
+    use_first_frame: bool = Form(True),
     ref_image: Optional[UploadFile] = File(None, description="参考图（可选，用于图生图）"),
 ):
     ref_bytes = await ref_image.read() if ref_image else None
@@ -269,6 +272,7 @@ async def start_ai_cover_job(
             style_hint=style_hint,
             prompt=prompt,
             ref_image_bytes=ref_bytes,
+            use_first_frame=use_first_frame,
         )
     )
 
