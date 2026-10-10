@@ -20,6 +20,7 @@ from utils.login_qrcode import remove_qrcode_file
 from utils.login_qrcode import save_data_url_image
 from utils.log import douyin_logger
 from myUtils.browser_context import launch_optional_browser
+from myUtils.publish_page_controls import dismiss_publish_guides, douyin_video_upload_input
 
 DOUYIN_PUBLISH_STRATEGY_IMMEDIATE = "immediate"
 DOUYIN_PUBLISH_STRATEGY_SCHEDULED = "scheduled"
@@ -323,6 +324,10 @@ class DouYinBaseUploader(BaseVideoUploader):
             self.publish_date = 0
 
     async def set_schedule_time_douyin(self, page, publish_date):
+        cover = page.locator('.dy-creator-content-modal-wrap:visible, .dy-creator-content-modal-content:visible')
+        if await cover.count():
+            await self._force_close_cover_modal(page, cover)
+        await dismiss_publish_guides(page)
         label_element = page.locator("[class^='radio']:has-text('定时发布')")
         await label_element.click()
         await asyncio.sleep(1)
@@ -867,10 +872,8 @@ class DouYinVideo(DouYinBaseUploader):
         douyin_logger.info(_msg("🏃", "小人正在设置视频封面"))
         # 先清掉 shepherd 新手引导浮层，否则它会拦截“选择封面”点击导致弹窗打不开
         # 只删明确引导层（shepherd），不要用 [class*="mention-wrapper"] 等宽泛词——会误删业务 DOM。
-        await page.evaluate(
-            "() => { document.querySelectorAll('.shepherd-element, .shepherd-modal-overlay-container, [class*=\"coachmark\"]').forEach(e => e.remove()); }"
-        )
-        await page.get_by_text("选择封面", exact=True).first.click(force=True)
+        await dismiss_publish_guides(page)
+        await page.get_by_text("选择封面", exact=True).first.click(timeout=5000)
         cover_locator_str = 'div.dy-creator-content-modal'
         cover_locator = page.locator(cover_locator_str).first
         await page.wait_for_selector(cover_locator_str, timeout=20000)
@@ -947,45 +950,17 @@ class DouYinVideo(DouYinBaseUploader):
             await self._force_close_cover_modal(page, cover_locator)
 
     async def _force_close_cover_modal(self, page: Page, cover_locator) -> None:
-        """确保封面弹窗真正关闭（弹窗残留会遮罩后续点击）。best-effort。
-
-        竖屏视频在「横封面界面」上传封面后，抖音会弹「设置竖封面获更多流量」推荐弹窗，
-        含「暂不设置 / 设置竖封面」两个按钮。这里优先点「暂不设置」跳过推荐，
-        保留用户已传入的封面并关闭弹窗；无法命中则继续关闭/删遮罩。
-        """
-        # 0) 优先处理「推荐竖封面」弹窗：点「暂不设置」跳过（保留已传封面，避免改用户选择）
-        for t in ("暂不设置", "暂不", "跳过", "暂不使用"):
-            try:
-                btn = page.get_by_text(t, exact=True).first
-                if await btn.count() and await btn.is_visible():
-                    await btn.click(timeout=3000)
-                    await page.wait_for_timeout(800)
-                    return
-            except Exception:
-                continue
-        # 1) 尝试点弹窗右上角关闭按钮（Semi modal 通常是 X）
+        """Close the editor through its controls and verify it is hidden."""
+        await dismiss_publish_guides(page)
+        for label in ("暂不设置", "完成", "确定"):
+            button = cover_locator.get_by_role("button", name=label, exact=True)
+            if await button.count() == 1 and await button.is_visible() and await button.is_enabled():
+                await button.click(timeout=3000)
+                await page.wait_for_timeout(300)
         try:
-            close_btn = page.locator(".dy-creator-content-modal-close, .semi-modal-close, .semi-modal-close-icon").first
-            if await close_btn.count() and await close_btn.is_visible():
-                await close_btn.click(timeout=3000)
-                await page.wait_for_timeout(600)
-                return
-        except Exception:
-            pass
-        # 2) 按 ESC
-        try:
-            await page.keyboard.press("Escape")
-            await page.wait_for_timeout(600)
-        except Exception:
-            pass
-        # 3) 兜底：移除弹窗遮罩与容器（含 mask，只删该弹窗，不用宽泛选择器）
-        try:
-            await page.evaluate(
-                "() => { document.querySelectorAll('.dy-creator-content-modal-wrap, .dy-creator-content-modal-content, .dy-creator-content-modal-mask').forEach(e => e.remove()); }"
-            )
-        except Exception:
-            pass
-        douyin_logger.debug(_msg("🖼️", "已强制清理封面弹窗遮罩"))
+            await cover_locator.wait_for(state="hidden", timeout=6000)
+        except Exception as exc:
+            raise RuntimeError("封面编辑弹层未关闭，停止设置定时及提交发布") from exc
 
     async def set_who_can_see(self, page: Page, who_can_see: str) -> bool:
         """设置「谁可以看」：公开 / 好友可见 / 仅自己可见（发布设置区单选）。
@@ -1169,8 +1144,8 @@ class DouYinVideo(DouYinBaseUploader):
         douyin_logger.info(_msg("🧭", "小人正在赶往上传主页"))
         await page.wait_for_url("https://creator.douyin.com/creator-micro/content/upload", timeout=90000)
         # wait_for_url 完成时上传页可能尚未渲染出文件 input（实测偶发），先等它挂载再 set_input_files
-        await page.wait_for_selector("div[class^='container'] input", state="attached", timeout=60000)
-        await page.locator("div[class^='container'] input").set_input_files(self.file_path)
+        video_input = await douyin_video_upload_input(page)
+        await video_input.set_input_files(self.file_path)
 
         while True:
             try:
@@ -1278,9 +1253,7 @@ class DouYinVideo(DouYinBaseUploader):
             try:
                 # 移除会拦截发布按钮点击的新手引导浮层（只删明确引导层 shepherd/coachmark，
                 # 避免 [class*="mention-wrapper"] 等宽泛词误删业务 DOM）
-                await page.evaluate(
-                    "() => { document.querySelectorAll('.shepherd-element, .shepherd-modal-overlay-container, [class*=\"coachmark\"]').forEach(e => e.remove()); }"
-                )
+                await dismiss_publish_guides(page)
                 # 检测并处理短信验证码弹窗
                 sms_input = page.locator('input[placeholder*="验证码"], input[type="tel"], input[placeholder*="短信"], input[placeholder*="手机号"]').first
                 if await sms_input.count() and await sms_input.is_visible():
