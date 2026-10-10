@@ -31,7 +31,8 @@ def get_redis() -> Optional[Any]:
         return None
 
     try:
-        return redis.Redis.from_url(url, decode_responses=True)
+        # The bundled Windows Redis uses RESP2 and does not implement HELLO.
+        return redis.Redis.from_url(url, decode_responses=True, protocol=2)
     except Exception as e:
         # 如果连接失败，记录错误但不抛出异常
         import logging

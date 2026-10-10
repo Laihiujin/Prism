@@ -1027,7 +1027,7 @@ class PublishService:
                 # ⏰ 间隔控制落地：把 interval 计算出的 not_before 转成 Celery eta，
                 # 让任务真正延时投递（此前只写 not_before 日志、立即执行，间隔从未生效）。
                 apply_kwargs: Dict[str, Any] = {
-                    'kwargs': task_data,
+                    'kwargs': {'task_data': task_data},
                     'priority': priority,
                     'task_id': task_id,
                 }
