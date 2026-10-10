@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from celery import Celery
 
 # Add prism_backend to Python path for myUtils imports
@@ -36,13 +37,21 @@ from fastapi_app.core.config import resolved_celery_broker_url, resolved_celery_
 # Fix for Celery 5.5.x Windows thread-local storage bug
 os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
+result_backend = resolved_celery_result_backend()
+if result_backend.startswith(("redis://", "rediss://", "socket://")):
+    parts = urlsplit(result_backend)
+    query = dict(parse_qsl(parts.query))
+    query["protocol"] = "2"
+    result_backend = urlunsplit(parts._replace(query=urlencode(query)))
+
 celery_app = Celery(
     "prism",
     broker=resolved_celery_broker_url(),
-    backend=resolved_celery_result_backend(),
+    backend=result_backend,
 )
 
 celery_app.conf.update(
+    broker_transport="fastapi_app.tasks.redis_transport:RESP2Transport" if resolved_celery_broker_url().startswith(("redis://", "rediss://")) else None,
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
