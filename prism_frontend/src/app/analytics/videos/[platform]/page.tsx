@@ -425,7 +425,8 @@ export default function PlatformVideosPage() {
                     description += `（${firstError.error}）`
                 }
                 toast({
-                    title: `${config.label} 数据采集完成`,
+                    variant: okCount === 0 && firstError ? "destructive" : "default",
+                    title: `${config.label} ${okCount === 0 && firstError ? "数据采集失败" : "数据采集完成"}`,
                     description,
                 })
                 refetch()
