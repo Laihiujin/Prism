@@ -770,6 +770,7 @@ class FileService:
         style_hint: str = "",
         prompt_override: str = "",
         image_bytes_override: Optional[bytes] = None,
+        on_progress=None,
     ) -> dict:
         """
         Generate a unified AI cover from the video's first frame, store it under VIDEO_FILES_DIR/covers,
@@ -777,12 +778,17 @@ class FileService:
         """
         from automation.cover_generation import build_prompt_from_image, build_unified_cover_prompt, generate_cover_image
 
-        first_rel = await self.ensure_first_frame(db, file_id)
-        first_path = (self.video_dir / Path(first_rel)).resolve()
-        if not first_path.exists():
-            raise RuntimeError("first frame not found on disk")
-        first_bytes = first_path.read_bytes()
-        base_image_bytes = image_bytes_override or first_bytes
+        if on_progress:
+            await on_progress("preparing")
+        first_rel = ""
+        if image_bytes_override:
+            base_image_bytes = image_bytes_override
+        else:
+            first_rel = await self.ensure_first_frame(db, file_id)
+            first_path = (self.video_dir / Path(first_rel)).resolve()
+            if not first_path.exists():
+                raise RuntimeError("first frame not found on disk")
+            base_image_bytes = first_path.read_bytes()
 
         prompt = (prompt_override or "").strip()
         base_platform = platform_name or "全平台"
@@ -812,7 +818,11 @@ class FileService:
                 + f"\n用户额外要求：{prompt}"
             )
 
+        if on_progress:
+            await on_progress("generating")
         result = await generate_cover_image(image_bytes=base_image_bytes, prompt=prompt, aspect_ratio=aspect_ratio)
+        if on_progress:
+            await on_progress("saving")
         ct = (result.content_type or "").lower()
         ext = "png"
         if "jpeg" in ct or "jpg" in ct:

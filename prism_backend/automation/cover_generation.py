@@ -121,35 +121,50 @@ async def generate_cover_image(
     guidance_scale: float = 7.5,
     cfg: float = 10.05,
 ) -> ImageGenerationResult:
-    if not settings.SILICONFLOW_API_KEY:
-        raise RuntimeError("SILICONFLOW_API_KEY is not set")
+    from fastapi_app.api.v1.ai.router import get_ai_config, _normalize_model_api_base
 
-    url = settings.SILICONFLOW_BASE_URL.rstrip("/") + "/images/generations"
-    default_negative = (
-        "低清晰度, 低分辨率, 模糊, 噪点, 锯齿, 压缩块, 重影, 过曝, 欠曝, "
-        "水印, 平台logo, 二维码, 网址, 署名, 乱码文字, 长句字幕, 边框, "
-        "畸形手, 多余肢体, 人脸崩坏, 变形, 裸露, NSFW"
-    )
-    payload = {
-        "model": settings.SILICONFLOW_IMAGE_MODEL,
-        "prompt": prompt,
-        "negative_prompt": negative_prompt or default_negative,
-        "image_size": aspect_ratio_to_image_size(aspect_ratio),
-        "batch_size": 1,
-        "seed": seed,
-        "num_inference_steps": num_inference_steps,
-        "guidance_scale": guidance_scale,
-        "cfg": cfg,
-        "image": _data_url_png(image_bytes),
-    }
-
-    headers = {
-        "Authorization": f"Bearer {settings.SILICONFLOW_API_KEY}",
-        "Content-Type": "application/json",
-    }
+    config = get_ai_config("cover_generation")
+    if not config:
+        raise RuntimeError("请先在系统设置中保存图片生成服务的地址、模型和 API Key")
+    api_key = str(config.get("api_key") or "").strip()
+    model = str(config.get("model_name") or "").strip()
+    base_url = _normalize_model_api_base(str(config.get("base_url") or ""))
+    if not api_key or not model:
+        raise RuntimeError("图片生成配置缺少 API Key 或模型名称，请检查系统设置")
+    from urllib.parse import urlsplit
+    siliconflow = (urlsplit(base_url).hostname or "").endswith("siliconflow.cn") or (urlsplit(base_url).hostname or "").endswith("siliconflow.com")
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     async with httpx.AsyncClient(timeout=180.0) as client:
-        resp = await client.post(url, headers=headers, json=payload)
+        if siliconflow:
+            payload = {
+                "model": model, "prompt": prompt,
+                "negative_prompt": negative_prompt or "模糊, 水印, 乱码, 畸形",
+                "image_size": aspect_ratio_to_image_size(aspect_ratio),
+                "batch_size": 1, "seed": seed,
+                "num_inference_steps": num_inference_steps,
+                "guidance_scale": guidance_scale, "cfg": cfg,
+                "image": _data_url_png(image_bytes),
+            }
+            resp = await client.post(f"{base_url}/images/generations", headers=headers, json=payload)
+        else:
+            # Image editing sends the reference image as multipart, preserving the video subject.
+            import io
+            from PIL import Image
+            with Image.open(io.BytesIO(image_bytes)) as reference:
+                buffer = io.BytesIO()
+                reference.convert("RGB").save(buffer, format="PNG")
+                reference_png = buffer.getvalue()
+            size = "1024x1536" if aspect_ratio == "3:4" else "1536x1024"
+            resp = await client.post(
+                f"{base_url}/images/edits", headers=headers,
+                data={"model": model, "prompt": prompt, "size": size, "n": "1"},
+                files={"image": ("reference.png", reference_png, "image/png")},
+            )
+        if resp.status_code in {401, 403}:
+            raise RuntimeError("图片服务认证失败，请检查系统设置中的 API Key 和该模型的访问权限")
+        if resp.status_code in {404, 405}:
+            raise RuntimeError("当前图片服务不支持图生图接口 /images/edits，请确认提供商的参考图编辑接口；未改用其他提供商")
         resp.raise_for_status()
         data = resp.json()
 

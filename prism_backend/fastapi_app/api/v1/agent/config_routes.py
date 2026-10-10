@@ -148,57 +148,27 @@ async def delete_config():
 
 
 @router.post("/hermes/test")
-async def test_agent_config():
-    config = read_agent_config()
-    if not config.get("llm"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Hermes Agent 尚未配置。请先保存模型配置。",
-        )
+async def test_agent_config(current: Optional[AgentFullConfig] = None):
+    from ..ai.router import TestConnectionRequest, test_model_connection
 
-    await reset_hermes_agent()
-
-    try:
-        result = await run_hermes_goal("Reply with one short sentence confirming Hermes Agent is ready.")
-    except Exception as exc:
-        logger.error(f"Hermes Agent config test failed: {exc}")
-        message = str(exc)
-        if "below the minimum 64,000 required by Hermes Agent" in message:
-            message = (
-                "当前模型上下文窗口不足。Hermes 至少要求 64K 上下文；"
-                "当前模型被识别为 4096 tokens。请切换到 64K+ 模型，"
-                "或者再单独处理 Hermes 的 context_length 策略。"
-            )
-        return Response(
-            success=False,
-            data={
-                "status": "error",
-                "message": message,
-                "runtime": await get_hermes_runtime_status(),
-            },
-        )
-
-    if result.get("success"):
-        return Response(
-            success=True,
-            data={
-                "status": "success",
-                "message": "Hermes Agent 连接正常。",
-                "provider": config["llm"].get("provider"),
-                "model": config["llm"].get("model"),
-                "test_result": result.get("result", ""),
-                "runtime": await get_hermes_runtime_status(),
-            },
-        )
-
-    return Response(
-        success=False,
-        data={
-            "status": "error",
-            "message": result.get("error", "Unknown error"),
-            "runtime": await get_hermes_runtime_status(),
-        },
-    )
+    config = {"llm": current.llm.model_dump()} if current else read_agent_config()
+    llm = config.get("llm") or {}
+    if not llm.get("model"):
+        raise HTTPException(status_code=400, detail="请提供当前模型配置或先保存模型配置")
+    defaults = {
+        "openai": "https://api.openai.com/v1",
+        "openrouter": "https://openrouter.ai/api/v1",
+        "lmstudio": "http://127.0.0.1:1234/v1",
+    }
+    result = await test_model_connection(TestConnectionRequest(
+        service_type="chat", provider=llm.get("provider", "custom"),
+        model_name=llm.get("model"), api_key=llm.get("api_key", ""),
+        base_url=llm.get("base_url") or defaults.get(llm.get("provider")),
+    ))
+    return Response(success=True, data={
+        "status": result["status"], "message": result.get("message"),
+        "model": llm.get("model"), "test_result": result.get("response_preview", ""),
+    })
 
 
 @router.get("/openclaw", response_model=Response[AgentConfigResponse])

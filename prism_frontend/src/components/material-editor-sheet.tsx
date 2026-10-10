@@ -84,9 +84,24 @@ export function MaterialEditorContent({
     const [coverJobId, setCoverJobId] = useState<string | null>(null)
     const [coverJobStatus, setCoverJobStatus] = useState<"idle" | "pending" | "running" | "succeeded" | "failed">("idle")
     const [coverJobError, setCoverJobError] = useState("")
+    const [coverStage, setCoverStage] = useState("pending")
+    const [coverStartedAt, setCoverStartedAt] = useState<number | null>(null)
+    const [coverElapsed, setCoverElapsed] = useState(0)
+    const coverBusy = coverJobStatus === "pending" || coverJobStatus === "running"
+
+    useEffect(() => {
+        if (!coverBusy || !coverStartedAt) return
+        const tick = () => setCoverElapsed(Math.max(0, Math.floor((Date.now() - coverStartedAt) / 1000)))
+        tick()
+        const timer = setInterval(tick, 1000)
+        return () => clearInterval(timer)
+    }, [coverBusy, coverStartedAt])
+
     const coverPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [referenceImage, setReferenceImage] = useState<File | null>(null)
     const [refPreviewSrc, setRefPreviewSrc] = useState("")
+    const [firstFrameSrc, setFirstFrameSrc] = useState("")
+    const [firstFrameError, setFirstFrameError] = useState("")
 
     const inferredCoverAspect = useMemo<"3:4" | "4:3">(() => {
         const o = material?.orientation
@@ -96,7 +111,7 @@ export function MaterialEditorContent({
         const h = Number(material?.video_height || 0)
         if (w > 0 && h > 0) return w >= h ? "4:3" : "3:4"
         return "3:4"
-    }, [material?.id, material?.orientation, material?.video_width, material?.video_height])
+    }, [material?.orientation, material?.video_width, material?.video_height])
 
     // 预览框：保留素材真实比例，但用 max-width 反向约束高（<= maxH），避免大盒子占满
     const coverBoxStyle = useMemo(() => {
@@ -142,7 +157,26 @@ export function MaterialEditorContent({
         } else if (mode === 'batch') {
             setEditForm(prev => ({ ...prev, group: "none" }))
         }
-    }, [material?.id, mode, initialData])
+    }, [material, mode, initialData])
+
+    useEffect(() => {
+        setReferenceImage(null)
+        setFirstFrameSrc("")
+        setFirstFrameError("")
+        if (!material?.id || mode === "batch") return
+        const controller = new AbortController()
+        void (async () => {
+            try {
+                const response = await fetch(`${backendBaseUrl}/api/v1/files/${encodeURIComponent(material.id)}/first-frame`, { signal: controller.signal })
+                const payload = await response.json()
+                if (!response.ok || !payload?.data?.url) throw new Error(payload?.detail || "首帧提取失败")
+                setFirstFrameSrc(new URL(payload.data.url, backendBaseUrl).href)
+            } catch (error) {
+                if (!controller.signal.aborted) setFirstFrameError(error instanceof Error ? error.message : "首帧提取失败")
+            }
+        })()
+        return () => controller.abort()
+    }, [material?.id, mode])
 
     const coverSrc = useMemo(() => {
         const raw = (editForm.cover_image || "").trim()
@@ -175,6 +209,11 @@ export function MaterialEditorContent({
                 const error = payload?.data?.error as string | undefined
 
                 if (status) setCoverJobStatus(status)
+                if (payload?.data?.stage) setCoverStage(payload.data.stage)
+                if (payload?.data?.created_at) {
+                    const timestamp = Date.parse(payload.data.created_at)
+                    if (Number.isFinite(timestamp)) setCoverStartedAt(timestamp)
+                }
 
                 if (status === "succeeded" && coverPath) {
                     setEditForm(prev => ({ ...prev, cover_image: coverPath }))
@@ -250,110 +289,22 @@ export function MaterialEditorContent({
         setAiGenerating(field)
 
         try {
-            let prompt = ''
-            const filename = material?.filename || "视频素材"
-            const baseName = filename.replace(/\.[^.]+$/, "")
-
-            // 优先使用用户输入的内容作为提示词
-            if (field === 'title') {
-                const userInput = editForm.title?.trim()
-                if (userInput) {
-                    // 用户已填写内容，必须深度二创重构
-                    prompt = `你是专业的短视频标题二创专家。请对用户输入的标题进行深度重构改写。
-
-⚠️ 严禁行为：
-- ❌ 严禁直接复制或仅改动1-2个字
-- ❌ 严禁使用表情符号
-- ❌ 严禁使用引号包裹
-- ❌ 禁止营销敏感词：领取、金币、福利、礼包、首充
-
-✅ 二创要求：
-- 必须用完全不同的句式和视角重新表达
-- 提炼核心亮点，加入悬念、惊喜、好奇等情感元素
-- 长度控制在10-27字之间
-- 符合短视频平台调性
-
-文件名参考：${filename}
-用户输入标题：${userInput}
-
-只输出二创后的标题，不要任何解释。`
-                } else {
-                    // 用户未填写，根据文件名生成
-                    prompt = `你是专业的短视频标题创作专家。请根据文件名生成吸引人的标题。
-
-要求：
-- 提炼文件名中的核心亮点
-- 加入悬念或情感元素
-- 长度10-27字
-- 不使用表情符号和引号
-- 如有英文请翻译（专有名词可保留）
-
-文件名：${filename}
-
-只输出标题，不要解释。`
-                }
-            } else if (field === 'desc') {
-                const userInput = editForm.description?.trim()
-                if (userInput) {
-                    // 用户已填写内容，必须深度二创
-                    prompt = `你是专业的短视频文案二创大师。请将用户的描述改写成引人入胜的文案。
-
-⚠️ 严禁行为：
-- ❌ 严禁照抄用户输入
-- ❌ 严禁仅改动几个字
-- ❌ 严禁使用Emoji
-- ❌ 禁止营销词：领取、金币、福利、礼包、首充
-
-✅ 二创要求：
-- 将内容改写成故事化、场景化表达
-- 用疑问、惊叹、悬念引发好奇心
-- 结构：开头抓眼球 → 中间展开 → 结尾引导互动
-- 标点规范，不要空格分隔
-
-用户描述：
-${userInput}
-
-只返回文案，不要其他说明。`
-                } else {
-                    // 用户未填写，根据文件名生成
-                    prompt = `为视频"${filename}"生成吸引人的描述文案，要求故事化表达，2-3个话题标签，适合抖音等短视频平台。不要表情符号。`
-                }
-            } else if (field === 'tags') {
-                const userInput = editForm.tags?.trim()
-                if (userInput) {
-                    // 用户已填写内容，必须深度提炼扩展
-                    prompt = `你是话题标签二创专家。请从用户输入中提炼精准且有流量的标签。
-
-⚠️ 严禁行为：
-- ❌ 严禁直接照搬用户标签
-- ❌ 严禁只改个别字
-- ❌ 严禁使用Emoji
-- ❌ 禁止营销词：领取、金币、福利、礼包、首充
-
-✅ 二创要求：
-- 从用户输入提炼核心主题
-- 扩展为精准的长尾关键词
-- 游戏相关时包含：芒果斗地主、开运麻将、乐鸿捕鱼
-- 输出1-4个标签，空格分隔，不带#
-
-文件名：${filename}
-用户输入标签：${userInput}
-
-只输出标签列表（空格分隔，不带#），不要解释。`
-                } else {
-                    // 用户未填写，根据文件名生成
-                    prompt = `请根据文件名生成短视频标签。
-
-要求：
-- 输出1-4个标签，空格分隔
-- 不带#（系统会自动加）
-- 如有英文请翻译（专有名词可保留）
-
-文件名：${filename}
-
-只输出标签，不要解释。`
-                }
+            const instructions = {
+                title: "生成一个准确、吸引人的短视频标题，10-27字；只输出标题，不加引号或表情。",
+                desc: "生成简洁的短视频描述；只输出描述，不加表情。",
+                tags: "提炼1-4个与实际内容相关的标签，空格分隔，不带#；只输出标签。",
             }
+            const context = [
+                editForm.description.trim() && `内容说明（主要依据）：${editForm.description.trim()}`,
+                editForm.title.trim() && `当前标题：${editForm.title.trim()}`,
+                editForm.tags.trim() && `当前标签：${editForm.tags.trim()}`,
+                editForm.note.trim() && `补充要求：${editForm.note.trim()}`,
+                `文件名（仅辅助，随机编号不代表内容）：${editForm.filename || material?.filename || ""}`,
+            ].filter(Boolean).join("\n")
+            if (!editForm.description.trim() && !editForm.title.trim() && !editForm.tags.trim()) {
+                throw new Error("请先输入内容说明、标题或标签，帮助 AI 理解素材")
+            }
+            const prompt = `根据下面的用户信息生成内容，优先遵循内容说明，不编造事实，不添加无关的品牌或游戏名称。\n${instructions[field]}\n${context}`
 
             const response = await fetch(`${backendBaseUrl}/api/v1/ai/chat`, {
                 method: 'POST',
@@ -364,9 +315,10 @@ ${userInput}
                 })
             })
 
-            if (!response.ok) throw new Error('AI generation failed')
             const data = await response.json()
+            if (!response.ok) throw new Error(data?.detail || "AI 生成失败")
             const content = data.content || data.message || ''
+            if (typeof content !== "string" || !content.trim()) throw new Error("模型未返回有效内容")
 
             const normalizeTags = (value: string) => {
                 const items = value
@@ -392,14 +344,14 @@ ${userInput}
             toast({ title: "AI 生成完成", description: "内容已自动填充" })
         } catch (error) {
             console.error('AI generation error:', error)
-            toast({ variant: "destructive", title: "AI 生成失败", description: "请稍后重试" })
+            toast({ variant: "destructive", title: "AI 生成失败", description: error instanceof Error ? error.message : "请稍后重试" })
         } finally {
             setAiGenerating(null)
         }
     }
 
     const handleGenerateCover = async () => {
-        if (!coverPrompt.trim()) {
+        if (!coverPrompt.trim() && !editForm.description.trim() && !editForm.title.trim()) {
             toast({ variant: "destructive", title: "请输入提示词", description: "封面生成需要描述提示词" })
             return
         }
@@ -410,12 +362,21 @@ ${userInput}
 
         setCoverJobError("")
         setCoverJobStatus("pending")
+        setCoverStage("pending")
+        setCoverStartedAt(Date.now())
+        setCoverElapsed(0)
 
         try {
             const formData = new FormData()
             formData.append("platform_name", "全平台")
             formData.append("aspect_ratio", inferredCoverAspect)
-            formData.append("prompt", coverPrompt.trim())
+            formData.append("prompt", [
+                "以参考画面为主体，保留视频首帧中的人物、物品和场景特征，设计清晰、有视觉层次的封面；不要添加无关元素。",
+                editForm.description.trim() && `视频内容：${editForm.description.trim()}`,
+                editForm.title.trim() && `标题主题：${editForm.title.trim()}`,
+                editForm.tags.trim() && `主题标签：${editForm.tags.trim()}`,
+                coverPrompt.trim() && `设计要求：${coverPrompt.trim()}`,
+            ].filter(Boolean).join("\n"))
             if (referenceImage) {
                 formData.append("ref_image", referenceImage)
             }
@@ -599,6 +560,18 @@ ${userInput}
                         </div>
                     </div>
 
+                    <div className="space-y-2">
+                        <Label htmlFor="material-content-brief">内容说明 · AI 生成依据</Label>
+                        <Textarea
+                            id="material-content-brief"
+                            value={editForm.description}
+                            onChange={(event) => setEditForm(prev => ({ ...prev, description: event.target.value }))}
+                            placeholder="描述视频讲什么、主体和场景、希望突出哪些亮点，以及目标受众。标题、标签和封面都会结合这些信息生成。"
+                            className="min-h-[100px]"
+                        />
+                        <p className="text-xs text-muted-foreground">内容说明会随素材保存，可分别点击标题、标签和封面的 AI 按钮生成。</p>
+                    </div>
+
                     {/* AI 封面工坊 · 图生图（参考图 → 封面） */}
                     <div className="space-y-4 rounded-xl border border-border/50 bg-card/40 p-4">
                         <div className="flex items-center justify-between">
@@ -652,7 +625,7 @@ ${userInput}
                                 {/* 参考图上传（带缩略图预览） */}
                                 <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs text-muted-foreground">参考图（图生图，可选）</Label>
+                                        <Label className="text-xs text-muted-foreground">参考图（默认使用视频首帧）</Label>
                                         {referenceImage && (
                                             <Button
                                                 size="sm"
@@ -664,6 +637,13 @@ ${userInput}
                                             </Button>
                                         )}
                                     </div>
+                                    {!referenceImage && firstFrameSrc ? (
+                                        <div className="space-y-1 rounded-lg border border-border/70 p-2">
+                                            <Image src={firstFrameSrc} alt="视频首帧参考" width={320} height={180} className="max-h-40 w-full object-contain" unoptimized />
+                                            <p className="text-xs text-muted-foreground">已自动提取视频首帧；上传图片可替换参考。</p>
+                                        </div>
+                                    ) : null}
+                                    {!referenceImage && firstFrameError ? <p className="text-xs text-red-400">{firstFrameError}；可上传参考图。</p> : null}
                                     {referenceImage ? (
                                         <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-card p-2">
                                             <img
@@ -747,11 +727,28 @@ ${userInput}
                                         {(coverJobStatus === "pending" || coverJobStatus === "running") ? "生成中..." : "生成封面"}
                                     </span>
                                 </Button>
+                                {coverBusy ? (
+                                    <div className="space-y-2" role="status" aria-live="polite">
+                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                            <span>{coverJobStatus === "pending" ? "正在提交任务" : coverStage === "preparing" ? "准备参考图和提示词" : coverStage === "saving" ? "生成完成，正在保存封面" : "图片服务正在生成"}</span>
+                                            <span>已等待 {coverElapsed} 秒</span>
+                                        </div>
+                                        <div role="progressbar" aria-label="封面生成进度" className="h-2 overflow-hidden rounded-full bg-foreground/10">
+                                            <div className="h-full w-1/3 animate-pulse rounded-full bg-foreground/70" />
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground">图片服务未提供百分比，进度条表示任务正在处理。</p>
+                                    </div>
+                                ) : coverJobStatus === "succeeded" ? (
+                                    <div className="space-y-1" role="status">
+                                        <div role="progressbar" aria-label="封面生成完成" aria-valuenow={100} aria-valuemin={0} aria-valuemax={100} className="h-2 rounded-full bg-green-500" />
+                                        <p className="text-xs text-muted-foreground">100% · 封面已生成</p>
+                                    </div>
+                                ) : null}
                                 {coverJobError && (
                                     <p className="text-xs text-red-400">{coverJobError}</p>
                                 )}
                                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    上传参考图后，AI 将结合提示词生成图生图封面，完成后自动回填到封面预览。
+                                    默认以视频首帧为参考，结合内容说明、标题、标签和设计要求生成封面；上传参考图后使用上传图片。完成后自动回填预览。
                                 </p>
                             </div>
                         </div>
