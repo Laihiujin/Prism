@@ -435,6 +435,20 @@ class DouYinVideo(object):
         
         #上传视频封面
         await self.set_thumbnail(page, self.thumbnail_path)
+        # A cover editor left open intercepts subsequent scheduling/publish clicks.
+        cover_editor = page.locator(".dy-creator-content-portal:visible").filter(has=page.locator("canvas"))
+        if await cover_editor.count():
+            editor = cover_editor.first
+            done = editor.get_by_role("button", name="完成编辑", exact=True)
+            if not await done.count():
+                done = editor.get_by_role("button", name="完成", exact=True)
+            if not await done.count():
+                done = editor.get_by_role("button", name="确认", exact=True)
+            if not await done.count():
+                raise RuntimeError("封面编辑弹层未关闭，无法设置定时发布，请检查封面")
+            await done.first.click(timeout=5000)
+            await editor.wait_for(state="hidden", timeout=15000)
+
 
         # 更换可见元素
         await self.set_location(page, "")

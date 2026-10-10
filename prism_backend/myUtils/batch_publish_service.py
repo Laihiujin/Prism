@@ -121,7 +121,8 @@ class BatchPublishService:
                 cookie_file = raw_cookie_file
 
             # P0：解包 platform_settings 里对应平台的配置，并让顶层扁平字段优先被覆盖
-            ps = _platform_settings_for(data, platform) or {}
+            ps = dict(_platform_settings_for(data, platform) or {})
+            ps["_execution_task_id"] = data.get("_execution_task_id")
 
             # 图文/图集（笔记）发布：platform_settings.<platform>.contentKind / contentType = "note"
             # （兼容 "image"/"image_note" 写法）。仅抖音(3)/小红书(1)/快手(4) 支持；其余平台报错。
@@ -188,6 +189,7 @@ class BatchPublishService:
             bili_parts_raw = []
             bili_part_titles = []
             if platform == 5 and isinstance(ps.get("video_parts"), list):
+                bili_part_titles.append(str(ps.get("main_part_title") or ""))
                 for entry in ps.get("video_parts") or []:
                     if isinstance(entry, dict) and entry.get("path"):
                         bili_parts_raw.append(str(entry["path"]))

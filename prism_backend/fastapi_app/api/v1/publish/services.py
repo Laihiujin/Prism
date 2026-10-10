@@ -1008,10 +1008,17 @@ class PublishService:
 
                 if interval_control_enabled:
                     offset = interval_offsets[(file_idx, account_idx)]
-                    task_data["not_before"] = (base_time + timedelta(seconds=offset)).isoformat()
                     task_data["interval_offset_seconds"] = offset
-                    # Queue scheduling owns the start time; don't send a past native schedule.
-                    task_data["publish_date"] = 0
+                    target_time = (base_time + timedelta(seconds=offset)).isoformat()
+                    if timer_config:
+                        # Upload now, set the calculated publication time on the platform.
+                        task_data["publish_date"] = target_time
+                        task_data["schedule_delivery"] = "platform"
+                    else:
+                        task_data["not_before"] = target_time
+                        task_data["schedule_delivery"] = "local"
+                elif timer_config:
+                    task_data["schedule_delivery"] = "platform"
 
                 # 使用 Celery 提交任务
                 from fastapi_app.tasks.publish_tasks import publish_single_task

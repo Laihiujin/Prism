@@ -221,7 +221,7 @@ class ManualTaskManager:
             
             # 检查重试次数
             cursor.execute("""
-                SELECT retry_count, max_retries FROM manual_tasks 
+                SELECT retry_count, max_retries, metadata, status FROM manual_tasks
                 WHERE task_id = ?
             """, (task_id,))
             row = cursor.fetchone()
@@ -230,7 +230,16 @@ class ManualTaskManager:
                 logger.error(f"❌ 任务不存在: {task_id}")
                 return False
             
-            retry_count, max_retries = row
+            retry_count, max_retries, metadata, status = row
+            if status == "resubmitted":
+                conn.close()
+                return False
+            task_data = json.loads(metadata or "{}")
+            if not isinstance(task_data, dict) or not task_data.get("account_id") or not task_data.get("platform"):
+                conn.close()
+                raise ValueError("人工任务缺少完整发布参数，无法重试")
+            from fastapi_app.tasks.publish_tasks import publish_single_task
+            from fastapi_app.tasks.task_state_manager import task_state_manager
             
             if retry_count >= max_retries:
                 logger.warning(f"⚠️ 任务已达最大重试次数: {task_id}")
@@ -243,10 +252,12 @@ class ManualTaskManager:
                 conn.close()
                 return False
             
+            result = publish_single_task.apply_async(kwargs={"task_data": task_data}, priority=5)
+            task_state_manager.create_task(task_id=result.id, task_type="publish", data=task_data, priority=5, parent_task_id=task_id)
             # 增加重试次数并重置为pending
             cursor.execute("""
                 UPDATE manual_tasks
-                SET status = 'pending',
+                SET status = 'resubmitted',
                     retry_count = retry_count + 1,
                     updated_at = ?
                 WHERE task_id = ?
