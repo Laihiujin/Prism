@@ -12,6 +12,7 @@ interface IntervalTimelinePreviewProps {
   randomOffset?: number
   videoCount: number
   accountCount: number
+  startTime?: string
 }
 
 // 单个任务调度信息
@@ -53,11 +54,12 @@ export default function IntervalTimelinePreview({
   intervalSeconds = 300,
   randomOffset = 0,
   videoCount,
-  accountCount
+  accountCount,
+  startTime
 }: IntervalTimelinePreviewProps) {
   // 计算调度时间表
   const calculateSchedule = (): ScheduledTask[] => {
-    const baseTime = new Date()
+    const baseTime = startTime ? new Date(startTime) : new Date()
     const schedule: ScheduledTask[] = []
 
     // 限制显示数量以避免UI过载
@@ -73,7 +75,7 @@ export default function IntervalTimelinePreview({
           offset = fileIdx * intervalSeconds
         } else {
           // account_first: 账号交错，每个账号的视频顺序发布
-          offset = (accountIdx * intervalSeconds) + (fileIdx * intervalSeconds * maxAccounts)
+          offset = (accountIdx * intervalSeconds) + (fileIdx * intervalSeconds * accountCount)
         }
 
         const scheduledTime = new Date(baseTime.getTime() + offset * 1000)
@@ -94,7 +96,7 @@ export default function IntervalTimelinePreview({
   const groupedByTime = groupBy(schedule, s => Math.floor(s.offset / 60)) // 按分钟分组
 
   // 计算总时长
-  const totalDuration = schedule[schedule.length - 1]?.offset || 0
+  const totalDuration = Math.max(0, mode === "video_first" ? (videoCount - 1) * intervalSeconds : (videoCount * accountCount - 1) * intervalSeconds)
   const hours = Math.floor(totalDuration / 3600)
   const minutes = Math.floor((totalDuration % 3600) / 60)
 
@@ -113,13 +115,14 @@ export default function IntervalTimelinePreview({
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Clock className="w-4 h-4 text-primary" />
-          发布时间轴预览
+          发布时间轴预览（全覆盖基准）
         </h4>
         <div className="text-xs text-muted-foreground">
           {mode === "video_first" ? "视频优先" : "账号优先"} · 间隔 {intervalSeconds / 60}分钟
         </div>
       </div>
 
+      <p className="mb-3 text-xs text-muted-foreground">按所选时间启动发布任务；实际发布完成时间取决于上传耗时。随机模式按相邻批次间隔浮动，保持顺序；其他分配策略以实际任务为准。</p>
       {/* 时间轴可视化 */}
       <ScrollArea className="h-64 pr-4">
         <div className="space-y-2">
@@ -178,7 +181,7 @@ export default function IntervalTimelinePreview({
         {randomOffset > 0 && (
           <div className="text-white">
             <Zap className="inline w-3 h-3 mr-1" />
-            包含 ±{randomOffset}s 随机偏移
+            相邻批次间隔浮动 ±{Math.min(randomOffset, Math.max(intervalSeconds - 1, 0))}s（预览未随机，实际保持顺序）
           </div>
         )}
       </div>

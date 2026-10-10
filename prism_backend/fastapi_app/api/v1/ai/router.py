@@ -304,6 +304,7 @@ def _enforce_platform_limits_json(content: str, platform: Optional[str]) -> Opti
 
 
 class ChatRequest(BaseModel):
+    structured_output: bool = False
     messages: Optional[List[Dict[str, Any]]] = Field(default=None)
     model: Optional[str] = Field(default=None)
     stream: Optional[bool] = Field(default=True)
@@ -364,45 +365,48 @@ async def chat(request: ChatRequest):
         if not messages:
             raise HTTPException(status_code=400, detail="Message content is required")
 
-        prompts_config = _load_ai_prompts_config()
-        routing_config = prompts_config.get("routing", {}) if prompts_config else {}
-        hard_rules = routing_config.get("hard_rules") or {}
-        default_intent = hard_rules.get("default_intent", "chat")
-        user_text = _extract_user_text(messages, request.message)
+        if request.structured_output:
+            messages = _apply_system_prompt(messages, "严格遵循用户要求的 JSON 字段名称，仅输出一个 JSON 对象，不输出解释、Markdown或其他内容。")
+        else:
+            prompts_config = _load_ai_prompts_config()
+            routing_config = prompts_config.get("routing", {}) if prompts_config else {}
+            hard_rules = routing_config.get("hard_rules") or {}
+            default_intent = hard_rules.get("default_intent", "chat")
+            user_text = _extract_user_text(messages, request.message)
 
-        intent = None
-        if user_text:
-            intent = _resolve_intent_hard_rules(user_text, routing_config)
+            intent = None
+            if user_text:
+                intent = _resolve_intent_hard_rules(user_text, routing_config)
 
-        if not intent:
-            intent_by_regex = hard_rules.get("intent_by_regex") or []
-            allowed_intents = {rule.get("intent") for rule in intent_by_regex if rule.get("intent")}
-            allowed_intents.add(default_intent)
-            allowed_intents.add("chat")
-            routing_prompt = routing_config.get("intent_router_prompt", "")
-            intent = await _resolve_intent_by_llm(
-                client,
-                model_name,
-                routing_prompt,
-                user_text,
-                allowed_intents,
-                default_intent,
-            )
+            if not intent:
+                intent_by_regex = hard_rules.get("intent_by_regex") or []
+                allowed_intents = {rule.get("intent") for rule in intent_by_regex if rule.get("intent")}
+                allowed_intents.add(default_intent)
+                allowed_intents.add("chat")
+                routing_prompt = routing_config.get("intent_router_prompt", "")
+                intent = await _resolve_intent_by_llm(
+                    client,
+                    model_name,
+                    routing_prompt,
+                    user_text,
+                    allowed_intents,
+                    default_intent,
+                )
 
-        if not intent:
-            intent = default_intent
+            if not intent:
+                intent = default_intent
 
-        system_prompt = _get_system_prompt_for_intent(prompts_config, intent)
+            system_prompt = _get_system_prompt_for_intent(prompts_config, intent)
 
-        # 平台红线：标题/话题生成的平台差异化 + 字数/个数硬上限
-        if request.platform:
-            from ai_service.title_topic_generator import build_platform_constraint_notes
+            # 平台红线：标题/话题生成的平台差异化 + 字数/个数硬上限
+            if request.platform:
+                from ai_service.title_topic_generator import build_platform_constraint_notes
 
-            notes = build_platform_constraint_notes(request.platform, request.language)
-            if notes:
-                system_prompt = f"{system_prompt}\n\n{notes}" if system_prompt else notes
+                notes = build_platform_constraint_notes(request.platform, request.language)
+                if notes:
+                    system_prompt = f"{system_prompt}\n\n{notes}" if system_prompt else notes
 
-        messages = _apply_system_prompt(messages, system_prompt)
+            messages = _apply_system_prompt(messages, system_prompt)
 
         # 调用模型
         if not request.stream:

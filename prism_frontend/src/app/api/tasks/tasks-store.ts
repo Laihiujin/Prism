@@ -12,6 +12,8 @@ export interface TaskRecord {
   status: TaskStatus
   createdAt: string
   scheduledAt?: string
+  startedAt?: string
+  completedAt?: string
   result?: string
   source?: "queue" | "history"  // 标识任务来源：队列任务或历史任务
 }

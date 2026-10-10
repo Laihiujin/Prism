@@ -59,6 +59,7 @@ import { PlatformSelector, PlatformKey, PLATFORMS } from "../components/Platform
 import { DouyinConfig, KuaishouConfig, XhsConfig, BilibiliConfig, VideoChannelConfig, TwitterConfig } from "../components/PlatformConfigs"
 import { MaterialMetadataEditor } from "../components/MaterialMetadataEditor"
 import { PlatformMetadataAdapter } from "@/lib/platform-metadata-adapter"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { backendBaseUrl } from "@/lib/env"
 
 // 平台配置
@@ -124,7 +125,7 @@ interface PublishPlan {
   intervalControlEnabled: boolean
   intervalMode: IntervalMode
   intervalSeconds: number // 发布间隔（秒），后端默认 300
-  randomOffsetSeconds: number // 随机偏移（±秒），0=不随机
+  randomOffsetSeconds: number // 相邻批次间隔浮动（±秒），0=不随机
   scheduleEnabled: boolean
   scheduleDate?: string
   scheduleTime?: string
@@ -694,6 +695,23 @@ export default function PublishPage() {
     return materials.filter(m => plan.materials.includes(String(m.id)))
   }, [materials, plan.materials])
 
+  type MaterialPublishPreset = { name: string; platform: string; data: { form?: { title?: string; tags?: string; cover_image?: string } } }
+  const [materialPresetSelections, setMaterialPresetSelections] = useState<Record<string, Record<string, string>>>({})
+  const presetQuery = useQuery({
+    queryKey: ["matrix-material-presets", plan.materials],
+    queryFn: async () => {
+      const entries = await Promise.all(selectedMaterialsList.map(async material => {
+        const response = await fetch(`${backendBaseUrl}/api/v1/files/${material.id}/presets`)
+        if (!response.ok) throw new Error("素材预设读取失败")
+        const payload = await response.json()
+        return [String(material.id), payload.data || {}] as const
+      }))
+      return Object.fromEntries(entries) as Record<string, Record<string, MaterialPublishPreset>>
+    },
+    enabled: selectedMaterialsList.length > 0,
+    refetchOnWindowFocus: true,
+  })
+
   // 分页数据
   const paginatedMaterials = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
@@ -835,6 +853,7 @@ export default function PublishPage() {
 
           return {
             file_id: m.id,
+            platform_material_presets: Object.fromEntries(Object.entries(materialPresetSelections[String(m.id)] || {}).filter(([platform]) => plan.platforms.includes(platform as PlatformKey))),
             title: formatted.title || rawMetadata.title,
             description: formatted.combinedContent || "",
             topics: formatted.tags || rawMetadata.tags,
@@ -845,12 +864,13 @@ export default function PublishPage() {
         // 多平台发布时，保留原始格式，让后端根据各自平台处理
         return {
           file_id: m.id,
+          platform_material_presets: Object.fromEntries(Object.entries(materialPresetSelections[String(m.id)] || {}).filter(([platform]) => plan.platforms.includes(platform as PlatformKey))),
           title: rawMetadata.title,
           description: "",
           topics: rawMetadata.tags,
           cover_path: rawMetadata.coverPath
         }
-      }).filter(item => item.title || item.cover_path)
+      }).filter(item => item.title || item.cover_path || Object.values(item.platform_material_presets || {}).some(Boolean))
 
       // 构建定时时间
       let scheduledTime = undefined
@@ -1194,7 +1214,30 @@ export default function PublishPage() {
                         </p>
                       </div>
 
-                      {/* 元数据预览 */}
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {plan.platforms.map(platform => {
+                          const platformKey = platform === "channels" ? "wechat" : platform
+                          const available = Object.entries(presetQuery.data?.[String(m.id)] || {}).filter(([, preset]) => preset.platform === "all" || preset.platform === platformKey)
+                          const selectedId = materialPresetSelections[String(m.id)]?.[platform] || "default"
+                          const selected = presetQuery.data?.[String(m.id)]?.[selectedId]
+                          return <div key={platform} className="space-y-1">
+                            <Label className="text-xs text-zinc-400">{PLATFORMS.find(p => p.key === platform)?.name} · 素材预设</Label>
+                            <Select value={selectedId} disabled={presetQuery.isPending || presetQuery.isError} onValueChange={value => setMaterialPresetSelections(prev => ({ ...prev, [String(m.id)]: { ...prev[String(m.id)], [platform]: value === "default" ? "" : value } }))}>
+                              <SelectTrigger className="border-zinc-700"><SelectValue /></SelectTrigger>
+                              <SelectContent className="border-zinc-700"><SelectItem value="default">通用配置 / 当前编辑内容</SelectItem>{available.map(([id, preset]) => <SelectItem key={id} value={id}>{preset.name}</SelectItem>)}</SelectContent>
+                            </Select>
+                            {selected && <p className="text-xs text-zinc-400 truncate" title={selected.data.form?.title}>{selected.data.form?.title || "无标题"} · {selected.data.form?.tags || "无标签"} · {selected.data.form?.cover_image ? "有封面" : "无封面"}</p>}
+                          </div>
+                        })}
+                        {presetQuery.isError && <Button size="sm" variant="secondary" onClick={() => void presetQuery.refetch()}>预设加载失败，点击重试</Button>}
+                      </div>
+
+                      {/* 通用配置预览；平台发布使用上方选择的素材预设。 */}
+                      <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="border border-zinc-700 bg-zinc-900 text-zinc-300">通用配置</Badge>
+                          <span className="text-xs text-zinc-500">下方展示通用内容；各平台使用上方所选预设，未选择预设时使用通用配置。</span>
+                        </div>
                       {hasMetadata ? (
                         <div className="space-y-2">
                           {metadata.title && (
@@ -1225,8 +1268,9 @@ export default function PublishPage() {
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-foreground/30 italic">未配置元数据，点击编辑按钮添加</p>
+                        <p className="text-xs text-foreground/30 italic">未配置通用内容，点击编辑按钮添加</p>
                       )}
+                      </div>
                     </div>
 
                     {/* 操作按钮 */}
@@ -1626,7 +1670,7 @@ export default function PublishPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-foreground/60">随机偏移（±秒）</Label>
+                  <Label className="text-xs text-foreground/60">相邻批次间隔浮动（±秒）</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       type="number"
@@ -1656,6 +1700,7 @@ export default function PublishPage() {
             {plan.intervalControlEnabled && (
               <div className="mt-4">
                 <IntervalTimelinePreview
+                  startTime={plan.publishTiming === "scheduled" && plan.scheduleDate && plan.scheduleTime ? `${plan.scheduleDate.slice(0, 10)}T${plan.scheduleTime}:00+08:00` : undefined}
                   mode={plan.intervalMode}
                   intervalSeconds={plan.intervalSeconds}
                   randomOffset={plan.randomOffsetSeconds}

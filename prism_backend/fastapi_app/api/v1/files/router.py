@@ -76,7 +76,23 @@ COVER_PLATFORMS = {"all", "douyin", "xiaohongshu", "kuaishou", "bilibili", "wech
 def _read_cover_library(service, file_id):
     import json
     path = service.covers_dir / f"library_{file_id}.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"items": [], "selected": {}}
+    library = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"items": [], "selected": {}}
+    from PIL import Image
+    known = {item["path"] for item in library["items"]}
+    platforms = {"全平台": "all", "抖音": "douyin", "小红书": "xiaohongshu", "B站": "bilibili", "快手": "kuaishou", "视频号": "wechat", "TikTok": "tiktok", "YouTube": "youtube", "Instagram": "instagram"}
+    for generated in sorted(service.covers_dir.glob(f"ai_cover_{file_id}_*")):
+        relative = service._cover_rel_path(generated.name)
+        if relative in known or not generated.is_file():
+            continue
+        try:
+            with Image.open(generated) as image:
+                width, height = image.size
+            platform_name = generated.name[len(f"ai_cover_{file_id}_"):].split("_")[0]
+            platform = platforms.get(platform_name, platform_name if platform_name in COVER_PLATFORMS else "all")
+            library["items"].append({"id": generated.stem, "path": relative, "platform": platform, "orientation": "landscape" if width > height else "portrait", "width": width, "height": height, "source": "generated"})
+        except (OSError, ValueError):
+            continue
+    return library
 
 
 def _write_cover_library(service, file_id, library):
@@ -128,6 +144,28 @@ async def upload_material_covers(file_id: int, platform: str = Form("all"), imag
     return {"data": library}
 
 
+@router.delete("/{file_id}/covers/{cover_id}")
+async def delete_material_cover(file_id: int, cover_id: str, db=Depends(get_db), service=Depends(get_file_service)):
+    record = await service.get_file(db, file_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="素材不存在")
+    async with COVER_LIBRARY_LOCK:
+        library = _read_cover_library(service, file_id)
+        item = next((item for item in library["items"] if item["id"] == cover_id), None)
+        if not item:
+            raise HTTPException(status_code=404, detail="封面不存在")
+        target = (service.video_dir / item["path"]).resolve()
+        if not target.is_relative_to(service.covers_dir.resolve()):
+            raise HTTPException(status_code=400, detail="封面路径无效")
+        library["items"] = [entry for entry in library["items"] if entry["id"] != cover_id]
+        library["selected"] = {key: value for key, value in library["selected"].items() if value != cover_id}
+        if getattr(record, "cover_image", None) == item["path"]:
+            await service.update_file(db, file_id, FileUpdate(cover_image=""))
+        target.unlink(missing_ok=True)
+        _write_cover_library(service, file_id, library)
+    return {"data": library, "deleted_path": item["path"]}
+
+
 class AdaptMaterialCover(BaseModel):
     path: str
     platform: str = "all"
@@ -151,6 +189,53 @@ async def adapt_material_cover(file_id: int, request: AdaptMaterialCover, db=Dep
     except Exception:
         raise HTTPException(status_code=400, detail="封面图片无法裁切")
     return await upload_material_covers(file_id=file_id, platform=request.platform, images=images, db=db, service=service)
+
+
+class MaterialTextCandidate(BaseModel):
+    title: Optional[str] = None
+    tags: Optional[str] = None
+
+
+@router.get("/{file_id}/text-history")
+async def get_material_text_history(file_id: int, db=Depends(get_db), service=Depends(get_file_service)):
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    async with COVER_LIBRARY_LOCK:
+        return {"data": _read_cover_library(service, file_id).get("text_history", {"titles": [], "tags": []})}
+
+
+@router.post("/{file_id}/text-history")
+async def add_material_text_history(file_id: int, request: MaterialTextCandidate, db=Depends(get_db), service=Depends(get_file_service)):
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    async with COVER_LIBRARY_LOCK:
+        library = _read_cover_library(service, file_id)
+        history = library.setdefault("text_history", {"titles": [], "tags": []})
+        for field, value in (("titles", request.title), ("tags", request.tags)):
+            if value and value.strip():
+                value = value.strip()
+                history[field] = [value] + [item for item in history[field] if item != value]
+        _write_cover_library(service, file_id, library)
+    return {"data": history}
+
+
+class MaterialTextDeletion(BaseModel):
+    field: str
+    value: str
+
+
+@router.delete("/{file_id}/text-history")
+async def delete_material_text_history(file_id: int, request: MaterialTextDeletion, db=Depends(get_db), service=Depends(get_file_service)):
+    if request.field not in ("titles", "tags"):
+        raise HTTPException(status_code=422, detail="无效的候选类型")
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    async with COVER_LIBRARY_LOCK:
+        library = _read_cover_library(service, file_id)
+        history = library.setdefault("text_history", {"titles": [], "tags": []})
+        history[request.field] = [item for item in history.get(request.field, []) if item != request.value]
+        _write_cover_library(service, file_id, library)
+    return {"data": history}
 
 
 class MaterialPreset(BaseModel):
@@ -177,6 +262,22 @@ async def save_material_preset(file_id: int, preset_id: str, request: MaterialPr
         library = _read_cover_library(service, file_id)
         presets = library.setdefault("presets", {})
         presets[preset_id] = {"name": request.name, "platform": request.platform, "data": request.data}
+        _write_cover_library(service, file_id, library)
+    return {"data": presets}
+
+
+@router.delete("/{file_id}/presets/{preset_id}")
+async def delete_material_preset(file_id: int, preset_id: str, db=Depends(get_db), service=Depends(get_file_service)):
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    if preset_id == "default":
+        raise HTTPException(status_code=400, detail="通用配置不能删除")
+    async with COVER_LIBRARY_LOCK:
+        library = _read_cover_library(service, file_id)
+        presets = library.get("presets", {})
+        if preset_id not in presets:
+            raise HTTPException(status_code=404, detail="预设不存在")
+        del presets[preset_id]
         _write_cover_library(service, file_id, library)
     return {"data": presets}
 

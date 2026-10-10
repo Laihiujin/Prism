@@ -1,5 +1,7 @@
 "use client"
 import { useState } from "react"
+import { Trash2 } from "lucide-react"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -11,6 +13,8 @@ export function MaterialPresetMenu({ materialId, onEdit }: { materialId: string;
     const [error, setError] = useState("")
     const [busy, setBusy] = useState(false)
     const [open, setOpen] = useState(false)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
+    const [deleting, setDeleting] = useState(false)
     const load = async () => {
         try {
             const response = await fetch(`${backendBaseUrl}/api/v1/files/${materialId}/presets`)
@@ -20,12 +24,15 @@ export function MaterialPresetMenu({ materialId, onEdit }: { materialId: string;
         } catch (error) { setError(error instanceof Error ? error.message : "预设读取失败") }
     }
     const edit = (id: string) => { setOpen(false); onEdit(id) }
-    return <Popover open={open} onOpenChange={next => { setOpen(next); if (next) void load() }}>
+    return <><Popover open={open} onOpenChange={next => { setOpen(next); if (next) void load() }}>
         <PopoverTrigger asChild><Button size="sm" variant="secondary">平台预设</Button></PopoverTrigger>
-        <PopoverContent align="end" className="w-72 space-y-3 rounded-xl">
+        <PopoverContent align="end" className="w-72 space-y-3 rounded-xl border-0 bg-zinc-950 ring-0 shadow-xl">
             <div className="text-sm font-medium">选择预设后编辑</div>
             <button className="block w-full rounded-lg p-2 text-left text-sm hover:bg-accent" onClick={() => edit("default")}>通用配置</button>
-            {Object.entries(presets).map(([id, preset]) => <button key={id} className="block w-full rounded-lg p-2 text-left text-sm hover:bg-accent" onClick={() => edit(id)}>{preset.name}</button>)}
+            {Object.entries(presets).map(([id, preset]) => <div key={id} className="flex items-center gap-1 rounded-lg hover:bg-accent">
+                <button className="min-w-0 flex-1 truncate p-2 text-left text-sm" onClick={() => edit(id)}>{preset.name}</button>
+                <button type="button" aria-label={`删除预设 ${preset.name}`} className="rounded-md p-2 text-muted-foreground hover:bg-red-500/10 hover:text-red-400" onClick={() => setDeleteId(id)}><Trash2 className="h-4 w-4" /></button>
+            </div>)}
             <Input aria-label="新预设名称" placeholder="新预设名称" value={name} onChange={event => setName(event.target.value)} />
             <Button className="w-full bg-white text-black hover:bg-zinc-200" disabled={busy || !name.trim()} onClick={async () => {
                 setBusy(true)
@@ -41,4 +48,24 @@ export function MaterialPresetMenu({ materialId, onEdit }: { materialId: string;
             {error ? <p role="alert" className="text-xs text-red-400">{error}</p> : null}
         </PopoverContent>
     </Popover>
+        <AlertDialog open={!!deleteId} onOpenChange={next => { if (!next && !deleting) setDeleteId(null) }}>
+            <AlertDialogContent>
+                <AlertDialogHeader><AlertDialogTitle>删除预设“{deleteId ? presets[deleteId]?.name : ""}”？</AlertDialogTitle><AlertDialogDescription>仅删除这份预设，素材和其他预设会保留。</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel><AlertDialogAction className="bg-red-600 text-white hover:bg-red-700" disabled={deleting} onClick={async event => {
+                    event.preventDefault()
+                    if (!deleteId) return
+                    setDeleting(true)
+                    try {
+                        const response = await fetch(`${backendBaseUrl}/api/v1/files/${materialId}/presets/${encodeURIComponent(deleteId)}`, { method: "DELETE" })
+                        const payload = await response.json()
+                        if (!response.ok) throw new Error(payload.detail || "删除预设失败")
+                        setPresets(payload.data)
+                        localStorage.removeItem(`materialEditorDraft:${materialId}:${deleteId}`)
+                        setDeleteId(null); setError("")
+                    } catch (error) { setError(error instanceof Error ? error.message : "删除预设失败") }
+                    finally { setDeleting(false) }
+                }}>{deleting ? "删除中…" : "删除预设"}</AlertDialogAction></AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </>
 }

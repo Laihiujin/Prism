@@ -29,6 +29,7 @@ class BatchTaskItem(BaseModel):
         default=None,
         description="按平台覆盖话题（key 可用平台代码/平台名）",
     )
+    platform_material_presets: Optional[Dict[str, str]] = Field(None, description="各平台使用的素材预设ID")
     # 🆕 NEW: Douyin publish options (per-item overrides, None = 未设置)
     declaration: Optional[str] = Field(None, description="自主声明")
     location: Optional[str] = Field(None, description="地理位置/POI")
