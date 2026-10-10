@@ -148,6 +148,13 @@ async def _run_ai_cover_job(
         job["status"] = "running"
         job["updated_at"] = datetime.now(timezone.utc).isoformat()
 
+    async def report_progress(stage: str):
+        async with AI_COVER_JOBS_LOCK:
+            job = AI_COVER_JOBS.get(job_id)
+            if job is not None:
+                job["stage"] = stage
+                job["updated_at"] = datetime.now(timezone.utc).isoformat()
+
     try:
         service = FileService()
         with main_db_pool.get_connection() as conn:
@@ -159,6 +166,7 @@ async def _run_ai_cover_job(
                 style_hint=style_hint,
                 prompt_override=prompt,
                 image_bytes_override=ref_image_bytes,
+                on_progress=report_progress,
             )
 
         async with AI_COVER_JOBS_LOCK:

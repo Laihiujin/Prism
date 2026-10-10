@@ -63,7 +63,10 @@ if __name__ == "__main__":
     if not result.installed:
         print(f"[PLAYWRIGHT] Chromium not ready: {result.error}")
 
-    reload_dirs = [str(project_root / "fastapi_app")] if settings.DEBUG else None
+    reload_dirs = [
+        str(project_root / name)
+        for name in ("fastapi_app", "automation", "ai_service")
+    ] if settings.DEBUG else None
 
     uvicorn.run(
         "fastapi_app.main:app",

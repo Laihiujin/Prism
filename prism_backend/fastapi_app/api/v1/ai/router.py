@@ -14,6 +14,21 @@ from sqlalchemy import text
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
+def _normalize_model_api_base(value: str) -> str:
+    from urllib.parse import urlsplit
+    base = value.strip().rstrip("/")
+    parsed = urlsplit(base)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.query or parsed.fragment or parsed.username or parsed.password:
+        raise HTTPException(status_code=400, detail="请填写有效的 HTTP(S) Base URL")
+    for suffix in ("/chat/completions", "/images/generations", "/images/edits", "/audio/transcriptions", "/models"):
+        if base.endswith(suffix):
+            base = base[:-len(suffix)]
+            break
+    if not urlsplit(base).path.strip("/"):
+        base += "/v1"
+    return base
+
+
 def _normalize_images_base_url(value: Optional[str]) -> Optional[str]:
     """
     Accept either:
@@ -975,6 +990,53 @@ async def generate_cover(request: GenerateCoverRequest):
 
 # ==================== AI模型配置管理 ====================
 
+class DiscoverModelsRequest(BaseModel):
+    base_url: str
+    api_key: str = ""
+
+
+@router.post("/models/discover")
+async def discover_models(request: DiscoverModelsRequest):
+    """Fetch the live catalogue from a user-configured compatible endpoint."""
+    import httpx
+    from urllib.parse import urlsplit
+
+    base = request.base_url.strip().rstrip("/")
+    parsed = urlsplit(base)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.query or parsed.fragment or parsed.username or parsed.password:
+        raise HTTPException(status_code=400, detail="请填写有效的 HTTP(S) Base URL，不含查询参数或认证信息")
+    for suffix in ("/chat/completions", "/images/generations", "/audio/transcriptions"):
+        if base.endswith(suffix):
+            base = base[:-len(suffix)]
+            break
+    urls = [base if base.endswith("/models") else f"{base}/models"]
+    if parsed.path in {"", "/"}:
+        urls.append(f"{base}/v1/models")
+    headers = {"Authorization": f"Bearer {request.api_key.strip()}"} if request.api_key.strip() else {}
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            for index, url in enumerate(urls):
+                response = await client.get(url, headers=headers)
+                if response.status_code in {404, 405} and index + 1 < len(urls):
+                    continue
+                if not response.is_success:
+                    raise HTTPException(status_code=502, detail=f"模型列表获取失败（HTTP {response.status_code}），请检查地址、API Key 和提供商是否支持 /models")
+                payload = response.json()
+                items = payload.get("data", payload.get("models")) if isinstance(payload, dict) else payload
+                if not isinstance(items, list):
+                    raise HTTPException(status_code=502, detail="提供商未返回可识别的模型列表，请手动填写模型名称")
+                models = set()
+                for item in items:
+                    name = item if isinstance(item, str) else (item.get("id") or item.get("name")) if isinstance(item, dict) else None
+                    if isinstance(name, str) and name.strip():
+                        models.add(name.strip())
+                return {"data": sorted(models), "total": len(models)}
+    except HTTPException:
+        raise
+    except (httpx.RequestError, ValueError):
+        raise HTTPException(status_code=502, detail="无法获取模型列表，请检查连接和接口返回格式；也可以手动填写模型名称")
+
+
 class AIModelConfigRequest(BaseModel):
     service_type: str  # 'chat', 'cover_generation', 'function_calling'
     provider: str
@@ -1241,7 +1303,7 @@ async def test_model_connection(request: TestConnectionRequest):
                     detail="model_name 是必需的参数，请提供模型名称"
                 )
 
-            base_url = request.base_url.rstrip('/')
+            base_url = _normalize_model_api_base(request.base_url)
 
             # 构建测试请求
             test_payload = {
@@ -1283,6 +1345,12 @@ async def test_model_connection(request: TestConnectionRequest):
 
                 if response.status_code == 200:
                     response_data = response.json()
+                    choices = response_data.get("choices") if isinstance(response_data, dict) else None
+                    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                        raise HTTPException(status_code=502, detail="接口未返回有效的模型响应，不能确认连接成功")
+                    model_message = choices[0].get("message")
+                    if not isinstance(model_message, dict) or not any(model_message.get(key) for key in ("content", "tool_calls", "function_call", "reasoning_content")):
+                        raise HTTPException(status_code=502, detail="模型返回空响应，不能确认连接成功")
 
                     # 提取AI回复
                     ai_response = ""
@@ -1290,7 +1358,9 @@ async def test_model_connection(request: TestConnectionRequest):
 
                     if "choices" in response_data and len(response_data["choices"]) > 0:
                         message = response_data["choices"][0].get("message", {})
-                        ai_response = message.get("content", "")
+                        ai_response = message.get("content") or message.get("reasoning_content") or ""
+                        if not isinstance(ai_response, str):
+                            ai_response = json.dumps(ai_response, ensure_ascii=False)
 
                         # 检查是否支持 Function Calling
                         if request.service_type == "function_calling":
@@ -1336,7 +1406,7 @@ async def test_model_connection(request: TestConnectionRequest):
                 )
 
             async with httpx.AsyncClient(timeout=60.0) as client:
-                base_url = _normalize_images_base_url(request.base_url) or ""
+                base_url = _normalize_model_api_base(request.base_url)
                 base_url = base_url.rstrip('/')
                 request_model = (request.model_name or "").strip()
                 model_lower = request_model.lower()
@@ -1413,93 +1483,18 @@ async def test_model_connection(request: TestConnectionRequest):
                         detail=f"图片生成模型测试失败: {error_text[:200]}"
                     )
 
-        elif request.service_type == "speech_recognition":
-            # 语音识别服务测试 - 验证API端点可访问性
-            if not request.base_url:
-                raise HTTPException(
-                    status_code=400,
-                    detail="base_url 是必需的参数，请提供 API 端点地址"
-                )
-
-            if not request.model_name:
-                raise HTTPException(
-                    status_code=400,
-                    detail="model_name 是必需的参数，请提供模型名称"
-                )
-
-            # 尝试访问models端点验证认证
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                base_url = request.base_url.rstrip('/')
-
-                try:
-                    # 硅基流动：验证可用模型
-                    if "siliconflow" in base_url.lower():
-                        # 硅基流动支持的语音识别模型：
-                        # - FunAudioLLM/SenseVoiceSmall
-                        # - TeleAI/TeleSpeechASR
-                        valid_models = [
-                            "FunAudioLLM/SenseVoiceSmall",
-                            "TeleAI/TeleSpeechASR"
-                        ]
-
-                        if request.model_name not in valid_models:
-                            return {
-                                "status": "success",
-                                "message": f"⚠️ 语音识别配置已保存，但模型名称可能不正确",
-                                "connected": True,
-                                "model_name": request.model_name,
-                                "note": f"硅基流动支持的模型：{', '.join(valid_models)}"
-                            }
-                        else:
-                            return {
-                                "status": "success",
-                                "message": f"✅ 语音识别服务配置有效！模型: {request.model_name}",
-                                "connected": True,
-                                "model_name": request.model_name,
-                                "note": "配置正确。语音识别需要实际音频文件才能完全测试"
-                            }
-
-                    # 其他API（OpenAI等）：尝试获取模型列表
-                    else:
-                        response = await client.get(
-                            f"{base_url}/models",
-                            headers={"Authorization": f"Bearer {request.api_key}"}
-                        )
-
-                        if response.status_code == 200:
-                            models_data = response.json()
-                            available_models = []
-                            if "data" in models_data:
-                                available_models = [m.get("id", "") for m in models_data.get("data", [])]
-
-                            model_available = any(request.model_name in m for m in available_models) if available_models else True
-
-                            return {
-                                "status": "success",
-                                "message": f"✅ 语音识别服务配置有效！模型: {request.model_name}",
-                                "connected": True,
-                                "model_name": request.model_name,
-                                "model_available": model_available,
-                                "note": "语音识别需要实际音频文件才能完全测试"
-                            }
-                        elif response.status_code == 401:
-                            raise HTTPException(
-                                status_code=401,
-                                detail="API Key 无效，请检查"
-                            )
-                        else:
-                            return {
-                                "status": "success",
-                                "message": f"✅ 语音识别配置已验证！模型: {request.model_name}",
-                                "connected": True,
-                                "model_name": request.model_name,
-                                "note": "API Key 已验证，语音识别需要实际音频文件才能完全测试"
-                            }
-                except httpx.ConnectError:
-                    raise HTTPException(
-                        status_code=503,
-                        detail="无法连接到 API 端点，请检查 base_url"
-                    )
+        elif request.service_type in {"speech_recognition", "video_generation"}:
+            if not request.base_url or not request.model_name:
+                raise HTTPException(status_code=400, detail="请填写 Base URL 和模型名称")
+            catalogue = await discover_models(DiscoverModelsRequest(
+                base_url=_normalize_model_api_base(request.base_url), api_key=request.api_key,
+            ))
+            if request.model_name.strip() not in catalogue["data"]:
+                raise HTTPException(status_code=400, detail="当前模型不在提供商返回的列表中，无法确认可用性")
+            return {
+                "status": "success", "connected": True, "model_name": request.model_name,
+                "message": "已请求提供商 API，当前模型在返回列表中；尚未验证实际语音识别或视频生成。",
+            }
 
         elif request.service_type == "tikhub":
             base_url = (request.base_url or "https://api.tikhub.io").rstrip("/")
@@ -1528,89 +1523,6 @@ async def test_model_connection(request: TestConnectionRequest):
                 status_code=response.status_code,
                 detail=f"TikHub 测试失败: {response.text[:200]}",
             )
-
-        elif request.service_type == "video_generation":
-            # 视频生成服务测试 - 验证API端点和认证
-            if not request.base_url:
-                raise HTTPException(
-                    status_code=400,
-                    detail="base_url 是必需的参数，请提供 API 端点地址"
-                )
-
-            if not request.model_name:
-                raise HTTPException(
-                    status_code=400,
-                    detail="model_name 是必需的参数，请提供模型名称"
-                )
-
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                base_url = request.base_url.rstrip('/')
-
-                try:
-                    # 硅基流动：验证模型名称
-                    if "siliconflow" in base_url.lower():
-                        # 硅基流动支持的视频生成模型
-                        valid_models = [
-                            "Wan-AI/Wan2.2-T2V-A14B",
-                            "Wan-AI/Wan2.1-T2V-14B",
-                            "Wan-AI/Wan2.1-T2V-14B-Turbo",
-                            "Wan-AI/Wan2.1-I2V-14B-720P",
-                            "Wan-AI/Wan2.1-I2V-14B-720P-Turbo"
-                        ]
-
-                        if request.model_name not in valid_models:
-                            return {
-                                "status": "success",
-                                "message": f"⚠️ 视频生成配置已保存，但模型名称可能不正确",
-                                "connected": True,
-                                "model_name": request.model_name,
-                                "note": f"硅基流动支持的模型：{', '.join(valid_models[:2])}..."
-                            }
-                        else:
-                            return {
-                                "status": "success",
-                                "message": f"✅ 视频生成服务配置有效！模型: {request.model_name}",
-                                "connected": True,
-                                "model_name": request.model_name,
-                                "provider": "SiliconFlow",
-                                "note": "配置正确。视频生成需要调用submit接口，生成时间约1-5分钟"
-                            }
-
-                    # Runway：尝试访问任务列表端点
-                    elif "runwayml" in base_url.lower():
-                        response = await client.get(
-                            f"{base_url}/tasks",
-                            headers={"Authorization": f"Bearer {request.api_key}"}
-                        )
-
-                        if response.status_code in [200, 404]:
-                            return {
-                                "status": "success",
-                                "message": f"✅ 视频生成服务配置有效！模型: {request.model_name}",
-                                "connected": True,
-                                "model_name": request.model_name,
-                                "provider": "Runway",
-                                "note": "API Key 已验证。视频生成需要实际请求且可能需要1-5分钟"
-                            }
-                        elif response.status_code == 401:
-                            raise HTTPException(
-                                status_code=401,
-                                detail="Runway API Key 无效"
-                            )
-                    else:
-                        # 其他视频生成服务
-                        return {
-                            "status": "success",
-                            "message": f"✅ 视频生成配置已验证！模型: {request.model_name}",
-                            "connected": True,
-                            "model_name": request.model_name,
-                            "note": "配置已保存。视频生成需要实际请求且可能需要较长时间"
-                        }
-                except httpx.ConnectError:
-                    raise HTTPException(
-                        status_code=503,
-                        detail="无法连接到 API 端点，请检查 base_url"
-                    )
 
         else:
             raise HTTPException(

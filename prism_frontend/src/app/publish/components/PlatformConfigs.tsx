@@ -175,7 +175,7 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit() } }}
-                            placeholder="如：芒果斗地主 / 抖音商城（发布时在页面联想点选）"
+                            placeholder="输入要挂载的内容名称（发布时在页面联想点选）"
                             className="rounded-none bg-black border-border text-foreground placeholder:text-muted-foreground"
                         />
                         <p className="text-[10px] text-foreground/35 leading-4">
