@@ -48,6 +48,8 @@ function toBackendFileUrl(raw?: string): string {
 interface BiliPlan {
   accountId: string | null // B站账号
   partIds: string[] // 视频素材 id，顺序即 P1..Pn
+  partTitles: Record<string, string>
+  openSubtitle: boolean
   title: string // 稿件主标题
   description: string // 简介
   tags: string
@@ -108,6 +110,8 @@ export default function BilibiliMultipartPage() {
   const [plan, setPlan] = useState<BiliPlan>({
     accountId: null,
     partIds: [],
+    partTitles: {},
+    openSubtitle: false,
     title: "",
     description: "",
     tags: "",
@@ -166,6 +170,8 @@ export default function BilibiliMultipartPage() {
       if (!plan.accountId) throw new Error("请选择 B站 账号")
       if (plan.partIds.length < 2) throw new Error("分P发布至少需要 2 个视频（P1 + P2..Pn）")
       if (!plan.title.trim()) throw new Error("请填写稿件标题")
+      if (plan.copyright === 2 && !plan.source.trim()) throw new Error("转载稿件请填写原作品来源")
+      if (!Number.isInteger(plan.tid) || plan.tid <= 0) throw new Error("请填写有效的分区 ID")
 
       // P1 = file_ids 主素材；P2..Pn = video_parts（取素材 file_path）
       const byId = new Map(videoMaterials.map((m) => [String(m.id), m]))
@@ -176,7 +182,7 @@ export default function BilibiliMultipartPage() {
         const m = byId.get(id)
         if (!m) continue
         const path = (m as any).storageKey || (m as any).file_path || ""
-        if (path) parts.push({ path, title: m.filename })
+        if (path) parts.push({ path, title: plan.partTitles[id]?.trim() || m.filename })
       }
       if (parts.length !== restIds.length) {
         throw new Error("部分分P素材缺少后端路径（storageKey/file_path），无法提交")
@@ -186,11 +192,18 @@ export default function BilibiliMultipartPage() {
       if (plan.scheduled && plan.scheduleDate && plan.scheduleTime) {
         scheduledTime = `${plan.scheduleDate} ${plan.scheduleTime}`
       }
+      if (plan.scheduled) {
+        if (!scheduledTime) throw new Error("请选择定时发布的日期和时间")
+        const delay = new Date(scheduledTime.replace(" ", "T") + ":00+08:00").getTime() - Date.now()
+        if (!Number.isFinite(delay) || delay <= 2 * 60 * 60 * 1000 || delay > 15 * 24 * 60 * 60 * 1000) throw new Error("B站定时发布需在两小时后、15天以内")
+      }
 
       const platform_settings = {
         bilibili: {
           contentKind: "video",
           video_parts: parts,
+          main_part_title: plan.partTitles[plan.partIds[0]]?.trim() || p1?.filename,
+          open_subtitle: plan.openSubtitle,
           tid: plan.tid,
           copyright: plan.copyright,
           source: plan.source || undefined,
@@ -352,6 +365,7 @@ export default function BilibiliMultipartPage() {
                     <Badge variant="outline" className="text-[10px] shrink-0 border-primary/50 text-primary">P{index + 1}</Badge>
                     <span className="text-sm font-medium text-foreground truncate">{m.filename}</span>
                   </div>
+                  <Input aria-label={`P${index + 1}标题`} value={plan.partTitles[String(m.id)] ?? ""} maxLength={80} placeholder={`P${index + 1}标题（默认文件名）`} onChange={e => patch({ partTitles: { ...plan.partTitles, [String(m.id)]: e.target.value } })} className="mt-2 bg-card/20 border-border/70 text-xs" />
                   <div className="text-[10px] text-muted-foreground truncate mt-0.5">
                     {(m as any).title || m.description || m.note || (m as any).storageKey || (m as any).file_path || ""}
                   </div>
@@ -393,7 +407,7 @@ export default function BilibiliMultipartPage() {
         <div className="rounded-2xl border border-border/70 bg-card p-6 space-y-4">
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">稿件主标题 *</Label>
-            <Input value={plan.title} onChange={(e) => patch({ title: e.target.value })} placeholder="主标题（P2..Pn 缺省时用 主标题+P序号）" />
+            <Input maxLength={80} value={plan.title} onChange={(e) => patch({ title: e.target.value })} placeholder="稿件总标题（最多80字，与分P标题分别设置）" />
           </div>
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">简介</Label>
@@ -425,7 +439,8 @@ export default function BilibiliMultipartPage() {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-foreground/40">当前 tid：{plan.tid}</p>
+            <Label className="text-xs text-muted-foreground">细分分区 ID</Label>
+            <Input type="number" min={1} value={plan.tid} onChange={e => patch({ tid: Number(e.target.value) })} className="bg-card/20 border-border/70 text-xs" />
           </div>
 
           {/* 版权 */}
@@ -454,7 +469,7 @@ export default function BilibiliMultipartPage() {
           {plan.copyright === 2 && (
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">转载来源</Label>
-              <Input value={plan.source} onChange={(e) => patch({ source: e.target.value })} placeholder="原作品来源（转载时建议填写）" className="bg-card/20 border-border/70 text-xs" />
+              <Input value={plan.source} onChange={(e) => patch({ source: e.target.value })} placeholder="原作品来源（转载时必填）" className="bg-card/20 border-border/70 text-xs" />
             </div>
           )}
 
@@ -468,6 +483,10 @@ export default function BilibiliMultipartPage() {
           </div>
 
           {/* 定时 */}
+          <div className="flex items-center justify-between rounded-xl border border-border/70 p-4">
+            <Label>允许观众投稿字幕</Label>
+            <Switch checked={plan.openSubtitle} onCheckedChange={v => patch({ openSubtitle: v })} />
+          </div>
           <div className="flex items-center justify-between rounded-xl border border-border/70 p-4">
             <div className="flex items-center gap-3">
               <CalendarClock className="w-4 h-4 text-muted-foreground" />
@@ -485,10 +504,10 @@ export default function BilibiliMultipartPage() {
                 }
                 const now = new Date()
                 const rounded = new Date(now)
-                rounded.setMinutes(rounded.getMinutes() + 120, 0, 0)
+                rounded.setMinutes(rounded.getMinutes() + 130, 0, 0)
                 patch({
                   scheduled: true,
-                  scheduleDate: now.toISOString().split("T")[0],
+                  scheduleDate: `${rounded.getFullYear()}-${String(rounded.getMonth() + 1).padStart(2, "0")}-${String(rounded.getDate()).padStart(2, "0")}`,
                   scheduleTime: `${String(rounded.getHours()).padStart(2, "0")}:${String(rounded.getMinutes()).padStart(2, "0")}`,
                 })
               }}
