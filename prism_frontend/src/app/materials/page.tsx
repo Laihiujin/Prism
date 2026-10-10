@@ -51,6 +51,7 @@ import { type Material } from "@/lib/mock-data"
 import { frontendMaterialsResponseSchema } from "@/lib/schemas"
 import { type ColumnDef } from "@tanstack/react-table"
 import { cn } from "@/lib/utils"
+import { MaterialPresetMenu } from "@/components/material-preset-menu"
 import { MaterialEditorSheet } from "@/components/material-editor-sheet"
 import { PageHeader } from "@/components/layout/page-scaffold"
 
@@ -109,6 +110,7 @@ function MaterialsPageContent() {
   const [isSyncing, setIsSyncing] = useState(false)
 
   // Edit Sheet State
+  const [selectedPreset, setSelectedPreset] = useState("default")
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null)
   const [editForm, setEditForm] = useState({
     title: "",
@@ -493,6 +495,7 @@ function MaterialsPageContent() {
       size: 200,
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
+          <MaterialPresetMenu materialId={String(row.original.id)} onEdit={id => { setSelectedPreset(id); setSelectedMaterial(row.original) }} />
           <Button size="sm" variant="ghost" className="h-8 px-2 text-foreground/70 hover:text-foreground" onClick={() => setPreviewMaterial(row.original)}>
             预览
           </Button>
@@ -500,7 +503,7 @@ function MaterialsPageContent() {
             size="sm"
             variant="secondary"
             className="h-8 px-3 rounded-lg bg-black hover:bg-accent/60 text-foreground border border-border/40"
-            onClick={() => setSelectedMaterial(row.original)}
+            onClick={() => { setSelectedPreset("default"); setSelectedMaterial(row.original) }}
           >
             <FileText className="h-3.5 w-3.5 mr-1.5" />
             编辑详情
@@ -885,6 +888,7 @@ function MaterialsPageContent() {
         open={!!selectedMaterial}
         onOpenChange={(open) => !open && setSelectedMaterial(null)}
         material={selectedMaterial}
+        initialPresetId={selectedPreset}
         groupOptions={groupOptions}
         onSave={async (updatedData) => {
           if (!selectedMaterial) return
@@ -924,19 +928,28 @@ function MaterialsPageContent() {
             })
             if (!response.ok) throw new Error('update failed')
 
-            toast({
+            if (!updatedData.autoSave) toast({
               variant: 'success',
               title: '已保存',
               description: filenameChanged ? '素材信息和文件名已更新' : '素材信息已更新'
             })
-            setSelectedMaterial(null)
-            await refetch()
+            if (!updatedData.autoSave) setSelectedMaterial(null)
+            if (updatedData.autoSave) {
+              setMaterials(prev => prev.map(item => item.id === selectedMaterial.id ? {
+                ...item, title: updatedData.title, description: updatedData.description,
+                tags: updatedData.tags, note: updatedData.note, cover_image: updatedData.cover_image,
+                ...(updatedData.filename ? { filename: updatedData.filename } : {}),
+              } : item))
+            } else {
+              await refetch()
+            }
           } catch (error: any) {
             toast({
               variant: 'destructive',
               title: '保存失败',
               description: error.message || '请稍后重试'
             })
+            throw error
           }
         }}
       />

@@ -838,7 +838,9 @@ class FileService:
         elif "webp" in ct:
             ext = "webp"
 
-        out_name = self._ai_cover_filename(file_id, platform_name, ext=ext)
+        import uuid
+        base_name = self._ai_cover_filename(file_id, platform_name, ext=ext)
+        out_name = f"{Path(base_name).stem}_{uuid.uuid4().hex}.{ext}"
         out_path = self.covers_dir / out_name
         out_path.write_bytes(result.image_bytes)
         rel = self._cover_rel_path(out_name)

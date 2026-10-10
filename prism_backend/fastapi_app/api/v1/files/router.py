@@ -69,6 +69,136 @@ async def list_files(
     return await service.list_files(db, status=status, group=group, keyword=keyword, skip=skip, limit=limit)
 
 
+COVER_LIBRARY_LOCK = asyncio.Lock()
+COVER_PLATFORMS = {"all", "douyin", "xiaohongshu", "kuaishou", "bilibili", "wechat", "tiktok", "youtube", "instagram"}
+
+
+def _read_cover_library(service, file_id):
+    import json
+    path = service.covers_dir / f"library_{file_id}.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"items": [], "selected": {}}
+
+
+def _write_cover_library(service, file_id, library):
+    import json
+    path = service.covers_dir / f"library_{file_id}.json"
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(library, ensure_ascii=False), encoding="utf-8")
+    temporary.replace(path)
+
+
+@router.get("/{file_id}/covers")
+async def list_material_covers(file_id: int, db=Depends(get_db), service=Depends(get_file_service)):
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    async with COVER_LIBRARY_LOCK:
+        return {"data": _read_cover_library(service, file_id)}
+
+
+@router.post("/{file_id}/covers")
+async def upload_material_covers(file_id: int, platform: str = Form("all"), images: list[UploadFile] = File(...), db=Depends(get_db), service=Depends(get_file_service)):
+    import io
+    from PIL import Image
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    if platform not in COVER_PLATFORMS or not 1 <= len(images) <= 20:
+        raise HTTPException(status_code=400, detail="平台无效或图片数量超过20张")
+    prepared = []
+    for image in images:
+        raw = await image.read(15 * 1024 * 1024 + 1)
+        if len(raw) > 15 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="单张封面不能超过15MB")
+        try:
+            with Image.open(io.BytesIO(raw)) as picture:
+                width, height = picture.size
+                buffer = io.BytesIO()
+                picture.convert("RGB").save(buffer, format="PNG")
+        except Exception:
+            raise HTTPException(status_code=400, detail="请上传有效图片")
+        cover_id = uuid.uuid4().hex
+        name = f"uploaded_{file_id}_{cover_id}.png"
+        prepared.append(({"id": cover_id, "platform": platform, "orientation": "landscape" if width > height else "portrait", "width": width, "height": height, "path": service._cover_rel_path(name)}, name, buffer.getvalue()))
+    async with COVER_LIBRARY_LOCK:
+        library = _read_cover_library(service, file_id)
+        for item, name, raw in prepared:
+            (service.covers_dir / name).write_bytes(raw)
+            library["items"].append(item)
+            library["selected"][f"{platform}:{item['orientation']}"] = item["id"]
+        _write_cover_library(service, file_id, library)
+    return {"data": library}
+
+
+class AdaptMaterialCover(BaseModel):
+    path: str
+    platform: str = "all"
+
+
+@router.post("/{file_id}/covers/adapt")
+async def adapt_material_cover(file_id: int, request: AdaptMaterialCover, db=Depends(get_db), service=Depends(get_file_service)):
+    import io
+    from PIL import Image, ImageOps
+    source = (service.video_dir / request.path).resolve()
+    if not source.is_relative_to(service.covers_dir.resolve()) or not source.is_file():
+        raise HTTPException(status_code=400, detail="请选择已保存的封面图片")
+    images = []
+    try:
+        with Image.open(source) as picture:
+            for width, height in ((900, 1200), (1200, 900)):
+                buffer = io.BytesIO()
+                ImageOps.fit(picture.convert("RGB"), (width, height), method=Image.Resampling.LANCZOS).save(buffer, format="PNG")
+                buffer.seek(0)
+                images.append(UploadFile(filename=f"{width}x{height}.png", file=buffer))
+    except Exception:
+        raise HTTPException(status_code=400, detail="封面图片无法裁切")
+    return await upload_material_covers(file_id=file_id, platform=request.platform, images=images, db=db, service=service)
+
+
+class MaterialPreset(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    platform: str = "all"
+    data: dict = Field(default_factory=dict)
+
+
+@router.get("/{file_id}/presets")
+async def list_material_presets(file_id: int, db=Depends(get_db), service=Depends(get_file_service)):
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    async with COVER_LIBRARY_LOCK:
+        return {"data": _read_cover_library(service, file_id).get("presets", {})}
+
+
+@router.put("/{file_id}/presets/{preset_id}")
+async def save_material_preset(file_id: int, preset_id: str, request: MaterialPreset, db=Depends(get_db), service=Depends(get_file_service)):
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    if request.platform not in COVER_PLATFORMS or len(preset_id) > 80:
+        raise HTTPException(status_code=400, detail="预设参数无效")
+    async with COVER_LIBRARY_LOCK:
+        library = _read_cover_library(service, file_id)
+        presets = library.setdefault("presets", {})
+        presets[preset_id] = {"name": request.name, "platform": request.platform, "data": request.data}
+        _write_cover_library(service, file_id, library)
+    return {"data": presets}
+
+
+class SelectMaterialCover(BaseModel):
+    cover_id: str
+
+
+@router.post("/{file_id}/covers/select")
+async def select_material_cover(file_id: int, request: SelectMaterialCover, db=Depends(get_db), service=Depends(get_file_service)):
+    if not await service.get_file(db, file_id):
+        raise HTTPException(status_code=404, detail="素材不存在")
+    async with COVER_LIBRARY_LOCK:
+        library = _read_cover_library(service, file_id)
+        item = next((item for item in library["items"] if item["id"] == request.cover_id), None)
+        if not item:
+            raise HTTPException(status_code=404, detail="封面不存在")
+        library["selected"][f"{item['platform']}:{item['orientation']}"] = item["id"]
+        _write_cover_library(service, file_id, library)
+    return {"data": library}
+
+
 @router.get(
     "/{file_id}",
     response_model=FileResponse,

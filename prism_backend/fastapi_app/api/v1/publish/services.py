@@ -14,6 +14,7 @@ import asyncio
 import warnings
 
 from sqlalchemy import text
+from fastapi_app.core.config import settings
 
 # 时区工具
 from fastapi_app.core.timezone_utils import now_beijing_naive, to_beijing
@@ -746,6 +747,24 @@ class PublishService:
                     final_desc = description or stored_desc or ""
                     final_topics = topics or stored_tags or []
                     final_cover = cover_path or stored_cover or ""
+
+                # Platform-specific uploaded covers override the stored default, not explicit request covers.
+                explicit_cover = cover_path or (getattr(item_config, "cover_path", None) if not isinstance(item_config, dict) else item_config.get("cover_path"))
+                if not explicit_cover:
+                    library_path = Path(settings.VIDEO_FILES_DIR) / "covers" / f"library_{file_id}.json"
+                    if library_path.exists():
+                        try:
+                            library = json.loads(library_path.read_text(encoding="utf-8"))
+                            platform_key = str(account.get("platform") or "").lower()
+                            platform_key = {"xhs": "xiaohongshu", "weixin": "wechat", "channels": "wechat"}.get(platform_key, platform_key)
+                            orientation = "landscape" if platform_key in {"bilibili", "youtube"} else "portrait"
+                            selected = library.get("selected", {})
+                            cover_id = selected.get(f"{platform_key}:{orientation}") or selected.get(f"all:{orientation}")
+                            uploaded = next((item for item in library.get("items", []) if item.get("id") == cover_id), None)
+                            if uploaded:
+                                final_cover = uploaded["path"]
+                        except (ValueError, OSError, KeyError):
+                            logger.warning("Unable to read uploaded cover library for material %s", file_id)
 
                 # 按平台覆盖（优先级高于统一参数）
                 override_title = _pick_platform_override(platform_titles, platform)
