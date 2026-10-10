@@ -139,6 +139,7 @@ interface PublishPlan {
   dedupWindowDays: number
   // 扩展字段，用于存储各平台特有配置（暂未持久化到后端）
   platformSettings?: Record<string, any>
+  platformConfigEnabled?: Partial<Record<PlatformKey, boolean>>
   // 🆕 NEW: 抖音发布选项
   declaration?: string
   location?: string
@@ -871,7 +872,7 @@ export default function PublishPage() {
       }
 
       // 🆕 NEW: 抖音发布选项 - 仅在包含抖音平台时发送
-      const isDouyin = plan.platforms.includes("douyin")
+      const isDouyin = plan.platforms.includes("douyin") && plan.platformConfigEnabled?.douyin === true
       const dSettings = (plan.platformSettings && plan.platformSettings.douyin) || {}
 
       const payload = {
@@ -897,7 +898,7 @@ export default function PublishPage() {
         allow_duplicate_publish: plan.allowDuplicatePublish,
         dedup_window_days: plan.dedupWindowDays,
         // 🆕 NEW: 每平台专属配置（抖音/快手/小红书/B站/视频号面板，写入 platformSettings）
-        platform_settings: plan.platformSettings || {},
+        platform_settings: Object.fromEntries(Object.entries(plan.platformSettings || {}).filter(([platform]) => plan.platforms.includes(platform as PlatformKey) && plan.platformConfigEnabled?.[platform as PlatformKey] === true)),
         // 🆕 NEW: AI 多组标签/话题 — 发布时按账号自动轮转使用素材 ai_tag_groups 的不同组
         use_ai_tag_groups: Boolean(plan.useAiTagGroups),
         // 🆕 NEW: 抖音发布选项 (仅抖音平台)
@@ -1043,13 +1044,13 @@ export default function PublishPage() {
       default: return null
     }
     return (
-      <details key={`config-${platform}`} className="group min-w-0">
-        <summary className="flex cursor-pointer list-none items-center justify-between border border-border/70 bg-black px-4 py-3 text-sm text-foreground [&::-webkit-details-marker]:hidden">
-          <span>{titles[platform] || platform}</span>
-          <span className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
-        </summary>
-        <div className="pt-2">{config}</div>
-      </details>
+      <div key={`config-${platform}`} className="min-w-0">
+        <div className="flex items-center justify-between border border-border/70 bg-black px-4 py-3 text-sm text-foreground">
+          <Label htmlFor={`platform-config-${platform}`}>{titles[platform] || platform}</Label>
+          <Switch id={`platform-config-${platform}`} checked={plan.platformConfigEnabled?.[platform] === true} onCheckedChange={(enabled) => setPlan(prev => ({ ...prev, platformConfigEnabled: { ...prev.platformConfigEnabled, [platform]: enabled } }))} />
+        </div>
+        {plan.platformConfigEnabled?.[platform] === true && <div className="pt-2">{config}</div>}
+      </div>
     )
   }
 
