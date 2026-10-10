@@ -115,7 +115,7 @@ const fetchMaterialsMap = async () => {
 
 const formatTaskQueueRow = (row: any, accountMap: Map<string, string>, materialMap: Map<string, string>): TaskRecord => {
   const payload = row?.data && typeof row.data === "object" ? (row.data as Record<string, unknown>) : {}
-  const schedule = (payload.schedule_time as string) ?? (payload.scheduleTime as string)
+  const schedule = (payload.not_before as string) || (payload.schedule_time as string) || (payload.scheduleTime as string) || (typeof payload.publish_date === "string" ? payload.publish_date : undefined)
   const status = normalizeStatus(row?.status, Boolean(schedule))
   const platformRaw = payload.platform ?? payload.platform_code ?? payload.platformCode ?? row?.task_type
 
@@ -137,6 +137,8 @@ const formatTaskQueueRow = (row: any, accountMap: Map<string, string>, materialM
     status,
     createdAt: (row?.created_at as string) ?? new Date().toISOString(),
     scheduledAt: schedule ? String(schedule) : undefined,
+    startedAt: row?.started_at || undefined,
+    completedAt: row?.completed_at || undefined,
     result: undefined,
     source: "queue" as const,
   }
@@ -234,6 +236,8 @@ const fetchPublishHistory = async (accountMap: Map<string, string>, materialMap:
         status,
         createdAt: (row?.created_at as string) ?? new Date().toISOString(),
         scheduledAt: schedule,
+        startedAt: row?.started_at || undefined,
+        completedAt: row?.completed_at || row?.published_at || undefined,
         result: (row?.error_message as string) ?? undefined,
         source: "history" as const,
       }

@@ -8,7 +8,7 @@ import uuid
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import warnings
@@ -419,6 +419,19 @@ class PublishService:
         except Exception as _hide_err:
             logger.warning(f"[PublishService] channel visibility filter failed (ignored): {_hide_err}")
 
+        # Validate all selected material presets before dispatching any task.
+        from fastapi_app.api.v1.publish.material_presets import resolve_material_preset
+        for item in items or []:
+            file_id = item.get("file_id") if isinstance(item, dict) else item.file_id
+            selections = item.get("platform_material_presets") if isinstance(item, dict) else item.platform_material_presets
+            for account in valid_accounts:
+                account_platform = account.get("platform_code")
+                if account_platform:
+                    try:
+                        resolve_material_preset(settings.VIDEO_FILES_DIR, file_id, account_platform, selections)
+                    except (ValueError, OSError) as error:
+                        raise BadRequestException(str(error)) from error
+
         # 如果是多平台发布，按平台分组账号
         if platform is None:
             # 按平台分组
@@ -431,8 +444,8 @@ class PublishService:
 
             logger.info(f"多平台发布: 检测到 {len(accounts_by_platform)} 个平台")
 
-            # 为每个平台创建任务
-            for plat_code, plat_accounts in accounts_by_platform.items():
+            # Use one global assignment/scheduling pass across every selected platform.
+            for plat_code, plat_accounts in [(0, valid_accounts)]:
                 await self._create_batch_tasks(
                     db, batch_id, file_ids, plat_accounts, plat_code,
                     title,
@@ -594,6 +607,12 @@ class PublishService:
             f"(videos={len(file_ids)}, accounts={len(accounts)})"
         )
 
+        interval_offsets = {}
+        if interval_control_enabled:
+            from fastapi_app.api.v1.publish.interval_schedule import build_interval_offsets
+            interval_offsets = build_interval_offsets(task_assignments, mode, interval_s, random_offset_s)
+            task_assignments.sort(key=lambda assignment: interval_offsets[(assignment.file_index, assignment.account_index)])
+
         def _normalize_platform_key(raw_key: Any) -> Optional[str]:
             if raw_key is None:
                 return None
@@ -648,6 +667,7 @@ class PublishService:
 
         # 为每个分配的任务创建实际发布任务
         for assignment in task_assignments:
+            platform = assignment.platform
             file_id = assignment.file_id
             account = next((a for a in accounts if a['account_id'] == assignment.account_id), None)
             if not account:
@@ -829,6 +849,15 @@ class PublishService:
                 logger.info(f"✅ [Publish Debug] final_desc={final_desc}")
                 logger.info(f"✅ [Publish Debug] final_topics={final_topics}")
 
+                from fastapi_app.api.v1.publish.material_presets import resolve_material_preset
+                material_preset = resolve_material_preset(settings.VIDEO_FILES_DIR, file_id, platform, _item_value(item_config, "platform_material_presets"))
+                if material_preset is not None:
+                    final_title = material_preset["title"]
+                    final_desc = material_preset["description"]
+                    final_topics = material_preset["topics"]
+                    final_cover = material_preset["cover"]
+                    task_tag_group_idx = None
+
                 # 🆕 使用平台适配器格式化元数据
                 formatted_metadata = format_metadata_for_platform(
                     platform_code=platform,
@@ -977,48 +1006,12 @@ class PublishService:
                         f"file={file_id}, account={account['account_id']}"
                     )
 
-                # Optional interval control: delay task execution by setting `not_before`.
-                if interval_control_enabled and interval_s > 0 and mode in ("account_first", "video_first"):
-                    # 计算基础偏移量并记录公式
-                    if mode == "video_first":
-                        base_offset = file_idx * interval_s
-                        formula = f"video_first: file_idx({file_idx}) × {interval_s}s"
-                    else:
-                        # account_first: stagger accounts and keep each account's files sequential.
-                        base_offset = (account_idx * interval_s) + (file_idx * interval_s * max(len(accounts), 1))
-                        formula = (
-                            f"account_first: account_idx({account_idx})×{interval_s}s + "
-                            f"file_idx({file_idx})×{interval_s}s×{len(accounts)} accounts"
-                        )
-
-                    offset = base_offset
-
-                    # 添加随机偏移（如果配置了）
-                    if random_offset_s > 0:
-                        import random
-                        random_delta = random.randint(-random_offset_s, random_offset_s)
-                        offset += random_delta
-                        logger.info(
-                            f"✅ [IntervalControl] Task {task_id}: "
-                            f"{formula} = {base_offset}s + random({random_delta}s) = {offset}s"
-                        )
-                    else:
-                        logger.info(
-                            f"✅ [IntervalControl] Task {task_id}: {formula} = {offset}s"
-                        )
-
-                    # 确保偏移量不为负数
-                    offset = max(0, offset)
-
-                    scheduled_time = base_time + timedelta(seconds=offset)
-                    task_data["not_before"] = scheduled_time.isoformat()
-
-                    # 🆕 记录绝对调度时间，便于验证
-                    logger.info(
-                        f"📅 [IntervalControl] Scheduled: {task_id} → "
-                        f"{scheduled_time.strftime('%H:%M:%S')} "
-                        f"(file={file_idx+1}/{len(file_ids)}, account={account_idx+1}/{len(accounts)})"
-                    )
+                if interval_control_enabled:
+                    offset = interval_offsets[(file_idx, account_idx)]
+                    task_data["not_before"] = (base_time + timedelta(seconds=offset)).isoformat()
+                    task_data["interval_offset_seconds"] = offset
+                    # Queue scheduling owns the start time; don't send a past native schedule.
+                    task_data["publish_date"] = 0
 
                 # 使用 Celery 提交任务
                 from fastapi_app.tasks.publish_tasks import publish_single_task
@@ -1037,7 +1030,7 @@ class PublishService:
                         eta_dt = datetime.fromisoformat(str(nb_value).replace("Z", ""))
                         # Celery timezone=Asia/Shanghai + enable_utc=False，与 naive 北京时一致
                         if eta_dt > now_beijing_naive():
-                            apply_kwargs['eta'] = eta_dt
+                            apply_kwargs['eta'] = eta_dt.replace(tzinfo=timezone(timedelta(hours=8)))
                             logger.info(
                                 f"⏰ [IntervalControl] Celery eta 投递 {task_id} → {eta_dt.strftime('%Y-%m-%d %H:%M:%S')}"
                             )

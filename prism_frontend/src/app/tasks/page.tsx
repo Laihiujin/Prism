@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, Clock3, RefreshCcw, XCircle, AlertCircle, Play, Trash2, Trash, Ban } from "lucide-react"
 
+import { TaskExecutionTime } from "@/components/task-execution-time"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -14,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { fetcher } from "@/lib/api"
 import { backendBaseUrl } from "@/lib/env"
 import { tasksResponseSchema, type TasksResponse } from "@/lib/schemas"
-import { formatBeijingDateTime } from "@/lib/time"
 import { useToast } from "@/components/ui/use-toast"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import { type ColumnDef } from "@tanstack/react-table"
@@ -49,6 +49,7 @@ export default function TasksPage() {
   } = useQuery({
     queryKey: ["tasks"],
     queryFn: () => fetcher<TasksResponse>(`/api/tasks`, tasksResponseSchema),
+    refetchInterval: 5000,
   })
 
   // 获取人工任务
@@ -330,7 +331,7 @@ export default function TasksPage() {
     }
   })
 
-  const tasks = tasksResponse?.data ?? []
+  const tasks = useMemo(() => tasksResponse?.data ?? [], [tasksResponse?.data])
   const summary = tasksResponse?.summary
   const manualTasks = manualTasksRes?.data?.items || []
   const manualStats = manualStatsRes?.data || {}
@@ -463,13 +464,9 @@ export default function TasksPage() {
     },
     {
       id: "time",
-      header: "时间",
-      size: 180,
-      cell: ({ row }) => (
-        row.original.scheduledAt
-          ? <span className="text-xs text-foreground/70">定时 · {row.original.scheduledAt}</span>
-          : <span className="text-xs text-foreground/70">{formatBeijingDateTime(row.original.createdAt)}</span>
-      ),
+      header: "执行时间 / 跟踪",
+      size: 260,
+      cell: ({ row }) => <TaskExecutionTime task={row.original} />,
     },
     {
       accessorKey: "status",

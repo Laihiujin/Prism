@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ChevronDown } from "lucide-react"
@@ -23,6 +24,8 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Sparkles, Wand2, ImageIcon, X, UploadCloud } from "lucide-react"
+import { EditableHistoryInput } from "@/components/editable-history-input"
+import { parseMaterialAIResult } from "@/lib/material-ai-result"
 import { backendBaseUrl } from "@/lib/env"
 import { cn } from "@/lib/utils"
 
@@ -88,7 +91,41 @@ export function MaterialEditorContent({
     const [localIsSaving, setLocalIsSaving] = useState(false)
     const isSaving = externalIsSaving || localIsSaving
     const [aiGenerating, setAiGenerating] = useState<string | null>(null)
+    const aiFillBusyRef = useRef(false)
+    const appliedPresetRef = useRef("")
+    const initializedFormRef = useRef("")
+    const [textHistory, setTextHistory] = useState<{ titles: string[]; tags: string[] }>({ titles: [], tags: [] })
+    useEffect(() => {
+        setTextHistory({ titles: [], tags: [] })
+        if (!material?.id) return
+        const controller = new AbortController()
+        void fetch(`${backendBaseUrl}/api/v1/files/${material.id}/text-history`, { signal: controller.signal }).then(response => response.json()).then(payload => setTextHistory(payload.data || { titles: [], tags: [] })).catch(() => {})
+        return () => controller.abort()
+    }, [material?.id])
+
+    const recordTextHistory = async (candidate: { title?: string; tags?: string }) => {
+        setTextHistory(prev => ({ titles: candidate.title ? [candidate.title, ...prev.titles.filter(value => value !== candidate.title)] : prev.titles, tags: candidate.tags ? [candidate.tags, ...prev.tags.filter(value => value !== candidate.tags)] : prev.tags }))
+        if (!material?.id) return
+        const response = await fetch(`${backendBaseUrl}/api/v1/files/${material.id}/text-history`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(candidate) })
+        if (!response.ok) throw new Error("候选已回填，但生成历史保存失败，请重试")
+    }
+
+    const deleteTextHistory = async (field: "titles" | "tags", value: string) => {
+        try {
+            if (!material?.id) throw new Error("素材不存在")
+            const response = await fetch(`${backendBaseUrl}/api/v1/files/${material.id}/text-history`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ field, value }) })
+            if (!response.ok) throw new Error("删除失败，请重试")
+            const payload = await response.json()
+            setTextHistory(payload.data)
+        } catch (error) {
+            toast({ title: "删除候选失败", description: error instanceof Error ? error.message : "请检查网络连接", variant: "destructive" })
+            throw error
+        }
+    }
+
     const [coverPreviewOpen, setCoverPreviewOpen] = useState(false)
+    const [coverToDelete, setCoverToDelete] = useState<{ id: string; path: string } | null>(null)
+    const [deletingCover, setDeletingCover] = useState(false)
     type MaterialPreset = { name: string; platform: string; data: { form?: Partial<typeof editForm>; coverPrompt?: string; coverAspect?: "3:4" | "4:3" | null } }
     const [presets, setPresets] = useState<Record<string, MaterialPreset>>({})
     const [activePreset, setActivePreset] = useState("default")
@@ -129,16 +166,16 @@ export function MaterialEditorContent({
     const coverPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [referenceImage, setReferenceImage] = useState<File | null>(null)
     const [useFirstFrame, setUseFirstFrame] = useState(true)
-    const [preferGeneratedCover, setPreferGeneratedCover] = useState(true)
     const [refPreviewSrc, setRefPreviewSrc] = useState("")
     const [firstFrameSrc, setFirstFrameSrc] = useState("")
     const [firstFrameError, setFirstFrameError] = useState("")
 
     const [coverAspectOverride, setCoverAspectOverride] = useState<"3:4" | "4:3" | null>(null)
     const [coverPlatform, setCoverPlatform] = useState("all")
-    type UploadedCover = { id: string; path: string; platform: string; orientation: string; width: number; height: number }
+    type UploadedCover = { id: string; path: string; platform: string; orientation: string; width: number; height: number; source?: string }
     const [coverLibrary, setCoverLibrary] = useState<{ items: UploadedCover[]; selected: Record<string, string> }>({ items: [], selected: {} })
     const [uploadingCovers, setUploadingCovers] = useState(false)
+    const [showAllCovers, setShowAllCovers] = useState(true)
     useEffect(() => {
         setCoverAspectOverride(null)
         setCoverLibrary({ items: [], selected: {} })
@@ -195,6 +232,9 @@ export function MaterialEditorContent({
 
 
     useEffect(() => {
+        const identity = `${material?.id || "new"}:${mode}`
+        if (!initialData && initializedFormRef.current === identity) return
+        initializedFormRef.current = identity
         if (initialData) {
             setEditForm(prev => ({ ...prev, ...initialData }))
         } else if (material) {
@@ -285,24 +325,23 @@ export function MaterialEditorContent({
     useEffect(() => {
         if (initialPresetId === "default") return
         const preset = presets[initialPresetId]
-        if (!preset) return
+        if (!preset || appliedPresetRef.current === initialPresetId) return
+        appliedPresetRef.current = initialPresetId
         setActivePreset(initialPresetId)
         setPresetPlatform(preset.platform)
         setCoverPlatform(preset.platform)
-        if (preset.data.form) setEditForm(prev => ({ ...prev, ...preset.data.form }))
+        if (preset.data.form) setEditForm(prev => ({ ...prev, ...preset.data.form, cover_image: preset.data.form.cover_image || "" }))
         setCoverPrompt(preset.data.coverPrompt || "")
         setCoverAspectOverride(preset.data.coverAspect || null)
     }, [initialPresetId, presets])
 
     const coverSrc = useMemo(() => {
-        const orientation = inferredCoverAspect === "3:4" ? "portrait" : "landscape"
-        const selected = coverLibrary.selected[`${coverPlatform}:${orientation}`]
-        const uploaded = coverLibrary.items.find(item => item.id === selected)
-        const raw = (preferGeneratedCover ? (editForm.cover_image || uploaded?.path || "") : (uploaded?.path || editForm.cover_image || "")).trim()
+        // Each preset owns its applied cover. Library selections must not override an empty preset.
+        const raw = editForm.cover_image.trim()
         if (!raw) return ""
         if (raw.startsWith("http")) return raw
         return `${backendBaseUrl}/getFile?filename=${encodeURIComponent(raw)}`
-    }, [editForm.cover_image, inferredCoverAspect, coverPlatform, coverLibrary, preferGeneratedCover])
+    }, [editForm.cover_image])
 
     const coverJobStorageKey = useMemo(() => {
         return material?.id ? `aiCoverJob:${material.id}` : ""
@@ -349,7 +388,11 @@ export function MaterialEditorContent({
 
                 if (status === "succeeded" && coverPath) {
                     setEditForm(prev => ({ ...prev, cover_image: coverPath }))
-                    setPreferGeneratedCover(true)
+                    const libraryResponse = await fetch(`${backendBaseUrl}/api/v1/files/${material?.id}/covers`)
+                    if (libraryResponse.ok) {
+                        const libraryPayload = await libraryResponse.json()
+                        setCoverLibrary(libraryPayload.data)
+                    }
                     setCoverPrompt("")
                     setCoverJobError("")
                     stopCoverPolling()
@@ -376,7 +419,7 @@ export function MaterialEditorContent({
         }
 
         tick()
-    }, [coverJobStorageKey, stopCoverPolling, toast])
+    }, [coverJobStorageKey, stopCoverPolling, toast, material?.id])
 
     useEffect(() => {
         if (!coverJobStorageKey) return
@@ -472,14 +515,18 @@ export function MaterialEditorContent({
             if (field === 'both') {
                 const parsed = JSON.parse(content.trim().replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, ""))
                 if (typeof parsed.title !== "string" || !parsed.title.trim() || !Array.isArray(parsed.tags) || !parsed.tags.every((tag: unknown) => typeof tag === "string")) throw new Error("模型返回格式不正确，请重试")
-                setEditForm(prev => ({ ...prev, title: parsed.title.trim(), tags: normalizeTags(parsed.tags.join(" ")).join(" ") }))
+                const candidate = { title: parsed.title.trim(), tags: normalizeTags(parsed.tags.join(" ")).join(" ") }
+                setEditForm(prev => ({ ...prev, ...candidate }))
+                await recordTextHistory(candidate)
             } else if (field === 'title') {
                 setEditForm(prev => ({ ...prev, title: content.trim() }))
+                await recordTextHistory({ title: content.trim() })
             } else if (field === 'desc') {
                 setEditForm(prev => ({ ...prev, description: content.trim() }))
             } else if (field === 'tags') {
                 const tags = normalizeTags(content.trim())
                 setEditForm(prev => ({ ...prev, tags: tags.join(" ") }))
+                await recordTextHistory({ tags: tags.join(" ") })
             }
 
             toast({ title: "AI 生成完成", description: "内容已自动填充" })
@@ -547,38 +594,43 @@ export function MaterialEditorContent({
     }
 
     const handleFillSelected = async () => {
+        if (aiFillBusyRef.current) return
         const targets = generationTargets.length ? generationTargets : ["title", "tags"]
         if (!editForm.description.trim()) {
             toast({ variant: "destructive", title: "请先填写内容说明", description: "只需描述素材内容，无需先填写标题或标签。" })
             return
         }
+        aiFillBusyRef.current = true
         setAiGenerating("selected")
         try {
+            const schemaExample = JSON.stringify({ ...(targets.includes("title") ? { title: "标题文本" } : {}), ...(targets.includes("tags") ? { tags: ["标签一", "标签二"] } : {}), ...(targets.includes("cover") ? { coverPrompt: "封面设计提示词" } : {}) })
             const requested = targets.map(target => ({ title: "title：10-27字标题", tags: "tags：1-4个标签的字符串数组", cover: "coverPrompt：结合视频主体、构图、光影、配色和标题安全区的中文封面设计提示词" })[target]).join("；")
             const response = await fetch(`${backendBaseUrl}/api/v1/ai/chat`, {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ stream: false, messages: [{ role: "user", content: `根据内容说明生成所选项目，只输出 JSON 对象，包含：${requested}。不编造事实，不添加无关品牌。封面提示词要求保留参考图主体，不生成水印。${platformContext}\n内容说明：${editForm.description.trim()}\n封面额外要求：${coverPrompt}` }] }),
+                body: JSON.stringify({ structured_output: true, stream: false, messages: [{ role: "user", content: `根据内容说明生成所选项目，只输出 JSON 对象，字段必须与此模板一致：${schemaExample}。生成要求：${requested}。不编造事实，不添加无关品牌。封面提示词要求保留参考图主体，不生成水印。${platformContext}\n内容说明：${editForm.description.trim()}\n封面额外要求：${coverPrompt}` }] }),
             })
             const payload = await response.json()
             if (!response.ok) throw new Error(payload?.detail || "生成失败")
             const content = payload.content || payload.message
             if (typeof content !== "string") throw new Error("模型未返回有效内容")
-            const result = JSON.parse(content.trim().replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, ""))
+            const result = parseMaterialAIResult(content)
             if (targets.includes("title") && (typeof result.title !== "string" || !result.title.trim())) throw new Error("模型未返回标题")
             if (targets.includes("tags") && (!Array.isArray(result.tags) || !result.tags.every((tag: unknown) => typeof tag === "string"))) throw new Error("模型未返回有效标签")
             if (targets.includes("cover") && (typeof result.coverPrompt !== "string" || !result.coverPrompt.trim())) throw new Error("模型未返回封面提示词")
-            setEditForm(prev => ({ ...prev,
+            const candidate = {
                 ...(targets.includes("title") ? { title: result.title.trim() } : {}),
                 ...(targets.includes("tags") ? { tags: [...new Set<string>(result.tags.map((tag: string) => tag.trim().replace(/^#/, "")).filter(Boolean))].slice(0, 4).join(" ") } : {}),
-            }))
+            }
+            setEditForm(prev => ({ ...prev, ...candidate }))
+            if (candidate.title || candidate.tags) await recordTextHistory(candidate)
             if (targets.includes("cover")) {
                 setCoverPrompt(result.coverPrompt.trim())
                 await handleGenerateCover(result.coverPrompt.trim())
             }
             toast({ title: "AI 填充完成", description: targets.includes("cover") ? "已优化封面提示词并提交图片生成任务。" : "生成内容已填充，系统会自动保存。" })
         } catch (error) {
-            toast({ variant: "destructive", title: "AI 填充失败", description: error instanceof Error ? error.message : "请稍后重试" })
-        } finally { setAiGenerating(null) }
+            toast({ variant: "destructive", title: "AI 填充失败", description: error instanceof TypeError ? "后端连接中断，请稍后重试；输入已保留。" : error instanceof Error ? error.message : "请稍后重试" })
+        } finally { aiFillBusyRef.current = false; setAiGenerating(null) }
     }
 
     const handleSave = async () => {
@@ -604,6 +656,32 @@ export function MaterialEditorContent({
 
     return (
         <div className={cn("flex flex-col h-full", className)}>
+            <AlertDialog open={!!coverToDelete} onOpenChange={open => { if (!open && !deletingCover) setCoverToDelete(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>删除这张封面？</AlertDialogTitle>
+                        <AlertDialogDescription>删除后无法恢复，其他封面将保留。</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingCover}>取消</AlertDialogCancel>
+                        <AlertDialogAction disabled={deletingCover} className="bg-red-600 text-white hover:bg-red-700" onClick={async event => {
+                            event.preventDefault()
+                            if (!coverToDelete || !material?.id) return
+                            setDeletingCover(true)
+                            try {
+                                const response = await fetch(`${backendBaseUrl}/api/v1/files/${material.id}/covers/${encodeURIComponent(coverToDelete.id)}`, { method: "DELETE" })
+                                const payload = await response.json()
+                                if (!response.ok) throw new Error(payload.detail || "删除失败")
+                                setCoverLibrary(payload.data)
+                                if (editForm.cover_image === coverToDelete.path) setEditForm(prev => ({ ...prev, cover_image: "" }))
+                                setCoverToDelete(null)
+                            } catch (error) { toast({ title: "删除封面失败", description: error instanceof Error ? error.message : "请重试", variant: "destructive" }) }
+                            finally { setDeletingCover(false) }
+                        }}>{deletingCover ? "删除中…" : "删除封面"}</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <Dialog open={coverPreviewOpen} onOpenChange={setCoverPreviewOpen}>
                 <DialogContent className="w-[92vw] max-w-5xl border-white/15 bg-zinc-950 p-4">
                     <DialogTitle>封面预览</DialogTitle>
@@ -628,7 +706,7 @@ export function MaterialEditorContent({
                                         <div className="text-sm font-semibold">生成选项</div>
                                         <p className="mt-1 text-xs text-zinc-400">根据内容说明，生成你需要的内容</p>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
                                         {[["title", "标题", "提炼亮点"], ["tags", "标签", "精准话题"], ["cover", "封面", "优化后生成"]].map(([value, label, hint]) => {
                                             const active = generationTargets.includes(value) || (!generationTargets.length && value !== "cover")
                                             return <button key={value} type="button" aria-pressed={active} className={cn("rounded-xl border px-2 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400", active ? "border-blue-400/60 bg-blue-500/15 text-blue-100" : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10")} onClick={() => setGenerationTargets(prev => {
@@ -669,7 +747,19 @@ export function MaterialEditorContent({
 
                     {mode === "edit" ? <div className="space-y-3 rounded-xl border border-border/70 p-4">
                         <Label>素材发布预设</Label>
-                        <Select value={activePreset} onValueChange={value => {
+                        <Select value={activePreset} onValueChange={async value => {
+                            if (!material?.id || value === activePreset) return
+                            try {
+                                if (activePreset === "default") {
+                                    await saveCallbackRef.current({ ...editForm, group: editForm.group === "none" ? "" : editForm.group, updateDiskFile, autoSave: true })
+                                } else {
+                                    const response = await fetch(`${backendBaseUrl}/api/v1/files/${material.id}/presets/${activePreset}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: presets[activePreset]?.name || "平台预设", platform: presetPlatform, data: { form: editForm, coverPrompt, coverAspect: coverAspectOverride } }) })
+                                    if (!response.ok) throw new Error("预设保存失败")
+                                }
+                            } catch {
+                                toast({ title: "当前预设保存失败", description: "请重试后切换预设", variant: "destructive" })
+                                return
+                            }
                             setPresets(prev => ({ ...prev, [activePreset]: { name: prev[activePreset]?.name || "通用配置", platform: presetPlatform, data: { form: editForm, coverPrompt, coverAspect: coverAspectOverride } } }))
                             const target = presets[value]
                             setActivePreset(value)
@@ -677,7 +767,7 @@ export function MaterialEditorContent({
                             setCoverPlatform(target?.platform || "all")
                             setCoverAspectOverride(target?.data.coverAspect || null)
                             setCoverPrompt(target?.data.coverPrompt || "")
-                            if (target?.data.form) setEditForm(prev => ({ ...prev, ...target.data.form }))
+                            if (target?.data.form) setEditForm(prev => ({ ...prev, ...target.data.form, cover_image: target.data.form.cover_image || "" }))
                         }}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent><SelectItem value="default">通用配置</SelectItem>{Object.entries(presets).filter(([id]) => id !== "default").map(([id, preset]) => <SelectItem key={id} value={id}>{preset.name}</SelectItem>)}</SelectContent>
@@ -753,12 +843,15 @@ export function MaterialEditorContent({
                                         AI 生成
                                     </Button>
                                 </div>
-                                <Input
+                                <EditableHistoryInput
                                     value={editForm.title}
-                                    onChange={e => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                                    className="bg-card border-border/70 font-medium"
-                                    placeholder="输入想要的标题"
+                                    onChange={value => setEditForm(prev => ({ ...prev, title: value }))}
+                                    history={textHistory.titles}
+                                    onDelete={value => deleteTextHistory("titles", value)}
+                                    label="标题"
+                                    placeholder="输入标题或选择生成记录"
                                 />
+
                             </div>
 
                             {/* <div className="grid gap-2">
@@ -797,12 +890,15 @@ export function MaterialEditorContent({
                                         AI 推荐
                                     </Button>
                                 </div>
-                                <Input
+                                <EditableHistoryInput
                                     value={editForm.tags}
-                                    onChange={e => setEditForm(prev => ({ ...prev, tags: e.target.value }))}
-                                    className="bg-card border-border/70"
-                                    placeholder="输入想要的标签"
+                                    onChange={value => setEditForm(prev => ({ ...prev, tags: value }))}
+                                    history={textHistory.tags}
+                                    onDelete={value => deleteTextHistory("tags", value)}
+                                    label="标签"
+                                    placeholder="输入标签或选择生成记录"
                                 />
+
                             </div>
 
                             {/* 分组选择器 - 仅在素材管理页面显示 */}
@@ -871,10 +967,7 @@ export function MaterialEditorContent({
                                 </Select>
                                 <Button className="w-full bg-white text-black hover:bg-zinc-200" disabled={!coverSrc || uploadingCovers} onClick={async () => {
                                     if (!material?.id) return
-                                    const orientation = inferredCoverAspect === "3:4" ? "portrait" : "landscape"
-                                    const selected = coverLibrary.selected[`${coverPlatform}:${orientation}`]
-                                    const uploadedPath = coverLibrary.items.find(item => item.id === selected)?.path
-                                    const path = preferGeneratedCover ? (editForm.cover_image || uploadedPath) : (uploadedPath || editForm.cover_image)
+                                    const path = editForm.cover_image
                                     setUploadingCovers(true)
                                     try {
                                         const response = await fetch(`${backendBaseUrl}/api/v1/files/${material.id}/covers/adapt`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, platform: coverPlatform }) })
@@ -905,16 +998,21 @@ export function MaterialEditorContent({
                                         finally { setUploadingCovers(false) }
                                     }} />
                                 </label>
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs text-zinc-400">封面库 · {coverLibrary.items.length} 张</span>
+                                    <Button size="sm" variant="secondary" onClick={() => setShowAllCovers(value => !value)}>{showAllCovers ? "全部封面 · 点击筛选" : "当前平台与比例 · 查看全部"}</Button>
+                                </div>
                                 <div className="grid grid-cols-3 gap-2">
-                                    {coverLibrary.items.filter(item => item.platform === coverPlatform && item.orientation === (inferredCoverAspect === "3:4" ? "portrait" : "landscape")).map(item => <button key={item.id} type="button" aria-label="选择封面" aria-pressed={coverLibrary.selected[`${item.platform}:${item.orientation}`] === item.id} className={cn("relative overflow-hidden rounded-lg border-2", coverLibrary.selected[`${item.platform}:${item.orientation}`] === item.id ? "border-blue-400" : "border-transparent")} onClick={async () => {
+                                    {coverLibrary.items.filter(item => showAllCovers || (item.platform === coverPlatform && item.orientation === (inferredCoverAspect === "3:4" ? "portrait" : "landscape"))).map(item => <div key={item.id} className="overflow-hidden rounded-xl border border-white/15 bg-zinc-950"><button type="button" aria-label="选择封面" aria-pressed={editForm.cover_image === item.path} className={cn("relative block w-full overflow-hidden rounded-t-xl border-2", editForm.cover_image === item.path ? "border-blue-400" : "border-transparent")} onClick={async () => {
                                         try {
                                             const response = await fetch(`${backendBaseUrl}/api/v1/files/${material?.id}/covers/select`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cover_id: item.id }) })
                                             if (!response.ok) throw new Error("选择封面失败")
                                             const payload = await response.json()
                                             setCoverLibrary(payload.data)
-                                            setPreferGeneratedCover(false)
+                                            setEditForm(prev => ({ ...prev, cover_image: item.path }))
+                                            setCoverAspectOverride(item.orientation === "portrait" ? "3:4" : "4:3")
                                         } catch { toast({ title: "选择封面失败", variant: "destructive" }) }
-                                    }}><Image src={`${backendBaseUrl}/getFile?filename=${encodeURIComponent(item.path)}`} alt="上传封面" width={120} height={120} className="h-20 w-full object-cover" unoptimized /></button>)}
+                                    }}><Image src={`${backendBaseUrl}/getFile?filename=${encodeURIComponent(item.path)}`} alt="封面" width={240} height={180} className="h-28 w-full bg-zinc-900 object-contain" unoptimized /></button><div className="flex items-center justify-between gap-2 px-2 py-2"><span className="text-[11px] text-zinc-400">{item.source === "generated" ? "AI 生成" : "本地封面"}<span className="ml-1 text-zinc-600">{item.width}×{item.height}</span></span><button type="button" aria-label="删除这张封面" className="shrink-0 rounded-md border border-white/15 bg-white px-2 py-1 text-[11px] text-black hover:bg-zinc-200" onClick={() => setCoverToDelete({ id: item.id, path: item.path })}>删除</button></div></div>)}
                                 </div>
                                 <div
                                     className="relative w-full rounded-lg border border-border/70 bg-card overflow-hidden group"
@@ -935,8 +1033,11 @@ export function MaterialEditorContent({
                                 <div className="text-center text-xs text-foreground/40">{inferredCoverAspect} · 封面预览</div>
                                 {coverSrc ? <div className="flex justify-center gap-2">
                                     <Button className="bg-white text-black hover:bg-zinc-200" size="sm" onClick={() => setCoverPreviewOpen(true)}>放大预览</Button>
-                                    {editForm.cover_image && !preferGeneratedCover ? <Button className="bg-white text-black hover:bg-zinc-200" size="sm" onClick={() => setPreferGeneratedCover(true)}>查看生成封面</Button> : null}
-                                    {editForm.cover_image ? <Button className="bg-white text-black hover:bg-zinc-200" size="sm" onClick={() => setEditForm(prev => ({ ...prev, cover_image: "" }))}>清除生成封面</Button> : null}
+                                    <Button className="bg-white text-black hover:bg-zinc-200" size="sm" onClick={() => {
+                                        setEditForm(prev => ({ ...prev, cover_image: "" }))
+                                    }}>清除封面</Button>
+
+
                                 </div> : null}
                             </div>
 
