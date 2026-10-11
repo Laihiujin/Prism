@@ -229,6 +229,7 @@ function AccountPageContent() {
       pollTimeoutRef.current = null
     }
     activeSessionRef.current = null
+    sessionStorage.removeItem("prism-active-login")
     smsLoginStartedRef.current = null
     setSmsVerification(null)
     setSmsCode("")
@@ -284,11 +285,6 @@ function AccountPageContent() {
     setRiskNotice(null)
   }, [stopPolling])
 
-  useEffect(() => {
-    return () => {
-      stopPolling()
-    }
-  }, [stopPolling])
 
   useEffect(() => {
     if (!accountResponse?.data || !Array.isArray(accountResponse.data)) return
@@ -565,54 +561,12 @@ function AccountPageContent() {
     }
   }
 
-  const startApiLogin = async (loginId: string) => {
-    try {
-      // Step 1: 生成二维码
-      const platformMap: Record<PlatformKey, string> = {
-        all: "douyin",
-        kuaishou: "kuaishou",
-        douyin: "douyin",
-        channels: "tencent",
-        xiaohongshu: "xiaohongshu",
-        bilibili: "bilibili",
-        tiktok: "tiktok",
-        youtube: "youtube",
-        twitter: "twitter",
-      }
-
-      const platform = platformMap[formState.platform]
-      const useSms = loginMode === "sms" && supportsSmsLogin
-      const qrRes = useSms
-        ? await fetch(`${backendBaseUrl}/api/v1/auth/sms/start`, {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ platform, account_id: loginId, phone: loginPhone }),
-          })
-        : await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, { method: "POST" })
-
-      let qrData: any = null
-      let rawText = ""
-      try {
-        rawText = await qrRes.text()
-        qrData = rawText ? JSON.parse(rawText) : null
-      } catch (err) {
-        console.error("Failed to parse QR response", err, rawText)
-      }
-
-      if (!qrRes.ok || !qrData?.success) {
-        throw new Error(describeApiError(
-          qrData?.detail || qrData?.error || qrData?.message || rawText || `Status ${qrRes.status}`
-        ))
-      }
-
-      // Step 2: 显示二维码
-      setQrImage(qrData.qr_image)
-      setBindingStatus("code")
-
-      // Step 3: Poll login status
-      const sessionId = qrData.qr_id
+  const resumeLoginPolling = (sessionId: string, initialVerification: typeof smsVerification = null) => {
       stopPolling()
       activeSessionRef.current = sessionId
-      setSmsVerification(qrData.verification ?? null)
+      setBindingStatus("code")
+      sessionStorage.setItem("prism-active-login", JSON.stringify({id: sessionId, platform: formState.platform, mode: loginMode}))
+      setSmsVerification(initialVerification)
       let pollInFlight = false
       pollIntervalRef.current = setInterval(async () => {
         if (pollInFlight || activeSessionRef.current !== sessionId) return
@@ -720,6 +674,76 @@ function AccountPageContent() {
         }, 300000)
       }
       armTimeout()
+  }
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem("prism-active-login")
+    if (saved) {
+      try {
+        const session = JSON.parse(saved)
+        if (typeof session.id === "string" && session.mode === "sms") {
+          setLoginMode("sms")
+          setFormState(previous => ({ ...previous, platform: session.platform }))
+          setDialogOpen(true)
+          resumeLoginPolling(session.id)
+          sessionStorage.setItem("prism-active-login", saved)
+        }
+      } catch { sessionStorage.removeItem("prism-active-login") }
+    }
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+      pollIntervalRef.current = null
+      pollTimeoutRef.current = null
+    }
+    // Resume the existing browser session after a local layout reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const startApiLogin = async (loginId: string) => {
+    try {
+      // Step 1: 生成二维码
+      const platformMap: Record<PlatformKey, string> = {
+        all: "douyin",
+        kuaishou: "kuaishou",
+        douyin: "douyin",
+        channels: "tencent",
+        xiaohongshu: "xiaohongshu",
+        bilibili: "bilibili",
+        tiktok: "tiktok",
+        youtube: "youtube",
+        twitter: "twitter",
+      }
+
+      const platform = platformMap[formState.platform]
+      const useSms = loginMode === "sms" && supportsSmsLogin
+      const qrRes = useSms
+        ? await fetch(`${backendBaseUrl}/api/v1/auth/sms/start`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ platform, account_id: loginId, phone: loginPhone }),
+          })
+        : await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, { method: "POST" })
+
+      let qrData: any = null
+      let rawText = ""
+      try {
+        rawText = await qrRes.text()
+        qrData = rawText ? JSON.parse(rawText) : null
+      } catch (err) {
+        console.error("Failed to parse QR response", err, rawText)
+      }
+
+      if (!qrRes.ok || !qrData?.success) {
+        throw new Error(describeApiError(
+          qrData?.detail || qrData?.error || qrData?.message || rawText || `Status ${qrRes.status}`
+        ))
+      }
+
+      // Step 2: 显示二维码
+      setQrImage(qrData.qr_image)
+      setBindingStatus("code")
+
+      resumeLoginPolling(qrData.qr_id, qrData.verification ?? null)
 
     } catch (error) {
       console.error('API login error:', error)
@@ -1240,6 +1264,7 @@ function AccountPageContent() {
                             <Progress value={33} className="w-full h-1 mt-2" />
                           </div>
                         )}
+                        {activeSessionRef.current && ["code", "logging_in"].includes(bindingStatus) && <Button size="sm" variant="ghost" onClick={() => resumeLoginPolling(activeSessionRef.current!, smsVerification)}>刷新登录状态</Button>}
                         {bindingStatus === "logging_in" && (
                           <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 py-8 text-sm text-foreground/70">
                             {activeSessionRef.current ? <>
