@@ -85,6 +85,16 @@ class PhoneLoginAdapter(PlatformAdapter):
             await self.cleanup_session(self.session_id)
             raise
 
+    async def _secondary_verification(self):
+        if self.platform_name != "kuaishou":
+            return None
+        headings = self.page.get_by_text("手机号码验证", exact=True)
+        for i in range(await headings.count()):
+            heading = headings.nth(i)
+            if await heading.is_visible():
+                return heading.locator("xpath=ancestor::*[.//input][1]")
+        return None
+
     async def _send_control(self):
         return await visible_one(self.page.get_by_text(re.compile(r"^(获取验证码|发送验证码|重新发送|重新获取|重新发送验证码)$")))
 
@@ -150,9 +160,11 @@ class PhoneLoginAdapter(PlatformAdapter):
             raise ValueError("请输入 4–8 位数字验证码")
         if not self.sent:
             raise ValueError("请先获取验证码")
-        field = await visible_one(self.page.get_by_placeholder(re.compile("验证码")))
+        secondary = await self._secondary_verification()
+        scope = secondary if secondary is not None else self.page
+        field = await visible_one(scope.get_by_placeholder(re.compile("验证码")))
         await field.fill(code, timeout=3000)
-        button = await visible_one(self.page.get_by_text(re.compile(r"^登\s*录$")))
+        button = await visible_one(scope.get_by_text(re.compile(r"^确定$" if secondary is not None else r"^登\s*录$")))
         if not await button.is_enabled():
             raise ValueError("登录按钮不可用，请检查验证码和用户协议")
         await button.click(timeout=5000)
@@ -162,7 +174,8 @@ class PhoneLoginAdapter(PlatformAdapter):
         await self._refresh_send_state()
         text = await self.page.locator("body").inner_text()
         error = self.last_sms_error or next((line.strip() for line in text.splitlines() if re.search(r"验证码.*(?:错误|不正确|过期|失效)|验证失败|操作频繁|手机号.*(?:错误|不正确)", line)), "")
-        return {"stage": "code" if self.sent else "choose", "phone": self.masked_phone,
+        secondary = await self._secondary_verification()
+        return {"stage": "secondary" if secondary is not None else "code" if self.sent else "choose", "phone": self.masked_phone,
                 "resend_after": max(0, int(self.resend_at - asyncio.get_running_loop().time())), "error": error}
 
     async def poll_status(self, session_id):
@@ -187,6 +200,10 @@ class PhoneLoginAdapter(PlatformAdapter):
                 uid = next((c["value"] for c in cookies if c["name"] == "DedeUserID"), None)
                 user = UserInfo(user_id=uid, name=uid)
             return LoginResult(LoginStatus.CONFIRMED, "短信登录成功", {c["name"]: c["value"] for c in cookies}, user, state)
+        if await self._secondary_verification() is not None:
+            return LoginResult(LoginStatus.RISK_CONTROL,
+                               "快手要求二次手机号验证，请在下方画面获取验证码，再在这里输入。",
+                               verification=await self.verification_state())
         risk = await risk_control_detected(self.page, self.platform_name)
         return LoginResult(LoginStatus.RISK_CONTROL if risk else LoginStatus.WAITING,
                            risk or "等待短信验证码", verification=await self.verification_state())
