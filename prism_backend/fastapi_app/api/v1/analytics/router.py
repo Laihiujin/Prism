@@ -256,11 +256,19 @@ async def _resolve_douyin_sec_uid(account: Dict[str, Any], cookie_data: Dict[str
     
     # 使用新的解析器（默认不使用 Playwright，性能优先）
     resolver = _get_douyin_sec_uid_resolver()
-    return await resolver(
+    sec_uid = await resolver(
         user_id=str(candidate),
         cookie_header=cookie_header,
         use_playwright=False  # 可以通过环境变量或配置控制
     )
+    if sec_uid:
+        return sec_uid
+    from .douyin_browser_collector import resolve_browser_self_sec_uid
+    try:
+        return await resolve_browser_self_sec_uid(cookie_data, str(candidate))
+    except Exception:
+        return None
+
 
 
 def _persist_douyin_sec_uid(account: Dict[str, Any], sec_uid: str) -> None:
@@ -409,7 +417,7 @@ async def _collect_bilibili_accounts(account_ids: Optional[List[str]] = None) ->
         except Exception as exc:  # noqa: BLE001
             failed.append({"account_id": account_id, "error": str(exc)})
 
-    return {"success": success, "failed": len(failed), "errors": failed}
+    return {"success": success, "failed": len(failed), "total": len(accounts), "errors": failed}
 
 
 def _parse_douyin_aweme_list(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -520,7 +528,7 @@ async def _collect_douyin_tiktok_accounts(
         except Exception as exc:  # noqa: BLE001
             failed.append({"account_id": account_id, "error": str(exc)})
 
-    return {"success": success, "failed": len(failed), "errors": failed}
+    return {"success": success, "failed": len(failed), "total": len(accounts), "errors": failed}
 
 
 async def _collect_via_repo_collector(platform: str, account_ids: Optional[List[str]] = None) -> Dict[str, Any]:
