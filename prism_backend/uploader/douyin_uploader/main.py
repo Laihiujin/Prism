@@ -99,6 +99,28 @@ async def dismiss_douyin_tour(page, max_attempts: int = 6):
             break
 
 
+async def deny_location_prompt(page: Page):
+    session = await page.context.new_cdp_session(page)
+    try:
+        target = (await session.send("Target.getTargetInfo"))["targetInfo"]
+        params = {"permission": {"name": "geolocation"}, "setting": "denied", "origin": "https://creator.douyin.com"}
+        if target.get("browserContextId"):
+            params["browserContextId"] = target["browserContextId"]
+        await session.send("Browser.setPermission", params)
+    finally:
+        await session.detach()
+
+
+async def dismiss_horizontal_cover_prompt(page: Page):
+    """Dismiss the optional dual-cover upsell without changing the chosen cover."""
+    prompts = page.get_by_role("dialog").filter(has_text="设置横封面获更多流量")
+    for index in range(await prompts.count()):
+        prompt = prompts.nth(index)
+        if await prompt.is_visible():
+            await prompt.get_by_role("button", name="暂不设置", exact=True).click(timeout=5000)
+            await prompt.wait_for(state="hidden", timeout=5000)
+
+
 async def _best_effort_close_overlays(page: Page):
     try:
         await try_close_guide(page, "douyin")
@@ -117,6 +139,7 @@ async def cookie_auth(account_file):
         context = await set_init_script(context)
         # 创建一个新的页面
         page = await context.new_page()
+        await deny_location_prompt(page)
         # 访问指定的 URL
         try:
             await page.goto("https://creator.douyin.com/creator-micro/content/upload", timeout=30000)
@@ -181,6 +204,7 @@ async def douyin_cookie_gen(account_file):
         context = await set_init_script(context)
         # Pause the page, and start recording manually.
         page = await context.new_page()
+        await deny_location_prompt(page)
         await page.goto("https://creator.douyin.com/")
         await page.pause()
         # 点击调试器的继续，保存cookie
@@ -341,6 +365,7 @@ class DouYinVideo(object):
 
         # 创建一个新的页面
         page = await context.new_page()
+        await deny_location_prompt(page)
         # 访问指定的 URL
         await page.goto("https://creator.douyin.com/creator-micro/content/upload")
         await self.handle_sms_verification(page)
@@ -435,6 +460,7 @@ class DouYinVideo(object):
         
         #上传视频封面
         await self.set_thumbnail(page, self.thumbnail_path)
+        await dismiss_horizontal_cover_prompt(page)
 
         # 更换可见元素
         await self.set_location(page, "")
@@ -594,6 +620,7 @@ class DouYinVideo(object):
             for sel in [DOUYIN_COVER_DONE_PRIMARY_CSS, DOUYIN_COVER_DONE_SECONDARY_CSS]:
                 btn = root.locator(sel).first
                 if await btn.count() and await btn.is_visible():
+                    await dismiss_horizontal_cover_prompt(page)
                     await btn.click(timeout=5000)
                     clicked_done = True
                     break
@@ -607,6 +634,7 @@ class DouYinVideo(object):
                 ]:
                     btn = root.locator(sel).first
                     if await btn.count() and await btn.is_visible():
+                        await dismiss_horizontal_cover_prompt(page)
                         await btn.click(timeout=5000)
                         clicked_done = True
                         break
@@ -617,6 +645,7 @@ class DouYinVideo(object):
                 for sel in ["button:visible:has-text('完成')", "button:visible:has-text('确定')", "button:visible:has-text('确认')"]:
                     btn = root.locator(sel).first
                     if await btn.count() and await btn.is_visible():
+                        await dismiss_horizontal_cover_prompt(page)
                         await btn.click(timeout=5000)
                         break
 
@@ -668,6 +697,7 @@ class DouYinVideo(object):
             for sel in [DOUYIN_COVER_DONE_PRIMARY_CSS, DOUYIN_COVER_DONE_SECONDARY_CSS]:
                 btn = root.locator(sel).first
                 if await btn.count() and await btn.is_visible():
+                    await dismiss_horizontal_cover_prompt(page)
                     await btn.click(timeout=5000)
                     clicked_done = True
                     break
@@ -683,6 +713,7 @@ class DouYinVideo(object):
                 for sel in ["button:visible:has-text('完成')", "button:visible:has-text('确定')", "button:visible:has-text('确认')"]:
                     btn = root.locator(sel).first
                     if await btn.count() and await btn.is_visible():
+                        await dismiss_horizontal_cover_prompt(page)
                         await btn.click(timeout=5000)
                         break
 
