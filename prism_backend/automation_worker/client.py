@@ -80,6 +80,8 @@ class AutomationWorkerClient:
             url = f"{self.worker_url}/qrcode/status/{session_id}"
 
             response = await self.client.get(url)
+            if response.status_code == 404:
+                return {"status": "expired", "message": "登录会话已结束或过期，请重新扫码"}
             try:
                 data = response.json()
             except Exception:
@@ -100,6 +102,14 @@ class AutomationWorkerClient:
         except Exception as e:
             logger.error(f"[WorkerClient] Error: {e}")
             raise
+
+    async def sms_action(self, session_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        response = await self.client.post(f"{self.worker_url}/qrcode/sms/{session_id}", json=payload)
+        return {"status_code": response.status_code, "body": response.json()}
+
+    async def start_sms_login(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        response = await self.client.post(f"{self.worker_url}/sms/start", json=payload, timeout=90.0)
+        return {"status_code": response.status_code, "body": response.json()}
 
     async def cancel_session(self, session_id: str) -> bool:
         """

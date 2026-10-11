@@ -41,19 +41,19 @@ class BasePlatform(ABC):
         if trigger_selector:
             try:
                 btn = page.locator(trigger_selector).first
-                if await btn.count() > 0 and await btn.is_visible():
-                    await btn.click()
+                if await btn.count() > 0 and await btn.is_visible() and await btn.is_enabled():
+                    await btn.click(timeout=3000)
                     logger.info(f"clicked verification trigger: {trigger_selector}")
-            except Exception as e:
-                logger.warning(f"failed to click verification trigger: {e}")
+            except Exception:
+                logger.warning("verification trigger unavailable")
 
-        verification_manager.request_verification(
+        event = verification_manager.request_verification(
             account_id=account_id,
             platform=self.platform_code,
             message=f"{self.platform_name} requires verification code, please enter 6 digits",
         )
 
-        code = await verification_manager.wait_for_code(account_id, timeout=120)
+        code = await verification_manager.wait_for_code(event["id"], timeout=120)
         if not code:
             return False
 
@@ -90,6 +90,6 @@ class BasePlatform(ABC):
 
             logger.error("verification input not found")
             return False
-        except Exception as e:
-            logger.error(f"failed to fill verification code: {e}")
+        except Exception:
+            logger.error("failed to fill verification code")
             return False
