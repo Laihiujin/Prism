@@ -88,6 +88,7 @@ def build_firefox_args() -> Dict[str, Any]:
     args: Dict[str, Any] = {
         "headless": False,
         "args": [],
+        "firefox_user_prefs": {"permissions.default.geo": 2},
     }
     ep = _firefox_executable_path()
     if ep:

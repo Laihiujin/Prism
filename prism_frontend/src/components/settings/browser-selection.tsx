@@ -32,7 +32,7 @@ export function BrowserSelection() {
     return () => controller.abort()
   }, [])
   const options = [
-    { id: "chromium", name: "项目 Chromium", installed: Boolean(runtime?.browsers?.chromium?.installed) },
+    { id: "chromium", name: "Chrome for Testing", installed: Boolean(runtime?.browsers?.chromium?.installed) },
     { id: "firefox", name: "Firefox", installed: Boolean(runtime?.browsers?.firefox?.installed) },
     ...(runtime?.providerRegistry?.providers || []).filter(provider => provider.userSelectable && provider.compatible && provider.category !== "persona"),
   ]
