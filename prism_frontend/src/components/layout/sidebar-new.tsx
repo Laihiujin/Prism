@@ -98,7 +98,12 @@ const navSections: NavSection[] = [
     label: "资源",
     items: [
       { label: "账号管理", href: "/account", icon: UsersRound },
-      { label: "素材管理", href: "/materials", icon: FolderKanban },
+      { label: "素材管理", href: "/materials", icon: FolderKanban, children: [
+        { label: "全部素材", href: "/materials", icon: FolderKanban },
+        { label: "图片素材", href: "/materials/images", icon: ImageIcon },
+        { label: "视频素材", href: "/materials/videos", icon: Video },
+        { label: "分组筛选", href: "/materials/groups", icon: Layers },
+      ] },
       { label: "代理管理", href: "/ip-pool", icon: Globe },
       { label: "代理网关", href: "/persona-proxy", icon: Network },
       { label: "Persona", href: "/persona", icon: Fingerprint },
@@ -249,7 +254,7 @@ export function SidebarNew({
                     const hasChildren = (item.children?.length ?? 0) > 0
 
                     if (hasChildren) {
-                      const shouldOpen = pathname.startsWith("/analytics/videos")
+                      const shouldOpen = item.children?.some(child => child.href && (pathname === child.href || pathname.startsWith(`${child.href}/`))) ?? false
                       const triggerContent = (
                         <div
                           className={cn(
@@ -290,7 +295,7 @@ export function SidebarNew({
                       }
 
                       return (
-                        <Collapsible key={item.label} defaultOpen={shouldOpen}>
+                        <Collapsible key={`${item.label}-${shouldOpen}`} defaultOpen={shouldOpen}>
                           <CollapsibleTrigger asChild>{triggerContent}</CollapsibleTrigger>
                           <CollapsibleContent className="space-y-1 pl-4 pt-1">
                             {item.children?.map((child) => {
