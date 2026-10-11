@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Activity,
   AlertTriangle,
   ArrowRight,
   BarChart3,
   Users,
+  Trash2,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -36,13 +37,35 @@ import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import CountUp from "@/components/CountUp"
 import { cn } from "@/lib/utils"
+import { backendBaseUrl } from "@/lib/env"
+import { useToast } from "@/components/ui/use-toast"
+import { platformLabel } from "@/lib/platform-label"
 
 export default function DashboardPage() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const deleteAlert = useMutation({
+    mutationFn: async (task: { id: string | number; source?: "queue" | "history" }) => {
+      const path = task.source === "history" ? "publish/history" : "tasks"
+      const response = await fetch(`${backendBaseUrl}/api/v1/${path}/${encodeURIComponent(String(task.id))}`, { method: "DELETE" })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || result.success === false) throw new Error(result.detail || result.message || "删除失败")
+      return result
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks-dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+      toast({ title: "失败任务记录已删除" })
+    },
+    onError: (error: Error) => toast({ title: error.message, variant: "destructive" }),
+  })
   const router = useRouter()
   const searchParams = useSearchParams()
   const [clockReady, setClockReady] = useState(false)
   const [beijingClock, setBeijingClock] = useState("—")
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "running" | "success" | "error">("all")
+  const [taskPagination, setTaskPagination] = useState({ key: "", page: 1 })
 
   useEffect(() => {
     setClockReady(true)
@@ -131,11 +154,12 @@ export default function DashboardPage() {
   )
 
   const filteredAlerts = useMemo(() => {
-    const alerts: Array<{ id: string | number; title: string; action: string }> = recordedTasks
+    const alerts: Array<{ id: string | number; title: string; action: string; source?: "queue" | "history" }> = recordedTasks
       .filter((task: any) => task.status === "error")
       .slice(0, 5)
       .map((task: any) => ({
         id: task.id,
+        source: task.source,
         title: `${task.platform} · ${task.account}`,
         action: task.result || "发布失败，请查看任务详情",
       }))
@@ -166,6 +190,10 @@ export default function DashboardPage() {
   )
 
   const alertsToShow: any[] = filteredAlerts
+  const taskPageKey = `${taskStatusFilter}:${searchTerm}`
+  const taskPageCount = Math.max(1, Math.ceil(filteredTasks.length / 10))
+  const taskPage = Math.min(taskPagination.key === taskPageKey ? taskPagination.page : 1, taskPageCount)
+  const visibleTasks = filteredTasks.slice((taskPage - 1) * 10, taskPage * 10)
 
   const statCards = useMemo(
     () => [
@@ -280,7 +308,10 @@ export default function DashboardPage() {
                 <button
                   key={status}
                   type="button"
-                  onClick={() => setTaskStatusFilter(status)}
+                  onClick={() => {
+                    setTaskStatusFilter(status)
+                    setTaskPagination({ key: "", page: 1 })
+                  }}
                   className={cn(
                     "border border-transparent px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground transition",
                     taskStatusFilter === status && "border-border bg-accent text-foreground"
@@ -308,7 +339,7 @@ export default function DashboardPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {filteredTasks.slice(0, 5).map((task: any) => (
+                {visibleTasks.map((task: any) => (
                   <TableRow key={task.id} className="border-border/50 text-xs transition-colors hover:bg-accent/40">
                     <TableCell className="font-medium text-foreground">{task.title}</TableCell>
                     <TableCell>
@@ -333,6 +364,13 @@ export default function DashboardPage() {
                 ))}
               </TableBody>
             </Table>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>共 {filteredTasks.length} 条 · 每页 10 条 · 第 {taskPage} / {taskPageCount} 页</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled={taskPage <= 1} onClick={() => setTaskPagination({ key: taskPageKey, page: taskPage - 1 })}>上一页</Button>
+                <Button variant="outline" size="sm" disabled={taskPage >= taskPageCount} onClick={() => setTaskPagination({ key: taskPageKey, page: taskPage + 1 })}>下一页</Button>
+              </div>
+            </div>
             {tasksFetching && (
               <p className="mt-3 text-right text-xs text-muted-foreground">刷新任务中...</p>
             )}
@@ -400,8 +438,17 @@ export default function DashboardPage() {
                 key={alert.id}
                 className="rounded-xl border border-border bg-black p-4 text-sm text-white"
               >
-                <p className="font-semibold">{alert.title}</p>
-                <p className="text-xs text-white">{alert.action}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="min-w-0 truncate font-semibold">{alert.title}</p>
+                  <Button variant="ghost" size="icon" aria-label={`删除失败任务 ${alert.title}`} title="删除失败任务记录" disabled={deleteAlert.isPending} onClick={() => deleteAlert.mutate({ id: alert.id, source: alert.source })}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="line-clamp-2 break-words text-xs text-muted-foreground">{String(alert.action).split(/\r?\n|Traceback/)[0]}</p>
+                <details className="mt-2 text-xs">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">查看错误详情</summary>
+                  <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded border border-border bg-background/50 p-3 font-mono text-xs">{alert.action}</pre>
+                </details>
               </div>
             ))}
           </CardContent>
@@ -423,8 +470,10 @@ export default function DashboardPage() {
                 key={account.id}
                 className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-4 transition-colors hover:border-primary/25"
               >
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">{account.name}</p>
+                  <p className="text-xs text-muted-foreground">平台：{platformLabel(account.platform)}</p>
+                  <p className="break-words text-xs text-muted-foreground">备注：{account.note?.trim() || "暂无备注"}</p>
                   <p className="text-xs text-muted-foreground">{account.boundAt}</p>
                 </div>
                 <Badge
