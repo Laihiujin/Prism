@@ -45,6 +45,7 @@ class PhoneLoginAdapter(PlatformAdapter):
         self.resend_at = 0
         self.masked_phone = ""
         self.last_sms_error = ""
+        self.identity_refresh_at = 0
 
     async def get_qrcode(self):
         raise NotImplementedError("此会话使用短信登录")
@@ -90,6 +91,22 @@ class PhoneLoginAdapter(PlatformAdapter):
             return False
         headings = self.page.get_by_text(re.compile(r"^(身份验证|使用原设备扫码|手机刷脸验证)$"))
         return any([await headings.nth(i).is_visible() for i in range(await headings.count())])
+
+    async def _refresh_identity_qr(self):
+        if not await self._identity_verification():
+            raise ValueError("当前没有待完成的身份验证")
+        heading = self.page.get_by_text("身份验证", exact=True)
+        if await heading.count() and await heading.first.is_visible():
+            entry = await visible_one(self.page.get_by_text("使用原设备扫码", exact=True))
+            await entry.click(timeout=5000)
+            return
+        refreshers = self.page.get_by_text(re.compile(r"^(刷新二维码|点击刷新|点击刷新二维码|刷新|重新获取二维码)$"))
+        for i in range(await refreshers.count()):
+            button = refreshers.nth(i)
+            if await button.is_visible():
+                await button.click(timeout=5000)
+                return
+        # A valid QR does not need a new login session.
 
     async def _account_choices(self):
         if self.platform_name != "douyin" or await self._identity_verification():
@@ -155,6 +172,9 @@ class PhoneLoginAdapter(PlatformAdapter):
     async def sms_action(self, session_id, action, code=None, account_choice=None):
         if session_id != self.session_id or not self.page:
             raise ValueError("短信登录会话已过期")
+        if action == "identity_qr":
+            await self._refresh_identity_qr()
+            return {"success": True, "message": "已更新原设备扫码验证"}
         if action == "select_account":
             choices = await self._account_choices()
             if not account_choice or account_choice not in {item["account_id"] for item in choices}:
@@ -220,6 +240,15 @@ class PhoneLoginAdapter(PlatformAdapter):
         if session_id != self.session_id or not self.page:
             return LoginResult(LoginStatus.EXPIRED, "短信登录会话已过期")
         if await self._identity_verification():
+            text = await self.page.locator("body").inner_text()
+            expired = bool(re.search(r"二维码.*(?:失效|过期)|(?:失效|过期).*二维码", text))
+            now = asyncio.get_running_loop().time()
+            if expired and now - self.identity_refresh_at >= 5:
+                self.identity_refresh_at = now
+                try:
+                    await self._refresh_identity_qr()
+                except Exception:
+                    return LoginResult(LoginStatus.RISK_CONTROL, "二维码刷新失败，请手动刷新", verification=await self.verification_state())
             return LoginResult(LoginStatus.RISK_CONTROL, "请使用原设备扫码完成身份验证", verification=await self.verification_state())
         choices = await self._account_choices()
         if choices:

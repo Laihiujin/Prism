@@ -55,7 +55,7 @@ class VerificationCodeRequest(BaseModel):
 
 class SmsVerificationRequest(BaseModel):
     session_id: str
-    action: Literal["request", "resend", "submit", "select_account"]
+    action: Literal["request", "resend", "submit", "select_account", "identity_qr"]
     account_choice: Optional[str] = Field(default=None, pattern=r"^[0-9]{1,30}$")
     code: Optional[str] = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
 

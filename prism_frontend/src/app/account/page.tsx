@@ -8,6 +8,7 @@ import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw, MonitorSmartphone, Sea
 
 import { AccountEnvironmentSheet } from "@/components/account-environment-sheet"
 import { TwitterBindPanel } from "@/components/account/twitter-bind-panel"
+import { LoginIdentityQr } from "@/components/account/login-identity-qr"
 import { RemoteLoginView } from "@/components/account/remote-login-view"
 
 import {
@@ -1240,7 +1241,7 @@ function AccountPageContent() {
                       {!supportsSmsLogin && <p className="mt-2 text-xs text-muted-foreground">此平台未提供独立的手机号短信登录入口，请使用现有登录方式。</p>}
                       {loginMode === "sms" && supportsSmsLogin && <div className="mt-3 space-y-2">
                         <Label htmlFor="login-phone">手机号</Label>
-                        <Input id="login-phone" inputMode="tel" autoComplete="tel" placeholder="请输入中国大陆手机号" value={loginPhone} disabled={bindingStatus !== "idle"} onChange={event => setLoginPhone(event.target.value.replace(/[^0-9]/g, "").slice(0, 11))} />
+                        <Input id="login-phone" inputMode="tel" autoComplete="tel" placeholder="请输入中国大陆手机号" value={loginPhone} disabled={!["idle", "error"].includes(bindingStatus)} onChange={event => setLoginPhone(event.target.value.replace(/[^0-9]/g, "").slice(0, 11))} />
                       </div>}
                       <p className="text-xs text-muted-foreground">
                         {smsVerification ? smsVerification.stage === "code" ? "请提供手机收到的验证码" : "请先获取短信验证码；遇到安全验证时打开远程验证画面。" : loginMode === "sms" && supportsSmsLogin ? "输入手机号后开始验证码登录" : isQrPlatform
@@ -1333,8 +1334,7 @@ function AccountPageContent() {
                             </div>}
                             {platformVerificationOpen && activeSessionRef.current && <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
                               <p className="text-sm font-semibold">平台身份验证 / 原设备扫码</p>
-                              <p className="text-xs text-muted-foreground">在下方画面点击“使用原设备扫码”，用原设备上的抖音扫描二维码。验证通过后自动完成绑定。</p>
-                              <RemoteLoginView sessionId={activeSessionRef.current} openByDefault />
+                              <LoginIdentityQr sessionId={activeSessionRef.current} />
                               <Button size="sm" variant="ghost" onClick={() => setPlatformVerificationOpen(false)}>返回账号选择</Button>
                             </div>}
                             {riskNotice && !platformVerificationOpen && smsVerification?.stage !== "account_selection" && (
