@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, Clock3, RefreshCcw, XCircle, AlertCircle, Play, Trash2, Trash, Ban } from "lucide-react"
 
+import { TaskVerifications } from "@/components/publish/task-verifications"
 import { platformLabel } from "@/lib/platform-label"
 import { TaskExecutionTime } from "@/components/task-execution-time"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -815,6 +816,10 @@ export default function TasksPage() {
         </Card>
       </div>
 
+      <a href="/tasks/verification" className="flex items-center justify-between rounded-lg border border-border p-4 text-sm hover:bg-accent">
+        <span>任务发布人工验证 · 验证码回传 / 重新获取</span><span>进入 →</span>
+      </a>
+      <TaskVerifications />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid h-9 w-full grid-cols-2 rounded-sm border border-border bg-card">
           <TabsTrigger value="auto">自动任务</TabsTrigger>

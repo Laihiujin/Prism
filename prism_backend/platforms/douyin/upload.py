@@ -491,6 +491,25 @@ class DouyinUpload(BasePlatform):
         except Exception:
             return False
 
+    async def _dismiss_landscape_cover_tip(self, page: Page) -> bool:
+        """Dismiss the optional landscape-cover promotion without closing the editor."""
+        try:
+            tip = page.get_by_text("设置横封面获取更多流量", exact=True).or_(
+                page.get_by_text("设置横封面获更多流量", exact=True))
+            if not await tip.count() or not await tip.first.is_visible():
+                return False
+            skip = page.get_by_role("button", name="暂不设置", exact=True)
+            if not await skip.count():
+                skip = page.get_by_text("暂不设置", exact=True)
+            if await skip.count() and await skip.first.is_visible():
+                await skip.first.click(timeout=2000)
+                await tip.first.wait_for(state="hidden", timeout=3000)
+                logger.info("[DouyinUpload] 已关闭横封面流量提示，继续设置封面")
+                return True
+        except Exception as exc:
+            logger.warning(f"[DouyinUpload] 横封面流量提示未关闭: {exc}")
+        return False
+
     async def _wait_cover_modal_closed(self, page: Page, timeout_ms: int = 20000) -> None:
         """
         Avoid clicking publish while the cover modal is still open (user may be choosing a cover).
@@ -498,6 +517,7 @@ class DouyinUpload(BasePlatform):
         """
         start = time.monotonic()
         while time.monotonic() - start < timeout_ms / 1000:
+            await self._dismiss_landscape_cover_tip(page)
             if not await self._is_cover_modal_open(page):
                 return
 
@@ -571,6 +591,7 @@ class DouyinUpload(BasePlatform):
                     return
 
             # 步骤3: 尝试点击"设置竖封面"（如果有）
+            await self._dismiss_landscape_cover_tip(page)
             try:
                 await page.click('text="设置竖封面"', timeout=3000)
                 logger.info("[DouyinUpload] ✅ 已点击'设置竖封面'")
