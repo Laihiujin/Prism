@@ -1393,9 +1393,9 @@ function AccountPageContent() {
                               </div>
                             )}
                             {activeSessionRef.current && (smsVerification || riskNotice) && !platformVerificationOpen && !["account_selection", "platform_verification"].includes(smsVerification?.stage || "") && <RemoteLoginView
-                              key={`${activeSessionRef.current}-${Boolean(smsVerification?.error || riskNotice)}`}
+                              key={activeSessionRef.current}
                               sessionId={activeSessionRef.current}
-                              openByDefault={Boolean(smsVerification?.error || riskNotice)}
+                              openByDefault={false}
                             />}
                             <Button size="sm" variant="ghost" className="rounded-xl bg-black" onClick={startBinding}>
                               {smsVerification ? "重新开始登录" : "刷新二维码"}
