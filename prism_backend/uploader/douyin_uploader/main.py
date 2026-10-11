@@ -100,6 +100,8 @@ async def dismiss_douyin_tour(page, max_attempts: int = 6):
 
 
 async def deny_location_prompt(page: Page):
+    if page.context.browser and page.context.browser.browser_type.name != "chromium":
+        return
     session = await page.context.new_cdp_session(page)
     try:
         target = (await session.send("Target.getTargetInfo"))["targetInfo"]
