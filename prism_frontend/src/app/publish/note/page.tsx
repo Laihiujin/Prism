@@ -20,6 +20,7 @@ import {
   CalendarClock,
   AlertTriangle,
   Check,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -66,6 +67,7 @@ interface NotePlan {
   scheduleDate?: string
   scheduleTime?: string
   platformSettings: Record<string, any>
+  platformConfigEnabled?: Partial<Record<NotePlatformKey, boolean>>
 }
 
 export default function NotePublishPage() {
@@ -118,8 +120,37 @@ export default function NotePublishPage() {
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [keyword, setKeyword] = useState("")
+  const [aiBusy, setAiBusy] = useState(false)
 
   const patch = (p: Partial<NotePlan>) => setPlan((prev) => ({ ...prev, ...p }))
+  const polishContent = async () => {
+    if (!plan.description.trim()) {
+      toast({ title: "请先填写正文描述", variant: "destructive" })
+      return
+    }
+    setAiBusy(true)
+    try {
+      const response = await fetch(`${backendBaseUrl}/api/v1/ai/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          structured_output: true, stream: false, language: "zh",
+          platform: plan.platforms[0] || "douyin",
+          messages: [{ role: "user", content: `根据以下图文正文润色生成中文标题、正文和话题标签。保留事实，不编造内容，标题不超过20字。返回JSON字段title、description、tags（字符串数组）。原始标题：${plan.title}\n原始正文：${plan.description}\n原始标签：${plan.tags}` }],
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok || result.status === "error") throw new Error(result.detail || result.message || "AI生成失败")
+      const generated = JSON.parse(String(result.content || "").replace(/^```(?:json)?\s*|\s*```$/g, "").trim())
+      if (typeof generated.title !== "string" || !generated.title.trim() || typeof generated.description !== "string" || !generated.description.trim() || !Array.isArray(generated.tags) || !generated.tags.every((tag: unknown) => typeof tag === "string")) throw new Error("AI未返回完整的标题、正文和标签")
+      patch({ title: generated.title.trim().slice(0, plan.platforms.includes("douyin") ? 20 : 50), description: generated.description.trim(), tags: Array.from(new Set(generated.tags.map((tag: string) => tag.trim().replace(/^#+/, "")).filter(Boolean))).join(" ") })
+      toast({ title: "AI润色完成", description: "标题、正文和标签已同步到内容编辑" })
+    } catch (error) {
+      toast({ title: "AI润色失败", description: error instanceof Error ? error.message : "请稍后再试", variant: "destructive" })
+    } finally {
+      setAiBusy(false)
+    }
+  }
 
   const visibleNotePlatforms = useMemo(
     () => NOTE_PLATFORM_KEYS.filter((key) => isVisible(key)),
@@ -197,9 +228,9 @@ export default function NotePublishPage() {
 
       const ps = plan.platformSettings || {}
       const platformSettings: Record<string, any> = {}
-      const keys = ["douyin", "xiaohongshu", "kuaishou"]
+      const keys = activePlatforms
       for (const k of keys) {
-        if (ps[k] && Object.keys(ps[k]).length > 0) platformSettings[k] = ps[k]
+        if (plan.platformConfigEnabled?.[k] && ps[k] && Object.keys(ps[k]).length > 0) platformSettings[k] = ps[k]
       }
 
       let scheduledTime: string | undefined
@@ -275,6 +306,7 @@ export default function NotePublishPage() {
   )
 
   const canSubmit =
+    !aiBusy &&
     plan.platforms.length > 0 &&
     plan.imageIds.length > 0 &&
     totalSelectedAccounts > 0 &&
@@ -300,7 +332,7 @@ export default function NotePublishPage() {
                   tags: "",
                 })
               }
-              disabled={publishMutation.isPending}
+              disabled={publishMutation.isPending || aiBusy}
             >
               <X className="w-4 h-4 mr-2" />
               清空
@@ -528,12 +560,18 @@ export default function NotePublishPage() {
 
       {/* 4. 内容编辑 */}
       <section className="space-y-3">
-        <Label className="text-base font-medium">4. 内容编辑</Label>
+        <div className="flex items-center justify-between gap-3">
+          <Label className="text-base font-medium">4. 内容编辑</Label>
+          <Button variant="outline" size="sm" disabled={aiBusy || !plan.description.trim()} onClick={polishContent}>
+            {aiBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} {aiBusy ? "正在润色..." : "AI润色并生成"}
+          </Button>
+        </div>
         <div className="rounded-2xl border border-border/70 bg-card p-6 space-y-4">
           <div className="space-y-2">
             <Label className="text-xs text-muted-foreground">图文标题 *（抖音最多 20 字）</Label>
             <Input
               value={plan.title}
+              disabled={aiBusy}
               onChange={(e) => patch({ title: e.target.value })}
               placeholder="请输入图文标题"
               maxLength={50}
@@ -543,6 +581,7 @@ export default function NotePublishPage() {
             <Label className="text-xs text-muted-foreground">正文描述</Label>
             <Textarea
               value={plan.description}
+              disabled={aiBusy}
               onChange={(e) => patch({ description: e.target.value })}
               placeholder="描述文字…（小红书/快手可用作标题/正文，抖音为正文）"
               rows={4}
@@ -552,6 +591,7 @@ export default function NotePublishPage() {
             <Label className="text-xs text-muted-foreground">话题标签</Label>
             <Input
               value={plan.tags}
+              disabled={aiBusy}
               onChange={(e) => patch({ tags: e.target.value })}
               placeholder="多个话题用空格或 # 分隔，如 生活 美食 #旅行"
             />
@@ -616,15 +656,17 @@ export default function NotePublishPage() {
             5. 平台发布配置（{plan.platforms.map((k) => platformMeta(k)?.name).join(" / ")}）
           </Label>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {plan.platforms.includes("douyin") && (
-              <div key="douyin-note"><DouyinConfig data={commonProps.data} onChange={commonProps.onChange} /></div>
-            )}
-            {plan.platforms.includes("xiaohongshu") && (
-              <div key="xhs-note"><XhsConfig data={commonProps.data} onChange={commonProps.onChange} /></div>
-            )}
-            {plan.platforms.includes("kuaishou") && (
-              <div key="ks-note"><KuaishouConfig data={commonProps.data} onChange={commonProps.onChange} /></div>
-            )}
+            {plan.platforms.map(platform => (
+              <div key={platform} className="min-w-0">
+                <div className="flex items-center justify-between border border-border/70 bg-black px-4 py-3 text-sm">
+                  <Label htmlFor={`note-config-${platform}`}>{platformMeta(platform)?.name}配置</Label>
+                  <Switch id={`note-config-${platform}`} checked={plan.platformConfigEnabled?.[platform] === true} onCheckedChange={enabled => setPlan(prev => ({ ...prev, platformConfigEnabled: { ...prev.platformConfigEnabled, [platform]: enabled } }))} />
+                </div>
+                {plan.platformConfigEnabled?.[platform] === true && <div className="pt-2">
+                  {platform === "douyin" ? <DouyinConfig {...commonProps} /> : platform === "xiaohongshu" ? <XhsConfig {...commonProps} /> : <KuaishouConfig {...commonProps} />}
+                </div>}
+              </div>
+            ))}
           </div>
         </section>
       )}
