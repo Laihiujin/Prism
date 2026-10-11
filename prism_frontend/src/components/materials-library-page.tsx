@@ -56,7 +56,7 @@ import { MaterialEditorSheet } from "@/components/material-editor-sheet"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import Link from "next/link"
 
-type MaterialView = "all" | "image" | "video" | "groups"
+type MaterialView = "all" | "image" | "video"
 
 /** 限制文件名显示长度，但始终保留扩展名(如 .mp4/.jpg)，便于区分视频/图片 */
 function truncateFilename(name: string, maxLen = 24): string {
@@ -216,7 +216,7 @@ function MaterialsPageContent({ view }: { view: MaterialView }) {
     return materials.filter((material) => {
       const matchStatus = statusFilter === "all" || material.status === statusFilter
       const matchGroup = groupFilter === "all" || (groupFilter === "none" ? !material.group : (material.group || "") === groupFilter)
-      const matchType = view === "all" || view === "groups" || material.type === view
+      const matchType = view === "all" || material.type === view
       return matchStatus && matchGroup && matchType
     })
   }, [materials, statusFilter, groupFilter, view])
@@ -538,7 +538,7 @@ function MaterialsPageContent({ view }: { view: MaterialView }) {
     <div className="mx-auto flex h-full max-w-[1440px] flex-col space-y-5 px-4 py-4 md:px-6 md:py-5">
       <PageHeader
         eyebrow="PRISM / ASSET REGISTRY"
-        title={view === "image" ? "图片素材" : view === "video" ? "视频素材" : view === "groups" ? "素材分组" : "素材管理"}
+        title={view === "image" ? "图片素材" : view === "video" ? "视频素材" : "素材管理"}
         actions={
           <div className="flex gap-3">
             <Button
@@ -810,19 +810,10 @@ function MaterialsPageContent({ view }: { view: MaterialView }) {
 
       {/* Filter Toolbar */}
       <nav className="flex flex-wrap gap-2" aria-label="素材分类">
-        {([{ key: "all", href: "/materials", label: "全部素材" }, { key: "image", href: "/materials/images", label: "图片" }, { key: "video", href: "/materials/videos", label: "视频" }, { key: "groups", href: "/materials/groups", label: "分组" }] as const).map(item => (
+        {([{ key: "all", href: "/materials", label: "全部素材" }, { key: "image", href: "/materials/images", label: "图片" }, { key: "video", href: "/materials/videos", label: "视频" }] as const).map(item => (
           <Button key={item.key} asChild variant={view === item.key ? "default" : "outline"} size="sm"><Link href={item.href}>{item.label}</Link></Button>
         ))}
       </nav>
-      {view === "groups" && (
-        <div className="flex flex-wrap gap-2" aria-label="分组筛选">
-          {["all", "none", ...groupOptions].map(group => (
-            <Button key={group} variant={groupFilter === group ? "default" : "outline"} size="sm" onClick={() => setGroupFilter(group)}>
-              {group === "all" ? "全部分组" : group === "none" ? "未分组" : group}（{materials.filter(m => group === "all" || (group === "none" ? !m.group : m.group === group)).length}）
-            </Button>
-          ))}
-        </div>
-      )}
       <Card className="flex-1 border-border/70 bg-card flex flex-col min-h-0 shadow-none">
         <CardHeader className="flex-shrink-0 border-b border-border/60 pb-4">
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center">

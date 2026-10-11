@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 
 interface PageHeaderProps {
   title: string
+  icon?: ReactNode
   description?: string
   eyebrow?: string
   actions?: ReactNode
@@ -12,6 +13,7 @@ interface PageHeaderProps {
 
 export function PageHeader({
   title,
+  icon,
   description,
   eyebrow,
   actions,
@@ -25,7 +27,7 @@ export function PageHeader({
             {eyebrow}
           </p>
         )}
-        <h1 className="font-terminal text-[19px] font-semibold leading-tight text-foreground">{title}</h1>
+        <h1 className="font-terminal text-[19px] font-semibold leading-tight text-foreground flex items-center gap-3">{icon}{title}</h1>
         {description && (
           <p className="text-sm text-foreground/60">
             {description}

@@ -75,6 +75,12 @@ const YoutubeIcon = ({ className }: { className?: string }) => (
   </div>
 )
 
+const TwitterIcon = ({ className }: { className?: string }) => (
+  <div className={cn("relative flex shrink-0 items-center justify-center", className)}>
+    <Image src="/x.svg" alt="X" width={16} height={16} className="object-contain" />
+  </div>
+)
+
 interface NavItem {
   label: string
   href?: string
@@ -82,6 +88,22 @@ interface NavItem {
   disabled?: boolean
   external?: boolean
   children?: NavItem[]
+}
+
+function matchesNav(item: NavItem, pathname: string): boolean {
+  return Boolean(item.href && (pathname === item.href || pathname.startsWith(`${item.href}/`))) || Boolean(item.children?.some(child => matchesNav(child, pathname)))
+}
+
+function NestedNavItem({ item, pathname, onNavigate }: { item: NavItem; pathname: string; onNavigate?: () => void }) {
+  const Icon = item.icon as React.ComponentType<{ className?: string; suppressHydrationWarning?: boolean }>
+  const active = pathname === item.href
+  const link = <Link href={item.href || "#"} onClick={onNavigate} className={cn("flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2 text-sm", active ? "bg-accent text-foreground" : "text-foreground/60 hover:bg-accent hover:text-accent-foreground")}><Icon className="h-4 w-4 shrink-0" /><span className="truncate">{item.label}</span></Link>
+  if (!item.children?.length) return link
+  const open = false
+  return <Collapsible key={`${item.label}-${open}`} defaultOpen={open}>
+    <div className="flex items-center">{link}<CollapsibleTrigger asChild><button type="button" aria-label={`展开${item.label}平台`} className="p-2 text-foreground/50"><ChevronDown className="h-4 w-4" /></button></CollapsibleTrigger></div>
+    <CollapsibleContent className="space-y-1 border-l border-border/60 ml-4 pl-2">{item.children.map(child => <NestedNavItem key={child.label} item={child} pathname={pathname} onNavigate={onNavigate} />)}</CollapsibleContent>
+  </Collapsible>
 }
 
 interface NavSection {
@@ -102,7 +124,6 @@ const navSections: NavSection[] = [
         { label: "全部素材", href: "/materials", icon: FolderKanban },
         { label: "图片素材", href: "/materials/images", icon: ImageIcon },
         { label: "视频素材", href: "/materials/videos", icon: Video },
-        { label: "分组筛选", href: "/materials/groups", icon: Layers },
       ] },
       { label: "代理管理", href: "/ip-pool", icon: Globe },
       { label: "代理网关", href: "/persona-proxy", icon: Network },
@@ -112,9 +133,24 @@ const navSections: NavSection[] = [
   {
     label: "分发",
     items: [
-      { label: "矩阵发布", href: "/publish/matrix", icon: LayoutGrid },
-      { label: "图文发布", href: "/publish/note", icon: ImageIcon },
-      { label: "B站分P", href: "/publish/bilibili", icon: Layers },
+      { label: "矩阵发布", href: "/publish/matrix", icon: LayoutGrid, children: [
+        { label: "视频发布", href: "/publish/matrix", icon: Video, children: [
+          { label: "抖音", href: "/publish/matrix/douyin", icon: DouyinIcon },
+          { label: "快手", href: "/publish/matrix/kuaishou", icon: KuaishouIcon },
+          { label: "视频号", href: "/publish/matrix/channels", icon: ChannelsIcon },
+          { label: "小红书", href: "/publish/matrix/xiaohongshu", icon: XhsIcon },
+          { label: "B站", href: "/publish/matrix/bilibili", icon: BilibiliIcon },
+          { label: "TikTok", href: "/publish/matrix/tiktok", icon: TikTokIcon },
+          { label: "YouTube", href: "/publish/matrix/youtube", icon: YoutubeIcon },
+          { label: "X / 推特", href: "/publish/matrix/twitter", icon: TwitterIcon },
+        ] },
+        { label: "图片发布", href: "/publish/note", icon: ImageIcon, children: [
+          { label: "抖音", href: "/publish/note/douyin", icon: DouyinIcon },
+          { label: "快手", href: "/publish/note/kuaishou", icon: KuaishouIcon },
+          { label: "小红书", href: "/publish/note/xiaohongshu", icon: XhsIcon },
+        ] },
+        { label: "B站分P", href: "/publish/bilibili", icon: Layers },
+      ] },
       { label: "任务管理", href: "/tasks", icon: ClipboardList },
     ],
   },
@@ -149,7 +185,6 @@ const navSections: NavSection[] = [
     label: "系统",
     items: [
       { label: "系统设置", href: "/settings", icon: Settings },
-      { label: "CMS 后台", href: "/cms", icon: Settings },
     ],
   },
 ]
@@ -249,12 +284,12 @@ export function SidebarNew({
 
                 <div className="space-y-1">
                   {section.items.map((item) => {
-                    const Icon = item.icon
+                    const Icon = item.icon as React.ComponentType<{ className?: string; suppressHydrationWarning?: boolean }>
                     const isActive = item.href ? pathname === item.href : false
                     const hasChildren = (item.children?.length ?? 0) > 0
 
                     if (hasChildren) {
-                      const shouldOpen = item.children?.some(child => child.href && (pathname === child.href || pathname.startsWith(`${child.href}/`))) ?? false
+                      const shouldOpen = item.label === "矩阵发布" ? false : matchesNav(item, pathname)
                       const triggerContent = (
                         <div
                           className={cn(
@@ -296,34 +331,9 @@ export function SidebarNew({
 
                       return (
                         <Collapsible key={`${item.label}-${shouldOpen}`} defaultOpen={shouldOpen}>
-                          <CollapsibleTrigger asChild>{triggerContent}</CollapsibleTrigger>
+                          {item.href ? <div className="flex items-center"><Link href={item.href} onClick={() => onNavigate?.()} className={cn("flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm", isActive ? "bg-accent text-foreground" : "text-foreground/70 hover:bg-accent")}><Icon className="h-5 w-5 shrink-0" /><span>{item.label}</span></Link><CollapsibleTrigger asChild><button type="button" aria-label={`展开${item.label}`} className="p-2 text-foreground/50"><ChevronDown className="h-4 w-4" /></button></CollapsibleTrigger></div> : <CollapsibleTrigger asChild>{triggerContent}</CollapsibleTrigger>}
                           <CollapsibleContent className="space-y-1 pl-4 pt-1">
-                            {item.children?.map((child) => {
-                              const ChildIcon = child.icon
-                              const childActive = pathname === child.href
-                              return (
-                                <Link
-                                  key={child.label}
-                                  href={child.href || "#"}
-                                  onClick={() => onNavigate?.()}
-                                  className={cn(
-                                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
-                                    childActive
-                                      ? "bg-accent text-foreground"
-                                      : "text-foreground/60 hover:bg-accent hover:text-accent-foreground",
-                                  )}
-                                >
-                                  <ChildIcon
-                                    className={cn(
-                                      "h-4 w-4 shrink-0 transition-colors",
-                                      childActive ? "text-primary" : "text-foreground/50 group-hover:text-foreground"
-                                    )}
-                                    suppressHydrationWarning
-                                  />
-                                  <span className="truncate">{child.label}</span>
-                                </Link>
-                              )
-                            })}
+                            {item.children?.map(child => <NestedNavItem key={child.label} item={child} pathname={pathname} onNavigate={onNavigate} />)}
                           </CollapsibleContent>
                         </Collapsible>
                       )
