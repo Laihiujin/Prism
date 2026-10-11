@@ -969,46 +969,12 @@ class CookieManager:
             return []
 
     def prune_accounts_not_in_frontend(self, accounts: List[Dict[str, Any]]) -> Dict[str, int]:
-        """Remove cookie accounts not present in frontend snapshot."""
-        normalized = []
-        for acc in accounts:
-            account_id = acc.get("account_id") or acc.get("id")
-            platform = acc.get("platform")
-            user_id = acc.get("user_id")
-            if platform and (account_id or user_id):
-                normalized.append({"account_id": str(account_id) if account_id else "", "user_id": str(user_id) if user_id else "", "platform": str(platform)})
-
-        if not normalized:
-            return {"removed": 0, "skipped": 1}
-
-        allowed_accounts = {(acc["platform"], acc["account_id"]) for acc in normalized if acc["account_id"]}
-        allowed_users = {(acc["platform"], acc["user_id"]) for acc in normalized if acc["user_id"]}
-        removed = 0
-
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            rows = conn.execute(
-                "SELECT account_id, platform, user_id, cookie_file FROM cookie_accounts"
-            ).fetchall()
-            for row in rows:
-                key_account = (row["platform"], row["account_id"])
-                key_user = (row["platform"], row["user_id"]) if row["user_id"] else None
-                if key_account in allowed_accounts or (key_user and key_user in allowed_users):
-                    continue
-                conn.execute("DELETE FROM cookie_accounts WHERE account_id = ?", (row["account_id"],))
-                removed += 1
-                cookie_path = self._resolve_cookie_path(row["cookie_file"] or "")
-                if cookie_path.exists():
-                    try:
-                        cookie_path.unlink()
-                    except Exception:
-                        pass
-
-        return {"removed": removed}
+        """Client snapshots are observational; deletion requires explicit account DELETE."""
+        return {"removed": 0, "skipped": 1}
 
     def prune_accounts_from_snapshot(self) -> Dict[str, int]:
-        accounts = self.load_frontend_snapshot()
-        return self.prune_accounts_not_in_frontend(accounts)
+        """A stale frontend snapshot must never delete persisted login credentials."""
+        return {"removed": 0, "skipped": 1}
 
     def get_account_by_id(self, account_id: str) -> Optional[Dict[str, Any]]:
         with sqlite3.connect(self.db_path) as conn:

@@ -28,7 +28,6 @@ import { NaturalDatePicker } from "@/components/ui/natural-date-picker"
 import type { Material } from "@/lib/mock-data"
 import { TaskDrawer } from "./components/task-drawer"
 import { Progress } from "@/components/ui/progress"
-import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import { cn } from "@/lib/utils"
 
@@ -544,7 +543,6 @@ export default function DistributionPage() {
                 />
             )}
 
-            <PublishOtpDialog />
-        </div>
+              </div>
     )
 }

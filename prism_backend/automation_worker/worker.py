@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 from typing import Dict, Any
 from loguru import logger
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -1277,7 +1277,7 @@ async def enrich_account(req: EnrichAccountRequest):
 
 
 @app.post("/qrcode/generate")
-async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None, mode: str = "browser"):
+async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None, mode: str = "browser", login_role: str = Query("creator", pattern="^(creator|mcn)$")):
     """
     生成登录二维码
 
@@ -1328,7 +1328,7 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
 
         # 创建适配器实例
-        adapter = adapter_class(config={"headless": headless, "account_id": account_id})
+        adapter = adapter_class(config={"headless": headless, "account_id": account_id, "login_role": login_role})
 
         # 生成二维码
         qr_data = await adapter.get_qrcode()
@@ -1342,6 +1342,7 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
                 "qr_data": qr_data,
                 "created_at": asyncio.get_running_loop().time(),
                 "expires_in": int(qr_data.expires_in or 300),
+                "interaction_lock": asyncio.Lock(),
             }
 
         logger.info(f"[Worker] QR generated: session={qr_data.session_id[:8]}")
@@ -1390,7 +1391,21 @@ async def poll_qrcode_status(session_id: str):
 
         # 轮询状态
         try:
-            result = await asyncio.wait_for(adapter.poll_status(session_id), timeout=12.0)
+            async with session.setdefault("interaction_lock", asyncio.Lock()):
+                result = session.get("terminal_result")
+                if result is None:
+                    result = await asyncio.wait_for(adapter.poll_status(session_id), timeout=12.0)
+                    if result.status in (LoginStatus.CONFIRMED, LoginStatus.FAILED, LoginStatus.EXPIRED):
+                        # Publish the outcome before slow browser shutdown. Keep it
+                        # briefly so a lost response can be retried without repolling
+                        # a browser that has already been closed.
+                        session["terminal_result"] = result
+                        session["created_at"] = asyncio.get_running_loop().time()
+                        session["expires_in"] = 120
+                        task = asyncio.create_task(_cleanup_session(session_id, session))
+                        session["terminal_cleanup_task"] = task
+                        task.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
+                        logger.info(f"[Worker] Login result ready: {session_id[:8]} status={result.status.value}")
         except asyncio.TimeoutError:
             logger.warning(f"[Worker] QR poll timed out: session={session_id[:8]}")
             return {
@@ -1406,13 +1421,11 @@ async def poll_qrcode_status(session_id: str):
 
         # 登录成功/失败/过期才清理会话；风控(risk_control)保持会话让用户手动完成验证
         if result.status in (LoginStatus.CONFIRMED, LoginStatus.FAILED, LoginStatus.EXPIRED):
-            try:
-                await adapter.cleanup_session(session_id)
-            finally:
-                async with sessions_lock:
-                    sessions.pop(session_id, None)
-            logger.info(f"[Worker] Session cleaned: {session_id[:8]} status={result.status.value}")
+            pass  # Cleanup runs independently of the HTTP response above.
         elif result.status is LoginStatus.RISK_CONTROL:
+            if result.verification and not session.get("sms_verification_started"):
+                session["sms_verification_started"] = True
+                session["created_at"] = asyncio.get_running_loop().time()
             logger.warning(f"[Worker] Risk control, session kept: {session_id[:8]} msg={result.message}")
 
         return {
@@ -1428,6 +1441,7 @@ async def poll_qrcode_status(session_id: str):
                     "extra": result.user_info.extra if result.user_info else None,
                 } if result.user_info else None,
                 "full_state": result.full_state,
+                "verification": result.verification,
             }
         }
 
@@ -1444,6 +1458,91 @@ async def poll_qrcode_status(session_id: str):
             status_code=500,
             content={"success": False, "error": err}
         )
+
+
+class SmsActionRequest(BaseModel):
+    action: str = Field(pattern=r"^(request|resend|submit|select_account|identity_qr)$")
+    account_choice: str | None = Field(default=None, pattern=r"^[0-9]{1,30}$")
+    code: str | None = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
+
+
+from automation_worker.remote_login import PointerInput, viewport_frame, pointer_input
+
+@app.get('/qrcode/view/{session_id}')
+async def login_view(session_id: str):
+    session = sessions.get(session_id)
+    if not session:
+        raise HTTPException(404, '登录会话不存在')
+    async with session.setdefault('interaction_lock', asyncio.Lock()):
+        return await viewport_frame(session, session_id)
+
+@app.post('/qrcode/pointer/{session_id}')
+async def login_pointer(session_id: str, payload: PointerInput):
+    session = sessions.get(session_id)
+    if not session:
+        raise HTTPException(404, '登录会话不存在')
+    async with session.setdefault('interaction_lock', asyncio.Lock()):
+        return await pointer_input(session, session_id, payload)
+
+class SmsLoginStartRequest(BaseModel):
+    login_role: str = Field(default="creator", pattern=r"^(creator|mcn)$")
+    platform: str = Field(pattern=r"^(douyin|kuaishou|xiaohongshu|bilibili)$")
+    account_id: str = Field(min_length=1, max_length=100)
+    phone: str = Field(pattern=r"^1[0-9]{10}$", repr=False)
+    headless: bool = True
+
+
+@app.post("/sms/start")
+async def start_sms_login(payload: SmsLoginStartRequest):
+    from app_new.platforms.phone_login import PhoneLoginAdapter
+    adapter = PhoneLoginAdapter(payload.platform, {"headless": payload.headless, "account_id": payload.account_id, "login_role": payload.login_role})
+    stale = []
+    async with sessions_lock:
+        for sid, session in list(sessions.items()):
+            if session.get("platform") == payload.platform and session.get("account_id") == payload.account_id and session.get("type") != "creator_center":
+                stale.append((sid, session))
+                sessions.pop(sid, None)
+    for sid, session in stale:
+        with contextlib.suppress(Exception):
+            await _cleanup_session(sid, session)
+    try:
+        data = await adapter.start(payload.phone)
+        async with sessions_lock:
+            sessions[data.session_id] = {
+                "platform": payload.platform, "account_id": payload.account_id, "adapter": adapter,
+                "qr_data": data, "created_at": asyncio.get_running_loop().time(),
+                "expires_in": 600, "interaction_lock": asyncio.Lock(), "type": "sms",
+            }
+        return {"success": True, "data": {"session_id": data.session_id, "qr_image": "", "expires_in": 600,
+                                              "verification": await adapter.verification_state()}}
+    except Exception:
+        with contextlib.suppress(Exception):
+            await adapter.cleanup_session(adapter.session_id)
+        return JSONResponse(status_code=502, content={"success": False, "error": "平台短信登录页初始化失败，请稍后重试"})
+
+
+@app.post("/qrcode/sms/{session_id}")
+async def qrcode_sms_action(session_id: str, payload: SmsActionRequest):
+    async with sessions_lock:
+        session = sessions.get(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"success": False, "error": "登录会话已过期"})
+    adapter = session["adapter"]
+    if not hasattr(adapter, "sms_action"):
+        return JSONResponse(status_code=400, content={"success": False, "error": "当前登录方式不支持短信验证"})
+    try:
+        async with session.setdefault("interaction_lock", asyncio.Lock()):
+            if payload.action == "select_account":
+                result = await adapter.sms_action(session_id, payload.action, account_choice=payload.account_choice)
+            else:
+                result = await adapter.sms_action(session_id, payload.action, payload.code)
+            session["created_at"] = asyncio.get_running_loop().time()
+            return result
+    except ValueError as exc:
+        return JSONResponse(status_code=409, content={"success": False, "error": str(exc)})
+    except Exception:
+        # Do not log browser exceptions: they can include the supplied code.
+        return JSONResponse(status_code=502, content={"success": False, "error": "短信验证操作失败，请在登录浏览器中检查状态"})
 
 
 @app.delete("/qrcode/cancel/{session_id}")

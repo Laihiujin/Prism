@@ -367,7 +367,11 @@ def start_service(svc: Service, env: Dict[str, str]) -> bool:
         "stdin": subprocess.DEVNULL,
     }
     if IS_WINDOWS:
-        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = subprocess.SW_HIDE
+        kwargs["startupinfo"] = startup
     else:
         kwargs["start_new_session"] = True
 
@@ -389,7 +393,8 @@ def stop_service(svc: Service) -> bool:
         try:
             if IS_WINDOWS:
                 subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], check=False,
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               creationflags=subprocess.CREATE_NO_WINDOW)
             else:
                 os.killpg(os.getpgid(pid), signal.SIGTERM)
             time.sleep(0.6)

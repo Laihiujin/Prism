@@ -310,7 +310,7 @@ async def browser_runtime_install(target: str):
     if target not in allowed_targets and not (provider and provider.get("repository") and provider.get("userSelectable")):
         raise HTTPException(status_code=400, detail=f"不支持的安装目标: {target}")
     try:
-        return browser_components.install_component(target)
+        return await asyncio.to_thread(browser_components.install_component, target)
     except HTTPException:
         raise
     except Exception as e:

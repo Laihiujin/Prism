@@ -184,7 +184,7 @@ def browser_runtime_info() -> Dict[str, Any]:
         "providerRegistry": describe_registry(),
         "preferredRuntime": "patchright",
         "activeRuntime": "patchright" if patchright_info["installed"] else None,
-        "runtimes": {"patchright": patchright_info},
+        "runtimes": {"patchright": patchright_info, "playwright": _get_python_package_info("playwright")},
         "browserBackendDefault": browser_backend_default,
         "browserBackends": browser_backends,
         "localBrowsers": local_browsers,
