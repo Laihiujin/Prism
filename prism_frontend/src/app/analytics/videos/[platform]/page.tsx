@@ -409,11 +409,11 @@ export default function PlatformVideosPage() {
             })
             const data = await res.json()
 
-            if (data.success || res.ok) {
+            if (res.ok && data.success !== false) {
                 const result = data?.data || {}
                 const okCount = result?.success ?? result?.ok ?? null
                 const failCount = result?.failed ?? null
-                const totalCount = result?.total ?? null
+                const totalCount = result?.total ?? (typeof okCount === "number" && typeof failCount === "number" ? okCount + failCount : null)
                 let description = `已成功同步最新的视频表现数据`
                 if (totalCount != null) {
                     description = `共处理 ${totalCount} 个账号：成功 ${okCount ?? 0}，失败 ${failCount ?? 0}`
@@ -426,7 +426,7 @@ export default function PlatformVideosPage() {
                 }
                 toast({
                     variant: okCount === 0 && firstError ? "destructive" : "default",
-                    title: `${config.label} ${okCount === 0 && firstError ? "数据采集失败" : "数据采集完成"}`,
+                    title: `${config.label} ${okCount === 0 && firstError ? "数据采集失败" : failCount > 0 ? "部分账号采集失败" : "数据采集完成"}`,
                     description,
                 })
                 refetch()
