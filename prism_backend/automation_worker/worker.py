@@ -1485,6 +1485,7 @@ async def login_pointer(session_id: str, payload: PointerInput):
         return await pointer_input(session, session_id, payload)
 
 class SmsLoginStartRequest(BaseModel):
+    login_role: str = Field(default="creator", pattern=r"^(creator|mcn)$")
     platform: str = Field(pattern=r"^(douyin|kuaishou|xiaohongshu|bilibili)$")
     account_id: str = Field(min_length=1, max_length=100)
     phone: str = Field(pattern=r"^1[0-9]{10}$", repr=False)
@@ -1494,7 +1495,7 @@ class SmsLoginStartRequest(BaseModel):
 @app.post("/sms/start")
 async def start_sms_login(payload: SmsLoginStartRequest):
     from app_new.platforms.phone_login import PhoneLoginAdapter
-    adapter = PhoneLoginAdapter(payload.platform, {"headless": payload.headless, "account_id": payload.account_id})
+    adapter = PhoneLoginAdapter(payload.platform, {"headless": payload.headless, "account_id": payload.account_id, "login_role": payload.login_role})
     stale = []
     async with sessions_lock:
         for sid, session in list(sessions.items()):

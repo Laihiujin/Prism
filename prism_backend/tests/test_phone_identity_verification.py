@@ -27,3 +27,26 @@ class IdentityVerificationTests(unittest.TestCase):
                 self.assertEqual(await page.locator("body").get_attribute("data-refreshed"), "1")
                 await browser.close()
         asyncio.run(run())
+
+    def test_selected_profile_survives_empty_post_login_profile(self):
+        from unittest.mock import AsyncMock, patch
+        from app_new.platforms.base import UserInfo, LoginStatus
+        async def run():
+            async with async_playwright() as playwright:
+                browser = await playwright.chromium.launch(channel="chrome", headless=True)
+                context = await browser.new_context()
+                await context.add_cookies([{"name": "sessionid", "value": "fixture-only", "domain": "creator.douyin.com", "path": "/"}])
+                page = await context.new_page()
+                await page.route("https://creator.douyin.com/**", lambda route: route.fulfill(body='<div class="name-loading">已登录</div>', content_type="text/html"))
+                await page.goto("https://creator.douyin.com/creator-micro/home")
+                adapter = PhoneLoginAdapter("douyin")
+                adapter.page, adapter.context, adapter.session_id = page, context, "profile-fixture"
+                adapter.selected_account = {"account_id": "12345", "name": "选中的账号", "avatar": "https://example.com/avatar.jpg"}
+                with patch("app_new.platforms.douyin.DouyinAdapter._extract_user_info", new=AsyncMock(return_value=UserInfo())):
+                    result = await adapter.poll_status("profile-fixture")
+                self.assertEqual(result.status, LoginStatus.CONFIRMED)
+                self.assertEqual(result.user_info.user_id, "12345")
+                self.assertEqual(result.user_info.name, "选中的账号")
+                self.assertEqual(result.user_info.avatar, "https://example.com/avatar.jpg")
+                await browser.close()
+        asyncio.run(run())

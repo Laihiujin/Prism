@@ -264,7 +264,7 @@ class DouyinAdapter(PlatformAdapter):
                         raw_text = (await id_node.inner_text()) or ""
                         raw_text = raw_text.strip()
                         if raw_text:
-                            match = re.search(r"(\\u6296\\u97f3\\u53f7|\\u6296\\u97f3ID|\\u6296\\u97f3id)[:\\uff1a]?\\s*([A-Za-z0-9_.-]+)", raw_text)
+                            match = re.search(r"(抖音号|抖音ID|抖音id)[:：]?\s*([A-Za-z0-9_.-]+)", raw_text)
                             if match:
                                 user_info.user_id = match.group(2)
                             else:
@@ -275,7 +275,7 @@ class DouyinAdapter(PlatformAdapter):
 
                 if not user_info.user_id:
                     body_text = await page.inner_text("body")
-                    match = re.search(r"(\\u6296\\u97f3\\u53f7|\\u6296\\u97f3ID|\\u6296\\u97f3id)[:\\uff1a]?\\s*([A-Za-z0-9_.-]+)", body_text)
+                    match = re.search(r"(抖音号|抖音ID|抖音id)[:：]?\s*([A-Za-z0-9_.-]+)", body_text)
                     if match:
                         user_info.user_id = match.group(2)
                         logger.info(f"[Douyin] Extracted user_id from DOM text: {user_info.user_id}")

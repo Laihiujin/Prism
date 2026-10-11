@@ -389,7 +389,8 @@ async def launch_optional_browser(
     failures: list[str] = []
     for eng, launch_opts, label in attempts:
         try:
-            return await getattr(playwright, eng).launch(**launch_opts)
+            from platforms.publish_verification import attach_browser
+            return attach_browser(await getattr(playwright, eng).launch(**launch_opts))
         except Exception as e:  # pragma: no cover - runtime fallback
             diagnose = diagnose_launch_failure(e)
             failures.append(f"[{label}] {diagnose} -> {e}")
@@ -412,7 +413,8 @@ async def launch_persistent_browser_context(
         headless=bool(launch_options.pop("headless", False)),
         **launch_options,
     )
-    return await getattr(playwright, engine).launch_persistent_context(**resolved)
+    from platforms.publish_verification import attach_context
+    return attach_context(await getattr(playwright, engine).launch_persistent_context(**resolved))
 
 
 async def connect_browser_over_cdp(playwright, cdp_url: str, *, platform: Optional[str] = None) -> Any:
