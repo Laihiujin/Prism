@@ -1461,7 +1461,7 @@ async def poll_qrcode_status(session_id: str):
 
 
 class SmsActionRequest(BaseModel):
-    action: str = Field(pattern=r"^(request|resend|submit|select_account)$")
+    action: str = Field(pattern=r"^(request|resend|submit|select_account|identity_qr)$")
     account_choice: str | None = Field(default=None, pattern=r"^[0-9]{1,30}$")
     code: str | None = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
 
