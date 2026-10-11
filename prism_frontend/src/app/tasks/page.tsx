@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, Clock3, RefreshCcw, XCircle, AlertCircle, Play, Trash2, Trash, Ban } from "lucide-react"
 
+import { TaskVerifications } from "@/components/publish/task-verifications"
 import { TaskExecutionTime } from "@/components/task-execution-time"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -819,6 +820,7 @@ export default function TasksPage() {
         </Card>
       </div>
 
+      <TaskVerifications />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid h-9 w-full grid-cols-2 rounded-sm border border-border bg-card">
           <TabsTrigger value="auto">自动任务</TabsTrigger>

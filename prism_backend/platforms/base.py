@@ -11,6 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 class BasePlatform(ABC):
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if "upload" in cls.__dict__:
+            from .publish_verification import publishing_upload
+            cls.upload = publishing_upload(cls.upload)
+
     def __init__(self, platform_code: int, platform_name: str):
         self.platform_code = platform_code
         self.platform_name = platform_name
@@ -36,28 +42,9 @@ class BasePlatform(ABC):
         account_id: str,
         trigger_selector: Optional[str] = None,
     ) -> bool:
-        from .verification import verification_manager
-
-        if trigger_selector:
-            try:
-                btn = page.locator(trigger_selector).first
-                if await btn.count() > 0 and await btn.is_visible() and await btn.is_enabled():
-                    await btn.click(timeout=3000)
-                    logger.info(f"clicked verification trigger: {trigger_selector}")
-            except Exception:
-                logger.warning("verification trigger unavailable")
-
-        event = verification_manager.request_verification(
-            account_id=account_id,
-            platform=self.platform_code,
-            message=f"{self.platform_name} requires verification code, please enter 6 digits",
-        )
-
-        code = await verification_manager.wait_for_code(event["id"], timeout=120)
-        if not code:
-            return False
-
-        return await self.fill_verification_code(page, code)
+        from .publish_verification import publishing, verify_page
+        metadata = publishing.get() or {"platform": self.platform_code, "account": account_id}
+        return await verify_page(page, metadata, trigger_selector)
 
     async def fill_verification_code(self, page: Page, code: str) -> bool:
         try:

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,7 @@ type OtpEvent = {
 }
 
 export function PublishOtpDialog() {
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [event, setEvent] = useState<OtpEvent | null>(null)
   const [code, setCode] = useState("")
@@ -25,6 +27,7 @@ export function PublishOtpDialog() {
   const currentEventId = useRef<string | null>(null)
 
   useEffect(() => {
+    if (pathname === "/tasks") return
     let cancelled = false
     let inFlight = false
     const poll = async () => {
@@ -54,7 +57,7 @@ export function PublishOtpDialog() {
     void poll()
     const timer = setInterval(() => void poll(), 2000)
     return () => { cancelled = true; clearInterval(timer) }
-  }, [])
+  }, [pathname])
 
   const handleSubmit = async () => {
     if (!event?.id || code.length !== 6) return
@@ -80,6 +83,8 @@ export function PublishOtpDialog() {
       setSubmitting(false)
     }
   }
+
+  if (pathname === "/tasks") return null
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
