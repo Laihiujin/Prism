@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import jsQR from "jsqr"
+import { qrImageArea } from "@/lib/qr-image-area"
 import { backendBaseUrl } from "@/lib/env"
 
 type QrArea = { x: number; y: number; width: number; height: number }
@@ -64,8 +65,9 @@ export function LoginIdentityQr({ sessionId }: { sessionId: string }) {
         context.drawImage(source, 0, 0)
         const pixels = context.getImageData(0, 0, canvas.width, canvas.height)
         const qr = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "dontInvert" })
-        if (qr) {
-          const corners = [qr.location.topLeftCorner, qr.location.topRightCorner, qr.location.bottomLeftCorner, qr.location.bottomRightCorner]
+        const located = qrImageArea(pixels.data, pixels.width, pixels.height)
+        if (qr || located) {
+          const corners = qr ? [qr.location.topLeftCorner, qr.location.topRightCorner, qr.location.bottomLeftCorner, qr.location.bottomRightCorner] : [{ x: located!.x + 10, y: located!.y + 10 }, { x: located!.x + located!.width - 10, y: located!.y + located!.height - 10 }]
           const left = Math.max(0, Math.min(...corners.map(point => point.x)) - 10)
           const top = Math.max(0, Math.min(...corners.map(point => point.y)) - 10)
           const width = Math.min(canvas.width - left, Math.max(...corners.map(point => point.x)) - left + 10)

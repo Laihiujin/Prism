@@ -27,9 +27,9 @@ class VerificationManager:
         value = client.get(self.prefix + "account:" + account_id)
         return value.decode() if isinstance(value, bytes) else value
 
-    def request_verification(self, account_id, platform, message="请输入验证码", code_length=6):
+    def request_verification(self, account_id, platform, message="请输入验证码", code_length=6, *, task_id=None, account=None):
         request_id = str(uuid.uuid4())
-        event = {"id": request_id, "platform": platform, "account": account_id, "message": message,
+        event = {"id": request_id, "platform": platform, "account": str(account or account_id), "task_id": task_id, "expires_at": time.time() + 180, "message": message,
                  "code_length": code_length, "timestamp": datetime.now(timezone.utc).isoformat()}
         client = self._redis()
         pipe = client.pipeline()

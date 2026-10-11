@@ -46,6 +46,7 @@ class PhoneLoginAdapter(PlatformAdapter):
         self.masked_phone = ""
         self.last_sms_error = ""
         self.identity_refresh_at = 0
+        self.selected_account = None
 
     async def get_qrcode(self):
         raise NotImplementedError("此会话使用短信登录")
@@ -65,6 +66,8 @@ class PhoneLoginAdapter(PlatformAdapter):
             self.page = await self.context.new_page()
             self.page.on("response", self._observe_sms_response)
             await self.page.goto(PHONE_LOGIN_URLS[self.platform_name], wait_until="domcontentloaded", timeout=60000)
+            if self.platform_name == "douyin" and self.config.get("login_role") == "mcn":
+                await (await visible_one(self.page.get_by_text("我是MCN机构", exact=True))).click(timeout=10000)
             if self.platform_name == "kuaishou":
                 await self.page.get_by_text("立即登录", exact=True).wait_for(state="visible", timeout=20000)
                 await (await visible_one(self.page.get_by_text("立即登录", exact=True))).click(timeout=10000)
@@ -181,6 +184,7 @@ class PhoneLoginAdapter(PlatformAdapter):
                 raise ValueError("账号选择已失效，请重新获取当前账号列表")
             label = await visible_one(self.page.get_by_text(re.compile(r"^抖音号[：:]\s*" + re.escape(account_choice) + r"$")))
             await label.locator("xpath=ancestor::*[.//img][1]").click(timeout=5000)
+            self.selected_account = next(item for item in choices if item["account_id"] == account_choice)
             return {"success": True, "message": "已选择账号，正在确认登录结果"}
         if action in ("request", "resend"):
             now = asyncio.get_running_loop().time()
@@ -261,7 +265,29 @@ class PhoneLoginAdapter(PlatformAdapter):
             state = await self.context.storage_state()
             if self.platform_name == "douyin":
                 from .douyin import DouyinAdapter
+                role = self.config.get("login_role", "creator")
+                if role == "creator" and any(c["name"] == "oc_login_type" and c["value"] == "LOGIN_ORG" for c in cookies):
+                    await self.context.clear_cookies(name="oc_login_type")
+                    await self.page.goto("https://creator.douyin.com/creator-micro/home", wait_until="domcontentloaded", timeout=30000)
+                    cookies = await self.context.cookies()
+                # Passport completion can precede creator profile hydration.
+                if "creator.douyin.com" not in self.page.url:
+                    await self.page.goto("https://creator.douyin.com/creator-micro/home", wait_until="domcontentloaded", timeout=30000)
+                try:
+                    await self.page.locator("div[class*='unique_id-'], div[class*='nickname'], div[class*='name-']").first.wait_for(state="visible", timeout=8000)
+                except Exception:
+                    pass
                 user = await DouyinAdapter()._extract_user_info(self.page, cookies)
+                if self.selected_account:
+                    user.user_id = user.user_id or self.selected_account["account_id"]
+                    user.name = user.name or self.selected_account["name"]
+                    user.avatar = user.avatar or self.selected_account["avatar"]
+                if role == "mcn":
+                    user.extra = {**(user.extra or {}), "account_type": "mcn", "profile_pending": not bool(user.name)}
+                    user.name = user.name or "抖音MCN账号（资料待补全）"
+                else:
+                    user.extra = {**(user.extra or {}), "account_type": "creator"}
+                state = await self.context.storage_state()
             elif self.platform_name == "kuaishou":
                 from .kuaishou import KuaishouAdapter
                 user = await KuaishouAdapter()._extract_user_info(self.page, cookies, state)

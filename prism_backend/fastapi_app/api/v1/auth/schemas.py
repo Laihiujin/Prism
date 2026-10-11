@@ -61,6 +61,7 @@ class SmsVerificationRequest(BaseModel):
 
 
 class SmsLoginRequest(BaseModel):
+    login_role: Literal["creator", "mcn"] = "creator"
     platform: Literal["douyin", "kuaishou", "xiaohongshu", "bilibili"]
     account_id: str = Field(min_length=1, max_length=100)
     phone: str = Field(pattern=r"^1[0-9]{10}$", repr=False)

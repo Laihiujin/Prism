@@ -210,6 +210,7 @@ function AccountPageContent() {
   const [platformVerificationOpen, setPlatformVerificationOpen] = useState(false)
   const [smsMessage, setSmsMessage] = useState("")
   const [loginMode, setLoginMode] = useState<"qrcode" | "sms">("qrcode")
+  const [loginRole, setLoginRole] = useState<"creator" | "mcn">("creator")
   const [loginPhone, setLoginPhone] = useState("")
   const supportsSmsLogin = ["douyin", "kuaishou", "xiaohongshu", "bilibili"].includes(formState.platform)
   const [youtubeChannelInput, setYoutubeChannelInput] = useState("")
@@ -220,6 +221,8 @@ function AccountPageContent() {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeSessionRef = useRef<string | null>(null)
+  const loginAccountIdRef = useRef<string | null>(null)
+  const selectedLoginAccountRef = useRef<{ account_id: string; name: string; avatar: string } | null>(null)
   const smsLoginStartedRef = useRef<number | null>(null)
 
   const stopPolling = useCallback(() => {
@@ -242,6 +245,13 @@ function AccountPageContent() {
   const handleSmsAction = async (action: "request" | "resend" | "submit" | "select_account", accountChoice?: string) => {
     const sessionId = activeSessionRef.current
     if (!sessionId || smsBusy) return
+    if (action === "select_account") {
+      selectedLoginAccountRef.current = smsVerification?.accounts?.find(account => account.account_id === accountChoice) || null
+      const saved = sessionStorage.getItem("prism-active-login")
+      if (saved) {
+        try { sessionStorage.setItem("prism-active-login", JSON.stringify({ ...JSON.parse(saved), selected: selectedLoginAccountRef.current })) } catch { /* A live session still retains its in-memory profile. */ }
+      }
+    }
     setSmsBusy(true)
     setSmsMessage("")
     if (action === "submit" || action === "select_account") {
@@ -568,7 +578,7 @@ function AccountPageContent() {
       stopPolling()
       activeSessionRef.current = sessionId
       setBindingStatus("code")
-      sessionStorage.setItem("prism-active-login", JSON.stringify({id: sessionId, platform: formState.platform, mode: loginMode}))
+      sessionStorage.setItem("prism-active-login", JSON.stringify({id: sessionId, platform: formState.platform, mode: loginMode, role: loginRole, selected: selectedLoginAccountRef.current, accountId: loginAccountIdRef.current || bindAccountId}))
       setSmsVerification(initialVerification)
       let pollInFlight = false
       pollIntervalRef.current = setInterval(async () => {
@@ -606,6 +616,26 @@ function AccountPageContent() {
           if (statusData.status !== "risk_control") setRiskNotice(null)
 
           if (statusData.status === 'confirmed') {
+            const selected = selectedLoginAccountRef.current
+            if (selected) {
+              const stored = sessionStorage.getItem("prism-active-login")
+              const requestedId = stored ? JSON.parse(stored).accountId || bindAccountId : bindAccountId
+              const latest = await refetch()
+              const existing = latest.data?.data.find((account: Account) => account.id === requestedId || String((account as Account & { user_id?: string }).user_id || "") === selected.account_id)
+              const targetId = existing?.id || requestedId
+              const updates = {
+                ...(!existing?.name || existing.name === targetId || existing.name === selected.account_id ? { name: selected.name, original_name: selected.name } : {}),
+                ...(!existing?.avatar && selected.avatar ? { avatar: selected.avatar } : {}),
+                ...(!(existing as Account & { user_id?: string } | undefined)?.user_id ? { user_id: selected.account_id } : {}),
+              }
+              const response = Object.keys(updates).length ? await fetch(`${backendBaseUrl}/api/v1/accounts/${encodeURIComponent(targetId)}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates),
+              }) : { ok: true }
+              if (!response.ok) {
+                toast({ variant: "destructive", title: "登录成功，账号资料同步失败", description: "已保留选中的账号资料，请刷新登录状态重试。" })
+                return
+              }
+            }
             stopPolling()
             setRiskNotice(null)
             setBindingStatus("success")
@@ -690,6 +720,9 @@ function AccountPageContent() {
         const session = JSON.parse(saved)
         if (typeof session.id === "string" && session.mode === "sms") {
           setLoginMode("sms")
+          setLoginRole(session.role === "mcn" ? "mcn" : "creator")
+          selectedLoginAccountRef.current = session.selected || null
+          if (session.accountId) { setBindAccountId(session.accountId); loginAccountIdRef.current = session.accountId }
           setFormState(previous => ({ ...previous, platform: session.platform }))
           setDialogOpen(true)
           resumeLoginPolling(session.id)
@@ -708,6 +741,8 @@ function AccountPageContent() {
   }, [])
 
   const startApiLogin = async (loginId: string) => {
+    loginAccountIdRef.current = loginId
+    selectedLoginAccountRef.current = null
     identityStageSeenRef.current = false
     setPlatformVerificationOpen(false)
     try {
@@ -729,7 +764,7 @@ function AccountPageContent() {
       const qrRes = useSms
         ? await fetch(`${backendBaseUrl}/api/v1/auth/sms/start`, {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ platform, account_id: loginId, phone: loginPhone }),
+            body: JSON.stringify({ platform, account_id: loginId, phone: loginPhone, login_role: loginRole }),
           })
         : await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, { method: "POST" })
 
@@ -1157,6 +1192,7 @@ function AccountPageContent() {
                         setBindingStatus("idle")
                         setQrImage(null)
                         setLoginMode("qrcode")
+                        setLoginRole("creator")
                         setLoginPhone("")
                         setFormState((prev) => ({ ...prev, platform: value }))
                       }}
@@ -1236,10 +1272,14 @@ function AccountPageContent() {
                     />
                   )}
                   {!formState.id && formState.platform !== "twitter" && (
-                    <div className="rounded-2xl border border-border/70 bg-card p-4">
+                    <div className="rounded-2xl border border-border/70 bg-card p-4 [&_button]:border [&_button]:border-zinc-600">
                       <p className="text-sm font-semibold">{loginMode === "sms" && supportsSmsLogin ? "验证码登录" : isQrPlatform ? "二维码登录" : "浏览器登录"}</p>
+                      {formState.platform === "douyin" && <div className="mt-3 flex gap-2" aria-label="抖音登录身份">
+                        <Button type="button" variant="outline" aria-pressed={loginRole === "creator"} disabled={bindingStatus !== "idle"} onClick={() => setLoginRole("creator")}>我是创作者</Button>
+                        <Button type="button" variant="outline" aria-pressed={loginRole === "mcn"} disabled={bindingStatus !== "idle"} onClick={() => { setLoginRole("mcn"); setLoginMode("sms") }}>我是MCN机构</Button>
+                      </div>}
                       <div className="mt-3 flex gap-2">
-                        <Button type="button" size="sm" variant={loginMode === "qrcode" ? "secondary" : "ghost"} disabled={bindingStatus !== "idle"} onClick={() => setLoginMode("qrcode")}>{isQrPlatform ? "扫码登录" : "浏览器登录"}</Button>
+                        <Button type="button" size="sm" variant={loginMode === "qrcode" ? "secondary" : "ghost"} disabled={bindingStatus !== "idle" || loginRole === "mcn"} onClick={() => setLoginMode("qrcode")}>{isQrPlatform ? "扫码登录" : "浏览器登录"}</Button>
                         <Button type="button" size="sm" variant={loginMode === "sms" ? "secondary" : "ghost"} disabled={!supportsSmsLogin || bindingStatus !== "idle"} onClick={() => setLoginMode("sms")}>验证码登录</Button>
                       </div>
                       {!supportsSmsLogin && <p className="mt-2 text-xs text-muted-foreground">此平台未提供独立的手机号短信登录入口，请使用现有登录方式。</p>}
@@ -1248,7 +1288,7 @@ function AccountPageContent() {
                         <Input id="login-phone" inputMode="tel" autoComplete="tel" placeholder="请输入中国大陆手机号" value={loginPhone} disabled={!["idle", "error"].includes(bindingStatus)} onChange={event => setLoginPhone(event.target.value.replace(/[^0-9]/g, "").slice(0, 11))} />
                       </div>}
                       <p className="text-xs text-muted-foreground">
-                        {smsVerification ? smsVerification.stage === "code" ? "请提供手机收到的验证码" : "请先获取短信验证码；遇到安全验证时打开远程验证画面。" : loginMode === "sms" && supportsSmsLogin ? "输入手机号后开始验证码登录" : isQrPlatform
+                        {smsVerification ? smsVerification.stage === "platform_verification" ? "请使用原设备扫描下方二维码完成身份验证。" : smsVerification.stage === "code" ? "请提供手机收到的验证码" : "请先获取短信验证码；遇到安全验证时打开远程验证画面。" : loginMode === "sms" && supportsSmsLogin ? "输入手机号后开始验证码登录" : isQrPlatform
                           ? "点击按钮获取二维码"
                           : "TikTok / YouTube 需用浏览器登录（不支持扫码）"}
                       </p>
@@ -1272,6 +1312,7 @@ function AccountPageContent() {
                             <Progress value={33} className="w-full h-1 mt-2" />
                           </div>
                         )}
+                        {activeSessionRef.current && <Button type="button" variant="outline" onClick={() => void cancelBinding()}>结束登录会话</Button>}
                         {activeSessionRef.current && ["code", "logging_in"].includes(bindingStatus) && <Button size="sm" variant="ghost" onClick={() => resumeLoginPolling(activeSessionRef.current!, smsVerification)}>刷新登录状态</Button>}
                         {bindingStatus === "logging_in" && (
                           <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 py-8 text-sm text-foreground/70">
@@ -1291,7 +1332,7 @@ function AccountPageContent() {
                         )}
                         {bindingStatus === "code" && (qrImage || smsVerification) && (
                           <div className="flex flex-col items-center gap-3">
-                            {!smsVerification && <>
+                            {!smsVerification && qrImage && <>
                             <NextImage
                               src={qrImage}
                               alt="登录二维码"
@@ -1301,6 +1342,7 @@ function AccountPageContent() {
                             />
                             <p className="text-xs text-muted-foreground">请使用 {platformLabelMap[formState.platform]} App 扫码</p>
                             </>}
+                            {loginRole === "mcn" && smsVerification?.stage === "choose" && activeSessionRef.current && <LoginIdentityQr sessionId={activeSessionRef.current} />}
                             {smsVerification && !platformVerificationOpen && !["account_selection", "platform_verification"].includes(smsVerification.stage) && (
                               <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
                                 <p className="text-sm font-semibold">{smsVerification.stage === "secondary" ? "二次手机号验证" : "短信身份验证"}</p>
@@ -1342,7 +1384,7 @@ function AccountPageContent() {
                               <Button type="button" size="sm" variant="ghost" onClick={() => setPlatformVerificationOpen(false)}>返回登录状态</Button>
                             </div>}
                             {smsVerification?.stage === "platform_verification" && !platformVerificationOpen && <div role="status" className="space-y-2 text-center"><p className="text-xs">账号已选择，身份验证尚未完成。当前登录会话已保留。</p><Button type="button" size="sm" onClick={() => setPlatformVerificationOpen(true)}>继续原设备扫码验证</Button></div>}
-                            {riskNotice && !platformVerificationOpen && smsVerification?.stage !== "account_selection" && (
+                            {riskNotice && !platformVerificationOpen && !["account_selection", "platform_verification"].includes(smsVerification?.stage || "") && (
                               <div className="flex w-full flex-col gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-left">
                                 <p className="flex items-center gap-1 text-xs font-medium text-amber-400">
                                   <MonitorSmartphone className="h-3.5 w-3.5 shrink-0" />
@@ -1354,7 +1396,7 @@ function AccountPageContent() {
                                 </p>
                               </div>
                             )}
-                            {activeSessionRef.current && (smsVerification || riskNotice) && !platformVerificationOpen && smsVerification?.stage !== "account_selection" && <RemoteLoginView
+                            {activeSessionRef.current && (smsVerification || riskNotice) && !platformVerificationOpen && !["account_selection", "platform_verification"].includes(smsVerification?.stage || "") && <RemoteLoginView
                               key={`${activeSessionRef.current}-${Boolean(smsVerification?.error || riskNotice)}`}
                               sessionId={activeSessionRef.current}
                               openByDefault={Boolean(smsVerification?.error || riskNotice)}

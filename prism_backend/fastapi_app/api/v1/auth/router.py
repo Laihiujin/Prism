@@ -581,7 +581,7 @@ async def start_sms_login(payload: SmsLoginRequest):
     try:
         response = await get_worker_client().start_sms_login({
             "platform": payload.platform, "account_id": payload.account_id,
-            "phone": payload.phone, "headless": True,
+            "phone": payload.phone, "headless": True, "login_role": payload.login_role,
         })
     except Exception:
         raise HTTPException(status_code=502, detail="无法连接短信登录服务")
