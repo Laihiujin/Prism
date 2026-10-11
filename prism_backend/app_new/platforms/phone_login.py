@@ -100,7 +100,7 @@ class PhoneLoginAdapter(PlatformAdapter):
             elif data.get("result") == 400002:
                 self.sent = False
                 self.resend_at = 0
-                self.last_sms_error = "快手要求滑块验证，短信尚未发出。请在登录浏览器中手动完成安全验证。"
+                self.last_sms_error = "快手要求滑块验证，短信尚未发出。请在下方验证画面中完成验证。"
             elif data.get("result") is not None:
                 self.sent = False
                 self.resend_at = 0
@@ -144,7 +144,7 @@ class PhoneLoginAdapter(PlatformAdapter):
             if self.last_sms_error:
                 raise ValueError(self.last_sms_error)
             if not self.sent:
-                raise ValueError("短信发送尚未得到平台确认，请检查登录浏览器中的验证提示。")
+                raise ValueError("短信尚未确认发送，请查看下方验证画面。")
             return {"success": True, "message": "平台已确认发送短信验证码，请查看手机短信"}
         if action != "submit" or not re.fullmatch(r"[0-9]{4,8}", code or ""):
             raise ValueError("请输入 4–8 位数字验证码")
