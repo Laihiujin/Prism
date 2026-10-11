@@ -436,18 +436,7 @@ async def create_context_with_policy(
             browser = None
     else:
         browser = await browser_launcher.launch(**launch_opts)
-        firefox_origins = []
-        if browser_choice == "firefox" and context_opts.get("storage_state"):
-            saved_state = context_opts["storage_state"]
-            if isinstance(saved_state, (str, Path)):
-                saved_state = json.loads(Path(saved_state).read_text(encoding="utf-8"))
-            firefox_origins = saved_state.get("origins", [])
-            context_opts["storage_state"] = {"cookies": saved_state.get("cookies", []), "origins": []}
         context = await browser.new_context(**context_opts)
-        if firefox_origins:
-            # Patchright's storage-state origin restoration assumes Chromium CDP.
-            # Restore Firefox localStorage on its own origin through the supported script API.
-            await context.add_init_script("const savedOrigins = " + json.dumps(firefox_origins) + "; for (const entry of savedOrigins) { if (entry.origin === location.origin) { for (const item of entry.localStorage || []) localStorage.setItem(item.name, item.value); } }")
 
     if fingerprint:
         try:
