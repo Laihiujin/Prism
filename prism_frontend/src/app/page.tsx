@@ -32,7 +32,6 @@ import {
   tasksResponseSchema,
 } from "@/lib/schemas"
 import { formatBeijingDateTime } from "@/lib/time"
-import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog"
 import { PageHeader } from "@/components/layout/page-scaffold"
 import CountUp from "@/components/CountUp"
 import { cn } from "@/lib/utils"
@@ -258,7 +257,6 @@ export default function DashboardPage() {
         })}
       </section>
 
-      <PublishOtpDialog />
 
       <section className="grid gap-6">
         <Card className="hairline-top overflow-hidden border-border/80 bg-card/70 backdrop-blur-sm">

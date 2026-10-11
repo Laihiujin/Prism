@@ -47,6 +47,7 @@ class LoginResult:
     cookies: Optional[Dict[str, Any]] = None
     user_info: Optional[UserInfo] = None
     full_state: Optional[Dict[str, Any]] = None  # Playwright storage_state
+    verification: Optional[Dict[str, Any]] = None
 
 
 class PlatformAdapter(ABC):
