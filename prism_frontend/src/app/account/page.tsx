@@ -307,23 +307,6 @@ function AccountPageContent() {
   }, [accountResponse])
 
   useEffect(() => {
-    if (!accounts.length) return
-    const snapshot = {
-      accounts: accounts.map((account) => ({
-        account_id: account.id,
-        platform: account.platform,
-      })),
-    }
-    fetch("/api/accounts/sync-frontend", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(snapshot),
-    }).catch((error) => {
-      console.warn("Sync frontend accounts failed:", error)
-    })
-  }, [accounts])
-
-  useEffect(() => {
     const platformParam = searchParams.get("platform") as PlatformKey | null
     if (platformParam && platformTabs.some((tab) => tab.value === platformParam)) {
       setActiveTab(platformParam)
