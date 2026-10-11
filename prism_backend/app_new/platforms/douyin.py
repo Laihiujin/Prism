@@ -24,6 +24,7 @@ class DouyinAdapter(PlatformAdapter):
         self.platform_name = "douyin"
         self.headless = config.get("headless", True) if config else True
         self.account_id = config.get("account_id") if config else None
+        self.login_role = (config or {}).get("login_role", "creator")
 
     async def get_qrcode(self) -> QRCodeData:
         """
@@ -70,6 +71,12 @@ class DouyinAdapter(PlatformAdapter):
             except Exception:
                 # 降级: 访问主页
                 await page.goto("https://creator.douyin.com/", timeout=20000, wait_until="domcontentloaded")
+
+            if self.login_role == "mcn":
+                entry = page.get_by_text("我是MCN机构", exact=True)
+                await entry.wait_for(state="visible", timeout=15000)
+                await entry.click()
+                await page.wait_for_timeout(1000)
 
             # 等待二维码加载
             await asyncio.sleep(2)
