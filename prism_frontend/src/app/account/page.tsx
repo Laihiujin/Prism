@@ -749,7 +749,7 @@ function AccountPageContent() {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ platform, account_id: loginId, phone: loginPhone, login_role: loginRole }),
           })
-        : await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}`, { method: "POST" })
+        : await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}&login_role=${loginRole}`, { method: "POST" })
 
       let qrData: any = null
       let rawText = ""
@@ -1261,7 +1261,7 @@ function AccountPageContent() {
                         <Label htmlFor="douyin-login-role">账号身份</Label>
                         <Select value={loginRole} disabled={bindingStatus !== "idle"} onValueChange={(value) => {
                           setLoginRole(value as "creator" | "mcn")
-                          setLoginMode(value === "mcn" ? "sms" : "qrcode")
+                          setLoginMode("qrcode")
                         }}>
                           <SelectTrigger id="douyin-login-role" className="w-full"><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -1274,7 +1274,7 @@ function AccountPageContent() {
                       <div className="mt-4 space-y-2">
                         <p className="text-xs font-medium">登录方式</p>
                         <div className="flex gap-1 rounded-md border border-zinc-600 bg-muted/30 p-1" role="group" aria-label="登录方式">
-                          {loginRole !== "mcn" && <Button type="button" size="sm" className={`flex-1 ${loginMode === "qrcode" ? "bg-foreground text-background hover:bg-foreground/90" : "bg-transparent text-muted-foreground hover:bg-muted"}`} variant="outline" aria-pressed={loginMode === "qrcode"} disabled={bindingStatus !== "idle"} onClick={() => setLoginMode("qrcode")}>{isQrPlatform ? "扫码登录" : "浏览器登录"}</Button>}
+                          {<Button type="button" size="sm" className={`flex-1 ${loginMode === "qrcode" ? "bg-foreground text-background hover:bg-foreground/90" : "bg-transparent text-muted-foreground hover:bg-muted"}`} variant="outline" aria-pressed={loginMode === "qrcode"} disabled={bindingStatus !== "idle"} onClick={() => setLoginMode("qrcode")}>{isQrPlatform ? "扫码登录" : "浏览器登录"}</Button>}
                           {supportsSmsLogin && <Button type="button" size="sm" className={`flex-1 ${loginMode === "sms" ? "bg-foreground text-background hover:bg-foreground/90" : "bg-transparent text-muted-foreground hover:bg-muted"}`} variant="outline" aria-pressed={loginMode === "sms"} disabled={bindingStatus !== "idle"} onClick={() => setLoginMode("sms")}>短信验证码</Button>}
                         </div>
                       </div>
