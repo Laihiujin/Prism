@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
-import { BrowserSelection } from "@/components/settings/browser-selection"
+import { BrowserSelection, type BrowserSelectionRuntime } from "@/components/settings/browser-selection"
 import { AIServiceProviderCard } from "@/components/settings/ai-service-provider-card"
 import { HermesProviderCard } from "@/components/settings/hermes-provider-card"
 import { CcSwitchPanel } from "@/components/settings/cc-switch-panel"
@@ -265,7 +265,10 @@ export default function SettingsPage() {
   }
 
   const serviceEntries = Object.entries(status ?? {}).filter(([, value]) => value)
+  const [selectionRuntime, setSelectionRuntime] = useState<BrowserSelectionRuntime>()
   const browserRuntimeInfo = appInfo?.browserRuntimeInfo
+  const activeBrowser = selectionRuntime?.providerRegistry?.active
+  const chromiumVersionLabel = activeBrowser && activeBrowser.kind !== "firefox" ? activeBrowser.name : "Chrome for Testing"
   const currentRuntime =
     appInfo?.runtimeSettings?.automationRuntime ?? browserRuntimeInfo?.preferredRuntime ?? "patchright"
   const browserHeadless = appInfo?.runtimeSettings?.browserHeadless
@@ -662,7 +665,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <BrowserSelection />
+      <BrowserSelection onRuntimeChange={setSelectionRuntime} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,1fr)]">
         <Card className="border-border/70 bg-card">
@@ -682,7 +685,7 @@ export default function SettingsPage() {
                     已设置：{platformBrowserLabels[platformBrowserPreferences[platform.key]]}
                   </span>
                   <span className="rounded-full border border-border/80 bg-black px-2 py-1 text-foreground">
-                    当前生效：{platformBrowserLabels[getEffectivePlatformBrowser(platform.key)]}
+                    当前生效：{getEffectivePlatformBrowser(platform.key) === "firefox" ? "Firefox" : chromiumVersionLabel}
                   </span>
                 </div>
                 <div className="mt-4">

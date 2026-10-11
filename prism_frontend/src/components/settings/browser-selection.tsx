@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-type Runtime = {
+export type BrowserSelectionRuntime = {
   browsers?: Record<string, { installed?: boolean }>
   providerRegistry?: {
-    active?: { provider: string; name: string; executablePath: string }
+    active?: { provider: string; name: string; executablePath: string; kind?: string }
     providers?: { id: string; name: string; installed: boolean; userSelectable?: boolean; compatible?: boolean; category?: string }[]
   }
 }
 
-export function BrowserSelection() {
-  const [runtime, setRuntime] = useState<Runtime>()
+export function BrowserSelection({ onRuntimeChange }: { onRuntimeChange?: (runtime: BrowserSelectionRuntime) => void }) {
+  const [runtime, setRuntime] = useState<BrowserSelectionRuntime>()
   const [choice, setChoice] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -27,10 +27,11 @@ export function BrowserSelection() {
         if (!response.ok) throw new Error("无法读取已安装的浏览器")
         const data = await response.json()
         setRuntime(data.browserRuntimeInfo)
+        onRuntimeChange?.(data.browserRuntimeInfo)
         setChoice(data.browserRuntimeInfo?.providerRegistry?.active?.provider || "")
       }).catch(problem => { if (!controller.signal.aborted) setError(problem.message) })
     return () => controller.abort()
-  }, [])
+  }, [onRuntimeChange])
   const options = [
     { id: "chromium", name: "Chrome for Testing", installed: Boolean(runtime?.browsers?.chromium?.installed) },
     { id: "firefox", name: "Firefox", installed: Boolean(runtime?.browsers?.firefox?.installed) },
@@ -43,6 +44,7 @@ export function BrowserSelection() {
       const data = await response.json()
       if (!response.ok || data.success === false) throw new Error(data.detail || data.error || "浏览器切换失败")
       setRuntime(data.browserRuntimeInfo)
+        onRuntimeChange?.(data.browserRuntimeInfo)
       setMessage("已应用，新建登录和发布会话时生效。")
     } catch (problem) { setError(problem instanceof Error ? problem.message : "浏览器切换失败") }
     finally { setBusy(false) }
