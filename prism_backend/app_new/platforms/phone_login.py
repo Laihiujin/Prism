@@ -85,8 +85,14 @@ class PhoneLoginAdapter(PlatformAdapter):
             await self.cleanup_session(self.session_id)
             raise
 
-    async def _account_choices(self):
+    async def _identity_verification(self):
         if self.platform_name != "douyin":
+            return False
+        headings = self.page.get_by_text(re.compile(r"^(身份验证|使用原设备扫码|手机刷脸验证)$"))
+        return any([await headings.nth(i).is_visible() for i in range(await headings.count())])
+
+    async def _account_choices(self):
+        if self.platform_name != "douyin" or await self._identity_verification():
             return []
         prompt = self.page.get_by_text(re.compile("所有关联账号.*请选择登录"))
         if not await prompt.count() or not await prompt.first.is_visible():
@@ -198,6 +204,8 @@ class PhoneLoginAdapter(PlatformAdapter):
         return {"success": True, "message": "验证码已提交，正在等待平台登录结果"}
 
     async def verification_state(self):
+        if await self._identity_verification():
+            return {"stage": "platform_verification", "phone": self.masked_phone, "resend_after": 0, "error": "", "message": "请使用原设备扫码或手机刷脸完成身份验证"}
         choices = await self._account_choices()
         if choices:
             return {"stage": "account_selection", "phone": self.masked_phone, "resend_after": 0, "error": "", "accounts": choices}
@@ -211,6 +219,8 @@ class PhoneLoginAdapter(PlatformAdapter):
     async def poll_status(self, session_id):
         if session_id != self.session_id or not self.page:
             return LoginResult(LoginStatus.EXPIRED, "短信登录会话已过期")
+        if await self._identity_verification():
+            return LoginResult(LoginStatus.RISK_CONTROL, "请使用原设备扫码完成身份验证", verification=await self.verification_state())
         choices = await self._account_choices()
         if choices:
             return LoginResult(LoginStatus.RISK_CONTROL, "请选择要登录的抖音账号", verification=await self.verification_state())

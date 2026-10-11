@@ -202,9 +202,10 @@ function AccountPageContent() {
   const [qrImage, setQrImage] = useState<string | null>(null)
   // 风控/人工验证提示（扫码轮询返回 risk_control 时展示；验证完成后清空）
   const [riskNotice, setRiskNotice] = useState<string | null>(null)
-  const [smsVerification, setSmsVerification] = useState<{ stage: "choose" | "code" | "secondary" | "account_selection"; accounts?: { account_id: string; name: string; avatar: string }[]; phone: string; resend_after: number; error: string } | null>(null)
+  const [smsVerification, setSmsVerification] = useState<{ stage: "choose" | "code" | "secondary" | "account_selection" | "platform_verification"; accounts?: { account_id: string; name: string; avatar: string }[]; phone: string; resend_after: number; error: string } | null>(null)
   const [smsCode, setSmsCode] = useState("")
   const [smsBusy, setSmsBusy] = useState(false)
+  const [platformVerificationOpen, setPlatformVerificationOpen] = useState(false)
   const [smsMessage, setSmsMessage] = useState("")
   const [loginMode, setLoginMode] = useState<"qrcode" | "sms">("qrcode")
   const [loginPhone, setLoginPhone] = useState("")
@@ -587,7 +588,8 @@ function AccountPageContent() {
           if (activeSessionRef.current !== sessionId) return
           if (statusData.data?.verification) {
             setSmsVerification(statusData.data.verification)
-            if (["secondary", "account_selection"].includes(statusData.data.verification.stage)) {
+            if (statusData.data.verification.stage === "platform_verification") setPlatformVerificationOpen(true)
+            if (["secondary", "account_selection", "platform_verification"].includes(statusData.data.verification.stage)) {
               smsLoginStartedRef.current = null
               setBindingStatus("code")
             }
@@ -701,6 +703,7 @@ function AccountPageContent() {
   }, [])
 
   const startApiLogin = async (loginId: string) => {
+    setPlatformVerificationOpen(false)
     try {
       // Step 1: 生成二维码
       const platformMap: Record<PlatformKey, string> = {
@@ -1293,7 +1296,7 @@ function AccountPageContent() {
                             />
                             <p className="text-xs text-muted-foreground">请使用 {platformLabelMap[formState.platform]} App 扫码</p>
                             </>}
-                            {smsVerification && smsVerification.stage !== "account_selection" && (
+                            {smsVerification && !platformVerificationOpen && !["account_selection", "platform_verification"].includes(smsVerification.stage) && (
                               <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
                                 <p className="text-sm font-semibold">{smsVerification.stage === "secondary" ? "二次手机号验证" : "短信身份验证"}</p>
                                 {smsVerification.stage === "choose" ? (
@@ -1318,16 +1321,23 @@ function AccountPageContent() {
                                 <p className="text-xs text-muted-foreground">验证通过后会自动完成绑定。平台要求安全验证时，请打开下面的远程验证画面手动完成。</p>
                               </div>
                             )}
-                            {smsVerification?.stage === "account_selection" && <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
+                            {smsVerification?.stage === "account_selection" && !platformVerificationOpen && <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
                               <p className="text-sm font-semibold">选择要登录的抖音账号</p>
                               <p className="text-xs text-muted-foreground">此手机号关联多个账号，请选择本次需要绑定的账号。</p>
+                              <Button size="sm" variant="secondary" onClick={() => setPlatformVerificationOpen(true)}>查看平台身份验证 / 原设备扫码</Button>
                               {smsVerification.accounts?.map(account => <button key={account.account_id} type="button" disabled={smsBusy} onClick={() => void handleSmsAction("select_account", account.account_id)} className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left hover:bg-accent disabled:opacity-50">
                                 {account.avatar && <img src={account.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />}
                                 <span><span className="block text-sm font-medium">{account.name}</span><span className="block text-xs text-muted-foreground">抖音号：{account.account_id}</span></span>
                               </button>)}
                               {smsMessage && <p role="status" className="text-xs text-destructive">{smsMessage}</p>}
                             </div>}
-                            {riskNotice && smsVerification?.stage !== "account_selection" && (
+                            {platformVerificationOpen && activeSessionRef.current && <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
+                              <p className="text-sm font-semibold">平台身份验证 / 原设备扫码</p>
+                              <p className="text-xs text-muted-foreground">在下方画面点击“使用原设备扫码”，用原设备上的抖音扫描二维码。验证通过后自动完成绑定。</p>
+                              <RemoteLoginView sessionId={activeSessionRef.current} openByDefault />
+                              <Button size="sm" variant="ghost" onClick={() => setPlatformVerificationOpen(false)}>返回账号选择</Button>
+                            </div>}
+                            {riskNotice && !platformVerificationOpen && smsVerification?.stage !== "account_selection" && (
                               <div className="flex w-full flex-col gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-left">
                                 <p className="flex items-center gap-1 text-xs font-medium text-amber-400">
                                   <MonitorSmartphone className="h-3.5 w-3.5 shrink-0" />
@@ -1339,7 +1349,7 @@ function AccountPageContent() {
                                 </p>
                               </div>
                             )}
-                            {activeSessionRef.current && (smsVerification || riskNotice) && smsVerification?.stage !== "account_selection" && <RemoteLoginView
+                            {activeSessionRef.current && (smsVerification || riskNotice) && !platformVerificationOpen && smsVerification?.stage !== "account_selection" && <RemoteLoginView
                               key={`${activeSessionRef.current}-${Boolean(smsVerification?.error || riskNotice)}`}
                               sessionId={activeSessionRef.current}
                               openByDefault={Boolean(smsVerification?.error || riskNotice)}
