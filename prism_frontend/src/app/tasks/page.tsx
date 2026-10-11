@@ -6,7 +6,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, Clock3, RefreshCcw, XCircle, AlertCircle, Play, Trash2, Trash, Ban } from "lucide-react"
 
 import { TaskVerifications } from "@/components/publish/task-verifications"
+import { platformLabel } from "@/lib/platform-label"
 import { TaskExecutionTime } from "@/components/task-execution-time"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -25,7 +27,7 @@ const statusTabs = [
   { label: "待执行", value: "pending" },
   { label: "定时", value: "scheduled" },
   { label: "运行中", value: "running" },
-  // { label: "被取消", value: "cancelled" },
+  { label: "已取消", value: "cancelled" },
   { label: "成功", value: "success" },
   { label: "失败", value: "error" },
 ]
@@ -36,6 +38,7 @@ export default function TasksPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [debugTask, setDebugTask] = useState<{ id: string; result?: string } | null>(null)
   const [activeTab, setActiveTab] = useState("auto")
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
   const [selectedManualIds, setSelectedManualIds] = useState<string[]>([])
@@ -86,6 +89,9 @@ export default function TasksPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["manual-tasks"] })
       queryClient.invalidateQueries({ queryKey: ["manual-tasks-stats"] })
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+      setStatusFilter("all")
+      setActiveTab("auto")
       toast({ title: "任务已重新加入队列" })
     },
     onError: (error: any) => {
@@ -162,7 +168,7 @@ export default function TasksPage() {
       setSelectedTaskIds([])
       toast({
         title: data.message || `成功删除 ${data.success_count} 个任务`,
-        description: data.failed_count > 0 ? `失败 ${data.failed_count} 个` : undefined
+        description: data.failed_count > 0 ? (data.errors || [`失败 ${data.failed_count} 个`]).join("；") : undefined
       })
     },
     onError: (error: any) => {
@@ -191,7 +197,7 @@ export default function TasksPage() {
       setSelectedTaskIds([])
       toast({
         title: data.message || `成功重试 ${data.success_count} 个任务`,
-        description: data.failed_count > 0 ? `失败 ${data.failed_count} 个` : undefined
+        description: data.failed_count > 0 ? (data.errors || [`失败 ${data.failed_count} 个`]).join("；") : undefined
       })
     },
     onError: (error: any) => {
@@ -245,7 +251,7 @@ export default function TasksPage() {
       setSelectedTaskIds([])
       toast({
         title: data.message || `成功取消 ${data.success_count} 个任务`,
-        description: data.failed_count > 0 ? `失败 ${data.failed_count} 个` : undefined
+        description: data.failed_count > 0 ? (data.errors || [`失败 ${data.failed_count} 个`]).join("；") : undefined
       })
     },
     onError: (error: any) => {
@@ -346,24 +352,6 @@ export default function TasksPage() {
   const successCount = summary?.success ?? tasks.filter((task) => task.status === "success").length
   const errorCount = summary?.error ?? tasks.filter((task) => task.status === "error").length
 
-  const platformLabels: Record<string, string> = {
-    douyin: "抖音",
-    kuaishou: "快手",
-    xiaohongshu: "小红书",
-    bilibili: "B站",
-    channels: "视频号",
-    tiktok: "TikTok",
-    youtube: "YouTube",
-    "2": "快手",
-    "3": "抖音",
-    "6": "TikTok",
-    "7": "YouTube",
-    "platform_2": "快手",
-    "platform_3": "抖音",
-    "platform_6": "TikTok",
-    "platform_7": "YouTube"
-  }
-
   const getManualId = (task: any) => {
     const raw = task?.task_id || task?.id || task?.taskId || task?.taskID
     return raw ? String(raw) : ""
@@ -390,6 +378,7 @@ export default function TasksPage() {
     if (status === "success") return "成功"
     if (status === "error") return "失败"
     if (status === "running") return "运行中"
+    if (status === "cancelled") return "已取消"
     return "等待中"
   }
 
@@ -441,7 +430,7 @@ export default function TasksPage() {
       accessorKey: "platform",
       header: "平台",
       size: 110,
-      cell: ({ row }) => <Badge className="border-border/70 bg-black">{row.original.platform}</Badge>,
+      cell: ({ row }) => <Badge className="border-border/70 bg-black">{platformLabel(row.original.platform)}</Badge>,
     },
     {
       accessorKey: "account",
@@ -483,6 +472,7 @@ export default function TasksPage() {
       size: 200,
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={() => setDebugTask(row.original)}>调试</Button>
           {row.original.status === "error" && (
             <Button
               variant="ghost"
@@ -594,7 +584,7 @@ export default function TasksPage() {
       accessorKey: "platform",
       header: "平台",
       size: 110,
-      cell: ({ row }) => <Badge variant="outline">{platformLabels[row.original.platform] || row.original.platform}</Badge>,
+      cell: ({ row }) => <Badge variant="outline">{platformLabel(row.original.platform)}</Badge>,
     },
     {
       accessorKey: "account",
@@ -657,6 +647,12 @@ export default function TasksPage() {
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-4 md:px-6 md:py-5">
+      <Dialog open={!!debugTask} onOpenChange={open => { if (!open) setDebugTask(null) }}>
+        <DialogContent className="max-w-3xl border-zinc-700 bg-zinc-950">
+          <DialogHeader><DialogTitle>任务调试详情</DialogTitle><DialogDescription>任务 ID：{debugTask?.id}</DialogDescription></DialogHeader>
+          <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all rounded-lg border border-zinc-800 p-4 text-xs text-zinc-300">{debugTask?.result || "该任务尚无错误或结果记录，请等待任务状态更新。"}</pre>
+        </DialogContent>
+      </Dialog>
       <PageHeader
         eyebrow="PRISM / OPERATIONS"
         title="任务中心"
@@ -820,6 +816,9 @@ export default function TasksPage() {
         </Card>
       </div>
 
+      <a href="/tasks/verification" className="flex items-center justify-between rounded-lg border border-border p-4 text-sm hover:bg-accent">
+        <span>任务发布人工验证 · 验证码回传 / 重新获取</span><span>进入 →</span>
+      </a>
       <TaskVerifications />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid h-9 w-full grid-cols-2 rounded-sm border border-border bg-card">

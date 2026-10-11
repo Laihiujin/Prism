@@ -1,5 +1,6 @@
 """Human-provided SMS codes for a live publishing browser, across platforms."""
 import asyncio
+import json
 import logging
 import re
 from contextvars import ContextVar
@@ -60,8 +61,17 @@ async def verify_page(page, metadata, trigger_selector=None):
             "发布需要短信验证，请输入手机收到的验证码。", length,
             task_id=metadata.get("task_id"), account=metadata.get("account"))
         request_id = event["id"]
+        event["can_resend"] = bool(await trigger.count())
+        verification_manager.redis.set(verification_manager._key(request_id, "event"), json.dumps(event, ensure_ascii=False), ex=verification_manager.ttl)
+        async def resend():
+            for index in range(await trigger.count()):
+                button = trigger.nth(index)
+                if await button.is_visible() and await button.is_enabled():
+                    await button.click(timeout=5000)
+                    return
+            logging.getLogger(__name__).info("SMS resend button is still unavailable")
         try:
-            code = await verification_manager.wait_for_code(request_id, timeout=180)
+            code = await verification_manager.wait_for_code(request_id, timeout=180, on_resend=resend)
             if not code or page.is_closed():
                 return False
             await field.fill(code, timeout=5000)

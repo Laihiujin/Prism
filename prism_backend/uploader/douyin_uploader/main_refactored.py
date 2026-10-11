@@ -829,13 +829,20 @@ class DouYinVideo(DouYinBaseUploader):
         try:
             # 触发提示的文案（兜底多个）
             trigger = None
-            for t in ("设置两张封面", "推荐竖封面", "推荐横封面", "获得更多曝光", "设置两张"):
+            for t in ("设置横封面获更多流量", "设置横封面获取更多流量", "设置两张封面", "推荐竖封面", "推荐横封面", "获得更多曝光", "设置两张"):
                 loc = page.get_by_text(t, exact=False).first
                 if await loc.count() and await loc.is_visible():
                     trigger = t
                     break
             if not trigger:
                 return False
+            if trigger in ("设置横封面获更多流量", "设置横封面获取更多流量"):
+                skip = page.get_by_text("暂不设置", exact=True).first
+                if await skip.count() and await skip.is_visible():
+                    await skip.click(timeout=3000)
+                    await page.get_by_text(trigger, exact=False).first.wait_for(state="hidden", timeout=5000)
+                    douyin_logger.info("已关闭横封面流量提示，保留当前封面")
+                    return True
             douyin_logger.info(_msg("��", f"检测到推荐封面弹窗: {trigger}"))
             if want_portrait:
                 for t in ("设置竖封面", "设置竖版封面"):
@@ -919,6 +926,9 @@ class DouYinVideo(DouYinBaseUploader):
         if not cover_path and self.cover_file:
             cover_path = self.cover_file
             orientation_name = "自定义封面"
+            used_portrait = use_portrait
+            cover_labels = (("设置竖封面", "竖封面3:4", "竖封面", "竖版封面") if use_portrait
+                            else ("设置横封面", "横封面4:3", "横封面", "横版封面"))
 
         if cover_path:
             try:
@@ -940,6 +950,7 @@ class DouYinVideo(DouYinBaseUploader):
 
         # 点红色主按钮“完成”应用封面（exact 避免误中“完成编辑”）
         await cover_locator.get_by_role("button", name="完成", exact=True).first.click()
+        await self._handle_cover_recommend_modal(page, want_portrait=used_portrait)
         douyin_logger.info(_msg("🥳", "视频封面设置完成"))
         # 关键：竖屏视频会触发「设置竖封面获更多流量」弹窗，点「完成」后弹窗**不自动关闭**，
         # 残留遮罩（dy-creator-content-modal-wrap）会拦截后续「自主声明」等点击导致超时。
@@ -1264,19 +1275,10 @@ class DouYinVideo(DouYinBaseUploader):
                 sms_input = page.locator('input[placeholder*="验证码"], input[type="tel"], input[placeholder*="短信"], input[placeholder*="手机号"]').first
                 if await sms_input.count() and await sms_input.is_visible():
                     douyin_logger.warning(_msg("📱", "检测到短信验证码弹窗"))
-                    # 点击「获取验证码」按钮（仅首次）
-                    get_code_btn = page.get_by_text("获取验证码").first
-                    if await get_code_btn.count() and await get_code_btn.is_visible():
-                        await get_code_btn.click()
-                        douyin_logger.info(_msg("📤", "已点击「获取验证码」，请查看手机短信"))
-                    code_file = os.path.join(BASE_DIR, "verify_code.txt")
-                    code = await _read_verify_code(code_file)
-                    if code:
-                        sms_prompt_logged = False
-                        await self._submit_sms_verify_code(page, sms_input, code, code_file)
-                    elif not sms_prompt_logged:
-                        douyin_logger.warning(_msg("⏳", f"等待验证码输入；可在交互终端直接输入，或写入文件: {code_file}"))
-                        sms_prompt_logged = True
+                    from platforms.publish_verification import publishing, verify_page
+                    metadata = publishing.get() or {"platform": 3, "account": Path(self.account_file).stem}
+                    if not await verify_page(page, metadata):
+                        raise RuntimeError("发布验证码等待超时或验证未通过")
                 if self.preview_only:
                     # 预览/调试模式：所有前置步骤（上传、标题/话题/描述、封面、定位、商品/小程序、自查声明）都已跑完，
                     # 只差最后点「发布」。此处停下，绝不真正发布，便于安全调试观察每一步结果。

@@ -1,19 +1,9 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
+import { platformLabel } from "@/lib/platform-label"
 
 import { backendBaseUrl } from "@/lib/env"
 import type { TaskRecord, TaskStatus } from "./tasks-store"
-
-const platformDisplay: Record<string, string> = {
-  "1": "小红书",
-  "2": "视频号",
-  "3": "抖音",
-  "4": "快手",
-  "5": "B站",
-  "6": "TikTok",
-  "7": "YouTube",
-  "8": "百家号",
-}
 
 const normalizeStatus = (value: unknown, hasSchedule: boolean): TaskStatus => {
   const raw = typeof value === "string" ? value.toLowerCase() : ""
@@ -25,22 +15,7 @@ const normalizeStatus = (value: unknown, hasSchedule: boolean): TaskStatus => {
   return "pending"
 }
 
-const resolvePlatformName = (value: unknown): string => {
-  const key = typeof value === "number" ? String(value) : String(value || "").trim()
-  if (platformDisplay[key]) return platformDisplay[key]
-  const lower = key.toLowerCase()
-  if (lower.includes("douyin")) return "抖音"
-  if (lower.includes("kuaishou")) return "快手"
-  if (lower.includes("hongshu") || lower.includes("redbook") || lower.includes("xhs")) return "小红书"
-  if (lower.includes("bili")) return "B站"
-  if (lower.includes("video") || lower.includes("channel") || lower.includes("shipin")) return "视频号"
-  if (lower.includes("tiktok")) return "TikTok"
-  if (lower.includes("youtube") || lower.includes("yt")) return "YouTube"
-  if (lower.includes("baijiahao")) return "百家号"
-  return key || "未知平台"
-}
-
-
+const resolvePlatformName = platformLabel
 
 const buildSummaryFromTasks = (tasks: TaskRecord[]) => {
   const summary = { scheduled: 0, success: 0, error: 0, pending: 0, total: tasks.length }
@@ -136,10 +111,11 @@ const formatTaskQueueRow = (row: any, accountMap: Map<string, string>, materialM
     material: materialName || "-",
     status,
     createdAt: (row?.created_at as string) ?? new Date().toISOString(),
+    scheduleDelivery: payload.schedule_delivery as string | undefined,
     scheduledAt: schedule ? String(schedule) : undefined,
     startedAt: row?.started_at || undefined,
     completedAt: row?.completed_at || undefined,
-    result: undefined,
+    result: typeof row?.error_message === "string" ? row.error_message : row?.result ? JSON.stringify(row.result, null, 2) : undefined,
     source: "queue" as const,
   }
 }
@@ -210,7 +186,7 @@ const fetchPublishHistory = async (accountMap: Map<string, string>, materialMap:
 
     const tasks: TaskRecord[] = rows.map((row) => {
       const platform = String(row?.platform ?? "")
-      const platformName = platformDisplay[platform] || platform || "未知平台"
+      const platformName = platformLabel(platform)
       const schedule = (row?.schedule_time as string) || undefined
       const status = normalizeStatus(row?.status, Boolean(schedule))
 

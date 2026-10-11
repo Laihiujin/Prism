@@ -698,6 +698,10 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
     const [copyright, setCopyright] = usePlatformField(data, onChange, "bilibili", "copyright", 1)
     const [source, setSource] = usePlatformField(data, onChange, "bilibili", "source", "")
     const [dynamic, setDynamic] = usePlatformField(data, onChange, "bilibili", "dynamic", "")
+    const [cover, setCover] = usePlatformField(data, onChange, "bilibili", "cover", "")
+    const [description, setDescription] = usePlatformField(data, onChange, "bilibili", "description", "")
+    const [tags, setTags] = usePlatformField(data, onChange, "bilibili", "tags", "")
+    const [openSubtitle, setOpenSubtitle] = usePlatformField(data, onChange, "bilibili", "open_subtitle", false)
 
     // B站分区（tid）常用列表：与 category 文案联动
     const bilibiliCategories: { label: string; tid: number }[] = [
@@ -757,7 +761,9 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                             </button>
                         ))}
                     </div>
-                    <p className="text-[10px] text-foreground/40">当前 tid：{tid}（不在此列的细分分区请后续在发布时补充）</p>
+                    <Label className="text-xs text-muted-foreground">细分分区 ID</Label>
+                    <Input type="number" min={1} value={tid} onChange={e => setTid(Number(e.target.value))} className="bg-card/20 border-border/70 text-xs" />
+                    <p className="text-[10px] text-foreground/40">提交使用此分区 ID，可填写对应细分分区。</p>
                 </div>
 
                 {/* 版权：自制 / 转载 */}
@@ -809,20 +815,31 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
 
                 {/* 标签 */}
                 <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">标签</Label>
+                    <Label className="text-xs text-muted-foreground">B站专属标签（可选）</Label>
                     <Input
                         placeholder="按回车键输入标签"
                         className="bg-card/20 border-border/70 text-xs"
-                        value={data.tags ? (Array.isArray(data.tags) ? data.tags.join(' ') : data.tags) : ""}
-                        onChange={(e) => onChange({ ...data, tags: e.target.value.split(' ') })}
+                        value={Array.isArray(tags) ? tags.join(' ') : tags}
+                        onChange={(e) => setTags(e.target.value)}
                     />
-                    <p className="text-[10px] text-foreground/40">使用空格分隔多个标签</p>
+                    <p className="text-[10px] text-foreground/40">空格或逗号分隔；留空使用素材预设标签。</p>
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">B站专属简介（可选）</Label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="留空使用素材简介" className="min-h-24 w-full border border-border/70 bg-card/20 px-3 py-2 text-xs" />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">B站专属封面（可选）</Label>
+                    <Input value={cover} onChange={e => setCover(e.target.value)} placeholder="封面 URL 或本地图片路径；留空使用素材封面" className="bg-card/20 border-border/70 text-xs" />
+                </div>
+                <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">允许观众投稿字幕</Label>
+                    <Switch checked={openSubtitle} onCheckedChange={setOpenSubtitle} />
                 </div>
 
                 {/* 分P提示 */}
                 <div className="rounded-xl border border-dashed border-border/70 bg-card/20 px-3 py-2 text-[11px] leading-4 text-muted-foreground">
-                    分P（多P）发布请使用工具 <code className="font-mono">publish_multipart_to_bilibili</code>（MCP / API / CLI）：
-                    一次提交一个稿件、按顺序上传 P1..Pn；矩阵面板的多素材默认按「每个素材一个稿件」分发。
+                    <a href="/publish/bilibili" className="underline">进入B站分P发布</a>，将多个视频按顺序合为一个稿件。矩阵发布的多个素材分别生成独立稿件。
                 </div>
             </div>
         </div>

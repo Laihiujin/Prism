@@ -122,7 +122,7 @@ export default function IntervalTimelinePreview({
         </div>
       </div>
 
-      <p className="mb-3 text-xs text-muted-foreground">按所选时间启动发布任务；实际发布完成时间取决于上传耗时。随机模式按相邻批次间隔浮动，保持顺序；其他分配策略以实际任务为准。</p>
+      <p className="mb-3 text-xs text-muted-foreground">定时发布会提前上传并在平台设置以下发布时间；立即发布的间隔控制任务启动时间。随机模式按相邻批次间隔浮动，保持顺序；其他分配策略以实际任务为准。</p>
       {/* 时间轴可视化 */}
       <ScrollArea className="h-64 pr-4">
         <div className="space-y-2">
