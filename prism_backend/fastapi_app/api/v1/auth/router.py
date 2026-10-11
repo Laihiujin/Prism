@@ -551,6 +551,29 @@ async def sms_verification(payload: SmsVerificationRequest):
     return response["body"]
 
 
+from automation_worker.remote_login import PointerInput
+
+async def _remote_login_proxy(session_id, payload=None):
+    session = login_sessions.get(session_id)
+    if not session or session.get('confirmed_response'):
+        raise HTTPException(404, '登录会话已过期或结束')
+    from automation_worker.client import get_worker_client
+    try:
+        result = await get_worker_client().remote_login(session.get('worker_session_id', session_id), payload)
+    except Exception:
+        raise HTTPException(502, '无法连接登录浏览器')
+    if result['status_code'] >= 400:
+        raise HTTPException(result['status_code'], result['body'].get('detail', '登录浏览器不可用'))
+    return result['body']
+
+@router.get('/qrcode/view/{session_id}')
+async def remote_login_view(session_id: str):
+    return await _remote_login_proxy(session_id)
+
+@router.post('/qrcode/pointer/{session_id}')
+async def remote_login_pointer(session_id: str, payload: PointerInput):
+    return await _remote_login_proxy(session_id, payload.model_dump())
+
 @router.post("/sms/start", summary="Start browser SMS login")
 async def start_sms_login(payload: SmsLoginRequest):
     from automation_worker.client import get_worker_client

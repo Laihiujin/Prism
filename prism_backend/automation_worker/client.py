@@ -111,6 +111,13 @@ class AutomationWorkerClient:
         response = await self.client.post(f"{self.worker_url}/sms/start", json=payload, timeout=90.0)
         return {"status_code": response.status_code, "body": response.json()}
 
+    async def remote_login(self, session_id: str, payload=None):
+        if payload is None:
+            response = await self.client.get(f'{self.worker_url}/qrcode/view/{session_id}')
+        else:
+            response = await self.client.post(f'{self.worker_url}/qrcode/pointer/{session_id}', json=payload)
+        return {'status_code': response.status_code, 'body': response.json()}
+
     async def cancel_session(self, session_id: str) -> bool:
         """
         取消登录会话
