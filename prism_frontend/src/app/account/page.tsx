@@ -206,6 +206,7 @@ function AccountPageContent() {
   const [smsVerification, setSmsVerification] = useState<{ stage: "choose" | "code" | "secondary" | "account_selection" | "platform_verification"; accounts?: { account_id: string; name: string; avatar: string }[]; phone: string; resend_after: number; error: string } | null>(null)
   const [smsCode, setSmsCode] = useState("")
   const [smsBusy, setSmsBusy] = useState(false)
+  const identityStageSeenRef = useRef(false)
   const [platformVerificationOpen, setPlatformVerificationOpen] = useState(false)
   const [smsMessage, setSmsMessage] = useState("")
   const [loginMode, setLoginMode] = useState<"qrcode" | "sms">("qrcode")
@@ -589,7 +590,10 @@ function AccountPageContent() {
           if (activeSessionRef.current !== sessionId) return
           if (statusData.data?.verification) {
             setSmsVerification(statusData.data.verification)
-            if (statusData.data.verification.stage === "platform_verification") setPlatformVerificationOpen(true)
+            if (statusData.data.verification.stage === "platform_verification" && !identityStageSeenRef.current) {
+              identityStageSeenRef.current = true
+              setPlatformVerificationOpen(true)
+            }
             if (["secondary", "account_selection", "platform_verification"].includes(statusData.data.verification.stage)) {
               smsLoginStartedRef.current = null
               setBindingStatus("code")
@@ -704,6 +708,7 @@ function AccountPageContent() {
   }, [])
 
   const startApiLogin = async (loginId: string) => {
+    identityStageSeenRef.current = false
     setPlatformVerificationOpen(false)
     try {
       // Step 1: 生成二维码
@@ -1123,13 +1128,12 @@ function AccountPageContent() {
               open={dialogOpen}
               onOpenChange={(open) => {
                 setDialogOpen(open)
-                if (open && !formState.id) {
+                if (open && !formState.id && !activeSessionRef.current) {
                   // 新绑定：给本次弹窗会话生成稳定 account_id（短信/Cookie 导入复用）
                   setBindAccountId(`account_${Date.now()}`)
                 }
-                if (!open) {
-                  cancelBinding()
-                }
+                // Closing the layout keeps the active login browser and polling alive.
+                // Only the explicit Cancel action cancels the login session.
               }}
             >
               <DialogTrigger asChild>
@@ -1335,8 +1339,9 @@ function AccountPageContent() {
                             {platformVerificationOpen && activeSessionRef.current && <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
                               <p className="text-sm font-semibold">平台身份验证 / 原设备扫码</p>
                               <LoginIdentityQr sessionId={activeSessionRef.current} />
-                              <Button size="sm" variant="ghost" onClick={() => setPlatformVerificationOpen(false)}>返回账号选择</Button>
+                              <Button type="button" size="sm" variant="ghost" onClick={() => setPlatformVerificationOpen(false)}>返回登录状态</Button>
                             </div>}
+                            {smsVerification?.stage === "platform_verification" && !platformVerificationOpen && <div role="status" className="space-y-2 text-center"><p className="text-xs">账号已选择，身份验证尚未完成。当前登录会话已保留。</p><Button type="button" size="sm" onClick={() => setPlatformVerificationOpen(true)}>继续原设备扫码验证</Button></div>}
                             {riskNotice && !platformVerificationOpen && smsVerification?.stage !== "account_selection" && (
                               <div className="flex w-full flex-col gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-left">
                                 <p className="flex items-center gap-1 text-xs font-medium text-amber-400">
