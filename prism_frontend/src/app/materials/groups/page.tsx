@@ -1,3 +1,3 @@
-import MaterialsLibraryPage from "@/components/materials-library-page"
+import { redirect } from "next/navigation"
 
-export default function Page() { return <MaterialsLibraryPage view="groups" /> }
+export default function Page() { redirect("/materials") }

@@ -31,7 +31,7 @@ export default function PublishLayout({
 
     return (
         <div className="flex flex-col h-full bg-transparent text-foreground">
-            <div className="px-6 pt-6 pb-4 border-b border-border/70 space-y-6">
+            {!/^\/publish\/(matrix|note)\/[^/]+/.test(pathname) && <div className="px-6 pt-6 pb-4 border-b border-border/70 space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
                         {/* <h1 className="text-2xl font-bold tracking-tight">发布中心</h1> */}
@@ -47,7 +47,7 @@ export default function PublishLayout({
                         onSelect={handleModeChange}
                     />
                 </div>
-            </div>
+            </div>}
 
             <div className="flex-1 overflow-hidden">
                 {children}
