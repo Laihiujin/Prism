@@ -123,6 +123,7 @@ class BatchPublishService:
             # P0：解包 platform_settings 里对应平台的配置，并让顶层扁平字段优先被覆盖
             ps = dict(_platform_settings_for(data, platform) or {})
             ps["_execution_task_id"] = data.get("_execution_task_id")
+            ps["_execution_account_id"] = account_id
 
             # 图文/图集（笔记）发布：platform_settings.<platform>.contentKind / contentType = "note"
             # （兼容 "image"/"image_note" 写法）。仅抖音(3)/小红书(1)/快手(4) 支持；其余平台报错。
@@ -139,18 +140,24 @@ class BatchPublishService:
                 images_raw = [i for i in (images_raw or []) if str(i).strip()]
                 if not images_raw:
                     raise ValueError("图文发布需要 images 图片路径列表（platform_settings.<平台>.images）")
-                note_result = await self._publish_note(
-                    platform=platform,
-                    account_id=account_id,
-                    cookie_file=cookie_file,
-                    title=upload_title,
-                    description=description or "",
-                    tags=tags or [],
-                    publish_date=publish_date,
-                    images=images_raw,
-                    ps=ps,
-                    data=data,
-                )
+                from platforms.publish_verification import publishing
+                verification_token = publishing.set({"platform": platform, "account": account_id,
+                    "task_id": data.get("_execution_task_id")})
+                try:
+                    note_result = await self._publish_note(
+                        platform=platform,
+                        account_id=account_id,
+                        cookie_file=cookie_file,
+                        title=upload_title,
+                        description=description or "",
+                        tags=tags or [],
+                        publish_date=publish_date,
+                        images=images_raw,
+                        ps=ps,
+                        data=data,
+                    )
+                finally:
+                    publishing.reset(verification_token)
                 cookie_manager.update_account(account_id, status='valid')
                 return {
                     "success": True,
