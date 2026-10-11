@@ -12,6 +12,23 @@ from patchright.async_api import async_playwright
 
 
 class PhoneLoginTests(unittest.TestCase):
+    def test_kuaishou_challenge_response_does_not_claim_sms_sent(self):
+        async def run():
+            adapter = PhoneLoginAdapter("kuaishou")
+            adapter.page = SimpleNamespace(locator=lambda selector: SimpleNamespace(inner_text=AsyncMock(return_value="获取验证码")))
+            response = SimpleNamespace(url="https://passport.kuaishou.com/pass/kuaishou/sms/requestMobileCode", json=AsyncMock(return_value={"result": 400002, "error_msg": "需要进行滑块验证"}))
+            await adapter._observe_sms_response(response)
+            state = await adapter.verification_state()
+            self.assertFalse(adapter.sent)
+            self.assertEqual(state["stage"], "choose")
+            self.assertEqual(state["resend_after"], 0)
+            self.assertIn("短信尚未发出", state["error"])
+            response.json = AsyncMock(return_value={"result": 1})
+            await adapter._observe_sms_response(response)
+            self.assertTrue(adapter.sent)
+            self.assertEqual((await adapter.verification_state())["error"], "")
+        asyncio.run(run())
+
     def test_sms_submit_and_visitor_cookie_are_not_login_success(self):
         async def run():
             async with async_playwright() as p:

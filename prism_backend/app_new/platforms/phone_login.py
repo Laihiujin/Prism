@@ -2,6 +2,7 @@
 import asyncio
 import re
 import uuid
+from urllib.parse import urlsplit
 
 from utils.automation_provider import async_playwright
 from myUtils.automation_context_factory import create_context_with_policy
@@ -43,6 +44,7 @@ class PhoneLoginAdapter(PlatformAdapter):
         self.sent = False
         self.resend_at = 0
         self.masked_phone = ""
+        self.last_sms_error = ""
 
     async def get_qrcode(self):
         raise NotImplementedError("此会话使用短信登录")
@@ -60,6 +62,7 @@ class PhoneLoginAdapter(PlatformAdapter):
                 base_context_opts={"viewport": {"width": 1280, "height": 800}},
             )
             self.page = await self.context.new_page()
+            self.page.on("response", self._observe_sms_response)
             await self.page.goto(PHONE_LOGIN_URLS[self.platform_name], wait_until="domcontentloaded", timeout=60000)
             if self.platform_name == "kuaishou":
                 await self.page.get_by_text("立即登录", exact=True).wait_for(state="visible", timeout=20000)
@@ -85,6 +88,34 @@ class PhoneLoginAdapter(PlatformAdapter):
     async def _send_control(self):
         return await visible_one(self.page.get_by_text(re.compile(r"^(获取验证码|发送验证码|重新发送|重新获取|重新发送验证码)$")))
 
+    async def _observe_sms_response(self, response):
+        if self.platform_name != "kuaishou" or urlsplit(response.url).path != "/pass/kuaishou/sms/requestMobileCode":
+            return
+        try:
+            data = await response.json()
+            if data.get("result") in (0, 1):
+                self.sent = True
+                self.resend_at = asyncio.get_running_loop().time() + 60
+                self.last_sms_error = ""
+            elif data.get("result") == 400002:
+                self.sent = False
+                self.resend_at = 0
+                self.last_sms_error = "快手要求滑块验证，短信尚未发出。请在登录浏览器中手动完成安全验证。"
+            elif data.get("result") is not None:
+                self.sent = False
+                self.resend_at = 0
+                self.last_sms_error = "平台拒绝发送短信验证码，请检查手机号及平台提示。"
+        except Exception:
+            pass
+
+    async def _refresh_send_state(self):
+        text = await self.page.locator("body").inner_text()
+        countdown = re.search(r"(\d+)\s*(?:秒|s)\s*后.*?(?:发送|获取|重发)", text, re.I)
+        if countdown and not self.last_sms_error:
+            self.sent = True
+            self.resend_at = asyncio.get_running_loop().time() + int(countdown.group(1))
+            self.last_sms_error = ""
+
     async def sms_action(self, session_id, action, code=None):
         if session_id != self.session_id or not self.page:
             raise ValueError("短信登录会话已过期")
@@ -95,10 +126,26 @@ class PhoneLoginAdapter(PlatformAdapter):
             control = await self._send_control()
             if not await control.is_enabled():
                 raise ValueError("平台暂时不允许发送验证码，请检查手机号或验证提示")
-            await control.click(timeout=5000)
-            self.sent = True
-            self.resend_at = now + 60
-            return {"success": True, "message": "验证码请求已提交，请查看手机短信或平台验证提示"}
+            self.last_sms_error = ""
+            if self.platform_name == "kuaishou" and urlsplit(self.page.url).hostname not in (None, ""):
+                self.sent = False
+                try:
+                    async with self.page.expect_response(lambda response: urlsplit(response.url).path == "/pass/kuaishou/sms/requestMobileCode", timeout=15000) as pending:
+                        await control.click(timeout=5000)
+                    await self._observe_sms_response(await pending.value)
+                except ValueError:
+                    raise
+                except Exception:
+                    await self._refresh_send_state()
+            else:
+                await control.click(timeout=5000)
+                await self.page.wait_for_timeout(500)
+                await self._refresh_send_state()
+            if self.last_sms_error:
+                raise ValueError(self.last_sms_error)
+            if not self.sent:
+                raise ValueError("短信发送尚未得到平台确认，请检查登录浏览器中的验证提示。")
+            return {"success": True, "message": "平台已确认发送短信验证码，请查看手机短信"}
         if action != "submit" or not re.fullmatch(r"[0-9]{4,8}", code or ""):
             raise ValueError("请输入 4–8 位数字验证码")
         if not self.sent:
@@ -112,8 +159,9 @@ class PhoneLoginAdapter(PlatformAdapter):
         return {"success": True, "message": "验证码已提交，正在等待平台登录结果"}
 
     async def verification_state(self):
+        await self._refresh_send_state()
         text = await self.page.locator("body").inner_text()
-        error = next((line.strip() for line in text.splitlines() if re.search(r"验证码.*(?:错误|不正确|过期|失效)|验证失败|操作频繁|手机号.*(?:错误|不正确)", line)), "")
+        error = self.last_sms_error or next((line.strip() for line in text.splitlines() if re.search(r"验证码.*(?:错误|不正确|过期|失效)|验证失败|操作频繁|手机号.*(?:错误|不正确)", line)), "")
         return {"stage": "code" if self.sent else "choose", "phone": self.masked_phone,
                 "resend_after": max(0, int(self.resend_at - asyncio.get_running_loop().time())), "error": error}
 
