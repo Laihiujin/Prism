@@ -250,6 +250,7 @@ def _ensure_account_persisted(platform_name: str, account_id: str, account_detai
 async def generate_qrcode(
     platform: PlatformType = Query(..., description="骞冲彴绫诲瀷"),
     account_id: str = Query(..., description="璐﹀彿ID"),
+    login_role: str = Query("creator", pattern="^(creator|mcn)$"),
     headless: Optional[bool] = Query(None, description="是否无头；false=弹真实浏览器窗口，风控时供人工验证"),
 ):
     """
@@ -291,6 +292,7 @@ async def generate_qrcode(
             account_id=account_id,
             headless=bool(PLAYWRIGHT_HEADLESS) if headless is None else bool(headless),
             mode=settings.PRISM_DOUYIN_LOGIN_MODE,
+            login_role=login_role,
         )
 
         session_id = result["session_id"]

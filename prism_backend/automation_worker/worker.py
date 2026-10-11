@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 from typing import Dict, Any
 from loguru import logger
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -1277,7 +1277,7 @@ async def enrich_account(req: EnrichAccountRequest):
 
 
 @app.post("/qrcode/generate")
-async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None, mode: str = "browser"):
+async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None, mode: str = "browser", login_role: str = Query("creator", pattern="^(creator|mcn)$")):
     """
     生成登录二维码
 
@@ -1328,7 +1328,7 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
             headless = _env_bool("PLAYWRIGHT_HEADLESS", True)
 
         # 创建适配器实例
-        adapter = adapter_class(config={"headless": headless, "account_id": account_id})
+        adapter = adapter_class(config={"headless": headless, "account_id": account_id, "login_role": login_role})
 
         # 生成二维码
         qr_data = await adapter.get_qrcode()
