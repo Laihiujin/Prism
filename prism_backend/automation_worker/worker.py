@@ -1461,7 +1461,8 @@ async def poll_qrcode_status(session_id: str):
 
 
 class SmsActionRequest(BaseModel):
-    action: str = Field(pattern=r"^(request|resend|submit)$")
+    action: str = Field(pattern=r"^(request|resend|submit|select_account)$")
+    account_choice: str | None = Field(default=None, pattern=r"^[0-9]{1,30}$")
     code: str | None = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
 
 
@@ -1530,7 +1531,10 @@ async def qrcode_sms_action(session_id: str, payload: SmsActionRequest):
         return JSONResponse(status_code=400, content={"success": False, "error": "当前登录方式不支持短信验证"})
     try:
         async with session.setdefault("interaction_lock", asyncio.Lock()):
-            result = await adapter.sms_action(session_id, payload.action, payload.code)
+            if payload.action == "select_account":
+                result = await adapter.sms_action(session_id, payload.action, account_choice=payload.account_choice)
+            else:
+                result = await adapter.sms_action(session_id, payload.action, payload.code)
             session["created_at"] = asyncio.get_running_loop().time()
             return result
     except ValueError as exc:

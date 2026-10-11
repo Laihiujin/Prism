@@ -202,7 +202,7 @@ function AccountPageContent() {
   const [qrImage, setQrImage] = useState<string | null>(null)
   // 风控/人工验证提示（扫码轮询返回 risk_control 时展示；验证完成后清空）
   const [riskNotice, setRiskNotice] = useState<string | null>(null)
-  const [smsVerification, setSmsVerification] = useState<{ stage: "choose" | "code" | "secondary"; phone: string; resend_after: number; error: string } | null>(null)
+  const [smsVerification, setSmsVerification] = useState<{ stage: "choose" | "code" | "secondary" | "account_selection"; accounts?: { account_id: string; name: string; avatar: string }[]; phone: string; resend_after: number; error: string } | null>(null)
   const [smsCode, setSmsCode] = useState("")
   const [smsBusy, setSmsBusy] = useState(false)
   const [smsMessage, setSmsMessage] = useState("")
@@ -235,12 +235,12 @@ function AccountPageContent() {
     setSmsMessage("")
   }, [])
 
-  const handleSmsAction = async (action: "request" | "resend" | "submit") => {
+  const handleSmsAction = async (action: "request" | "resend" | "submit" | "select_account", accountChoice?: string) => {
     const sessionId = activeSessionRef.current
     if (!sessionId || smsBusy) return
     setSmsBusy(true)
     setSmsMessage("")
-    if (action === "submit") {
+    if (action === "submit" || action === "select_account") {
       smsLoginStartedRef.current = Date.now()
       setBindingStatus("logging_in")
     }
@@ -248,7 +248,7 @@ function AccountPageContent() {
       const response = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/sms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, action, ...(action === "submit" ? { code: smsCode } : {}) }),
+        body: JSON.stringify({ session_id: sessionId, action, ...(action === "submit" ? { code: smsCode } : {}), ...(action === "select_account" ? { account_choice: accountChoice } : {}) }),
       })
       const result = await response.json()
       if (activeSessionRef.current !== sessionId) return
@@ -258,7 +258,7 @@ function AccountPageContent() {
     } catch (error) {
       if (activeSessionRef.current === sessionId) {
         setSmsMessage(error instanceof Error ? error.message : "短信验证失败，请重试")
-        if (action === "submit") {
+        if (action === "submit" || action === "select_account") {
           smsLoginStartedRef.current = null
           setBindingStatus("code")
         }
@@ -633,7 +633,7 @@ function AccountPageContent() {
           if (activeSessionRef.current !== sessionId) return
           if (statusData.data?.verification) {
             setSmsVerification(statusData.data.verification)
-            if (statusData.data.verification.stage === "secondary") {
+            if (["secondary", "account_selection"].includes(statusData.data.verification.stage)) {
               smsLoginStartedRef.current = null
               setBindingStatus("code")
             }
@@ -1242,12 +1242,17 @@ function AccountPageContent() {
                         )}
                         {bindingStatus === "logging_in" && (
                           <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 py-8 text-sm text-foreground/70">
-                            <Loader2 className="h-8 w-8 animate-spin text-foreground" />
-                            <span className="font-medium text-foreground">登录中…</span>
-                            <span>正在确认验证结果并同步账号，请稍候</span>
+                            {activeSessionRef.current ? <>
+                              <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+                              <span className="font-medium text-foreground">登录中…</span>
+                              <span>正在确认验证结果并同步账号，请稍候</span>
+                            </> : <>
+                              <p>登录连接已中断，请重新开始登录。</p>
+                              <Button variant="secondary" onClick={startBinding}>重新开始登录</Button>
+                            </>}
                             {activeSessionRef.current && loginMode === "sms" && <div className="w-full space-y-3 text-left">
                               <p className="text-xs text-muted-foreground">如果平台要求选择关联账号或继续验证，请直接在下方画面操作。选择完成后会自动同步账号。</p>
-                              <RemoteLoginView sessionId={activeSessionRef.current} openByDefault />
+                              <RemoteLoginView sessionId={activeSessionRef.current} />
                             </div>}
                           </div>
                         )}
@@ -1263,7 +1268,7 @@ function AccountPageContent() {
                             />
                             <p className="text-xs text-muted-foreground">请使用 {platformLabelMap[formState.platform]} App 扫码</p>
                             </>}
-                            {smsVerification && (
+                            {smsVerification && smsVerification.stage !== "account_selection" && (
                               <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
                                 <p className="text-sm font-semibold">{smsVerification.stage === "secondary" ? "二次手机号验证" : "短信身份验证"}</p>
                                 {smsVerification.stage === "choose" ? (
@@ -1288,7 +1293,16 @@ function AccountPageContent() {
                                 <p className="text-xs text-muted-foreground">验证通过后会自动完成绑定。平台要求安全验证时，请打开下面的远程验证画面手动完成。</p>
                               </div>
                             )}
-                            {riskNotice && (
+                            {smsVerification?.stage === "account_selection" && <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
+                              <p className="text-sm font-semibold">选择要登录的抖音账号</p>
+                              <p className="text-xs text-muted-foreground">此手机号关联多个账号，请选择本次需要绑定的账号。</p>
+                              {smsVerification.accounts?.map(account => <button key={account.account_id} type="button" disabled={smsBusy} onClick={() => void handleSmsAction("select_account", account.account_id)} className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left hover:bg-accent disabled:opacity-50">
+                                {account.avatar && <img src={account.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />}
+                                <span><span className="block text-sm font-medium">{account.name}</span><span className="block text-xs text-muted-foreground">抖音号：{account.account_id}</span></span>
+                              </button>)}
+                              {smsMessage && <p role="status" className="text-xs text-destructive">{smsMessage}</p>}
+                            </div>}
+                            {riskNotice && smsVerification?.stage !== "account_selection" && (
                               <div className="flex w-full flex-col gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-left">
                                 <p className="flex items-center gap-1 text-xs font-medium text-amber-400">
                                   <MonitorSmartphone className="h-3.5 w-3.5 shrink-0" />
@@ -1300,7 +1314,7 @@ function AccountPageContent() {
                                 </p>
                               </div>
                             )}
-                            {activeSessionRef.current && (smsVerification || riskNotice) && <RemoteLoginView
+                            {activeSessionRef.current && (smsVerification || riskNotice) && smsVerification?.stage !== "account_selection" && <RemoteLoginView
                               key={`${activeSessionRef.current}-${Boolean(smsVerification?.error || riskNotice)}`}
                               sessionId={activeSessionRef.current}
                               openByDefault={Boolean(smsVerification?.error || riskNotice)}

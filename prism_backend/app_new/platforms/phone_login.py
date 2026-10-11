@@ -85,6 +85,26 @@ class PhoneLoginAdapter(PlatformAdapter):
             await self.cleanup_session(self.session_id)
             raise
 
+    async def _account_choices(self):
+        if self.platform_name != "douyin":
+            return []
+        prompt = self.page.get_by_text(re.compile("所有关联账号.*请选择登录"))
+        if not await prompt.count() or not await prompt.first.is_visible():
+            return []
+        choices = []
+        labels = self.page.get_by_text(re.compile(r"^抖音号[：:]\s*[0-9]+$"))
+        for i in range(await labels.count()):
+            label = labels.nth(i)
+            if not await label.is_visible():
+                continue
+            account_id = re.search(r"[0-9]+", await label.inner_text()).group()
+            row = label.locator("xpath=ancestor::*[.//img][1]")
+            lines = (await row.inner_text()).splitlines()
+            name = next((line.strip() for line in lines if line.strip() and not re.match(r"抖音号[：:]", line.strip())), account_id)
+            avatar = await row.locator("img").first.get_attribute("src")
+            choices.append({"account_id": account_id, "name": name, "avatar": avatar or ""})
+        return choices
+
     async def _secondary_verification(self):
         if self.platform_name != "kuaishou":
             return None
@@ -126,9 +146,16 @@ class PhoneLoginAdapter(PlatformAdapter):
             self.resend_at = asyncio.get_running_loop().time() + int(countdown.group(1))
             self.last_sms_error = ""
 
-    async def sms_action(self, session_id, action, code=None):
+    async def sms_action(self, session_id, action, code=None, account_choice=None):
         if session_id != self.session_id or not self.page:
             raise ValueError("短信登录会话已过期")
+        if action == "select_account":
+            choices = await self._account_choices()
+            if not account_choice or account_choice not in {item["account_id"] for item in choices}:
+                raise ValueError("账号选择已失效，请重新获取当前账号列表")
+            label = await visible_one(self.page.get_by_text(re.compile(r"^抖音号[：:]\s*" + re.escape(account_choice) + r"$")))
+            await label.locator("xpath=ancestor::*[.//img][1]").click(timeout=5000)
+            return {"success": True, "message": "已选择账号，正在确认登录结果"}
         if action in ("request", "resend"):
             now = asyncio.get_running_loop().time()
             if self.sent and now < self.resend_at:
@@ -171,6 +198,9 @@ class PhoneLoginAdapter(PlatformAdapter):
         return {"success": True, "message": "验证码已提交，正在等待平台登录结果"}
 
     async def verification_state(self):
+        choices = await self._account_choices()
+        if choices:
+            return {"stage": "account_selection", "phone": self.masked_phone, "resend_after": 0, "error": "", "accounts": choices}
         await self._refresh_send_state()
         text = await self.page.locator("body").inner_text()
         error = self.last_sms_error or next((line.strip() for line in text.splitlines() if re.search(r"验证码.*(?:错误|不正确|过期|失效)|验证失败|操作频繁|手机号.*(?:错误|不正确)", line)), "")
@@ -181,6 +211,9 @@ class PhoneLoginAdapter(PlatformAdapter):
     async def poll_status(self, session_id):
         if session_id != self.session_id or not self.page:
             return LoginResult(LoginStatus.EXPIRED, "短信登录会话已过期")
+        choices = await self._account_choices()
+        if choices:
+            return LoginResult(LoginStatus.RISK_CONTROL, "请选择要登录的抖音账号", verification=await self.verification_state())
         cookies = await self.context.cookies()
         names = {c["name"] for c in cookies if c.get("value")}
         login_inputs = self.page.get_by_placeholder(re.compile(r"手机号|登录手机"))
