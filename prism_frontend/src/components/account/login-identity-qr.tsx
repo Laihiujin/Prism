@@ -19,7 +19,7 @@ export function LoginIdentityQr({ sessionId }: { sessionId: string }) {
 
   const refresh = async () => {
     if (refreshing.current) return
-    refreshing.current = true; setBusy(true)
+    refreshing.current = true; attempts.current += 1; setBusy(true)
     try {
       const response = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/sms`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -38,7 +38,7 @@ export function LoginIdentityQr({ sessionId }: { sessionId: string }) {
         }
       }
       setMessage("正在刷新二维码…")
-      firstQrAt.current = Date.now(); attempts.current += 1
+      firstQrAt.current = Date.now()
     } catch { setMessage("二维码刷新失败，请点击重新刷新。") }
     finally { refreshing.current = false; setBusy(false) }
   }
@@ -51,7 +51,10 @@ export function LoginIdentityQr({ sessionId }: { sessionId: string }) {
     const poll = async () => {
       try {
         const response = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/view/${encodeURIComponent(sessionId)}`, { signal: controller.signal, cache: "no-store" })
-        if (!response.ok) { if (!cancelled.current) setMessage("登录会话已结束，请查看账号绑定结果。"); return }
+        if (!response.ok) {
+          if ([404, 410].includes(response.status)) { if (!cancelled.current) setMessage("登录会话已结束，请查看账号绑定结果。"); return }
+          throw new Error("Frame temporarily unavailable")
+        }
         const frame = await response.json()
         const source = new Image(); source.src = frame.image
         await source.decode()
@@ -74,11 +77,15 @@ export function LoginIdentityQr({ sessionId }: { sessionId: string }) {
           if (nextImage !== previousImage) { previousImage = nextImage; firstQrAt.current = Date.now(); attempts.current = 0 }
           setImage(nextImage)
           lastQrAt.current = Date.now(); setMessage("请使用原设备上的抖音扫一扫，确认后会自动同步账号。")
-        } else if (area.current && Date.now() - lastQrAt.current > 5000) {
+        } else if (Date.now() - lastQrAt.current > 5000) {
           setImage(""); setMessage("二维码暂不可用，正在等待平台更新…")
           if (Date.now() - firstQrAt.current >= 5000 && attempts.current < 3) await refresh()
         }
       } catch (error) { console.warn("Identity QR read failed", error instanceof Error ? error.name : "UnknownError"); if (!cancelled.current) setMessage("二维码读取失败，请重新刷新。") }
+      if (!cancelled.current && !area.current && Date.now() - firstQrAt.current > 5000 && attempts.current < 3) {
+        firstQrAt.current = Date.now()
+        await refresh()
+      }
       if (!cancelled.current) timer = setTimeout(poll, 1500)
     }
     void poll()
