@@ -151,7 +151,9 @@ const navSections: NavSection[] = [
         ] },
         { label: "B站分P", href: "/publish/bilibili", icon: Layers },
       ] },
-      { label: "任务管理", href: "/tasks", icon: ClipboardList },
+      { label: "任务管理", href: "/tasks", icon: ClipboardList, children: [
+        { label: "任务发布人工验证", href: "/tasks/verification", icon: Fingerprint },
+      ] },
     ],
   },
   {
