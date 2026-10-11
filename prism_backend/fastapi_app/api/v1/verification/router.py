@@ -30,6 +30,11 @@ async def pending_verification_events():
         raise HTTPException(status_code=503, detail="验证码回传服务暂不可用")
 
 
+@router.get("/otp-events")
+async def pending_verification_events():
+    return {"events": verification_manager.get_pending_events()}
+
+
 
 
 @router.post("/submit-code")
@@ -56,3 +61,17 @@ async def submit_verification_code(request: SubmitCodeRequest):
             status_code=400,
             detail="提交验证码失败"
         )
+
+
+class ResendRequest(BaseModel):
+    account_id: str
+
+
+@router.post("/resend-code")
+async def resend_verification_code(request: ResendRequest):
+    try:
+        if not verification_manager.request_resend(request.account_id):
+            raise HTTPException(status_code=409, detail="验证请求已过期或不支持重新发送")
+    except ValueError as error:
+        raise HTTPException(status_code=429, detail=str(error))
+    return {"success": True, "message": "已通知发布浏览器重新获取，请以平台发送结果为准"}

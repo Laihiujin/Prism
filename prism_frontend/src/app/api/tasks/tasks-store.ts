@@ -11,6 +11,7 @@ export interface TaskRecord {
   material: string
   status: TaskStatus
   createdAt: string
+  scheduleDelivery?: string
   scheduledAt?: string
   startedAt?: string
   completedAt?: string

@@ -53,16 +53,38 @@ class BilibiliUpload(BasePlatform):
         ps = kwargs.get("platform_settings") or {}
         if not isinstance(ps, dict):
             ps = {}
+        copyright = int(kwargs.get("copyright") or ps.get("copyright") or 1)
+        if copyright not in (1, 2):
+            raise ValueError("B站版权类型必须为自制或转载")
+        source = str(kwargs.get("source") or ps.get("source") or "").strip()
+        if copyright == 2 and not source:
+            raise ValueError("B站转载稿件必须填写转载来源")
+        if ps.get("tags"):
+            raw_tags = ps["tags"]
+            if isinstance(raw_tags, str):
+                import re
+                raw_tags = re.split(r"[#\s,，]+", raw_tags)
+            tags = list(dict.fromkeys(str(tag).strip() for tag in raw_tags if str(tag).strip()))
         extra = {
-            "copyright": kwargs.get("copyright") or ps.get("copyright"),
-            "source": kwargs.get("source") or ps.get("source"),
+            "_execution_task_id": ps.get("_execution_task_id"),
+            "copyright": copyright,
+            "source": source,
             "cover": kwargs.get("cover") or ps.get("cover"),
             "dynamic": kwargs.get("dynamic") or ps.get("dynamic"),
             "open_subtitle": kwargs.get("open_subtitle", ps.get("open_subtitle", False)),
         }
         # cover_local：本地封面文件路径（优先于 URL）
         cover_local = kwargs.get("cover_local") or ps.get("cover_local")
+        cover = str(extra.get("cover") or "")
+        if cover and not cover.startswith(("http://", "https://")):
+            cover_local = resolve_video_file(cover)
+            extra.pop("cover", None)
+        if not cover_local and not cover:
+            cover_local = kwargs.get("thumbnail_path")
         if cover_local:
+            cover_local = resolve_video_file(str(cover_local))
+            if not Path(str(cover_local)).is_file():
+                raise FileNotFoundError("B站封面图片不存在，请重新选择封面")
             extra["cover_local"] = str(cover_local)
         extra = {k: v for k, v in extra.items() if v not in (None, "", False)}
 
@@ -85,6 +107,8 @@ class BilibiliUpload(BasePlatform):
                         except Exception:
                             continue
 
+            if not dtime:
+                raise ValueError("B站定时发布时间格式无效")
             # B站要求：定时发布时间必须距离当前时间至少2小时，不超过15天
             if dtime:
                 now = datetime.now().timestamp()
@@ -102,7 +126,7 @@ class BilibiliUpload(BasePlatform):
                         "message": f"B站要求定时发布时间不能超过15天，当前距离: {int((dtime - now) / 86400)}天"
                     }
 
-        desc = description or title
+        desc = str(ps.get("description") or description or title)
 
         cookie_raw = read_cookie_json_file(Path(account_file))
         cookie_data = extract_keys_from_json(cookie_raw)

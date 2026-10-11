@@ -201,6 +201,7 @@ class BatchPublishService:
             bili_parts_raw = []
             bili_part_titles = []
             if platform == 5 and isinstance(ps.get("video_parts"), list):
+                bili_part_titles.append(str(ps.get("main_part_title") or ""))
                 for entry in ps.get("video_parts") or []:
                     if isinstance(entry, dict) and entry.get("path"):
                         bili_parts_raw.append(str(entry["path"]))

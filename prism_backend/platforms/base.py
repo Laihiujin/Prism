@@ -62,6 +62,7 @@ class BasePlatform(ABC):
                     logger.info(f"filled verification code using {selector}")
 
                     submit_btns = [
+                        "div.uc-ui-verify_sms-verify_button",
                         "button:has-text('验证')",
                         "button:has-text('提交')",
                         "button:has-text('确定')",

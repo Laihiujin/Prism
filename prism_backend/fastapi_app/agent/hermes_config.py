@@ -422,6 +422,11 @@ _PROJECT_SKILLS: tuple[dict, ...] = (
         "source_rel": Path("docs") / "hermes-skills" / "prism-title-topic" / "SKILL.md",
         "category": "software-development",
     },
+    {
+        "name": "douyin-publish-computeruse",
+        "source_rel": Path("docs") / "hermes-skills" / "douyin-publish-computeruse" / "SKILL.md",
+        "category": "software-development",
+    },
 ) + tuple(
     {
         "name": f"prism-publish-{platform}",
