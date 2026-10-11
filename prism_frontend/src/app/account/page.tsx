@@ -1256,21 +1256,34 @@ function AccountPageContent() {
                   )}
                   {!formState.id && formState.platform !== "twitter" && (
                     <div className="rounded-2xl border border-border/70 bg-card p-4 [&_button]:border [&_button]:border-zinc-600">
-                      <p className="text-sm font-semibold">{loginMode === "sms" && supportsSmsLogin ? "验证码登录" : isQrPlatform ? "二维码登录" : "浏览器登录"}</p>
-                      {formState.platform === "douyin" && <div className="mt-3 flex gap-2" aria-label="抖音登录身份">
-                        <Button type="button" variant="outline" aria-pressed={loginRole === "creator"} disabled={bindingStatus !== "idle"} onClick={() => setLoginRole("creator")}>我是创作者</Button>
-                        <Button type="button" variant="outline" aria-pressed={loginRole === "mcn"} disabled={bindingStatus !== "idle"} onClick={() => { setLoginRole("mcn"); setLoginMode("sms") }}>我是MCN机构</Button>
+                      <p className="text-sm font-semibold">登录账号</p>
+                      {formState.platform === "douyin" && <div className="mt-4 space-y-2">
+                        <Label htmlFor="douyin-login-role">账号身份</Label>
+                        <Select value={loginRole} disabled={bindingStatus !== "idle"} onValueChange={(value) => {
+                          setLoginRole(value as "creator" | "mcn")
+                          setLoginMode(value === "mcn" ? "sms" : "qrcode")
+                        }}>
+                          <SelectTrigger id="douyin-login-role" className="w-full"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="creator">创作者</SelectItem>
+                            <SelectItem value="mcn">MCN 机构</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">{loginRole === "mcn" ? "使用机构账号登录 MCN 中心。" : "使用个人抖音账号登录创作者中心。"}</p>
                       </div>}
-                      <div className="mt-3 flex gap-2">
-                        <Button type="button" size="sm" variant={loginMode === "qrcode" ? "secondary" : "ghost"} disabled={bindingStatus !== "idle" || loginRole === "mcn"} onClick={() => setLoginMode("qrcode")}>{isQrPlatform ? "扫码登录" : "浏览器登录"}</Button>
-                        <Button type="button" size="sm" variant={loginMode === "sms" ? "secondary" : "ghost"} disabled={!supportsSmsLogin || bindingStatus !== "idle"} onClick={() => setLoginMode("sms")}>验证码登录</Button>
+                      <div className="mt-4 space-y-2">
+                        <p className="text-xs font-medium">登录方式</p>
+                        <div className="flex gap-1 rounded-md border border-zinc-600 bg-muted/30 p-1" role="group" aria-label="登录方式">
+                          {loginRole !== "mcn" && <Button type="button" size="sm" className={`flex-1 ${loginMode === "qrcode" ? "bg-foreground text-background hover:bg-foreground/90" : "bg-transparent text-muted-foreground hover:bg-muted"}`} variant="outline" aria-pressed={loginMode === "qrcode"} disabled={bindingStatus !== "idle"} onClick={() => setLoginMode("qrcode")}>{isQrPlatform ? "扫码登录" : "浏览器登录"}</Button>}
+                          {supportsSmsLogin && <Button type="button" size="sm" className={`flex-1 ${loginMode === "sms" ? "bg-foreground text-background hover:bg-foreground/90" : "bg-transparent text-muted-foreground hover:bg-muted"}`} variant="outline" aria-pressed={loginMode === "sms"} disabled={bindingStatus !== "idle"} onClick={() => setLoginMode("sms")}>短信验证码</Button>}
+                        </div>
                       </div>
                       {!supportsSmsLogin && <p className="mt-2 text-xs text-muted-foreground">此平台未提供独立的手机号短信登录入口，请使用现有登录方式。</p>}
                       {loginMode === "sms" && supportsSmsLogin && <div className="mt-3 space-y-2">
                         <Label htmlFor="login-phone">手机号</Label>
                         <Input id="login-phone" inputMode="tel" autoComplete="tel" placeholder="请输入中国大陆手机号" value={loginPhone} disabled={!["idle", "error"].includes(bindingStatus)} onChange={event => setLoginPhone(event.target.value.replace(/[^0-9]/g, "").slice(0, 11))} />
                       </div>}
-                      <p className="text-xs text-muted-foreground">
+                      <p className="mt-3 text-xs text-muted-foreground">
                         {smsVerification ? smsVerification.stage === "platform_verification" ? "请使用原设备扫描下方二维码完成身份验证。" : smsVerification.stage === "code" ? "请提供手机收到的验证码" : "请先获取短信验证码；遇到安全验证时打开远程验证画面。" : loginMode === "sms" && supportsSmsLogin ? "输入手机号后开始验证码登录" : isQrPlatform
                           ? "点击按钮获取二维码"
                           : "TikTok / YouTube 需用浏览器登录（不支持扫码）"}
