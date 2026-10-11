@@ -17,7 +17,7 @@ from patchright.async_api import (  # type: ignore
     Page,
     Playwright,
     TimeoutError,
-    async_playwright,
+    async_playwright as _patchright_async,
 )
 from patchright.sync_api import sync_playwright  # type: ignore
 
@@ -29,7 +29,7 @@ PLAYWRIGHT_RUNTIME = AUTOMATION_RUNTIME
 RUNTIME_MANIFESTS: Dict[str, Dict[str, Any]] = {
     "patchright": {
         "package": "patchright",
-        "capabilities": ["chromium", "firefox", "persistent_context", "cdp_attach"],
+        "capabilities": ["chromium", "persistent_context", "cdp_attach"],
     },
     "playwright": {
         "package": "playwright",
@@ -67,3 +67,46 @@ __all__ = [
     "get_automation_runtime_registry",
     "require_automation_capability",
 ]
+
+
+class _EngineRouter:
+    """Keep Chromium on Patchright; Firefox uses its supported Playwright driver."""
+    def __init__(self, chromium_runtime, firefox_runtime, owner):
+        self._chromium_runtime = chromium_runtime
+        self.firefox = firefox_runtime.firefox
+        self.webkit = firefox_runtime.webkit
+        self.stop = owner.stop
+
+    def __getattr__(self, name):
+        return getattr(self._chromium_runtime, name)
+
+
+class _AsyncDrivers:
+    def __init__(self):
+        self._drivers = []
+
+    async def start(self):
+        from playwright.async_api import async_playwright as firefox_driver
+        try:
+            chromium = await _patchright_async().start()
+            self._drivers.append(chromium)
+            firefox = await firefox_driver().start()
+            self._drivers.append(firefox)
+            return _EngineRouter(chromium, firefox, self)
+        except BaseException:
+            await self.stop()
+            raise
+
+    async def stop(self):
+        while self._drivers:
+            await self._drivers.pop().stop()
+
+    async def __aenter__(self):
+        return await self.start()
+
+    async def __aexit__(self, *args):
+        await self.stop()
+
+
+def async_playwright():
+    return _AsyncDrivers()

@@ -191,6 +191,11 @@ class BatchPublishService:
                 poi_name = ps.get("location", {}).get("name", "")
             mini_program = ps.get("miniProgram") or ps.get("mini_program") or None
 
+            if platform == 3 and not data.get("not_before") and not publish_date and ps.get("timing") == "定时发布":
+                if not ps.get("publishDatetime"):
+                    raise ValueError("抖音定时发布需要选择日期和时间")
+                publish_date = str(ps["publishDatetime"])
+
             # B站分P：platform_settings.bilibili.video_parts = [{path,title}...]（可选）
             # 若存在，P1 = 主视频，P2..Pn = video_parts 顺序；part_titles 可缺省。
             bili_parts_raw = []
@@ -229,11 +234,12 @@ class BatchPublishService:
                 miniprogram_link=data.get("miniprogram_link", ""),
                 miniprogram_title=data.get("miniprogram_title", ""),
                 # 新增字段（来自 platform_settings.douyin，仅上传器显式接收）
+                sync_platforms=ps.get("syncPlatforms", []),
                 who_can_see=ps.get("whoCanSee", ""),
                 save_permission=ps.get("savePermission", ""),
                 hotspot=ps.get("hotspot", ""),
                 collection=ps.get("collection", ""),
-                cover_orientation=ps.get("coverOrientation", "landscape"),
+                cover_orientation=ps.get("coverOrientation", ""),
                 cover_file=ps.get("coverFile", ""),
                 miniprogram_object=mini_program,
                 # 🆕 B站分P与稿件级配置（仅 platform 5 上传器消费）

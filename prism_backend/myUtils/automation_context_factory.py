@@ -137,6 +137,13 @@ def _resolve_platform_browser_choice(platform: str | None) -> str:
     default_choice = PLATFORM_BROWSER_DEFAULTS.get(normalized_platform, "chromium")
     preferred = _normalize_browser_choice(preferences.get(normalized_platform), default_choice)
     if preferred == "auto":
+        try:
+            from tools.browser_provider_registry import browsers_root
+            active = json.loads((browsers_root() / "active.json").read_text(encoding="utf-8"))
+            if active.get("kind") in {"chromium", "firefox"}:
+                return active["kind"]
+        except (OSError, ValueError):
+            pass
         return default_choice
     return preferred
 

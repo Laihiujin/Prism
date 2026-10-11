@@ -78,6 +78,6 @@ class BasePlatform(ABC):
 
             logger.error("verification input not found")
             return False
-        except Exception as e:
-            logger.error(f"failed to fill verification code: {e}")
+        except Exception:
+            logger.error("failed to fill verification code")
             return False

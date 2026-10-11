@@ -2,7 +2,7 @@
 OTP验证码路由（FastAPI版）
 """
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import sys
 from pathlib import Path
@@ -19,7 +19,15 @@ router = APIRouter(prefix="/verification", tags=["验证码"])
 class SubmitCodeRequest(BaseModel):
     """提交验证码请求"""
     account_id: str
-    code: str
+    code: str = Field(pattern=r"^[0-9]{4,8}$", repr=False)
+
+
+@router.get("/otp-events")
+async def pending_verification_events():
+    try:
+        return {"events": verification_manager.get_pending_events()}
+    except Exception:
+        raise HTTPException(status_code=503, detail="验证码回传服务暂不可用")
 
 
 @router.get("/otp-events")
@@ -35,10 +43,13 @@ async def submit_verification_code(request: SubmitCodeRequest):
     提交验证码
     前端用户输入验证码后调用此接口
     """
-    success = verification_manager.submit_code(
-        account_id=request.account_id,
-        code=request.code
-    )
+    try:
+        success = verification_manager.submit_code(
+            account_id=request.account_id,
+            code=request.code
+        )
+    except Exception:
+        raise HTTPException(status_code=503, detail="验证码回传服务暂不可用")
 
     if success:
         return {

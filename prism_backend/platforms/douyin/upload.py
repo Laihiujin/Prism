@@ -16,6 +16,7 @@ from typing import Dict, Any, Optional
 from utils.base_social_media import set_init_script, HEADLESS_FLAG
 from myUtils.browser_context import build_context_options, build_browser_args
 from myUtils.close_guide import try_close_guide
+from myUtils.publish_page_controls import dismiss_publish_guides, set_radio_choice, set_named_switch, douyin_video_upload_input
 from utils.video_probe import probe_video_metadata
 from ..base import BasePlatform
 from ..path_utils import resolve_cookie_file, resolve_video_file
@@ -96,38 +97,7 @@ DOUYIN_COVER_REQUIRED_TOAST_TEXT = "请设置封面后再发布"
 
 
 async def dismiss_douyin_tour(page: Page, max_attempts: int = 6):
-    """关闭抖音引导弹窗（优化版：快速检测，早期退出）"""
-    for attempt in range(max_attempts):
-        has_popup = False
-        # 快速检测：只检查第一个可见的弹窗
-        for sel in DOUYIN_TOUR_CONTAINERS:
-            try:
-                loc = page.locator(sel).first
-                if await loc.is_visible(timeout=500):
-                    has_popup = True
-                    break
-            except:
-                continue
-
-        if not has_popup:
-            return  # 没有弹窗，立即退出
-
-        # 尝试点击关闭按钮
-        clicked = False
-        for btn_sel in DOUYIN_TOUR_BTNS:
-            try:
-                btn = page.locator(btn_sel).first
-                if await btn.is_visible(timeout=500):
-                    await btn.click(timeout=1000)
-                    clicked = True
-                    await page.wait_for_timeout(200)  # 减少等待时间
-                    break
-            except:
-                continue
-
-        if not clicked:
-            # 如果所有按钮都点不到，说明弹窗可能已经消失或无法关闭，退出
-            return
+    return await dismiss_publish_guides(page, max_steps=max_attempts)
 
 
 class DouyinUpload(BasePlatform):
@@ -191,17 +161,18 @@ class DouyinUpload(BasePlatform):
                     product_link: str = '',
                     product_title: str = '',
                     proxy: Optional[Dict[str, str]] = None,
-                    enable_third_party: bool = True,
+                    enable_third_party: bool = False,
                     location: str = '',
                     declaration: Optional[str] = None,
                     random_cover: bool = False,
                     miniprogram_link: str = "",
                     miniprogram_title: str = "",
+                    sync_platforms: Optional[list[str]] = None,
                     who_can_see: str = "",
                     save_permission: str = "",
                     hotspot: str = "",
                     collection: str = "",
-                    cover_orientation: str = "landscape",
+                    cover_orientation: str = "",
                     cover_file: str = "",
                     miniprogram_object: Optional[Dict[str, Any]] = None,
                     **kwargs) -> Dict[str, Any]:
@@ -243,7 +214,7 @@ class DouyinUpload(BasePlatform):
                 file_path = resolve_video_file(file_path)
 
                 video_meta = probe_video_metadata(file_path)
-                cover_aspect_ratio = video_meta.get("cover_aspect_ratio")
+                cover_aspect_ratio = {"portrait": "3:4", "landscape": "4:3"}.get(cover_orientation) or video_meta.get("cover_aspect_ratio")
                 logger.info(
                     f"[DouyinUpload] 视频元数据: {video_meta.get('width')}x{video_meta.get('height')} "
                     f"({video_meta.get('aspect_ratio')}, {video_meta.get('orientation')}), cover={cover_aspect_ratio}"
@@ -328,7 +299,8 @@ class DouyinUpload(BasePlatform):
 
                 # 上传视频文件（直接上传，不再等待页面URL）
                 logger.info(f"[DouyinUpload] 准备上传视频文件: {file_path}")
-                await page.locator("div[class^='container'] input").set_input_files(file_path)
+                video_input = await douyin_video_upload_input(page)
+                await video_input.set_input_files(file_path)
 
                 # 等待进入发布页面
                 await self._wait_for_upload_page(page)
@@ -347,6 +319,7 @@ class DouyinUpload(BasePlatform):
                 if not thumbnail_path and cover_file:
                     thumbnail_path = cover_file
                 await self._set_thumbnail_best_effort(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio)
+                await self._wait_cover_modal_closed(page)
 
                 # 设置地理位置（如果提供）
                 if location:
@@ -355,16 +328,19 @@ class DouyinUpload(BasePlatform):
                 # 处理浏览器位置权限弹窗（有位置→允许；未选位置→不允许）
                 await self._handle_browser_permission(page, allow_location=bool(location), has_location=bool(location))
 
-                # 新增功能（best-effort，失败不阻断）：合集 → 挂载内容 → 关联热点 → 谁可以看 → 保存权限
+                if sync_platforms is not None:
+                    await self._set_sync_platforms(page, sync_platforms)
+
+                # 专属配置必须设置成功后才能继续发布：合集 → 挂载内容 → 关联热点 → 谁可以看 → 保存权限
                 if collection:
                     await self._set_collection(page, collection)
                 if miniprogram_object:
                     await self._set_mount_object(page, miniprogram_object)
                 if hotspot:
                     await self._set_hotspot(page, hotspot)
-                if who_can_see and who_can_see not in ("", "公开", "public"):
+                if who_can_see:
                     await self._set_who_can_see(page, who_can_see)
-                if save_permission and save_permission not in ("", "允许"):
+                if save_permission:
                     await self._set_save_permission(page, save_permission)
 
                 # 设置商品链接（如果提供）
@@ -372,8 +348,8 @@ class DouyinUpload(BasePlatform):
                     await self._set_product_link(page, product_link, product_title)
 
                 # 设置自主声明（如果提供）
-                if declaration:
-                    await self.set_self_declaration(page, declaration)
+                if declaration and not await self.set_self_declaration(page, declaration):
+                    raise ValueError(f"自主声明未成功设置：{declaration}")
 
                 # 挂载小程序标签（如果提供）
                 if miniprogram_link:
@@ -387,8 +363,9 @@ class DouyinUpload(BasePlatform):
                 if random_cover and not thumbnail_path:
                     await self._pick_recommend_cover(page, random_cover=random_cover)
 
+                await dismiss_publish_guides(page)
                 # 点击发布
-                await self._publish_video(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio)
+                await self._publish_video(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio, account_id=account_file)
 
                 # 保存Cookie
                 await context.storage_state(path=account_file)
@@ -485,11 +462,11 @@ class DouyinUpload(BasePlatform):
         return page.locator("div.dy-creator-content-modal, div.dy-creator-content-portal")
 
     async def _is_cover_modal_open(self, page: Page) -> bool:
-        try:
-            loc = self._cover_modal_locator(page).first
-            return (await loc.count()) > 0 and await loc.is_visible()
-        except Exception:
-            return False
+        containers = self._cover_modal_locator(page)
+        for index in range(await containers.count()):
+            if await containers.nth(index).is_visible():
+                return True
+        return False
 
     async def _dismiss_landscape_cover_tip(self, page: Page) -> bool:
         """Dismiss the optional landscape-cover promotion without closing the editor."""
@@ -511,34 +488,35 @@ class DouyinUpload(BasePlatform):
         return False
 
     async def _wait_cover_modal_closed(self, page: Page, timeout_ms: int = 20000) -> None:
-        """
-        Avoid clicking publish while the cover modal is still open (user may be choosing a cover).
-        Best-effort: if a visible "完成/确定" button exists and is enabled, click once.
-        """
+        """Finish the cover editor through its controls; never remove its DOM."""
         start = time.monotonic()
         while time.monotonic() - start < timeout_ms / 1000:
             await self._dismiss_landscape_cover_tip(page)
             if not await self._is_cover_modal_open(page):
                 return
-
-            try:
-                for sel in [
-                    "div#tooltip-container button:visible:has-text('完成')",
-                    "button:visible:has-text('完成')",
-                    "button:visible:has-text('确定')",
-                    "button:visible:has-text('确认')",
-                ]:
-                    btn = page.locator(sel).first
-                    if await btn.count() and await btn.is_visible() and await btn.is_enabled():
-                        await btn.click(timeout=2000)
-                        await page.wait_for_timeout(500)
+            await dismiss_publish_guides(page)
+            recommendation = page.get_by_text(re.compile(r"^设置[横竖]封面获更多流量$"))
+            if await recommendation.count() == 1 and await recommendation.is_visible():
+                skip = page.get_by_role("button", name="暂不设置", exact=True)
+                if await skip.count() == 1 and await skip.is_visible():
+                    await skip.click(timeout=3000)
+                    await page.wait_for_timeout(300)
+                    continue
+            containers = self._cover_modal_locator(page)
+            for index in range(await containers.count()):
+                container = containers.nth(index)
+                if not await container.is_visible():
+                    continue
+                for label in ("完成", "确定", "确认"):
+                    button = container.get_by_role("button", name=label, exact=True)
+                    if await button.count() == 1 and await button.is_visible() and await button.is_enabled():
+                        try:
+                            await button.click(timeout=2000)
+                        except Exception:
+                            logger.debug("Cover completion control remains blocked", exc_info=True)
                         break
-            except Exception:
-                pass
-
-            await asyncio.sleep(0.3)
-
-        raise TimeoutError("封面弹窗长时间未关闭（可能被引导/弹窗遮挡或网络过慢）")
+            await page.wait_for_timeout(300)
+        raise TimeoutError("封面编辑弹层未关闭，已停止设置定时及提交发布，请完成封面编辑后重试")
 
     async def _set_thumbnail_best_effort(
         self,
@@ -744,7 +722,7 @@ class DouyinUpload(BasePlatform):
 
             await asyncio.sleep(0.5)
     
-    async def _fill_title_and_tags(self, page: Page, title: str, tags: list, enable_third_party: bool = True):
+    async def _fill_title_and_tags(self, page: Page, title: str, tags: list, enable_third_party: bool = False):
         """填充标题和标签"""
         logger.info("[DouyinUpload] 填充标题和标签...")
         await self._fill_title_best_effort(page, title)
@@ -966,18 +944,21 @@ class DouyinUpload(BasePlatform):
 
         logger.info(f"[DouyinUpload] 正在设置地理位置: {location}")
         try:
-            await page.locator('div.semi-select span:has-text("输入地理位置")').click()
-            await page.keyboard.press("Backspace")
-            await page.wait_for_timeout(2000)
-            await page.keyboard.type(location)
+            location_input = page.get_by_placeholder("输入地理位置", exact=True)
+            await location_input.fill(location)
             await page.wait_for_selector('div[role="listbox"] [role="option"]', timeout=5000)
-            await page.locator('div[role="listbox"] [role="option"]').first.click()
+            candidate = page.get_by_role("option", name=location, exact=True)
+            if await candidate.count() != 1 or not await candidate.is_visible():
+                raise ValueError(f"未找到唯一地点候选：{location}")
+            await candidate.click(timeout=5000)
             logger.info(f"[DouyinUpload] 成功设置地理位置: {location}")
         except Exception as e:
-            logger.warning(f"[DouyinUpload] 设置地理位置失败（忽略继续）: {e}")
+            raise ValueError("抖音专属配置未成功应用，请检查地点、热点或合集候选") from e
     
     async def _set_schedule_time(self, page: Page, publish_date: datetime):
         """设置定时发布"""
+        await self._wait_cover_modal_closed(page)
+        await dismiss_publish_guides(page)
         label_element = page.locator("[class^='radio']:has-text('定时发布')")
         await label_element.click()
         await asyncio.sleep(1)
@@ -988,6 +969,9 @@ class DouyinUpload(BasePlatform):
         await page.keyboard.type(str(publish_date_hour))
         await page.keyboard.press("Enter")
         await asyncio.sleep(1)
+        actual_time = await page.get_by_placeholder("日期和时间", exact=True).input_value()
+        if actual_time != publish_date_hour:
+            raise ValueError(f"抖音定时未生效：期望 {publish_date_hour}，页面显示 {actual_time}")
 
     async def _publish_video(
         self,
@@ -995,6 +979,7 @@ class DouyinUpload(BasePlatform):
         thumbnail_path: Optional[str] = None,
         *,
         cover_aspect_ratio: Optional[str] = None,
+        account_id: Optional[str] = None,
     ):
         """点击发布按钮"""
         logger.info("[DouyinUpload] 准备点击发布按钮...")
@@ -1003,61 +988,35 @@ class DouyinUpload(BasePlatform):
         max_wait = 60
         start = time.monotonic()
 
-        # best-effort：点发布前确保封面弹窗已关闭，避免 modal 遮罩(pointer-events 拦截)挡住发布按钮
-        try:
-            await self._wait_cover_modal_closed(page, timeout_ms=8000)
-        except Exception as e:
-            logger.warning(f"[DouyinUpload] 封面弹窗未自动关闭({e})，强制移除遮罩")
-            try:
-                await page.evaluate(
-                    "() => document.querySelectorAll('div.dy-creator-content-modal-wrap, "
-                    "div.dy-creator-content-modal, div.dy-creator-content-portal, "
-                    "canvas.upper-canvas.cloudImage').forEach(e => e.remove())"
-                )
-                await page.wait_for_timeout(300)
-            except Exception:
-                pass
+        await self._wait_cover_modal_closed(page, timeout_ms=8000)
 
-        # best-effort：同样关闭「对作品内容添加声明」自主声明弹窗。
-        # 该弹窗若残留（.semi-modal 遮罩）同样会挡住发布按钮（实测 2026-09-03 16:20 即因此超时）。
-        try:
-            await self._force_close_declaration_modal(page, timeout_ms=5000)
-        except Exception as e:
-            logger.warning(f"[DouyinUpload] 自主声明弹窗未自动关闭({e})")
+        await self._force_close_declaration_modal(page, timeout_ms=5000)
+        publish_button = page.get_by_role("button", name="发布", exact=True)
+        await publish_button.wait_for(state="visible", timeout=60000)
+        while not await publish_button.is_enabled():
+            if time.monotonic() - start >= max_wait:
+                raise TimeoutError("抖音发布按钮持续不可用，未提交作品")
+            await page.wait_for_timeout(500)
 
-        while time.monotonic() - start < max_wait:
-            try:
-                publish_button = page.get_by_role("button", name="发布", exact=True).first
-
-                if await publish_button.count() and await publish_button.is_visible():
-                    try:
-                        if await publish_button.is_enabled():
-                            await publish_button.click(timeout=5000)
-                            logger.info("[DouyinUpload] 已点击发布按钮，等待跳转...")
-
-                            # 等待跳转到管理页面
-                            try:
-                                await page.wait_for_url("**/creator-micro/content/manage**", timeout=15000)
-                                logger.info("[DouyinUpload] ✅ 视频发布成功")
-                                return
-                            except:
-                                # 可能已经发布成功但URL不匹配，检查页面内容
-                                await asyncio.sleep(2)
-                                if "manage" in page.url or "content" in page.url:
-                                    logger.info("[DouyinUpload] ✅ 视频发布成功（通过URL检测）")
-                                    return
-                                logger.warning("[DouyinUpload] 发布后未检测到跳转，继续等待...")
-                    except Exception as e:
-                        logger.debug(f"[DouyinUpload] 发布按钮不可用: {e}")
-
-                await asyncio.sleep(1)
-            except Exception as e:
-                logger.debug(f"[DouyinUpload] 等待发布按钮: {e}")
-                await asyncio.sleep(1)
-
-        # 超时
-        await self._debug_dump(page, "douyin_publish_timeout")
-        raise TimeoutError("[DouyinUpload] 点击发布按钮超时（60s）")
+        # One submission only: a timeout after clicking is ambiguous, never auto-retry.
+        await publish_button.click(timeout=5000)
+        deadline = time.monotonic() + 30
+        verification_attempts = 0
+        while "/creator-micro/content/manage" not in page.url:
+            if account_id:
+                verification = page.get_by_text("接收短信验证码", exact=True)
+                if await verification.count() and await verification.first.is_visible():
+                    if verification_attempts >= 3:
+                        raise RuntimeError("抖音短信验证未通过，已停止重复提交")
+                    verification_attempts += 1
+                    await self._check_and_handle_verification(page, account_id)
+                    deadline = time.monotonic() + 30
+                    await page.wait_for_timeout(1500)
+                    continue
+            if time.monotonic() >= deadline:
+                raise RuntimeError(f"抖音提交后未确认成功，停止重复提交。当前页面：{page.url}")
+            await page.wait_for_timeout(500)
+        logger.info("[DouyinUpload] 已进入作品管理页，提交成功")
 
 
     async def _enable_third_party_sync(self, page: Page):
@@ -1086,34 +1045,7 @@ class DouyinUpload(BasePlatform):
             logger.warning(f"[DouyinUpload] 第三方平台同步设置失败（忽略继续）: {e}")
 
     async def dismiss_version_prompt(self, page: Page) -> bool:
-        """关闭抖音「官方新版本/新增功能」提示遮挡层（best-effort，实测校准选择器）。"""
-        try:
-            # 版本提示/引导遮罩常见文案与容器；命中任一即尝试关闭。
-            dismiss_texts = ["立即体验", "我知道了", "知道了", "开始体验", "查看新功能", "跳过", "暂不"]
-            overlay_selectors = [
-                ".shepherd-element", ".shepherd-modal-overlay-container",
-                "[class*='mention-wrapper']", "[class*='version']", "[class*='guide']",
-                "[class*='new-version']", "[class*='update-popup']", "[class*='popup']",
-            ]
-            # 先移除所有遮罩容器（不依赖可见性，避免拦截后续点击）
-            await page.evaluate(
-                "() => { const sels = arguments[0]; document.querySelectorAll(sels.join(',')).forEach(e => e.remove()); }",
-                list(overlay_selectors),
-            )
-            for text in dismiss_texts:
-                try:
-                    btn = page.get_by_text(text, exact=True).first
-                    if await btn.count() and await btn.is_visible():
-                        await btn.click(timeout=2000)
-                        await page.wait_for_timeout(300)
-                        logger.info(f"[DouyinUpload] 已关闭版本提示遮挡: {text}")
-                        return True
-                except Exception:
-                    continue
-            return False
-        except Exception as exc:
-            logger.debug(f"[DouyinUpload] 版本提示移除未命中/跳过：{exc}")
-            return False
+        return bool(await dismiss_publish_guides(page))
 
     async def _handle_browser_permission(self, page: Page, allow_location: bool, has_location: bool) -> None:
         """处理浏览器位置权限弹窗：有位置时点「本次允许」；没选位置时关闭/选择「不允许」。
@@ -1302,36 +1234,10 @@ class DouyinUpload(BasePlatform):
         return False
 
     async def _set_who_can_see(self, page: Page, who_can_see: str) -> None:
-        """设置「谁可以看」：公开 / 好友可见 / 仅自己可见（发布设置区单选，实测 label.radio-d4zkru）。"""
-        if not who_can_see or who_can_see in ("", "公开", "public"):
-            return
-        try:
-            row = page.locator("div.content-obt4oA").filter(has_text="谁可以看").first
-            await row.wait_for(state="visible", timeout=8000)
-            target = row.locator("label.radio-d4zkru").filter(has_text=who_can_see).first
-            if not await target.count():
-                target = page.locator("label.radio-d4zkru").filter(has_text=who_can_see).first
-            if await target.count() and await target.is_visible():
-                await target.click(timeout=5000)
-                logger.info(f"[DouyinUpload] 「谁可以看」已设置「{who_can_see}」")
-        except Exception as exc:
-            logger.warning(f"[DouyinUpload] 设置「谁可以看」失败（忽略）：{exc}")
+        await set_radio_choice(page, "谁可以看", who_can_see)
 
     async def _set_save_permission(self, page: Page, save_permission: str) -> None:
-        """设置「保存权限」：允许 / 不允许（实测 div.download-content-Lci5tL label.radio-d4zkru）。"""
-        if not save_permission or save_permission in ("", "允许", "allow"):
-            return
-        try:
-            box = page.locator("div.download-content-Lci5tL").first
-            await box.wait_for(state="visible", timeout=8000)
-            target = box.locator("label.radio-d4zkru").filter(has_text=save_permission).first
-            if not await target.count():
-                target = page.locator("label.radio-d4zkru").filter(has_text=save_permission).first
-            if await target.count() and await target.is_visible():
-                await target.click(timeout=5000)
-                logger.info(f"[DouyinUpload] 「保存权限」已设置「{save_permission}」")
-        except Exception as exc:
-            logger.warning(f"[DouyinUpload] 设置「保存权限」失败（忽略）：{exc}")
+        await set_radio_choice(page, "保存权限", save_permission)
 
     async def _set_hotspot(self, page: Page, hotspot: str) -> None:
         """关联热点：点「点击输入热点词」筛选下拉 → 输入关键词 → ArrowDown+Enter 选第一条。
@@ -1352,12 +1258,13 @@ class DouyinUpload(BasePlatform):
             else:
                 await page.keyboard.type(hotspot)
             await page.wait_for_timeout(1200)
-            await page.keyboard.press("ArrowDown")
-            await page.wait_for_timeout(250)
-            await page.keyboard.press("Enter")
+            candidate = page.get_by_role("option", name=hotspot, exact=True)
+            if await candidate.count() != 1 or not await candidate.is_visible():
+                raise ValueError(f"未找到唯一热点候选：{hotspot}")
+            await candidate.click(timeout=5000)
             logger.info(f"[DouyinUpload] 关联热点已选「{hotspot}」")
         except Exception as exc:
-            logger.warning(f"[DouyinUpload] 设置「关联热点」失败（忽略）：{exc}")
+            raise ValueError("抖音专属配置未成功应用，请检查地点、热点或合集候选") from exc
 
     async def _set_collection(self, page: Page, collection: str) -> None:
         """添加到合集：点「请选择合集」下拉选择合集；空/找不到则选「不选择合集」。"""
@@ -1371,9 +1278,9 @@ class DouyinUpload(BasePlatform):
             target = (collection or "").strip()
             option = None
             if target and target not in ("不选择合集", "不加入合集"):
-                option = page.locator('[role="listbox"] [role="option"]').filter(has_text=target).first
-                if not await option.count():
-                    option = page.get_by_text(target, exact=True).first
+                option = page.get_by_role("option", name=target, exact=True)
+                if await option.count() != 1:
+                    raise ValueError(f"未找到唯一合集候选：{target}")
             if not option or not await option.count():
                 option = page.locator('[role="listbox"] [role="option"]').filter(has_text="不选择合集").first
                 if not await option.count():
@@ -1381,69 +1288,51 @@ class DouyinUpload(BasePlatform):
             if await option.count() and await option.is_visible():
                 await option.click(timeout=5000)
                 logger.info(f"[DouyinUpload] 合集已设置「{target or '不选择合集'}」")
+            else:
+                raise ValueError(f"合集候选不可用：{target}")
         except Exception as exc:
-            logger.warning(f"[DouyinUpload] 设置「合集」失败（忽略）：{exc}")
+            raise ValueError("抖音专属配置未成功应用，请检查地点、热点或合集候选") from exc
 
-    async def _set_mount_object(self, page: Page, mini_program) -> None:
-        """添加标签 → 挂载内容（小程序/游戏/应用）「对象」（实测选项：位置/影视演艺/小程序/标记万物）。"""
-        if not mini_program:
+    async def _set_sync_platforms(self, page: Page, platforms: list[str]) -> None:
+        unsupported = set(platforms) - {"番茄小说", "红果短剧"}
+        if unsupported:
+            raise ValueError(f"不支持的同时发布平台：{unsupported}")
+        if not await page.get_by_text("同时发布", exact=True).count():
+            if platforms:
+                raise ValueError("当前账号发布页未提供同时发布功能")
             return
-        name = mini_program.get("name") if isinstance(mini_program, dict) else str(mini_program)
-        if not name:
-            return
-        try:
-            anchor = page.locator("div.anchor-container-hgj7gj div.semi-select").first
-            if not await anchor.count():
-                logger.warning("[DouyinUpload] 未找到「添加标签」下拉，跳过挂载")
-                return
-            await anchor.click(timeout=5000)
-            await page.wait_for_selector('[role="listbox"] [role="option"]', timeout=8000)
-            opt = page.locator('[role="listbox"] [role="option"]').filter(has_text="小程序").first
-            if not await opt.count():
-                opt = page.get_by_text("小程序", exact=True).first
-            if not await opt.count() or not await opt.is_visible():
-                logger.warning("[DouyinUpload] 「小程序」选项未出现，跳过挂载")
-                return
-            await opt.click(timeout=5000)
-            # 对象搜索浮层（「未确认」兜底）
-            await page.wait_for_timeout(1500)
-            # 实测当前抖音界面：选择「小程序」后显示的是链接输入框，
-            # 而不是影视演艺那种候选搜索列表。优先支持 url/link 字段。
-            mini_url = mini_program.get("url") or mini_program.get("link") if isinstance(mini_program, dict) else None
-            mini_link = page.locator('input[placeholder*="粘贴抖音小程序链接"]').first
-            if await mini_link.count():
-                if mini_url:
-                    await mini_link.fill(str(mini_url))
-                    logger.info(f"[DouyinUpload] 小程序链接已填写「{mini_url}」")
-                else:
-                    logger.warning("[DouyinUpload] 已进入小程序链接输入态，但 miniProgram 未提供 url/link，跳过填写")
-                return
-            search_input = page.locator(
-                'input[placeholder*="搜索"], input[placeholder*="小程序"], input[placeholder*="名称"]'
-            ).first
-            if await search_input.count():
-                await search_input.fill(name)
-                await page.wait_for_timeout(1200)
-                candidates = page.locator(
-                    '[role="option"], .semi-sidesheet-content [class*="option"], [class*="item"]'
-                )
-                ranked = []
-                query = str(name).strip()
-                for idx in range(await candidates.count()):
-                    item = candidates.nth(idx)
-                    if await item.is_visible():
-                        label = (await item.inner_text()).strip()
-                        if label:
-                            ranked.append((self._mount_match_score(query, label), idx, label))
-                ranked.sort(reverse=True)
-                obj = candidates.nth(ranked[0][1]) if ranked else candidates.nth(0)
-                if await obj.count() and await obj.is_visible():
-                    await obj.click(timeout=5000)
-                    logger.info(f"[DouyinUpload] 挂载内容「{name}」已选择候选「{ranked[0][2] if ranked else name}」")
-                    return
-            logger.warning(f"[DouyinUpload] 挂载内容「{name}」对象浮层未确认到，请人工核对")
-        except Exception as exc:
-            logger.warning(f"[DouyinUpload] 设置挂载内容失败（忽略）：{exc}")
+        await set_radio_choice(page, "同时发布", "同时发布到" if platforms else "不同时发布")
+        if platforms:
+            for name in ("番茄小说", "红果短剧"):
+                await set_named_switch(page, name, name in platforms)
+            await set_named_switch(page, "记住我的选择", False)
+
+    async def _set_mount_object(self, page: Page, item) -> None:
+        name = str(item.get("name") or "").strip()
+        kind = item.get("type") or "小程序"
+        placeholders = {"小程序": "粘贴抖音小程序链接", "影视演艺": '输入IP名称', "标记万物": "请输入或选择标记的物品"}
+        if not name or kind not in placeholders:
+            raise ValueError("请填写有效的抖音添加标签类型与名称")
+        anchor = page.locator("div.anchor-container-hgj7gj div.semi-select").first
+        await anchor.click(timeout=5000)
+        option = page.get_by_role("option", name=kind, exact=True)
+        await option.click(timeout=5000)
+        query = str(item.get("url") or item.get("link") or "") if kind == "小程序" else name
+        if not query:
+            raise ValueError("小程序标签需要填写抖音小程序链接")
+        field = page.get_by_placeholder(re.compile(re.escape(placeholders[kind])))
+        await field.fill(query, timeout=5000)
+        candidates = page.get_by_role("option").filter(has_text=re.compile(r"^" + re.escape(name) + r"(?:\s|$)"))
+        await candidates.first.wait_for(state="visible", timeout=8000)
+        if await candidates.count() != 1:
+            raise ValueError(f"标签「{name}」存在多个候选，请使用更准确的名称")
+        await candidates.click(timeout=5000)
+        rejected = page.get_by_text(re.compile(r"不满足.*门槛|无法使用.*标签|无.*权限"))
+        if await rejected.count() and await rejected.first.is_visible():
+            raise ValueError(await rejected.first.inner_text())
+        value = await field.input_value()
+        if not value:
+            raise ValueError(f"标签「{name}」未成功选择")
 
     @staticmethod
     def _mount_match_score(query: str, candidate: str) -> float:

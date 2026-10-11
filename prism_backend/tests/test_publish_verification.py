@@ -50,7 +50,11 @@ class PublishVerificationTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(event["platform"], platform)
                     self.assertFalse(receiver.submit_code("unrelated-request", "123456"))
                     self.assertFalse(receiver.submit_code(event["id"], "1234"))
+                    confirmation = asyncio.create_task(page.wait_for_selector("body[data-verified]", timeout=200))
+                    await asyncio.sleep(.4)
+                    self.assertFalse(confirmation.done(), "Human verification must pause the short publishing timeout")
                     self.assertTrue(receiver.submit_code(event["id"], "123456"))
+                    await confirmation
                     await page.wait_for_function("document.body.dataset.verified === '1'", timeout=10000)
                     self.assertFalse(any(e.get("task_id") == task_id for e in receiver.get_pending_events()))
                     await context.close()

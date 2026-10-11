@@ -30,6 +30,7 @@ class AccountCreate(BaseModel):
 
 
 class AccountUpdate(BaseModel):
+    user_id: Optional[str] = Field(default=None, min_length=1, max_length=100)
     """更新账号请求"""
     name: Optional[str] = None
     note: Optional[str] = None

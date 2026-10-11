@@ -42,3 +42,27 @@ async def collect_browser_posts(storage_state, sec_user_id):
             await context.close()
             if browser:
                 await browser.close()
+
+
+async def resolve_browser_self_sec_uid(storage_state, expected_user_id):
+    """Read the authenticated user's own profile, never a search-result user."""
+    async with async_playwright() as pw:
+        browser, context, _, _ = await create_context_with_policy(
+            pw, platform="douyin", account_id=None, headless=True,
+            storage_state=storage_state, force_ephemeral=True, disable_proxy=True,
+        )
+        try:
+            page = await context.new_page()
+            async with page.expect_response(lambda response: "/aweme/v1/web/user/profile/self/" in response.url and response.status == 200, timeout=20000) as pending:
+                await page.goto("https://www.douyin.com/user/self", wait_until="domcontentloaded", timeout=30000)
+            payload = await (await pending.value).json()
+            user = payload.get("user") or payload.get("user_info") or {}
+            identifiers = {str(user[key]) for key in ("unique_id", "short_id") if user.get(key) and str(user[key]) != "0"}
+            if identifiers and str(expected_user_id) not in identifiers:
+                return None
+            sec_uid = user.get("sec_uid")
+            return sec_uid if isinstance(sec_uid, str) and sec_uid.startswith("MS4") else None
+        finally:
+            await context.close()
+            if browser:
+                await browser.close()

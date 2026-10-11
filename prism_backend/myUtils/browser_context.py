@@ -71,6 +71,10 @@ def build_browser_args() -> Dict[str, Any]:
     except Exception as e:
         print(f"⚠️ 加载 LOCAL_CHROME_PATH 配置失败: {e}")
 
+    from tools.browser_provider_registry import active_provider_executable
+    active = active_provider_executable("chromium")
+    if active:
+        args["executable_path"] = str(active)
     return args
 
 
@@ -84,6 +88,7 @@ def build_firefox_args() -> Dict[str, Any]:
     args: Dict[str, Any] = {
         "headless": False,
         "args": [],
+        "firefox_user_prefs": {"permissions.default.geo": 2},
     }
     ep = _firefox_executable_path()
     if ep:
@@ -116,9 +121,25 @@ def _platform_browser_pref(platform: Optional[str]) -> Optional[str]:
     value = os.getenv(f"PRISM_PLATFORM_BROWSER_{name.upper()}")
     if value is None and name == "tencent":
         value = os.getenv("PRISM_PLATFORM_BROWSER_TENCENT")
+    if value is None:
+        import json
+        from tools.browser_provider_registry import runtime_data_root
+        try:
+            saved = json.loads((runtime_data_root() / "platform-browser-preferences.json").read_text(encoding="utf-8"))
+            value = saved.get("channels" if name == "tencent" else name)
+        except (OSError, ValueError, TypeError):
+            pass
     v = (value or "").strip().lower()
     if v in {"chromium", "firefox"}:
         return v
+    try:
+        import json
+        from tools.browser_provider_registry import browsers_root
+        active = json.loads((browsers_root() / "active.json").read_text(encoding="utf-8"))
+        if active.get("kind") in {"chromium", "firefox"}:
+            return active["kind"]
+    except (OSError, ValueError):
+        pass
     return None
 
 
