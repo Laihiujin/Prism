@@ -631,7 +631,9 @@ function AccountPageContent() {
           }
           const statusData = await statusRes.json()
           if (activeSessionRef.current !== sessionId) return
-          setSmsVerification(statusData.data?.verification ?? null)
+          if (statusData.data?.verification) {
+            setSmsVerification(statusData.data.verification)
+          }
           if (smsLoginStartedRef.current !== null && pollStartedAt > smsLoginStartedRef.current && statusData.data?.verification?.error) {
             smsLoginStartedRef.current = null
             setBindingStatus("code")
