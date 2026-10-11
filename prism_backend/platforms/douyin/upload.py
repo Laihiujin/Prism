@@ -365,7 +365,7 @@ class DouyinUpload(BasePlatform):
 
                 await dismiss_publish_guides(page)
                 # 点击发布
-                await self._publish_video(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio)
+                await self._publish_video(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio, account_id=account_file)
 
                 # 保存Cookie
                 await context.storage_state(path=account_file)
@@ -958,6 +958,7 @@ class DouyinUpload(BasePlatform):
         thumbnail_path: Optional[str] = None,
         *,
         cover_aspect_ratio: Optional[str] = None,
+        account_id: Optional[str] = None,
     ):
         """点击发布按钮"""
         logger.info("[DouyinUpload] 准备点击发布按钮...")
@@ -968,46 +969,33 @@ class DouyinUpload(BasePlatform):
 
         await self._wait_cover_modal_closed(page, timeout_ms=8000)
 
-        # best-effort：同样关闭「对作品内容添加声明」自主声明弹窗。
-        # 该弹窗若残留（.semi-modal 遮罩）同样会挡住发布按钮（实测 2026-09-03 16:20 即因此超时）。
-        try:
-            await self._force_close_declaration_modal(page, timeout_ms=5000)
-        except Exception as e:
-            logger.warning(f"[DouyinUpload] 自主声明弹窗未自动关闭({e})")
+        await self._force_close_declaration_modal(page, timeout_ms=5000)
+        publish_button = page.get_by_role("button", name="发布", exact=True)
+        await publish_button.wait_for(state="visible", timeout=60000)
+        while not await publish_button.is_enabled():
+            if time.monotonic() - start >= max_wait:
+                raise TimeoutError("抖音发布按钮持续不可用，未提交作品")
+            await page.wait_for_timeout(500)
 
-        while time.monotonic() - start < max_wait:
-            try:
-                publish_button = page.get_by_role("button", name="发布", exact=True).first
-
-                if await publish_button.count() and await publish_button.is_visible():
-                    try:
-                        if await publish_button.is_enabled():
-                            await publish_button.click(timeout=5000)
-                            logger.info("[DouyinUpload] 已点击发布按钮，等待跳转...")
-
-                            # 等待跳转到管理页面
-                            try:
-                                await page.wait_for_url("**/creator-micro/content/manage**", timeout=15000)
-                                logger.info("[DouyinUpload] ✅ 视频发布成功")
-                                return
-                            except:
-                                # 可能已经发布成功但URL不匹配，检查页面内容
-                                await asyncio.sleep(2)
-                                if "manage" in page.url or "content" in page.url:
-                                    logger.info("[DouyinUpload] ✅ 视频发布成功（通过URL检测）")
-                                    return
-                                logger.warning("[DouyinUpload] 发布后未检测到跳转，继续等待...")
-                    except Exception as e:
-                        logger.debug(f"[DouyinUpload] 发布按钮不可用: {e}")
-
-                await asyncio.sleep(1)
-            except Exception as e:
-                logger.debug(f"[DouyinUpload] 等待发布按钮: {e}")
-                await asyncio.sleep(1)
-
-        # 超时
-        await self._debug_dump(page, "douyin_publish_timeout")
-        raise TimeoutError("[DouyinUpload] 点击发布按钮超时（60s）")
+        # One submission only: a timeout after clicking is ambiguous, never auto-retry.
+        await publish_button.click(timeout=5000)
+        deadline = time.monotonic() + 30
+        verification_attempts = 0
+        while "/creator-micro/content/manage" not in page.url:
+            if account_id:
+                verification = page.get_by_text("接收短信验证码", exact=True)
+                if await verification.count() and await verification.first.is_visible():
+                    if verification_attempts >= 3:
+                        raise RuntimeError("抖音短信验证未通过，已停止重复提交")
+                    verification_attempts += 1
+                    await self._check_and_handle_verification(page, account_id)
+                    deadline = time.monotonic() + 30
+                    await page.wait_for_timeout(1500)
+                    continue
+            if time.monotonic() >= deadline:
+                raise RuntimeError(f"抖音提交后未确认成功，停止重复提交。当前页面：{page.url}")
+            await page.wait_for_timeout(500)
+        logger.info("[DouyinUpload] 已进入作品管理页，提交成功")
 
 
     async def _enable_third_party_sync(self, page: Page):

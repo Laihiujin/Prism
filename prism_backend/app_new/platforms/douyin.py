@@ -143,6 +143,14 @@ class DouyinAdapter(PlatformAdapter):
         context = session["context"]
 
         try:
+            from .douyin_sms import inspect_sms
+            _, verification = await inspect_sms(page)
+            if verification:
+                return LoginResult(
+                    status=LoginStatus.RISK_CONTROL,
+                    message="抖音需要短信身份验证",
+                    verification=verification,
+                )
             cookies_list = await context.cookies()
             cookies_dict = {c["name"]: c["value"] for c in cookies_list}
 
@@ -180,8 +188,6 @@ class DouyinAdapter(PlatformAdapter):
                     logger.error(f"[Douyin] storage_state failed: {e}")
                     full_state = None
 
-                await self.cleanup_session(session_id)
-
                 logger.info(f"[Douyin] Login confirmed: uid={user_info.user_id}")
 
                 return LoginResult(
@@ -206,6 +212,13 @@ class DouyinAdapter(PlatformAdapter):
         except Exception as e:
             logger.error(f"[Douyin] Poll failed: {e}")
             return LoginResult(status=LoginStatus.FAILED, message=str(e))
+
+    async def sms_action(self, session_id: str, action: str, code: str = None):
+        from .douyin_sms import perform_sms_action
+        session = douyin_session_manager.get_session(session_id)
+        if not session:
+            raise ValueError("登录会话已过期，请重新获取二维码")
+        return await perform_sms_action(session["page"], action, code)
 
     async def cleanup_session(self, session_id: str):
         """清理Playwright会话"""
@@ -237,7 +250,6 @@ class DouyinAdapter(PlatformAdapter):
     async def _extract_user_info(self, page: Page, cookies_list: list) -> UserInfo:
         """Extract user info from page (DOM + JS)."""
         try:
-            await asyncio.sleep(1)
             user_info = UserInfo()
 
             # Method 1: DOM text
@@ -245,9 +257,8 @@ class DouyinAdapter(PlatformAdapter):
                 import re
                 # New UI sometimes exposes a unique_id-* node without label.
                 try:
-                    id_node = await page.wait_for_selector(
-                        "div[class^='unique_id-'], div[class*='unique_id-']",
-                        timeout=2000
+                    id_node = await page.query_selector(
+                        "div[class^='unique_id-'], div[class*='unique_id-']"
                     )
                     if id_node:
                         raw_text = (await id_node.inner_text()) or ""
@@ -272,7 +283,7 @@ class DouyinAdapter(PlatformAdapter):
                 logger.warning(f"[Douyin] DOM text extraction failed: {e}")
 
             # Method 2: JS fallback
-            if not user_info.user_id:
+            if not user_info.user_id or not user_info.name or not user_info.avatar:
                 try:
                     js_info = await page.evaluate("""() => {
                         if (window._ROUTER_DATA?.loaderData) {
@@ -285,7 +296,11 @@ class DouyinAdapter(PlatformAdapter):
                         return null;
                     }""")
                     if js_info and isinstance(js_info, dict):
-                        user_info.user_id = (
+                        user_info.name = js_info.get("nickname") or js_info.get("name") or user_info.name
+                        avatar = js_info.get("avatar_thumb") or js_info.get("avatar_larger") or {}
+                        if isinstance(avatar, dict) and avatar.get("url_list"):
+                            user_info.avatar = avatar["url_list"][0]
+                        user_info.user_id = user_info.user_id or (
                             js_info.get("uniqueId")
                             or js_info.get("unique_id")
                             or js_info.get("userId")
@@ -298,10 +313,10 @@ class DouyinAdapter(PlatformAdapter):
             # name
             if not user_info.name:
                 try:
-                    name_selectors = ['xpath=//div[@class="name-_lSSDc"]', 'div[class*="name-_lSSDc"]', 'div[class*="header-right-name"]', '.header-right-name']
+                    name_selectors = ['div[class^="name-"]', 'span[class^="name-"]', 'div[class*="nickname"]', 'span[class*="nickname"]', 'div[class*="header-right-name"]', '.header-right-name']
                     for selector in name_selectors:
                         try:
-                            elem = await page.wait_for_selector(selector, timeout=2000)
+                            elem = await page.query_selector(selector)
                             if elem:
                                 text = await elem.inner_text()
                                 if text:

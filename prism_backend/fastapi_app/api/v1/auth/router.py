@@ -26,6 +26,8 @@ from .schemas import (
     LoginStatusResponse,
     LoginRequest,
     VerificationCodeRequest,
+    SmsVerificationRequest,
+    SmsLoginRequest,
     LoginResult,
     CookieInfo
 )
@@ -330,8 +332,8 @@ async def generate_qrcode(
         raise HTTPException(status_code=500, detail=detail)
 
 
-@router.get("/qrcode/poll", response_model=LoginStatusResponse, summary="Poll login status")
-async def poll_login_status(session_id: str = Query(..., description="鐧诲綍浼氳瘽ID")):
+
+async def _poll_login_status_impl(session_id: str = Query(..., description="鐧诲綍浼氳瘽ID")):
     """
     杞鐧诲綍鐘舵€?
 
@@ -404,7 +406,7 @@ async def poll_login_status(session_id: str = Query(..., description="鐧诲綍�
                     enriched = await worker.enrich_account(
                         platform.value.lower(),
                         full_state,
-                        headless=bool(PLAYWRIGHT_HEADLESS),
+                        headless=get_playwright_headless(),
                         account_id=session.get("account_id"),
                     )
 
@@ -505,11 +507,73 @@ async def poll_login_status(session_id: str = Query(..., description="鐧诲綍�
             success=True,
             status=status,
             message=result.get("message", ""),
-            data=result if status == "confirmed" else None
+            data=result if status == "confirmed" else ({"verification": result["verification"]} if result.get("verification") else None)
         )
     except Exception as e:
         logger.error(f"[Login] Poll failed: platform={platform.value} session={session_id[:8]} error={str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/qrcode/poll", response_model=LoginStatusResponse, summary="Poll login status")
+async def poll_login_status(session_id: str = Query(...)):
+    async with login_sessions_lock:
+        session = login_sessions.get(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="登录会话已结束或过期")
+    # Serialize persistence for requests already in flight when login completes.
+    async with session.setdefault("poll_lock", asyncio.Lock()):
+        if session.get("confirmed_response") is not None:
+            return session["confirmed_response"]
+        response = await _poll_login_status_impl(session_id)
+        if response.status == "confirmed":
+            session["confirmed_response"] = response
+        return response
+
+
+@router.post("/qrcode/sms", summary="Complete Douyin SMS identity verification")
+async def sms_verification(payload: SmsVerificationRequest):
+    async with login_sessions_lock:
+        session = login_sessions.get(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="登录会话已过期，请重新获取二维码")
+    if payload.action == "submit" and not payload.code:
+        raise HTTPException(status_code=422, detail="请输入验证码")
+    from automation_worker.client import get_worker_client
+    try:
+        response = await get_worker_client().sms_action(
+            session.get("worker_session_id", payload.session_id),
+            {"action": payload.action, "code": payload.code},
+        )
+    except Exception:
+        raise HTTPException(status_code=502, detail="无法连接登录服务，请稍后重试")
+    if response["status_code"] >= 400:
+        raise HTTPException(status_code=response["status_code"], detail=response["body"].get("error", "短信验证失败"))
+    return response["body"]
+
+
+@router.post("/sms/start", summary="Start browser SMS login")
+async def start_sms_login(payload: SmsLoginRequest):
+    from automation_worker.client import get_worker_client
+    from config.conf import PLAYWRIGHT_HEADLESS
+    try:
+        response = await get_worker_client().start_sms_login({
+            "platform": payload.platform, "account_id": payload.account_id,
+            "phone": payload.phone, "headless": bool(PLAYWRIGHT_HEADLESS),
+        })
+    except Exception:
+        raise HTTPException(status_code=502, detail="无法连接短信登录服务")
+    if response["status_code"] >= 400:
+        raise HTTPException(status_code=response["status_code"], detail=response["body"].get("error", "短信登录初始化失败"))
+    data = response["body"]["data"]
+    async with login_sessions_lock:
+        for sid, session in list(login_sessions.items()):
+            if getattr(session.get("platform"), "value", "") == payload.platform and session.get("account_id") == payload.account_id:
+                login_sessions.pop(sid, None)
+        login_sessions[data["session_id"]] = {
+            "platform": PlatformType(payload.platform), "account_id": payload.account_id,
+            "worker_session_id": data["session_id"], "status": "waiting", "created_at": time.time(),
+        }
+    return {"success": True, "qr_id": data["session_id"], "qr_image": "", "verification": data["verification"]}
 
 
 @router.get("/login/unified", summary="Unified login entry")

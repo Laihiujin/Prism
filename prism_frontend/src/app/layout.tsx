@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
 import MSWComponent from "@/components/msw-component";
 import QueryProvider from "@/components/query-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog";
 
 export const metadata: Metadata = {
   title: "Prism - 矩阵发布控制台",
@@ -27,7 +29,7 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
@@ -43,6 +45,7 @@ export default function RootLayout({
           <MSWComponent />
           <QueryProvider>
             <AppShell>{children}</AppShell>
+            <PublishOtpDialog />
             <Toaster />
           </QueryProvider>
         </ThemeProvider>

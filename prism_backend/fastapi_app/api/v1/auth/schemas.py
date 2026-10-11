@@ -53,6 +53,18 @@ class VerificationCodeRequest(BaseModel):
     code: str = Field(..., description="验证码")
 
 
+class SmsVerificationRequest(BaseModel):
+    session_id: str
+    action: Literal["request", "resend", "submit"]
+    code: Optional[str] = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
+
+
+class SmsLoginRequest(BaseModel):
+    platform: Literal["douyin", "kuaishou", "xiaohongshu", "bilibili"]
+    account_id: str = Field(min_length=1, max_length=100)
+    phone: str = Field(pattern=r"^1[0-9]{10}$", repr=False)
+
+
 class CookieInfo(BaseModel):
     """Cookie信息"""
     platform: str = Field(..., description="平台名称")
