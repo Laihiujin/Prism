@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/components/ui/use-toast"
+import { BrowserSelection } from "@/components/settings/browser-selection"
 import { AIServiceProviderCard } from "@/components/settings/ai-service-provider-card"
 import { HermesProviderCard } from "@/components/settings/hermes-provider-card"
 import { CcSwitchPanel } from "@/components/settings/cc-switch-panel"
@@ -660,6 +661,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <BrowserSelection />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,1fr)]">
         <Card className="border-border/70 bg-card">
