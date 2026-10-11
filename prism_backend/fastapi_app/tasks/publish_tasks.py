@@ -51,6 +51,8 @@ class CallbackTask(Task):
 
     def on_success(self, retval, task_id, args, kwargs):
         """任务成功回调"""
+        if (task_state_manager.get_task_state(task_id) or {}).get("status") == "cancelled":
+            return
         logger.info(f"[Celery] Task {task_id} succeeded")
         task_state_manager.update_task_state(
             task_id=task_id,
@@ -64,6 +66,8 @@ class CallbackTask(Task):
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """任务失败回调"""
+        if (task_state_manager.get_task_state(task_id) or {}).get("status") == "cancelled":
+            return
         logger.error(f"[Celery] Task {task_id} failed: {exc}")
         error_msg = f"{str(exc)}\n{traceback.format_exc()}"
 
@@ -208,6 +212,8 @@ def publish_single_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
     task_id = self.request.id
     logger.info(f"[Celery] Starting publish task {task_id}")
 
+    if (task_state_manager.get_task_state(task_id) or {}).get("status") == "cancelled":
+        return {"cancelled": True}
     # ⏰ 调度兜底：任何路径进入 Celery 的任务都尊重 not_before（eta 未设置时也生效）
     nb_value = (task_data or {}).get("not_before")
     if nb_value:
@@ -302,11 +308,27 @@ def publish_single_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
-                    result = loop.run_until_complete(service.handle_single_publish(task_data))
+                    task_data["_execution_task_id"] = task_id
+                    async def run_with_cancellation():
+                        operation = asyncio.create_task(service.handle_single_publish(task_data))
+                        try:
+                            while not operation.done():
+                                if (task_state_manager.get_task_state(task_id) or {}).get("status") == "cancelled":
+                                    operation.cancel()
+                                    await asyncio.gather(operation, return_exceptions=True)
+                                    return {"cancelled": True}
+                                await asyncio.wait({operation}, timeout=1)
+                            return await operation
+                        finally:
+                            if not operation.done():
+                                operation.cancel()
+                    result = loop.run_until_complete(run_with_cancellation())
                 finally:
                     loop.close()
 
                 # 更新素材状态为已发布
+                if result.get('cancelled'):
+                    return result
                 if task_data.get('file_id'):
                     _update_material_status(task_data)
 
