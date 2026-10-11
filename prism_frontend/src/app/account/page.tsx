@@ -1245,6 +1245,10 @@ function AccountPageContent() {
                             <Loader2 className="h-8 w-8 animate-spin text-foreground" />
                             <span className="font-medium text-foreground">登录中…</span>
                             <span>正在确认验证结果并同步账号，请稍候</span>
+                            {activeSessionRef.current && loginMode === "sms" && <div className="w-full space-y-3 text-left">
+                              <p className="text-xs text-muted-foreground">如果平台要求选择关联账号或继续验证，请直接在下方画面操作。选择完成后会自动同步账号。</p>
+                              <RemoteLoginView sessionId={activeSessionRef.current} openByDefault />
+                            </div>}
                           </div>
                         )}
                         {bindingStatus === "code" && (qrImage || smsVerification) && (
