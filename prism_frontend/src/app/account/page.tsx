@@ -1269,9 +1269,9 @@ function AccountPageContent() {
                                       <Button size="sm" disabled={smsBusy || !/^[0-9]{4,8}$/.test(smsCode)} onClick={() => void handleSmsAction("submit")}>{smsBusy ? "处理中…" : "验证"}</Button>
                                       <Button size="sm" variant="secondary" disabled={smsBusy || smsVerification.resend_after > 0} onClick={() => void handleSmsAction("resend")}>{smsVerification.resend_after > 0 ? `${smsVerification.resend_after} 秒后重新发送` : "重新发送"}</Button>
                                     </div>
-                                    {smsVerification.error && <p role="alert" className="text-xs text-destructive">{smsVerification.error}</p>}
                                   </>
                                 )}
+                                {smsVerification.error && <p role="alert" className="text-xs text-destructive">{smsVerification.error}</p>}
                                 {smsMessage && <p role="status" className="text-xs text-muted-foreground">{smsMessage}</p>}
                                 <p className="text-xs text-muted-foreground">验证通过后会自动完成绑定。其他验证方式可在对应平台的登录浏览器中操作。</p>
                               </div>
