@@ -8,6 +8,7 @@ import { ExternalLink, Loader2, Plus, QrCode, RefreshCcw, MonitorSmartphone, Sea
 
 import { AccountEnvironmentSheet } from "@/components/account-environment-sheet"
 import { TwitterBindPanel } from "@/components/account/twitter-bind-panel"
+import { RemoteLoginView } from "@/components/account/remote-login-view"
 
 import {
   AlertDialog,
@@ -1209,7 +1210,7 @@ function AccountPageContent() {
                         <Input id="login-phone" inputMode="tel" autoComplete="tel" placeholder="请输入中国大陆手机号" value={loginPhone} disabled={bindingStatus !== "idle"} onChange={event => setLoginPhone(event.target.value.replace(/[^0-9]/g, "").slice(0, 11))} />
                       </div>}
                       <p className="text-xs text-muted-foreground">
-                        {smsVerification ? "请提供手机收到的验证码" : loginMode === "sms" && supportsSmsLogin ? "输入手机号后开始验证码登录" : isQrPlatform
+                        {smsVerification ? smsVerification.stage === "code" ? "请提供手机收到的验证码" : "请先获取短信验证码；遇到安全验证时打开远程验证画面。" : loginMode === "sms" && supportsSmsLogin ? "输入手机号后开始验证码登录" : isQrPlatform
                           ? "点击按钮获取二维码"
                           : "TikTok / YouTube 需用浏览器登录（不支持扫码）"}
                       </p>
@@ -1271,9 +1272,9 @@ function AccountPageContent() {
                                     </div>
                                   </>
                                 )}
-                                {smsVerification.error && <p role="alert" className="text-xs text-destructive">{smsVerification.error}</p>}
-                                {smsMessage && <p role="status" className="text-xs text-muted-foreground">{smsMessage}</p>}
-                                <p className="text-xs text-muted-foreground">验证通过后会自动完成绑定。其他验证方式可在对应平台的登录浏览器中操作。</p>
+                                {smsVerification.error && <p role="alert" className="text-xs text-destructive">{smsVerification.error.replace("请在登录浏览器中手动完成安全验证。", "请在下方验证画面中完成验证。")}</p>}
+                                {smsMessage && smsMessage !== smsVerification.error && <p role="status" className="text-xs text-muted-foreground">{smsMessage.replace("请在登录浏览器中手动完成安全验证。", "请在下方验证画面中完成验证。")}</p>}
+                                <p className="text-xs text-muted-foreground">验证通过后会自动完成绑定。平台要求安全验证时，请打开下面的远程验证画面手动完成。</p>
                               </div>
                             )}
                             {riskNotice && (
@@ -1284,10 +1285,15 @@ function AccountPageContent() {
                                 </p>
                                 <p className="text-[11px] leading-4 text-amber-200/80">{riskNotice}</p>
                                 <p className="text-[10px] leading-4 text-amber-200/50">
-                                  请在本机弹出的浏览器窗口中完成验证；完成后会自动登录并绑定。
+                                  请打开下方远程验证画面完成验证；通过后会继续登录并绑定。
                                 </p>
                               </div>
                             )}
+                            {activeSessionRef.current && (smsVerification || riskNotice) && <RemoteLoginView
+                              key={`${activeSessionRef.current}-${Boolean(smsVerification?.error || riskNotice)}`}
+                              sessionId={activeSessionRef.current}
+                              openByDefault={Boolean(smsVerification?.error || riskNotice)}
+                            />}
                             <Button size="sm" variant="ghost" className="rounded-xl bg-black" onClick={startBinding}>
                               {smsVerification ? "重新开始登录" : "刷新二维码"}
                             </Button>

@@ -21,7 +21,7 @@ from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 from typing import Dict, Any
 from loguru import logger
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -1464,6 +1464,24 @@ class SmsActionRequest(BaseModel):
     action: str = Field(pattern=r"^(request|resend|submit)$")
     code: str | None = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
 
+
+from automation_worker.remote_login import PointerInput, viewport_frame, pointer_input
+
+@app.get('/qrcode/view/{session_id}')
+async def login_view(session_id: str):
+    session = sessions.get(session_id)
+    if not session:
+        raise HTTPException(404, '登录会话不存在')
+    async with session.setdefault('interaction_lock', asyncio.Lock()):
+        return await viewport_frame(session, session_id)
+
+@app.post('/qrcode/pointer/{session_id}')
+async def login_pointer(session_id: str, payload: PointerInput):
+    session = sessions.get(session_id)
+    if not session:
+        raise HTTPException(404, '登录会话不存在')
+    async with session.setdefault('interaction_lock', asyncio.Lock()):
+        return await pointer_input(session, session_id, payload)
 
 class SmsLoginStartRequest(BaseModel):
     platform: str = Field(pattern=r"^(douyin|kuaishou|xiaohongshu|bilibili)$")
