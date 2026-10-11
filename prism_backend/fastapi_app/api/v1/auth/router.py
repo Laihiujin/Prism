@@ -542,7 +542,7 @@ async def sms_verification(payload: SmsVerificationRequest):
     try:
         response = await get_worker_client().sms_action(
             session.get("worker_session_id", payload.session_id),
-            {"action": payload.action, "code": payload.code},
+            {"action": payload.action, "code": payload.code, "account_choice": payload.account_choice},
         )
     except Exception:
         raise HTTPException(status_code=502, detail="无法连接登录服务，请稍后重试")
