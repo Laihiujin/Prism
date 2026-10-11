@@ -330,7 +330,7 @@ export default function SettingsPage() {
       return "firefox"
     }
     if (selected === "auto") {
-      return defaultPlatformBrowserPreferences[platform] === "firefox" ? "firefox" : "chromium"
+      return activeBrowser?.kind === "firefox" ? "firefox" : "chromium"
     }
     return "chromium"
   }
