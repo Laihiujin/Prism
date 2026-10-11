@@ -2,7 +2,7 @@ import Link from "next/link"
 import { TaskVerifications } from "@/components/publish/task-verifications"
 
 export default function PublishVerificationPage() {
-  return <div className="mx-auto w-full space-y-5">
+  return <div className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-4 md:px-6 md:py-5">
     <nav aria-label="面包屑" className="text-sm text-muted-foreground"><Link href="/tasks" className="hover:underline">任务管理</Link> / 任务发布人工验证</nav>
     <div className="space-y-2">
       <h1 className="text-xl font-semibold">任务发布人工验证</h1>

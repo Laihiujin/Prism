@@ -27,6 +27,8 @@ celery<5.5.0
 
 # ---- 浏览器自动化 ----
 patchright==1.59.1
+# Firefox requires the upstream driver. Chromium stays on Patchright.
+playwright==1.58.0
 selenium
 
 # ---- HTTP 客户端 ----

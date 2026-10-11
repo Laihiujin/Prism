@@ -2,13 +2,13 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Link, Gamepad2, Smartphone, Store, FileText, ImageIcon, Sparkles, CalendarClock, Music2, X } from "lucide-react"
+import { MapPin, Link, Gamepad2, Smartphone, FileText, ImageIcon, Sparkles, CalendarClock, Music2, X } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { backendBaseUrl } from "@/lib/env"
 
 // 发布内容形态：视频 / 图文（图片笔记）
 export type PublishContentKind = "video" | "note"
@@ -114,7 +114,7 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
 
     const submit = () => {
         const n = name.trim()
-        if (!n) return
+        if (!n || (platform === "douyin" && type === "小程序" && !url.trim())) return
         onSelect({
             id: `mount-${platform}-${Date.now()}`,
             name: n,
@@ -128,14 +128,14 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
     // 平台相关类型标签（抖音挂载对象真实下拉：小程序 / 游戏 / 应用）
     const typeOptions = platform === "bilibili"
         ? ["游戏"]
-        : ["小程序", "游戏", "应用"]
+        : platform === "douyin" ? ["小程序", "影视演艺", "标记万物"] : ["小程序", "游戏", "应用"]
 
     return (
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset() }}>
             <DialogTrigger asChild>
                 <Button variant="outline" className="w-full justify-start text-muted-foreground border-border/70 bg-card/20 h-9 hover:bg-accent/40 hover:text-foreground">
                     <Gamepad2 className="w-3 h-3 mr-2" />
-                    <span className="text-xs">添加挂载内容（小程序/游戏/应用）</span>
+                    <span className="text-xs">添加标签（小程序/影视演艺/标记万物）</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="rounded-none border-border bg-black text-foreground shadow-2xl">
@@ -180,15 +180,15 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                         />
                         <p className="text-[10px] text-foreground/35 leading-4">
                             抖音发布时在「添加标签 → 小程序」中搜索该名称并点选首个匹配项；
-                            若给出链接则直接粘贴到小程序链接输入框。找不到会在日志提示人工核对，不阻断发布。
+                            小程序请填写链接；影视演艺与标记万物按名称匹配。候选不存在或资格不足时停止发布。
                         </p>
                     </div>
 
                     {/* 链接（可选，抖音支持直贴） */}
                     <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">
-                            小程序链接（可选）
-                            <span className="ml-1 text-[10px] text-foreground/30 font-normal">抖音界面选择「小程序」后若出现链接输入框则直贴此链接</span>
+                            小程序链接（抖音小程序必填）
+                            <span className="ml-1 text-[10px] text-foreground/30 font-normal">选择小程序时必填</span>
                         </Label>
                         <Input
                             value={url}
@@ -202,7 +202,7 @@ function MiniProgramDialog({ onSelect, platform = "douyin" }: { onSelect: (item:
                         <Button variant="outline" className="border-border/70" onClick={() => setOpen(false)}>
                             取消
                         </Button>
-                        <Button onClick={submit} disabled={!name.trim()}>
+                        <Button onClick={submit} disabled={!name.trim() || (platform === "douyin" && type === "小程序" && !url.trim())}>
                             添加
                         </Button>
                     </div>
@@ -309,6 +309,9 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
     const [hotspot, setHotspot] = usePlatformField(data, onChange, "douyin", "hotspot", "" as string)
     const [whoCanSee, setWhoCanSee] = usePlatformField(data, onChange, "douyin", "whoCanSee", "公开" as string)
     const [savePermission, setSavePermission] = usePlatformField(data, onChange, "douyin", "savePermission", "允许" as "允许" | "不允许")
+    const [coverUploading, setCoverUploading] = useState(false)
+    const [coverError, setCoverError] = useState("")
+    const [syncPlatforms, setSyncPlatforms] = usePlatformField(data, onChange, "douyin", "syncPlatforms", [] as string[])
     const [timing, setTiming] = usePlatformField(data, onChange, "douyin", "timing", "立即发布" as "立即发布" | "定时发布")
     const [publishDatetime, setPublishDatetime] = usePlatformField(data, onChange, "douyin", "publishDatetime", "" as string)
 
@@ -375,7 +378,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                         <MapPin className="w-3 h-3" />
                         添加地点
                     </Label>
-                    <POIDialog onSelect={setSelectedPOI} />
+                    <Input value={selectedPOI?.name || ""} onChange={e => setSelectedPOI(e.target.value ? {name:e.target.value} : null)} placeholder="输入抖音发布页中的地点名称，发布时匹配候选" className="h-9 text-xs bg-card/20 border-border/70" />
                     {selectedPOI && (
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-gradient-to-r from-white/10 to-white/10 border border-border">
                             <MapPin className="w-4 h-4 text-white" />
@@ -421,15 +424,36 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                         accept="image/*"
                         id="douyin-cover-upload"
                         className="hidden"
-                        onChange={e => setCoverFile(e.target.files?.[0]?.name || "")}
+                        disabled={coverUploading}
+                        onChange={async e => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            setCoverUploading(true)
+                            setCoverError("")
+                            try {
+                                const body = new FormData()
+                                body.append("file", file)
+                                const response = await fetch(`${backendBaseUrl}/api/v1/files/upload`, { method: "POST", body })
+                                const result = await response.json()
+                                if (!response.ok || !result.data?.saved_path) throw new Error(result.detail || "封面上传失败")
+                                setCoverFile(result.data.saved_path)
+                            } catch (error) {
+                                setCoverError(error instanceof Error ? error.message : "封面上传失败")
+                            } finally {
+                                setCoverUploading(false)
+                                e.target.value = ""
+                            }
+                        }}
                     />
                     <label
                         htmlFor="douyin-cover-upload"
                         className="inline-flex items-center justify-center gap-2 w-full h-9 px-3 text-xs rounded-md border border-border/70 bg-card/20 text-muted-foreground hover:bg-accent/40 hover:text-foreground cursor-pointer transition-all"
                     >
                         <ImageIcon className="w-3 h-3" />
-                        {coverFile || "上传封面图片"}
+                        {coverUploading ? "正在上传封面…" : coverFile ? "更换已上传封面" : "上传封面图片"}
                     </label>
+                    {coverError && <p role="alert" className="text-xs text-red-400">{coverError}</p>}
+                    {coverFile && <Button type="button" variant="ghost" size="sm" onClick={() => setCoverFile("")}>移除自定义封面</Button>}
                 </div>
 
                 {/* 合集 */}
@@ -438,17 +462,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                         <FileText className="w-3 h-3" />
                         合集
                     </Label>
-                    <Select value={collection || "none"} onValueChange={(v) => setCollection(v === "none" ? "" : v)}>
-                        <SelectTrigger className="w-full h-9 text-xs bg-card/20 border-border/70">
-                            <SelectValue placeholder="请选择合集" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-none bg-black text-foreground border-border/70">
-                            <SelectItem value="none">不加入合集</SelectItem>
-                            <SelectItem value="合集1">合集 · 生活日常</SelectItem>
-                            <SelectItem value="合集2">合集 · 美食探店</SelectItem>
-                            <SelectItem value="合集3">合集 · 旅行日记</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <Input value={collection} onChange={e => setCollection(e.target.value)} placeholder="输入账号已有的合集名称，留空不加入" className="h-9 text-xs bg-card/20 border-border/70" />
                 </div>
 
                 {/* BGM / 音乐（图集/图文可选） */}
@@ -538,6 +552,15 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                     />
                 </div>
 
+                <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">同时发布到</Label>
+                    {["番茄小说", "红果短剧"].map(platform => <div key={platform} className="flex items-center justify-between gap-3">
+                        <Label htmlFor={`douyin-sync-${platform}`} className="text-xs">{platform}</Label>
+                        <Switch id={`douyin-sync-${platform}`} checked={syncPlatforms.includes(platform)} onCheckedChange={checked => setSyncPlatforms(checked ? [...syncPlatforms, platform] : syncPlatforms.filter((value: string) => value !== platform))} />
+                    </div>)}
+                    <p className="text-[10px] text-muted-foreground">留空不同时发布；不保存为账号下次发布的默认选择。</p>
+                </div>
+
                 {/* 谁可以看 */}
                 <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">谁可以看</Label>
@@ -571,7 +594,7 @@ export function DouyinConfig({ data, onChange }: ConfigProps) {
                     </div>
                     {timing === "定时发布" && (
                         <Input
-                            placeholder="YYYY-MM-DD HH:MM"
+                            type="datetime-local"
                             value={publishDatetime}
                             onChange={e => setPublishDatetime(e.target.value)}
                             className="bg-card/20 border-border/70 h-9 text-xs"

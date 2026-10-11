@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
     Boxes,
@@ -61,9 +61,9 @@ const CATEGORY_TABS = [
 ]
 
 const BROWSER_COMPONENTS = [
-    { id: "chromium", name: "Chromium", description: "独立 Chromium 浏览器运行时，安装到 Prism 的 runtime-data。", platform: "macOS / Windows / Linux" },
-    { id: "firefox", name: "Firefox", description: "独立 Firefox 浏览器运行时，可与 Chromium 并存。", platform: "macOS / Windows / Linux" },
-    { id: "patchright", name: "Patchright Chromium", description: "Patchright 自动化引擎及其浏览器驱动。", platform: "macOS / Windows / Linux" },
+    { id: "chromium", name: "Chrome for Testing", description: "Google Chrome for Testing 浏览器，由 Patchright 驱动；安装到 runtime-data。", platform: "macOS / Windows / Linux" },
+    { id: "firefox", name: "Firefox", description: "Firefox 浏览器，使用 Playwright 驱动，可与 Chrome for Testing 并存。", platform: "macOS / Windows / Linux" },
+    { id: "patchright", name: "Patchright 自动化驱动", description: "驱动上面的 Chrome for Testing，并非另一份浏览器。", platform: "macOS / Windows / Linux" },
 ]
 
 function DevToolsGrid({
@@ -95,7 +95,7 @@ export default function ToolsPage() {
     const [browserAction, setBrowserAction] = useState<string | null>(null)
     const [providerAction, setProviderAction] = useState<Record<string, boolean>>({})
 
-    const refreshBrowserRuntime = async () => {
+    const refreshBrowserRuntime = useCallback(async () => {
         try {
             // 桌面壳（Electron）优先走 IPC；网页模式走后端状态接口兜底（与 settings 钩子一致）。
             const api = (window as any).electronAPI?.browserRuntime
@@ -114,7 +114,7 @@ export default function ToolsPage() {
         } catch {
             // 忽略，保留现有状态
         }
-    }
+    }, [base])
 
     useEffect(() => {
         let active = true
@@ -128,7 +128,7 @@ export default function ToolsPage() {
         }
     }, [])
 
-    useEffect(() => { void refreshBrowserRuntime() }, [])
+    useEffect(() => { void refreshBrowserRuntime() }, [refreshBrowserRuntime])
 
     const changeBrowser = async (id: string, action: "install" | "uninstall") => {
         const api = (window as any).electronAPI?.browserRuntime
@@ -145,7 +145,7 @@ export default function ToolsPage() {
                 if (!res.ok) throw new Error(result?.detail || result?.error || `${id} ${action === "install" ? "安装" : "卸载"}失败`)
             }
             if (result?.success === false) throw new Error(result.error || "操作失败")
-            toast({ title: action === "install" ? "浏览器安装完成" : "浏览器已卸载", description: result.output || id })
+            toast({ title: action === "install" ? "浏览器安装检查完成" : "浏览器已卸载", description: result.output || id })
             await refreshBrowserRuntime()
         } catch (error: any) {
             toast({ variant: "destructive", title: action === "install" ? "安装失败" : "卸载失败", description: error?.message || String(error) })
@@ -156,13 +156,12 @@ export default function ToolsPage() {
         const key = `${action}:${id}`
         setProviderAction((prev) => ({ ...prev, [key]: true }))
         try {
-            let result: any
             const endpoint =
                 action === "install" ? `install/${id}`
                 : action === "apply" ? `apply/${id}`
                 : `provider/${id}/uninstall`
             const res = await fetch(`${base}/api/v1/system/browser-runtime/${endpoint}`, { method: "POST" })
-            result = await res.json().catch(() => ({}))
+            const result = await res.json().catch(() => ({}))
             if (!res.ok) throw new Error(result?.detail || result?.error || `${label} ${action === "install" ? "下载" : action === "apply" ? "应用" : "卸载"}失败`)
             if (result?.success === false) throw new Error(result.error || "操作失败")
             const verb = action === "install" ? "下载" : action === "apply" ? "应用" : "卸载"
@@ -187,7 +186,7 @@ export default function ToolsPage() {
                         const busy = browserAction?.endsWith(`:${browser.id}`)
                         return <Card key={browser.id} className="border-border/70 bg-card/40">
                             <CardHeader className="pb-3"><div className="flex items-center justify-between gap-3"><CardTitle className="text-base">{browser.name}</CardTitle><Badge variant="outline" className={installed ? "border-emerald-500/50 text-emerald-300" : "text-muted-foreground"}>{installed ? "已安装" : "未安装"}</Badge></div></CardHeader>
-                            <CardContent className="space-y-3"><p className="text-sm text-muted-foreground">{browser.description}</p><p className="text-xs text-muted-foreground">{browser.platform}</p><div className="flex gap-2"><Button size="sm" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "install")} disabled={Boolean(browserAction)}>{busy && browserAction?.startsWith("install") ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}{installed ? "重装" : "安装"}</Button><Button size="sm" variant="destructive" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "uninstall")} disabled={Boolean(browserAction) || !installed}><Trash2 className="mr-1.5 h-3.5 w-3.5" />卸载</Button></div>{state?.path && <code className="block truncate text-[10px] text-muted-foreground">{state.path}</code>}</CardContent>
+                            <CardContent className="space-y-3"><p className="text-sm text-muted-foreground">{browser.description}</p><p className="text-xs text-muted-foreground">{browser.platform}</p><div className="flex gap-2"><Button size="sm" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "install")} disabled={Boolean(browserAction)}>{busy && browserAction?.startsWith("install") ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}{installed ? "检查安装" : "安装"}</Button><Button size="sm" variant="destructive" className="rounded-lg" onClick={() => void changeBrowser(browser.id, "uninstall")} disabled={Boolean(browserAction) || !installed}><Trash2 className="mr-1.5 h-3.5 w-3.5" />卸载</Button></div>{state?.path && <code className="block truncate text-[10px] text-muted-foreground">{state.path}</code>}</CardContent>
                         </Card>
                     })}
                 </div>
@@ -223,7 +222,7 @@ export default function ToolsPage() {
                                     <div className="mt-4 flex flex-wrap gap-2">
                                         <Button size="sm" className="rounded-lg flex-1" onClick={() => void changeProvider(provider.id, "install", provider.name)} disabled={busy}>
                                             {providerAction[`install:${provider.id}`] ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
-                                            {installed ? "检查新版本" : "下载"}
+                                            {providerAction[`install:${provider.id}`] ? "下载中…" : installed ? "检查新版本" : "下载"}
                                         </Button>
                                         <Button size="sm" className="rounded-lg" variant="secondary" onClick={() => void changeProvider(provider.id, "apply", provider.name)} disabled={busy || !installed || active}>
                                             {providerAction[`apply:${provider.id}`] ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
@@ -335,7 +334,7 @@ export default function ToolsPage() {
     })
 
     const [category, setCategory] = useState<string>("all")
-    const tools: DevTool[] = data?.result?.tools || []
+    const tools: DevTool[] = useMemo(() => data?.result?.tools || [], [data?.result?.tools])
     const visibleTools = useMemo(
         () => (category === "all" ? tools : tools.filter((t) => t.type === category)),
         [tools, category]
