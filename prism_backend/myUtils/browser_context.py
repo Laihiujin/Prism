@@ -132,6 +132,14 @@ def _platform_browser_pref(platform: Optional[str]) -> Optional[str]:
     v = (value or "").strip().lower()
     if v in {"chromium", "firefox"}:
         return v
+    try:
+        import json
+        from tools.browser_provider_registry import browsers_root
+        active = json.loads((browsers_root() / "active.json").read_text(encoding="utf-8"))
+        if active.get("kind") in {"chromium", "firefox"}:
+            return active["kind"]
+    except (OSError, ValueError):
+        pass
     return None
 
 
