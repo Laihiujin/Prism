@@ -202,7 +202,7 @@ function AccountPageContent() {
   const [qrImage, setQrImage] = useState<string | null>(null)
   // 风控/人工验证提示（扫码轮询返回 risk_control 时展示；验证完成后清空）
   const [riskNotice, setRiskNotice] = useState<string | null>(null)
-  const [smsVerification, setSmsVerification] = useState<{ stage: "choose" | "code"; phone: string; resend_after: number; error: string } | null>(null)
+  const [smsVerification, setSmsVerification] = useState<{ stage: "choose" | "code" | "secondary"; phone: string; resend_after: number; error: string } | null>(null)
   const [smsCode, setSmsCode] = useState("")
   const [smsBusy, setSmsBusy] = useState(false)
   const [smsMessage, setSmsMessage] = useState("")
@@ -633,6 +633,10 @@ function AccountPageContent() {
           if (activeSessionRef.current !== sessionId) return
           if (statusData.data?.verification) {
             setSmsVerification(statusData.data.verification)
+            if (statusData.data.verification.stage === "secondary") {
+              smsLoginStartedRef.current = null
+              setBindingStatus("code")
+            }
           }
           if (smsLoginStartedRef.current !== null && pollStartedAt > smsLoginStartedRef.current && statusData.data?.verification?.error) {
             smsLoginStartedRef.current = null
@@ -670,8 +674,8 @@ function AccountPageContent() {
               description: "Confirm login on your phone.",
             })
           } else if (statusData.status === 'risk_control') {
-            // 风控/验证码：不停止轮询，展示人工验证横幅并等待用户在本机浏览器完成
-            setRiskNotice(statusData.message || "平台触发风控/验证码，请在本机弹出的浏览器窗口中手动完成验证")
+            // 风控/验证码：不停止轮询，展示人工验证横幅并等待用户在前端远程画面完成
+            setRiskNotice(statusData.message || "平台触发风控/验证码，请在下方远程验证画面中手动完成验证")
             // 风控等待人工验证时不断刷新超时，避免 5 分钟到点被误杀
             armTimeout()
           } else if (statusData.status === 'expired') {
@@ -1257,7 +1261,7 @@ function AccountPageContent() {
                             </>}
                             {smsVerification && (
                               <div className="w-full space-y-3 rounded-xl border border-border p-3 text-left">
-                                <p className="text-sm font-semibold">短信身份验证</p>
+                                <p className="text-sm font-semibold">{smsVerification.stage === "secondary" ? "二次手机号验证" : "短信身份验证"}</p>
                                 {smsVerification.stage === "choose" ? (
                                   <>
                                     <p className="text-xs text-muted-foreground">点击发送验证码，收到后在这里输入。</p>
@@ -1266,11 +1270,12 @@ function AccountPageContent() {
                                 ) : (
                                   <>
                                     <p className="text-xs text-muted-foreground">接收手机号：{smsVerification.phone || "账号绑定的手机"}</p>
-                                    <Label htmlFor="douyin-sms-code">短信验证码</Label>
+                                    {smsVerification.stage === "secondary" && <p role="status" className="text-xs text-muted-foreground">平台要求再次验证手机号。请在下方画面点击获取语音验证码，收到后在这里输入。</p>}
+                                    <Label htmlFor="douyin-sms-code">{smsVerification.stage === "secondary" ? "二次验证码" : "短信验证码"}</Label>
                                     <Input id="douyin-sms-code" inputMode="numeric" autoComplete="one-time-code" maxLength={8} placeholder="请输入验证码" value={smsCode} disabled={smsBusy} onChange={event => setSmsCode(event.target.value.replace(/[^0-9]/g, ""))} />
                                     <div className="flex flex-wrap gap-2">
                                       <Button size="sm" disabled={smsBusy || !/^[0-9]{4,8}$/.test(smsCode)} onClick={() => void handleSmsAction("submit")}>{smsBusy ? "处理中…" : "验证"}</Button>
-                                      <Button size="sm" variant="secondary" disabled={smsBusy || smsVerification.resend_after > 0} onClick={() => void handleSmsAction("resend")}>{smsVerification.resend_after > 0 ? `${smsVerification.resend_after} 秒后重新发送` : "重新发送"}</Button>
+                                      {smsVerification.stage !== "secondary" && <Button size="sm" variant="secondary" disabled={smsBusy || smsVerification.resend_after > 0} onClick={() => void handleSmsAction("resend")}>{smsVerification.resend_after > 0 ? `${smsVerification.resend_after} 秒后重新发送` : "重新发送"}</Button>}
                                     </div>
                                   </>
                                 )}
