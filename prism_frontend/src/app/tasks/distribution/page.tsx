@@ -538,6 +538,6 @@ export default function DistributionPage() {
                 />
             )}
 
-              </div>
+        </div>
     )
 }
