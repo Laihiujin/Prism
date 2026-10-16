@@ -12,6 +12,8 @@
 """
 from __future__ import annotations
 
+from utils.subprocesses import hidden_process_kwargs
+
 import glob
 import importlib.metadata
 import importlib.util
@@ -217,6 +219,7 @@ def _ensure_patchright() -> Dict[str, Any]:
         text=True,
         encoding="utf-8",
         errors="replace",
+        **hidden_process_kwargs(),
     )
     return res.returncode == 0, (res.stdout + res.stderr)
 
@@ -261,6 +264,7 @@ def install_component(target: str) -> Dict[str, Any]:
         text=True,
         encoding="utf-8",
         errors="replace",
+        **hidden_process_kwargs(),
     )
     return {
         "success": res.returncode == 0,
@@ -369,18 +373,18 @@ def _install_github_provider(provider_id: str) -> Dict[str, Any]:
             seven_zip = seven_zip or shutil.which("7z") or shutil.which("7za") or shutil.which("7zr")
             if not seven_zip:
                 raise RuntimeError("7zip_runtime_missing")
-            subprocess.run([seven_zip, "x", str(archive), f"-o{staged}", "-y"], check=True, capture_output=True)
+            subprocess.run([seven_zip, "x", str(archive), f"-o{staged}", "-y"], check=True, capture_output=True, **hidden_process_kwargs())
         elif lower_name.endswith(".dmg") and system == "darwin":
             mount = Path(temp) / "mount"
             mount.mkdir()
-            subprocess.run(["hdiutil", "attach", str(archive), "-mountpoint", str(mount), "-nobrowse"], check=True, capture_output=True)
+            subprocess.run(["hdiutil", "attach", str(archive), "-mountpoint", str(mount), "-nobrowse"], check=True, capture_output=True, **hidden_process_kwargs())
             try:
                 apps = list(mount.glob("*.app"))
                 if not apps:
                     raise RuntimeError("fingerprint_chromium_app_missing")
                 shutil.copytree(apps[0], staged / apps[0].name)
             finally:
-                subprocess.run(["hdiutil", "detach", str(mount)], check=False, capture_output=True)
+                subprocess.run(["hdiutil", "detach", str(mount)], check=False, capture_output=True, **hidden_process_kwargs())
         else:
             raise RuntimeError(f"unsupported_browser_archive:{archive.suffix}")
         executable_names = {"chromium", "chrome", "chrome.exe", "ungoogled-chromium", "helium", "helium.exe"}
@@ -389,7 +393,7 @@ def _install_github_provider(provider_id: str) -> Dict[str, Any]:
             shutil.rmtree(staged)
             raise RuntimeError("fingerprint_chromium_executable_missing")
         if system == "darwin":
-            architectures = subprocess.run(["lipo", "-archs", str(executable)], capture_output=True, text=True, check=True).stdout.split()
+            architectures = subprocess.run(["lipo", "-archs", str(executable)], capture_output=True, text=True, check=True, **hidden_process_kwargs()).stdout.split()
             required = "arm64" if machine in {"arm64", "aarch64"} else "x86_64"
             if required not in architectures:
                 shutil.rmtree(staged)

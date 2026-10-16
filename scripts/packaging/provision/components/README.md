@@ -5,7 +5,7 @@
 需要自己的 Python 运行时和依赖，不能和共享 `prismenv` 混在一起（否则会互相抢版本）。
 
 共享 `prismenv` 只留 Prism 本体 + **被后端进程直接 import 的库**（`biliup`、
-`douyin_tiktok_api`）。这两类是靠 `requirements.prism.lock.txt` 锁版本，不走隔离。
+`douyin_tiktok_api`）。这两类是靠 `requirements.txt` 锁版本，不走隔离。
 
 ## 每个 `<name>/env.yaml` 只写 conda 层
 

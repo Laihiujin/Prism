@@ -2,6 +2,8 @@
 系统维护与工具 API 路由
 将原本的脚本功能通过 FastAPI 接口暴露
 """
+
+from utils.subprocesses import hidden_process_kwargs
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Body
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
@@ -133,6 +135,7 @@ def _run_runtime_command(args: list[str]) -> subprocess.CompletedProcess:
         text=True,
         encoding="utf-8",
         errors="replace",
+        **hidden_process_kwargs(),
     )
 
 
@@ -163,6 +166,7 @@ def _run_hibbiki_chromium_install() -> subprocess.CompletedProcess:
         text=True,
         encoding="utf-8",
         errors="replace",
+        **hidden_process_kwargs(),
     )
 
 
@@ -792,8 +796,9 @@ async def restart_frontend():
             raise HTTPException(status_code=404, detail=f"Launcher not found: {script_path}")
 
         subprocess.Popen(
-            ["cmd", "/c", "start", "", str(script_path)],
-            cwd=str(script_path.parent)
+            ["cmd", "/d", "/c", str(script_path)],
+            cwd=str(script_path.parent),
+            **hidden_process_kwargs(),
         )
 
         return {

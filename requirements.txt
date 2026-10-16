@@ -42,7 +42,7 @@ openai
 tenacity
 
 # ---- 平台 SDK ----
-biliup
+biliup==1.2.9             # 已验证版本，避免桌面部署触发新版 Rust 源码构建
 xhs
 
 # ---- 抖音/快手接口集成 ----

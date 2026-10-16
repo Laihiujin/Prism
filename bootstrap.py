@@ -2,7 +2,7 @@
 """Prism 一键环境引导（跨平台）。
 
 这是 Prism 自托管部署的“配方”入口：在一台干净的机器上，
-用一个命令就把 Python venv（prismenv）、Python 依赖、前端/根目录 npm 依赖
+用一个命令就把 micromamba conda 环境（prismenv）、Python 依赖、前端/根目录 npm 依赖
 （根目录提供 macOS 用的 pm2）、.env、Redis、浏览器（Chromium / Firefox）一次性准备到可运行状态。
 
 它把之前散落在 README / 命令行里的手工步骤统一起来，
@@ -27,7 +27,7 @@
   脚本 / 打包 / README / 桌面端都依赖这个名字）。不再使用 `.venv`。
 - Redis 是系统服务（不是 pip 包），本脚本负责探测并给出安装/启动指引，
   但不会擅自改系统；请按提示手动安装。
-- 幂等依赖：venv 内 `.requirements-ready` 时间戳文件，若比 requirements 文件新则跳过 pip 安装。
+- 幂等依赖：环境内 `.requirements-ready` 时间戳文件，若比 requirements 文件新则跳过 pip 安装。
 """
 from __future__ import annotations
 
@@ -37,13 +37,15 @@ import os
 import shutil
 import subprocess
 import sys
+import time
+import urllib.request
 from pathlib import Path
 
 # Preserve the drive created by start.bat's pushd. resolve() dereferences
 # mapped network drives back to UNC, which cmd.exe cannot use as its cwd.
 REPO_ROOT = Path(os.path.abspath(__file__)).parent
-VENV_NAME = "prismenv"
-VENV_DIR = REPO_ROOT / VENV_NAME
+ENV_NAME = "prismenv"
+ENV_DIR = REPO_ROOT / ENV_NAME
 FRONTEND_DIR = REPO_ROOT / "prism_frontend"
 REQUIREMENTS = [REPO_ROOT / "requirements.txt"]
 REQUIREMENTS_DEV = [REPO_ROOT / "requirements-dev.txt"]
@@ -64,10 +66,10 @@ _SYSTEM_CHROME_PATHS = [
 ]
 
 
-def _venv_python() -> Path:
+def _runtime_python() -> Path:
     if os.name == "nt":
-        return VENV_DIR / "Scripts" / "python.exe"
-    return VENV_DIR / "bin" / "python"
+        return ENV_DIR / "python.exe"
+    return ENV_DIR / "bin" / "python"
 
 
 def _log(msg: str) -> None:
@@ -76,6 +78,8 @@ def _log(msg: str) -> None:
 
 def _run(cmd: list[str], *, check: bool = True, **kwargs) -> subprocess.CompletedProcess:
     kwargs.setdefault("cwd", str(REPO_ROOT))
+    if os.name == "nt":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
     # Windows utilities may emit GBK even when the parent uses PYTHONUTF8.
     if kwargs.get("text") or kwargs.get("universal_newlines") or kwargs.get("encoding"):
         kwargs.setdefault("errors", "replace")
@@ -102,8 +106,10 @@ def _iter_python_candidates() -> list[str]:
             found.append(p)
     for cand in ("python3.11", "python3.12", "python3", "python", "py"):
         exe = shutil.which(cand)
-        if exe and exe not in found:
+        if exe and exe not in found and not Path(exe).absolute().is_relative_to(ENV_DIR):
             found.append(exe)
+    if not Path(sys.executable).absolute().is_relative_to(ENV_DIR) and sys.executable not in found:
+        found.append(sys.executable)
     return found
 
 
@@ -140,16 +146,17 @@ def _base_python() -> str:
     )
 
 
-def ensure_venv() -> bool:
-    """创建 prismenv 虚拟环境（已存在则跳过）。返回是否新建。"""
-    py = _venv_python()
-    if py.exists():
-        _log(f"虚拟环境已存在: {VENV_DIR}")
+def ensure_runtime() -> bool:
+    """通过统一供给器创建 micromamba 环境。"""
+    py = _runtime_python()
+    if py.exists() and (ENV_DIR / "conda-meta").is_dir() and (ENV_DIR / "prism-runtime.json").is_file():
+        _log(f"micromamba 环境已存在: {ENV_DIR}")
         return False
     base = _base_python()
-    _log(f"创建虚拟环境 prismenv（base: {base}）...")
-    _run([base, "-m", "venv", str(VENV_DIR)])
-    _log("OK 虚拟环境创建完成")
+    _log("使用 micromamba 供给 prismenv ...")
+    _run([base, str(REPO_ROOT / "scripts/packaging/provision/provision.py"),
+          "--force", "--skip-inject"])
+    _log("OK micromamba 环境创建完成")
     return True
 
 
@@ -165,10 +172,10 @@ def _requirements_recent_enough(stamp: Path, files: list[Path]) -> bool:
 
 def ensure_python_deps(*, dev: bool) -> None:
     """安装 requirements.txt（可选 dev）到 prismenv。幂等。"""
-    py = _venv_python()
+    py = _runtime_python()
     if not py.exists():
-        raise RuntimeError("prismenv 虚拟环境不存在，请先运行 ensure_venv")
-    stamp = VENV_DIR / STAMP_NAME
+        raise RuntimeError("prismenv 虚拟环境不存在，请先运行 ensure_runtime")
+    stamp = ENV_DIR / STAMP_NAME
     files = list(REQUIREMENTS) + (list(REQUIREMENTS_DEV) if dev else [])
     if _requirements_recent_enough(stamp, files):
         _log("Python 依赖已是最新，跳过安装")
@@ -284,6 +291,8 @@ def ensure_node_deps() -> None:
 
 def _redis_status() -> tuple[bool, str]:
     cli = shutil.which("redis-cli")
+    if not cli and (ENV_DIR / "bin" / "redis-cli").is_file():
+        cli = str(ENV_DIR / "bin" / "redis-cli")
     bundled = REPO_ROOT / "desktop-electron" / "resources" / "redis"
     if not cli and os.name == "nt" and (bundled / "redis-cli.exe").is_file():
         cli = str(bundled / "redis-cli.exe")
@@ -294,7 +303,7 @@ def _redis_status() -> tuple[bool, str]:
                 return True, "已运行"
         except Exception:
             pass
-    if shutil.which("redis-server") or (os.name == "nt" and (bundled / "redis-server.exe").is_file()):
+    if shutil.which("redis-server") or (ENV_DIR / "bin" / "redis-server").is_file() or (os.name == "nt" and (bundled / "redis-server.exe").is_file()):
         return False, "已安装未运行"
     return False, "未安装"
 
@@ -420,7 +429,7 @@ def ensure_browsers(*, auto: bool) -> bool:
     if not auto:
         _log("浏览器: 未发现 Chromium（可用 python3 bootstrap.py --browsers 安装）")
         return False
-    py = _venv_python()
+    py = _runtime_python()
     if not py.exists():
         _log("浏览器: 虚拟环境不存在，跳过安装")
         return False
@@ -453,6 +462,50 @@ def _pm2_env() -> dict:
     return env
 
 
+def _verify_started_services(names: list[str], timeout: int = 40) -> bool:
+    """Require every enabled process to stay online without restarting."""
+    script = (
+        "const p=require('pm2');p.connect(e=>{if(e)process.exit(1);"
+        "p.list((e,rows)=>{if(e)process.exit(1);console.log(JSON.stringify(rows.map(x=>"
+        "({name:x.name,status:x.pm2_env.status,restarts:x.pm2_env.restart_time}))));p.disconnect()})})"
+    )
+    deadline = time.monotonic() + timeout
+    stable_since = None
+    last = {}
+    while time.monotonic() < deadline:
+        result = _run([shutil.which("node") or "node", "-e", script], env=_pm2_env(),
+                      capture_output=True, text=True, check=False)
+        try:
+            last = {row["name"]: row for row in json.loads(result.stdout)}
+        except (ValueError, TypeError):
+            last = {}
+        failed = [name for name in names if last.get(name, {}).get("restarts", 0) > 0
+                  or last.get(name, {}).get("status") in {"errored", "stopped"}]
+        if failed:
+            _log("[ERROR] 服务退出或发生重启: " + ", ".join(failed))
+            _run([str(_pm2_bin()), "stop", *failed], env=_pm2_env(), check=False)
+            return False
+        ready = all(last.get(name, {}).get("status") == "online" for name in names)
+        if ready:
+            stable_since = stable_since or time.monotonic()
+            if time.monotonic() - stable_since >= 8:
+                try:
+                    for url in ("http://127.0.0.1:3000/", "http://127.0.0.1:7001/health"):
+                        with urllib.request.urlopen(url, timeout=5) as response:
+                            if response.status != 200:
+                                raise ValueError(f"HTTP {response.status}")
+                    _log("全部已启用服务稳定运行，无重启: " + ", ".join(names))
+                    return True
+                except Exception:
+                    pass
+        else:
+            stable_since = None
+        time.sleep(2)
+    _log("[ERROR] 服务启动验证超时: " + ", ".join(
+        f"{name}={last.get(name, {}).get('status', 'missing')}" for name in names))
+    return False
+
+
 def _pm2_start() -> int:
     """用 PM2 拉起整套服务（假定环境已就绪）。"""
     pm2 = _pm2_bin()
@@ -461,7 +514,7 @@ def _pm2_start() -> int:
         return 1
     env = _pm2_env()
     pm2 = str(pm2)
-    py = str(_venv_python())
+    py = str(_runtime_python())
     runtime = str(REPO_ROOT / "scripts" / "prism_runtime.py")
 
     _run([pm2, "delete", "all"], check=False, env=env)
@@ -496,9 +549,11 @@ def _pm2_start() -> int:
             services.append(name)
         else:
             _log(f"跳过尚未安装的可选服务: {name}")
-    _run([pm2, "start", str(REPO_ROOT / "ecosystem.config.js"), "--only",
+    result = _run([pm2, "start", str(REPO_ROOT / "ecosystem.config.js"), "--only",
           ",".join(services),
           "--update-env"], check=False, env=env)
+    if result.returncode != 0 or not _verify_started_services(core.split(",") + services):
+        return 1
 
     try:
         backend_url = json.loads((REPO_ROOT / "runtime-data" / "runtime.json").read_text()).get("backend_url", "http://127.0.0.1:7000")
@@ -545,14 +600,14 @@ def _bootstrap(*, dev: bool, no_browsers: bool, check: bool) -> int:
         _log("检查模式（只读）...")
         running, state = _redis_status()
         _log(f"Redis: {state}")
-        _log(f"prismenv python: {_venv_python()} -> {'存在' if _venv_python().exists() else '不存在'}")
+        _log(f"prismenv python: {_runtime_python()} -> {'存在' if _runtime_python().exists() else '不存在'}")
         _log(f"前端 node_modules: {'存在' if (FRONTEND_DIR / 'node_modules').exists() else '不存在'}")
         _log(f"根目录 pm2: {'存在' if _pm2_bin() else '不存在'}")
         _log(f"浏览器: {'可用' if (_chrome_executable() or _chromium_in_browsers()) else '需安装'}")
         _log(f"xurl: {'可用' if _xurl_available() else '需安装 (npm install -g @xdevplatform/xurl)'}")
         return 0
 
-    ensure_venv()
+    ensure_runtime()
     ensure_python_deps(dev=dev)
     ensure_env()
     ensure_node_deps()

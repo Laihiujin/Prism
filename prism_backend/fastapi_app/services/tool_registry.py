@@ -13,6 +13,8 @@
 """
 from __future__ import annotations
 
+from utils.subprocesses import hidden_process_kwargs
+
 import json
 import os
 import shutil
@@ -120,7 +122,8 @@ class DevTool:
             return False
         try:
             r = subprocess.run(
-                cmd, shell=True, capture_output=True, timeout=10
+                cmd, shell=True, capture_output=True, timeout=10,
+                **hidden_process_kwargs(),
             )
             return r.returncode == 0
         except Exception:
@@ -240,7 +243,7 @@ def open_url(url: str) -> None:
     else:
         cmd = f'xdg-open "{url}"'
     try:
-        subprocess.Popen(cmd, shell=True)
+        subprocess.Popen(cmd, shell=True, **hidden_process_kwargs())
     except Exception as exc:
         logger.error(f"[Tools] 打开 URL 失败: {exc}")
 
@@ -395,6 +398,7 @@ class DevToolRegistry:
                 r = subprocess.run(
                     ["git", "clone", "--depth", "1", tool.repo, str(target)],
                     capture_output=True, text=True, timeout=600,
+                    **hidden_process_kwargs(),
                 )
                 if r.returncode != 0:
                     raise RuntimeError(f"克隆失败: {r.stderr[:300]}")
@@ -432,6 +436,7 @@ class DevToolRegistry:
             r = subprocess.run(
                 install_cmd, shell=True, capture_output=True, text=True,
                 timeout=1200, cwd=cwd,
+                **hidden_process_kwargs(),
             )
             if r.returncode != 0 and not tool.is_installed():
                 logger.warning(f"[Tools] {tool.name} 安装命令返回非零但可继续: {r.stderr[:200]}")
@@ -463,7 +468,7 @@ class DevToolRegistry:
         if "npm install -g" in tool.install_cmd:
             pkg = tool.install_cmd.split("npm install -g")[-1].strip()
             if pkg:
-                subprocess.run(["npm", "uninstall", "-g", pkg], capture_output=True, timeout=120)
+                subprocess.run(["npm", "uninstall", "-g", pkg], capture_output=True, timeout=120, **hidden_process_kwargs())
                 removed = True
 
         return {"success": True, "message": f"{tool.name} 已卸载", "removed": removed}
@@ -479,7 +484,7 @@ class DevToolRegistry:
         if not tool.is_installed():
             raise RuntimeError(f"{tool.name} 尚未安装，无法打开")
         try:
-            subprocess.Popen(launch_cmd, shell=True)
+            subprocess.Popen(launch_cmd, shell=True, **hidden_process_kwargs())
             return {"success": True, "message": f"已打开 {tool.name}"}
         except Exception as e:
             logger.error(f"[Tools] 打开 {tool.name} 失败: {e}")
@@ -499,6 +504,7 @@ class DevToolRegistry:
         r = subprocess.run(
             tool.build_cmd, shell=True, capture_output=True, text=True,
             timeout=1200, cwd=cwd,
+            **hidden_process_kwargs(),
         )
         if r.returncode != 0:
             logger.error(f"[Tools] 构建 {tool.name} 失败: {r.stderr[:500]}")

@@ -1,0 +1,21 @@
+# Local credentials belong in ignored config.yaml, never in the desktop package.
+TokenManager:
+  douyin:
+    msToken:
+      url: ""
+      magic: 0
+      version: 0
+      dataType: 0
+      strData: ""
+      User-Agent: "Mozilla/5.0"
+    ttwid:
+      url: ""
+      data: ""
+    headers:
+      Accept-Language: "zh-CN,zh;q=0.9"
+      User-Agent: "Mozilla/5.0"
+      Referer: "https://www.douyin.com/"
+      Cookie: ""
+    proxies:
+      http:
+      https:

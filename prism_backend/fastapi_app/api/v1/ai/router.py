@@ -1,3 +1,5 @@
+
+from utils.subprocesses import hidden_process_kwargs
 from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -604,7 +606,8 @@ async def run_script(request: ScriptRunRequest):
             capture_output=True,
             text=True,
             timeout=300,  # 5分钟超时
-            cwd=str(settings.BASE_DIR)
+            cwd=str(settings.BASE_DIR),
+            **hidden_process_kwargs(),
         )
         
         duration = time.time() - start_time

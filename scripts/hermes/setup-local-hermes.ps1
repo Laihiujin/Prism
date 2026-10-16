@@ -10,7 +10,7 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $hermesRoot = Join-Path $repoRoot "tools\hermes-agent"
 $hermesHome = Join-Path $repoRoot "tools\hermes-home"
 $prismenvPath = Join-Path $repoRoot "prismenv"
-$pythonExe = Join-Path $prismenvPath "Scripts\python.exe"
+$pythonExe = Join-Path $prismenvPath "python.exe"
 $runtimeStamp = Join-Path $prismenvPath ".hermes-runtime-ready"
 $hermesConfigPath = Join-Path $hermesRoot "hermes_cli\config.py"
 $requiredExistingPaths = @(
@@ -67,7 +67,8 @@ if (-not (Test-Path $hermesRoot)) {
 }
 
 if (-not (Test-Path $pythonExe)) {
-    python -m venv $prismenvPath
+    python (Join-Path $repoRoot "scripts\packaging\provision\provision.py") --force --skip-inject
+    if ($LASTEXITCODE -ne 0) { throw "micromamba runtime provisioning failed" }
 }
 
 if (-not (Test-Path $pythonExe)) {

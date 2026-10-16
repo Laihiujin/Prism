@@ -7,6 +7,8 @@ WebUI state survive source refreshes.
 
 from __future__ import annotations
 
+from utils.subprocesses import hidden_process_kwargs
+
 import asyncio
 import json
 import shutil
@@ -95,6 +97,7 @@ def _git(*args: str, check: bool = True) -> str:
         errors="replace",
         timeout=120,
         check=False,
+        **hidden_process_kwargs(),
     )
     if check and result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout or "git failed").strip())
@@ -151,6 +154,7 @@ def _resolve_deps_with(python_exe: Path) -> list[str]:
         [str(python_exe), "-c", code],
         cwd=str(get_hermes_source_path()),
         capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
+        **hidden_process_kwargs(),
     )
     if result.returncode != 0 or not result.stdout.strip():
         raise RuntimeError("Failed to resolve Hermes dependencies from pyproject.toml")
@@ -184,6 +188,7 @@ def apply_update() -> Dict[str, Any]:
                  "-Branch", branch, "-Force"],
                 capture_output=True, text=True, encoding="utf-8", errors="replace",
                 timeout=1800, check=False,
+                **hidden_process_kwargs(),
             )
             if result.returncode != 0:
                 raise RuntimeError((result.stderr or result.stdout or "Hermes 更新失败").strip()[-4000:])
@@ -199,26 +204,27 @@ def apply_update() -> Dict[str, Any]:
 
             # 确保 prismenv 存在
             if not python_exe.exists():
-                from .hermes_config import get_prismenv_root
+                from .hermes_config import get_repo_root
                 base = sys.executable
-                subprocess.run([base, "-m", "venv", str(get_prismenv_root())], check=True, timeout=300)
+                subprocess.run([base, str(get_repo_root() / "scripts/packaging/provision/provision.py"),
+                                "--force", "--skip-inject"], check=True, timeout=1800, **hidden_process_kwargs())
 
             # 升级 pip 基础组件
             subprocess.run([str(python_exe), "-m", "pip", "install", "--upgrade",
                             "pip", "wheel", "setuptools"],
-                           capture_output=True, text=True, timeout=300, check=True)
+                           capture_output=True, text=True, timeout=300, check=True, **hidden_process_kwargs())
             subprocess.run([str(python_exe), "-m", "pip", "uninstall", "-y",
                             "openmanus", "browser-use", "langchain-openai"],
-                           capture_output=True, text=True, timeout=120)
+                           capture_output=True, text=True, timeout=120, **hidden_process_kwargs())
 
             # 安装 Hermes 依赖（base + web）
             deps = _resolve_deps_with(python_exe)
             subprocess.run([str(python_exe), "-m", "pip", "install", *deps],
-                           capture_output=True, text=True, timeout=1200, check=True)
+                           capture_output=True, text=True, timeout=1200, check=True, **hidden_process_kwargs())
 
             # 打上就绪标记
             version = subprocess.run([str(python_exe), "--version"], capture_output=True,
-                                     text=True).stdout.strip()
+                                     text=True, **hidden_process_kwargs()).stdout.strip()
             stamp.parent.mkdir(parents=True, exist_ok=True)
             stamp.write_text(f"{version}\n", encoding="utf-8")
     except Exception as exc:
