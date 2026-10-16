@@ -51,19 +51,6 @@
     ],
     "extraResources": [
       {
-        "from": "../prismenv",
-        "to": "prismenv",
-        "filter": [
-          "**/*",
-          "!**/__pycache__/**",
-          "!**/*.pyc",
-          "!**/*.pyo",
-          "!**/nul",
-          "!**/.prism-relocated",
-          "!**/prism-runtime.json.bak"
-        ]
-      },
-      {
         "from": "../tools/hermes-agent",
         "to": "tools/hermes-agent",
         "filter": [
@@ -75,7 +62,6 @@
           "!**/.pytest_cache/**",
           "!**/tests/**",
           "!**/node_modules/**",
-          "!**/web/**",
           "!**/.venv/**",
           "!**/.hermes/**",
           "!**/*.egg-info/**",
@@ -202,6 +188,32 @@
           "conf.py",
           "conf.example.py"
         ]
+      },
+      {
+        "from": "../scripts/runtime",
+        "to": "scripts/runtime",
+        "filter": [
+          "*.cjs",
+          "*.json"
+        ]
+      },
+      {
+        "from": "../scripts/packaging/provision",
+        "to": "scripts/packaging/provision",
+        "filter": [
+          "*.py",
+          "*.json",
+          "*.txt",
+          "components/**"
+        ]
+      },
+      {
+        "from": "../requirements.txt",
+        "to": "requirements.txt"
+      },
+      {
+        "from": "../scripts/ensure-node.ps1",
+        "to": "scripts/ensure-node.ps1"
       }
     ],
     "win": {

@@ -57,8 +57,10 @@ def get_prismenv_root() -> Path:
             return parent.parent
         return parent
 
+    component_root = Path(os.getenv("PRISM_COMPONENT_ENV_DIR", str(get_repo_root() / "prism_components")))
     candidates = [
-        get_repo_root() / "prismenv",
+        component_root / "hermes",
+        Path(os.getenv("PRISM_ENV_DIR", str(get_repo_root() / "prismenv"))),
         get_source_repo_root() / "prismenv",
     ]
     for candidate in candidates:
@@ -76,7 +78,7 @@ def get_workspace_root() -> Path:
 
 
 def get_hermes_source_path() -> Path:
-    return get_repo_root() / "tools" / "hermes-agent"
+    return Path(os.environ.get("PRISM_HERMES_SOURCE", get_repo_root() / "tools" / "hermes-agent"))
 
 
 def _normalize_path_key(raw: object) -> Optional[str]:
@@ -129,7 +131,7 @@ def build_hermes_pythonpath(
 
 
 def get_hermes_webui_path() -> Path:
-    return get_repo_root() / "tools" / "hermes-webui"
+    return Path(os.environ.get("PRISM_HERMES_WEBUI_SOURCE", get_repo_root() / "tools" / "hermes-webui"))
 
 
 def get_hermes_dashboard_dist_path() -> Path:
@@ -153,6 +155,9 @@ def get_hermes_webui_state_path() -> Path:
 
 
 def get_hermes_python_path() -> Path:
+    override = _resolve_env_path('PRISM_HERMES_PYTHON')
+    if override is not None and override.is_file():
+        return override
     prismenv_root = get_prismenv_root()
     candidates = [
         prismenv_root / "python.exe" if os.name == "nt" else prismenv_root / "bin" / "python",

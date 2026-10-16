@@ -45,7 +45,7 @@ from pathlib import Path
 # mapped network drives back to UNC, which cmd.exe cannot use as its cwd.
 REPO_ROOT = Path(os.path.abspath(__file__)).parent
 ENV_NAME = "prismenv"
-ENV_DIR = REPO_ROOT / ENV_NAME
+ENV_DIR = Path(os.environ.get("PRISM_ENV_DIR", REPO_ROOT / ENV_NAME))
 FRONTEND_DIR = REPO_ROOT / "prism_frontend"
 REQUIREMENTS = [REPO_ROOT / "requirements.txt"]
 REQUIREMENTS_DEV = [REPO_ROOT / "requirements-dev.txt"]
@@ -155,7 +155,7 @@ def ensure_runtime() -> bool:
     base = _base_python()
     _log("使用 micromamba 供给 prismenv ...")
     _run([base, str(REPO_ROOT / "scripts/packaging/provision/provision.py"),
-          "--force", "--skip-inject"])
+          "--env-dir", str(ENV_DIR), "--skip-inject"])
     _log("OK micromamba 环境创建完成")
     return True
 
@@ -176,6 +176,8 @@ def ensure_python_deps(*, dev: bool) -> None:
     if not py.exists():
         raise RuntimeError("prismenv 虚拟环境不存在，请先运行 ensure_runtime")
     stamp = ENV_DIR / STAMP_NAME
+    if not dev and (ENV_DIR / ".prism-provision-ready").exists():
+        return
     files = list(REQUIREMENTS) + (list(REQUIREMENTS_DEV) if dev else [])
     if _requirements_recent_enough(stamp, files):
         _log("Python 依赖已是最新，跳过安装")
@@ -223,24 +225,15 @@ NPM_CACHE = REPO_ROOT / ".cache" / "npm"
 def _npm_install(dirpath: Path) -> None:
     NPM_CACHE.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, npm_config_cache=str(NPM_CACHE))
-    if os.name == "nt":
-        # Windows 上 npm 是 .cmd，subprocess 需走 shell 才能解析
-        _run("npm install", cwd=str(dirpath), shell=True, env=env)
-    else:
-        _run(["npm", "install"], cwd=str(dirpath), env=env)
-
-
-def _node_install_hint() -> str:
-    if shutil.which("brew"):
-        return "brew install node"
-    if shutil.which("apt-get"):
-        return "sudo apt-get install -y nodejs npm"
-    if os.name == "nt":
-        for m in ("winget", "choco", "scoop"):
-            if shutil.which(m):
-                return f"{m} install nodejs"
-        return "从 https://nodejs.org/ 下载 Node LTS 安装包"
-    return "从 https://nodejs.org/ 安装 Node 18+"
+    for registry in ("https://registry.npmmirror.com", "https://registry.npmjs.org"):
+        env["npm_config_registry"] = registry
+        env["npm_config_fetch_retries"] = "2"
+        env["npm_config_fetch_timeout"] = "60000"
+        command = "npm install" if os.name == "nt" else ["npm", "install"]
+        result = _run(command, cwd=str(dirpath), shell=os.name == "nt", env=env, check=False)
+        if result.returncode == 0:
+            return
+    raise RuntimeError(f"All npm registries failed for {dirpath.name}")
 
 
 def _ensure_node() -> None:
@@ -248,22 +241,7 @@ def _ensure_node() -> None:
     if shutil.which("node") and shutil.which("npm"):
         _log("Node/npm 已就绪")
         return
-    _log("未检测到 Node.js，尝试用系统包管理器安装 ...")
-    try:
-        if shutil.which("brew"):
-            _run(["brew", "install", "node"], check=False)
-        elif shutil.which("apt-get"):
-            _run(["sudo", "apt-get", "install", "-y", "nodejs", "npm"], check=False)
-        elif os.name == "nt" and shutil.which("winget"):
-            _run(["winget", "install", "-e", "--id", "OpenJS.NodeJS.LTS"], check=False)
-        elif os.name == "nt" and shutil.which("choco"):
-            _run(["choco", "install", "nodejs", "-y"], check=False)
-    except Exception as exc:
-        _log(f"安装 Node 失败: {exc}")
-    if shutil.which("node") and shutil.which("npm"):
-        _log("OK Node/npm 已安装")
-    else:
-        _log(f"仍找不到 Node，请手动安装: {_node_install_hint()}")
+    raise RuntimeError("Node/npm missing: use start.bat or start-mac.sh to provision the private Node runtime")
 
 
 def ensure_node_deps() -> None:
@@ -308,65 +286,17 @@ def _redis_status() -> tuple[bool, str]:
     return False, "未安装"
 
 
-def _redis_install_hint() -> str:
-    if shutil.which("brew"):
-        return "brew install redis && redis-server --daemonize yes"
-    if shutil.which("apt-get"):
-        return "sudo apt install redis-server"
-    if os.name == "nt":
-        return "下载 https://github.com/tporadowski/redis/releases 并解压到 PATH"
-    return "请安装 Redis（https://redis.io/download）"
-
-
-def check_redis() -> bool:
-    running, state = _redis_status()
-    if running:
-        _log(f"Redis {state}")
-        return True
-    _log(f"Redis {state}。请先安装/启动 Redis：")
-    _log(f"    {_redis_install_hint()}")
-    if shutil.which("redis-server"):
-        _log("检测到 redis-server 但未运行，可在配置后手动执行: redis-server --daemonize yes")
-    return False
-
-
 def ensure_redis() -> bool:
-    """确保 Redis 可用；缺失则尽量自动安装，已装未运行则尝试拉起。"""
-    running, state = _redis_status()
-    if running:
+    """Redis is provisioned before startup; PM2 exclusively owns its lifecycle."""
+    if _redis_status()[0]:
         return True
-    if os.name == "nt" and (REPO_ROOT / "desktop-electron" / "resources" / "redis" / "redis-server.exe").is_file():
-        _log("项目内置 Redis 已就绪，将由 PM2 启动")
+    candidates = [ENV_DIR / "bin" / "redis-server", ENV_DIR / "Library" / "bin" / "redis-server.exe",
+                  REPO_ROOT / "desktop-electron/resources/redis/redis-server.exe"]
+    if os.environ.get("PRISM_REDIS_SERVER") and Path(os.environ["PRISM_REDIS_SERVER"]).is_file():
         return True
-    if shutil.which("redis-server"):
-        _log("检测到 redis-server 未运行，尝试启动 ...")
-        _run(["redis-server", "--daemonize", "yes"], check=False, capture_output=True)
-        running, _ = _redis_status()
-        if running:
-            _log("OK Redis 已启动")
-            return True
-        _log("未能自动启动 Redis，请手动: redis-server --daemonize yes")
-        return False
-    _log("未安装 Redis，尝试自动安装 ...")
-    try:
-        if shutil.which("brew"):
-            _run(["brew", "install", "redis"], check=False)
-        elif shutil.which("apt-get"):
-            _run(["sudo", "apt-get", "install", "-y", "redis-server"], check=False)
-        elif os.name == "nt" and shutil.which("winget"):
-            _run(["winget", "install", "-e", "--id", "Redis.Redis"], check=False)
-        elif os.name == "nt" and shutil.which("choco"):
-            _run(["choco", "install", "redis", "-y"], check=False)
-    except Exception as exc:
-        _log(f"自动安装 Redis 失败: {exc}")
-    if shutil.which("redis-server"):
-        _run(["redis-server", "--daemonize", "yes"], check=False, capture_output=True)
-    running, _ = _redis_status()
-    if running:
-        _log("OK Redis 已安装并启动")
+    if any(p.is_file() for p in candidates) or shutil.which("redis-server"):
         return True
-    _log(f"Redis 未能就绪。请手动安装/启动: {_redis_install_hint()}")
-    return False
+    raise RuntimeError("Redis provisioning failed; see the first-run installation log")
 
 
 def _chrome_executable() -> str | None:
@@ -462,7 +392,7 @@ def _pm2_env() -> dict:
     return env
 
 
-def _verify_started_services(names: list[str], timeout: int = 40) -> bool:
+def _verify_started_services(names: list[str], timeout: int = 120) -> bool:
     """Require every enabled process to stay online without restarting."""
     script = (
         "const p=require('pm2');p.connect(e=>{if(e)process.exit(1);"
@@ -472,6 +402,7 @@ def _verify_started_services(names: list[str], timeout: int = 40) -> bool:
     deadline = time.monotonic() + timeout
     stable_since = None
     last = {}
+    previous_counts = None
     while time.monotonic() < deadline:
         result = _run([shutil.which("node") or "node", "-e", script], env=_pm2_env(),
                       capture_output=True, text=True, check=False)
@@ -479,12 +410,14 @@ def _verify_started_services(names: list[str], timeout: int = 40) -> bool:
             last = {row["name"]: row for row in json.loads(result.stdout)}
         except (ValueError, TypeError):
             last = {}
-        failed = [name for name in names if last.get(name, {}).get("restarts", 0) > 0
-                  or last.get(name, {}).get("status") in {"errored", "stopped"}]
+        failed = [name for name in names if last.get(name, {}).get("status") == "stopped"]
         if failed:
-            _log("[ERROR] 服务退出或发生重启: " + ", ".join(failed))
-            _run([str(_pm2_bin()), "stop", *failed], env=_pm2_env(), check=False)
+            _log("[ERROR] 服务恢复后仍已停止: " + ", ".join(failed))
             return False
+        counts = {name: last.get(name, {}).get("restarts", 0) for name in names}
+        if counts != previous_counts:
+            stable_since = None
+        previous_counts = counts
         ready = all(last.get(name, {}).get("status") == "online" for name in names)
         if ready:
             stable_since = stable_since or time.monotonic()
@@ -494,7 +427,7 @@ def _verify_started_services(names: list[str], timeout: int = 40) -> bool:
                         with urllib.request.urlopen(url, timeout=5) as response:
                             if response.status != 200:
                                 raise ValueError(f"HTTP {response.status}")
-                    _log("全部已启用服务稳定运行，无重启: " + ", ".join(names))
+                    _log("全部已启用服务通过稳定性检查: " + ", ".join(names))
                     return True
                 except Exception:
                     pass
@@ -535,13 +468,13 @@ def _pm2_start() -> int:
             return 1
 
     _log("启动其余服务（Worker/Celery/前端/Persona/Hermes ...）")
-    services = ["prism-worker", "prism-celery", "prism-frontend"]
+    services = ["prism-worker", "prism-celery", "prism-frontend", "prism-recovery"]
     optional = {
-        "persona-api": REPO_ROOT / "prism_components" / "persona" / ("Scripts/persona.exe" if os.name == "nt" else "bin/persona"),
+        "persona-api": Path(os.environ.get("PRISM_COMPONENT_ENV_DIR", REPO_ROOT / "prism_components")) / "persona" / ("Scripts/persona.exe" if os.name == "nt" else "bin/persona"),
         "persona-proxy": REPO_ROOT / "tools" / "persona-studio" / "proxies" / "mihomo",
-        "persona-dashboard": REPO_ROOT / "tools" / "persona-studio" / "dashboard" / "node_modules" / "vite" / "bin" / "vite.js",
-        "hermes-dashboard": REPO_ROOT / "prism_components" / "hermes" / ("Scripts/hermes.exe" if os.name == "nt" else "bin/hermes"),
-        "hermes-webui": REPO_ROOT / "tools" / "hermes-webui" / "server.py",
+        "persona-dashboard": Path(os.environ.get("PRISM_PERSONA_SOURCE", REPO_ROOT / "tools" / "persona-studio")) / "dashboard" / "node_modules" / "vite" / "bin" / "vite.js",
+        "hermes-dashboard": Path(os.environ.get("PRISM_COMPONENT_ENV_DIR", REPO_ROOT / "prism_components")) / "hermes" / ("Scripts/hermes.exe" if os.name == "nt" else "bin/hermes"),
+        "hermes-webui": Path(os.environ.get("PRISM_HERMES_WEBUI_SOURCE", REPO_ROOT / "tools" / "hermes-webui")) / "server.py",
         "deepseek-harness": REPO_ROOT / "tools" / "deepseek-harness" / "apps" / "cli" / "lib" / "bin.js",
     }
     for name, entry in optional.items():

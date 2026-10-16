@@ -113,7 +113,7 @@ class PrismApp {
       console.log('Starting services...');
       log.info('Starting services...');
       try {
-        this.prepareCondaRuntime();
+        await this.prepareCondaRuntime();
         await this.startServices();
       } catch (error) {
         // 失败根因上报：弹窗展示诊断摘要 + 写入日志
@@ -631,7 +631,7 @@ class PrismApp {
   }
 
   getRuntimeManifestPath() {
-    return path.join(this.getResourcesRoot(), 'prismenv', 'prism-runtime.json');
+    return path.join(process.env.PRISM_ENV_DIR || path.join(this.getResourcesRoot(), 'prismenv'), 'prism-runtime.json');
   }
 
   getRuntimeManifest() {
@@ -646,38 +646,22 @@ class PrismApp {
     }
   }
 
-  prepareCondaRuntime() {
-    const runtime = path.join(this.getResourcesRoot(), 'prismenv');
-    const python = path.join(runtime, process.platform === 'win32' ? 'python.exe' : 'bin/python');
-    const unpack = path.join(runtime, process.platform === 'win32' ? 'Scripts/conda-unpack-script.py' : 'bin/conda-unpack');
-    if (!fs.existsSync(unpack)) return; // Source development runtime is already provisioned in place.
-    const stamp = path.join(runtime, '.prism-relocated');
-    if (fs.existsSync(stamp)) {
-      if (fs.readFileSync(stamp, 'utf8') !== runtime) {
-        throw new Error('The unpacked Python runtime moved. Reinstall Prism at the new location.');
-      }
-      return;
-    }
-    const result = spawnSync(python, [unpack], {
-      cwd: runtime, env: this.buildPythonEnv(), windowsHide: true,
-      encoding: 'utf8', timeout: 120000,
-    });
-    if (result.error || result.status !== 0) {
-      throw new Error(`Python runtime relocation failed: ${result.error?.message || result.stderr || result.status}`);
-    }
-    fs.writeFileSync(stamp, runtime);
+  async prepareCondaRuntime() {
+    const root = this.getResourcesRoot();
+    const installer = require(path.join(root, 'scripts/runtime/ensure-runtime.cjs'));
+    await installer.ensureRuntime(root, path.join(app.getPath('userData'), 'runtime'));
   }
 
   getPrismenvSitePackagesPath() {
     const candidates = [
-      path.join(this.getResourcesRoot(), 'prismenv', 'Lib', 'site-packages'),
-      path.join(this.getResourcesRoot(), 'prismenv', 'lib', 'site-packages')
+      path.join(process.env.PRISM_ENV_DIR || path.join(this.getResourcesRoot(), 'prismenv'), 'Lib', 'site-packages'),
+      path.join(process.env.PRISM_ENV_DIR || path.join(this.getResourcesRoot(), 'prismenv'), 'lib', 'site-packages')
     ];
     return this.resolveFirstPath(candidates) || null;
   }
 
   buildPythonEnv(baseEnv = process.env) {
-    const envRoot = path.join(this.getResourcesRoot(), 'prismenv');
+    const envRoot = process.env.PRISM_ENV_DIR || path.join(this.getResourcesRoot(), 'prismenv');
     const runtimePaths = process.platform === 'win32'
       ? [envRoot, path.join(envRoot, 'Library', 'bin'), path.join(envRoot, 'Scripts')]
       : [path.join(envRoot, 'bin')];
@@ -735,7 +719,7 @@ class PrismApp {
     const manifest = this.getRuntimeManifest();
     if (manifest && manifest.python) {
       // 打包后位置会改变；只采用当前 resources 中的环境。
-      const manifestPython = path.join(this.getResourcesRoot(), 'prismenv',
+      const manifestPython = path.join(process.env.PRISM_ENV_DIR || path.join(this.getResourcesRoot(), 'prismenv'),
         process.platform === 'win32' ? 'python.exe' : 'bin/python');
       const probe = this.testPythonExecutable(manifestPython, []);
       if (probe.ok) {
@@ -754,7 +738,7 @@ class PrismApp {
       log.warn('prism-runtime.json python unavailable, falling back:', manifestPython);
     }
 
-    const packagedPython = path.join(this.getResourcesRoot(), 'prismenv',
+    const packagedPython = path.join(process.env.PRISM_ENV_DIR || path.join(this.getResourcesRoot(), 'prismenv'),
       process.platform === 'win32' ? 'python.exe' : 'bin/python');
     const candidates = [];
     if (fs.existsSync(packagedPython)) {

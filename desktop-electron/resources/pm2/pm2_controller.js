@@ -49,7 +49,7 @@ const SERVICE_TO_PM2 = {
 const pm2NameFor = (service) => SERVICE_TO_PM2[service];
 
 // ── pm2 上报/控制的“服务型”进程（redis/前端也交由 PM2 托管）──
-const MANAGED_PM2_SERVICES = ['prism-backend', 'prism-worker', 'prism-celery', 'hermes-dashboard', 'hermes-webui', 'deepseek-harness', 'prism-frontend', 'prism-redis'];
+const MANAGED_PM2_SERVICES = ['prism-backend', 'prism-worker', 'prism-celery', 'hermes-dashboard', 'hermes-webui', 'deepseek-harness', 'prism-frontend', 'prism-redis', 'persona-api', 'persona-dashboard', 'prism-recovery'];
 
 const LAUNCH_TOKEN = crypto.randomBytes(16).toString('hex');
 const STARTED_AT = Date.now();
@@ -240,11 +240,6 @@ async function startAll() {
   for (const app of eco.apps) {
     if (app.name === 'prism-redis') {
       if (await portOpen(6379)) continue; // 已有 redis 在 6379，直接接管
-    }
-    if (app.name === 'deepseek-harness') {
-      // 与原 pm2 一致：deepseek-harness 由外部（DSH harness / 本套件）托管于规范端 :3080，
-      // PM2 不主动启动，仅通过端口探测上报运行状态（见 serviceStatus 的 external 分支）。
-      continue;
     }
     if (app.name === 'prism-frontend') {
       const fp = Number.parseInt((app.env || {}).PORT || '3000', 10) || 3000;

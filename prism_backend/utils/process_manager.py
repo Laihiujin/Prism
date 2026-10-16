@@ -86,29 +86,9 @@ def _which_python() -> Optional[str]:
     if override and Path(override).exists():
         return override
 
-    candidates: List[Path] = []
-    if IS_WINDOWS:
-        candidates += [
-            REPO_ROOT / "prismenv" / "Scripts" / "python.exe",
-            REPO_ROOT / ".venv" / "Scripts" / "python.exe",
-        ]
-    else:
-        candidates += [
-            # prismenv 是规范的统一运行时（README / 启动脚本 / 打包都叫它），
-            # 因此后端解释器也优先用它；.venv* 仅作为旧开发环境回退保留。
-            REPO_ROOT / "prismenv" / "bin" / "python",
-            REPO_ROOT / ".venv" / "bin" / "python",
-            REPO_ROOT / ".venv_test" / "bin" / "python",
-        ]
-    for candidate in candidates:
-        if candidate.exists():
-            return str(candidate)
-
-    for name in ("python3", "python"):
-        found = shutil.which(name)
-        if found:
-            return found
-    return None
+    env_root = Path(os.environ.get("PRISM_ENV_DIR", REPO_ROOT / "prismenv"))
+    candidate = env_root / ("python.exe" if IS_WINDOWS else "bin/python")
+    return str(candidate) if candidate.is_file() else None
 
 
 def _which_node() -> Optional[str]:
@@ -132,11 +112,9 @@ def _hermes_python() -> Optional[str]:
     override = os.getenv("PRISM_HERMES_PYTHON")
     if override and Path(override).exists():
         return override
-    if IS_WINDOWS:
-        candidate = REPO_ROOT / "prismenv" / "Scripts" / "python.exe"
-    else:
-        candidate = REPO_ROOT / "prismenv" / "bin" / "python"
-    return str(candidate) if candidate.exists() else None
+    root = Path(os.environ.get("PRISM_COMPONENT_ENV_DIR", REPO_ROOT / "prism_components")) / "hermes"
+    candidate = root / ("python.exe" if IS_WINDOWS else "bin/python")
+    return str(candidate) if candidate.is_file() else _which_python()
 
 
 def _hermes_bootstrap(source: str, *cli_args: str) -> str:

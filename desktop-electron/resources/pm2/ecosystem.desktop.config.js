@@ -24,6 +24,7 @@ function firstExisting(candidates) {
 }
 
 function prismenvPython() {
+  if (process.env.PRISM_ENV_DIR) return path.join(process.env.PRISM_ENV_DIR, process.platform === 'win32' ? 'python.exe' : 'bin/python');
   const win = process.platform === 'win32';
   const relPython = win ? path.join('prismenv', 'python.exe') : path.join('prismenv', 'bin', 'python');
   const candidates = [resolveIn(RESOURCES, relPython), resolveIn(REPO_ROOT, relPython)];
@@ -53,10 +54,13 @@ const HARNESS_PORT = envInt(['PRISM_DEEPSEEK_HARNESS_PORT'], 3080);
 const FRONTEND_PORT = envInt(['PRISM_FRONTEND_PORT', 'FRONTEND_PORT', 'PORT'], 3000);
 
 const PY = prismenvPython();
+const HERMES_PY = process.env.PRISM_HERMES_PYTHON || PY;
 const BACKEND = resolveRel('prism_backend');
-const HERMES_AGENT = resolveRel(path.join('tools', 'hermes-agent'));
-const HERMES_WEBUI = resolveRel(path.join('tools', 'hermes-webui'));
+const HERMES_AGENT = process.env.PRISM_HERMES_SOURCE || resolveRel(path.join('tools', 'hermes-agent'));
+const HERMES_WEBUI = process.env.PRISM_HERMES_WEBUI_SOURCE || resolveRel(path.join('tools', 'hermes-webui'));
 const DEEPSEEK_HARNESS = resolveRel(path.join('tools', 'deepseek-harness'));
+const PERSONA_SOURCE = process.env.PRISM_PERSONA_SOURCE || resolveRel('tools/persona-studio');
+const PERSONA_PY = path.join(process.env.PRISM_COMPONENT_ENV_DIR || resolveRel('prism_components'), 'persona', process.platform === 'win32' ? 'python.exe' : 'bin/python');
 const FRONTEND_STANDALONE = resolveRel(path.join('frontend', 'standalone'));
 const FRONTEND_SERVER = path.join(FRONTEND_STANDALONE, 'server.js');
 
@@ -70,12 +74,13 @@ function which(command, fallback) {
   } catch (_) { /* ignore */ }
   return fallback || command;
 }
-const bundledRedis = resolveRel(path.join('redis', process.platform === 'win32' ? 'redis-server.exe' : 'redis-server'));
-const REDIS = fs.existsSync(bundledRedis)
+const managedRedis = path.join(envRoot, process.platform === 'win32' ? 'Library/bin/redis-server.exe' : 'bin/redis-server');
+const bundledRedis = fs.existsSync(managedRedis) ? managedRedis : resolveRel(path.join('redis', process.platform === 'win32' ? 'redis-server.exe' : 'redis-server'));
+const REDIS = process.env.PRISM_REDIS_SERVER || (fs.existsSync(bundledRedis)
   ? bundledRedis
   : fs.existsSync(path.join(envRoot, 'bin', 'redis-server'))
     ? path.join(envRoot, 'bin', 'redis-server')
-    : which('redis-server', 'redis-server');
+    : which('redis-server', 'redis-server'));
 
 // 前端 standalone / DSH CLI 的运行时：用“当前运行 controller 的运行时”来执行。
 // 在 Electron 打包下 process.execPath 即 Electron 二进制，设置 ELECTRON_RUN_AS_NODE=1 让其以 node 模式
@@ -116,7 +121,7 @@ function webuiPyLaunch() {
 }
 
 function dashboardLaunch() {
-  return ['-m', 'hermes_cli.main', 'dashboard', '--host', '127.0.0.1', '--port', String(DASHBOARD_PORT), '--no-open', '--skip-build'];
+  return ['-m', 'hermes_cli.main', 'dashboard', '--host', '127.0.0.1', '--port', String(DASHBOARD_PORT), '--no-open', '--skip-build', '--isolated'];
 }
 
 // PM2 app 定义。所有进程都由 PM2 托管（start/stop/restart/restart-count/logs）。
@@ -166,8 +171,18 @@ const apps = [
     env: { ...baseEnv, PYTHONPATH: BACKEND, C_FORCE_ROOT: 'true', REDIS_HOST: '127.0.0.1', REDIS_PORT: '6379' },
   },
   {
+    name: 'persona-api', script: PERSONA_PY, exec_interpreter: 'none', cwd: PERSONA_SOURCE,
+    args: ['-c', 'from persona.cli import main; main()', '--data-dir', path.join(process.env.PRISM_RUNTIME_DATA_DIR || RESOURCES, 'persona-data'), 'serve'],
+    env: baseEnv, autorestart: true,
+  },
+  {
+    name: 'persona-dashboard', script: frontendExe, exec_interpreter: 'none', cwd: path.join(PERSONA_SOURCE, 'dashboard'),
+    args: [path.join(PERSONA_SOURCE, 'dashboard/node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '5173', '--strictPort'],
+    env: { ...baseEnv, ELECTRON_RUN_AS_NODE: '1' }, autorestart: true,
+  },
+  {
     name: 'hermes-dashboard',
-    script: PY,
+    script: HERMES_PY,
     args: dashboardLaunch(),
     cwd: HERMES_AGENT,
     exec_interpreter: 'none',
@@ -183,7 +198,7 @@ const apps = [
   },
   {
     name: 'hermes-webui',
-    script: PY,
+    script: HERMES_PY,
     args: webuiPyLaunch(),
     cwd: HERMES_WEBUI,
     exec_interpreter: 'none',
@@ -194,7 +209,7 @@ const apps = [
       ...baseEnv,
       PYTHONPATH: HERMES_AGENT,
       HERMES_WEBUI_AGENT_DIR: HERMES_AGENT,
-      HERMES_WEBUI_PYTHON: PY,
+      HERMES_WEBUI_PYTHON: HERMES_PY,
       HERMES_WEBUI_HOST: '127.0.0.1',
       HERMES_WEBUI_PORT: String(WEBUI_PORT),
       HERMES_WEBUI_STATE_DIR: process.env.PRISM_HERMES_WEBUI_STATE_DIR || path.join(RESOURCES, '..', 'hermes', 'webui'),
@@ -234,12 +249,13 @@ const apps = [
 ];
 
 module.exports = {
-  apps: apps.filter(app => {
+  apps: [...apps, { name: 'prism-recovery', script: process.execPath, args: [resolveRel('scripts/runtime/pm2-recovery.cjs')], env: { ...baseEnv, ELECTRON_RUN_AS_NODE: '1' }, exec_interpreter: 'none', max_restarts: 2 }].filter(app => {
+    if (app.name === 'deepseek-harness') return fs.existsSync(path.join(DEEPSEEK_HARNESS, 'apps/cli/lib/bin.js'));
     if (app.name === 'hermes-webui') return fs.existsSync(path.join(HERMES_WEBUI, 'server.py'));
     if (app.name === 'hermes-dashboard') return fs.existsSync(path.join(HERMES_AGENT, 'hermes_cli', 'main.py'));
     return true;
   }).map(app => ({ min_uptime: '60s', max_restarts: 5, restart_delay: 3000,
-    windowsHide: true, ...app })),
+    windowsHide: true, ...app, max_restarts: Math.min(app.max_restarts || 5, 5) })),
   // 供 pm2_controller 使用的服务元数据：pm2 服务名 -> PM2 进程名
   _prism: {
     resourceRoot: RESOURCES,

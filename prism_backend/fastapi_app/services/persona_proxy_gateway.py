@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import concurrent.futures
 import socket
 import time
@@ -29,7 +30,7 @@ from fastapi_app.core.config import settings
 # ---------------------------------------------------------------------------
 # 路径与常量
 # ---------------------------------------------------------------------------
-PROXIES_DIR = Path(settings.BASE_DIR).parent / "tools" / "persona-studio" / "proxies"
+PROXIES_DIR = Path(os.environ.get("PRISM_PERSONA_SOURCE", Path(settings.BASE_DIR).parent / "tools" / "persona-studio")) / "proxies"
 CONFIG_PATH = PROXIES_DIR / "config.yaml"
 NODES_PATH = PROXIES_DIR / "nodes.yaml"
 STATE_PATH = PROXIES_DIR / "gateway.json"
