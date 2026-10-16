@@ -1,7 +1,7 @@
 """Human-operated browser viewport for an active login session."""
 import asyncio
 import base64
-from typing import Literal
+from typing import Annotated, Literal, Union
 from pydantic import BaseModel, Field
 from fastapi import HTTPException
 
@@ -9,6 +9,39 @@ class PointerInput(BaseModel):
     action: Literal['down', 'move', 'up', 'cancel']
     x: float = Field(ge=0, le=1, allow_inf_nan=False)
     y: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+class TextInput(BaseModel):
+    action: Literal['type']
+    text: str = Field(min_length=1, max_length=4096)
+
+class KeyInput(BaseModel):
+    action: Literal['key']
+    key: str = Field(max_length=100, pattern=r'^(?:(?:Control|Meta|Alt|Shift)\+)*(?:Backspace|Delete|Enter|Tab|Escape|ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown|[a-zA-Z0-9])$')
+
+BrowserInput = Annotated[Union[PointerInput, TextInput, KeyInput], Field(discriminator='action')]
+
+async def focused_input(page):
+    """Scroll the focused editable into view; return geometry only, never values."""
+    for frame in page.frames:
+        box = await frame.evaluate('''() => {
+            let e = document.activeElement;
+            while (e?.shadowRoot?.activeElement) e = e.shadowRoot.activeElement;
+            if (!e || !(e.matches('input,textarea') || e.isContentEditable)) return null;
+            e.scrollIntoView({block:'nearest', inline:'nearest'});
+            const r=e.getBoundingClientRect();
+            return {x:r.x,y:r.y,width:r.width,height:r.height};
+        }''')
+        if box:
+            if frame != page.main_frame:
+                element = await frame.frame_element()
+                await element.scroll_into_view_if_needed()
+                outer = await element.bounding_box()
+                if not outer:
+                    continue
+                box['x'] += outer['x']
+                box['y'] += outer['y']
+            return box
+    return None
 
 def login_page(session, sid):
     terminal = session.get('terminal_result')
@@ -31,12 +64,22 @@ async def viewport_frame(session, sid):
     if session.get('pointer_down') and asyncio.get_running_loop().time() - session.get('pointer_at', 0) > 5:
         await page.mouse.up()
         session['pointer_down'] = False
+    focus = await focused_input(page)
     size = await page.evaluate('({width:innerWidth,height:innerHeight})')
     image = await page.screenshot(type='jpeg', quality=65, full_page=False)
-    return {**size, 'image': 'data:image/jpeg;base64,' + base64.b64encode(image).decode()}
+    return {**size, 'focus': focus, 'image': 'data:image/jpeg;base64,' + base64.b64encode(image).decode()}
 
 async def pointer_input(session, sid, event):
     page = login_page(session, sid)
+    if event.action in ('type', 'key'):
+        if session.get('pointer_down'):
+            await page.mouse.up()
+            session['pointer_down'] = False
+        if event.action == 'type':
+            await page.keyboard.insert_text(event.text)
+        else:
+            await page.keyboard.press(event.key)
+        return {'success': True}
     size = await page.evaluate('({width:innerWidth,height:innerHeight})')
     # Release a stale drag when the client disappears, even without a cancel.
     now = asyncio.get_running_loop().time()

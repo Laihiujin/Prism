@@ -71,13 +71,13 @@ class PhoneLoginAdapter(PlatformAdapter):
             if self.platform_name == "kuaishou":
                 await self.page.get_by_text("立即登录", exact=True).wait_for(state="visible", timeout=20000)
                 await (await visible_one(self.page.get_by_text("立即登录", exact=True))).click(timeout=10000)
-            await self.page.locator('input[placeholder*="手机"]').first.wait_for(state="visible", timeout=20000)
             tabs = self.page.get_by_text(re.compile(r"^(短信登录|验证码登录|手机号登录)$"))
             for index in range(await tabs.count()):
                 tab = tabs.nth(index)
                 if await tab.is_visible():
                     await tab.click(timeout=3000)
                     break
+            await self.page.locator('input[placeholder*="手机"]').first.wait_for(state="visible", timeout=20000)
             field = await visible_one(self.page.get_by_placeholder(re.compile(r"手机号|登录手机")))
             await field.fill(phone, timeout=5000)
             # Consent applies only to the single login agreement checkbox.
@@ -134,15 +134,45 @@ class PhoneLoginAdapter(PlatformAdapter):
     async def _secondary_verification(self):
         if self.platform_name != "kuaishou":
             return None
-        headings = self.page.get_by_text("手机号码验证", exact=True)
-        for i in range(await headings.count()):
-            heading = headings.nth(i)
-            if await heading.is_visible():
-                return heading.locator("xpath=ancestor::*[.//input][1]")
+        for frame in getattr(self.page, "frames", [self.page]):
+            headings = frame.get_by_text("手机号码验证", exact=True)
+            for i in range(await headings.count()):
+                heading = headings.nth(i)
+                if await heading.is_visible():
+                    return heading.locator("xpath=ancestor::*[.//input][1]")
         return None
 
     async def _send_control(self):
-        return await visible_one(self.page.get_by_text(re.compile(r"^(获取验证码|发送验证码|重新发送|重新获取|重新发送验证码)$")))
+        controls = []
+        for frame in getattr(self.page, "frames", [self.page]):
+            matches = frame.get_by_text(re.compile(r"^(获取验证码|发送验证码|重新发送|重新获取|重新发送验证码)$"))
+            for i in range(await matches.count()):
+                control = matches.nth(i)
+                if await control.is_visible():
+                    controls.append(control)
+        if len(controls) != 1:
+            raise ValueError("未找到唯一的短信发送控件，请检查平台登录页")
+        return controls[0]
+
+    async def _code_target(self):
+        """Use the same visible field for stage detection and submission.
+
+        Placeholder matching follows douyin_sms and test_phone_login_flow;
+        one-time-code follows platforms/publish_verification.py. Never choose
+        an arbitrary input (phone/password/captcha) or a hidden background form.
+        """
+        secondary = await self._secondary_verification()
+        scopes = [secondary] if secondary is not None else getattr(self.page, "frames", [self.page])
+        targets = []
+        for scope in scopes:
+            fields = scope.locator('input[placeholder*="验证码"], input[autocomplete="one-time-code"]')
+            for i in range(await fields.count()):
+                field = fields.nth(i)
+                if await field.is_visible() and await field.is_enabled():
+                    targets.append((scope, field, secondary is not None))
+        if len(targets) != 1:
+            return None
+        return targets[0]
 
     async def _observe_sms_response(self, response):
         if self.platform_name != "kuaishou" or urlsplit(response.url).path != "/pass/kuaishou/sms/requestMobileCode":
@@ -165,8 +195,8 @@ class PhoneLoginAdapter(PlatformAdapter):
             pass
 
     async def _refresh_send_state(self):
-        text = await self.page.locator("body").inner_text()
-        countdown = re.search(r"(\d+)\s*(?:秒|s)\s*后.*?(?:发送|获取|重发)", text, re.I)
+        text = "\n".join([await frame.locator("body").inner_text() for frame in getattr(self.page, "frames", [self.page])])
+        countdown = re.search(r"(\d+)\s*(?:秒|s)\s*(?:后.*?(?:发送|获取|重发)|[)）]?$)", text, re.I | re.M)
         if countdown and not self.last_sms_error:
             self.sent = True
             self.resend_at = asyncio.get_running_loop().time() + int(countdown.group(1))
@@ -215,13 +245,19 @@ class PhoneLoginAdapter(PlatformAdapter):
             return {"success": True, "message": "平台已确认发送短信验证码，请查看手机短信"}
         if action != "submit" or not re.fullmatch(r"[0-9]{4,8}", code or ""):
             raise ValueError("请输入 4–8 位数字验证码")
-        if not self.sent:
+        target = await self._code_target()
+        if self.last_sms_error or (not self.sent and target is None):
             raise ValueError("请先获取验证码")
-        secondary = await self._secondary_verification()
-        scope = secondary if secondary is not None else self.page
-        field = await visible_one(scope.get_by_placeholder(re.compile("验证码")))
+        if target is None:
+            raise ValueError("未找到唯一的短信验证码输入框，请检查平台登录页")
+        scope, field, secondary = target
+        # The code's own wrapper can contain the SEND button. Ascend to the
+        # submit label, rather than stopping at that smaller wrapper.
+        labels = ("确定",) if secondary else ("登录",)
+        predicate = " or ".join(f"translate(normalize-space(.), ' ', '')='{label}'" for label in labels)
+        scope = field.locator(f"xpath=ancestor::*[.//*[{predicate}]][1]")
         await field.fill(code, timeout=3000)
-        button = await visible_one(scope.get_by_text(re.compile(r"^确定$" if secondary is not None else r"^登\s*录$")))
+        button = await visible_one(scope.get_by_text(re.compile(r"^确定$" if secondary else r"^登\s*录$")))
         if not await button.is_enabled():
             raise ValueError("登录按钮不可用，请检查验证码和用户协议")
         await button.click(timeout=5000)
@@ -237,7 +273,8 @@ class PhoneLoginAdapter(PlatformAdapter):
         text = await self.page.locator("body").inner_text()
         error = self.last_sms_error or next((line.strip() for line in text.splitlines() if re.search(r"验证码.*(?:错误|不正确|过期|失效)|验证失败|操作频繁|手机号.*(?:错误|不正确)", line)), "")
         secondary = await self._secondary_verification()
-        return {"stage": "secondary" if secondary is not None else "code" if self.sent else "choose", "phone": self.masked_phone,
+        target = await self._code_target()
+        return {"stage": "secondary" if secondary is not None else "code" if target is not None and not self.last_sms_error else "choose", "phone": self.masked_phone,
                 "resend_after": max(0, int(self.resend_at - asyncio.get_running_loop().time())), "error": error}
 
     async def poll_status(self, session_id):
