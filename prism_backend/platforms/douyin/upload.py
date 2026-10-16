@@ -10,6 +10,7 @@ import re
 from difflib import SequenceMatcher
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import urlsplit
 from utils.automation_provider import async_playwright, Page
 from typing import Dict, Any, Optional
 # from config.conf import LOCAL_CHROME_PATH
@@ -22,6 +23,23 @@ from ..base import BasePlatform
 from ..path_utils import resolve_cookie_file, resolve_video_file
 
 logger = logging.getLogger(__name__)
+
+
+def _submission_response_summary(payload):
+    """Keep only result codes; never persist credentials or challenge tokens."""
+    if not isinstance(payload, dict):
+        return {}
+    summary = {}
+    for key in ("code", "status_code", "error_code", "status", "success"):
+        value = payload.get(key)
+        if isinstance(value, (int, bool)) or (isinstance(value, str) and value.isdigit()):
+            summary[key] = value
+    for key in ("base_resp", "data"):
+        if isinstance(payload.get(key), dict):
+            nested = _submission_response_summary(payload[key])
+            if nested:
+                summary[key] = nested
+    return summary
 
 
 def _levenshtein_distance(a: str, b: str) -> int:
@@ -369,7 +387,7 @@ class DouyinUpload(BasePlatform):
                 await self._publish_video(page, thumbnail_path, cover_aspect_ratio=cover_aspect_ratio, account_id=account_file)
 
                 # 保存Cookie
-                await context.storage_state(path=account_file)
+                await context.storage_state(path=account_file, indexed_db=True)
                 logger.info("[DouyinUpload] Cookie已更新")
                 
                 await browser.close()
@@ -678,7 +696,7 @@ class DouyinUpload(BasePlatform):
         """检查并处理短信验证码"""
         try:
             modal = page.locator("text=接收短信验证码").first
-            if await modal.count() == 0:
+            if await modal.count() == 0 or not await modal.is_visible():
                 return
             
             logger.info("[DouyinUpload] 检测到验证码弹窗")
@@ -692,6 +710,7 @@ class DouyinUpload(BasePlatform):
             
             if not success:
                 raise Exception("验证码验证失败")
+            await modal.wait_for(state="hidden", timeout=15000)
                 
         except Exception as e:
             logger.error(f"[DouyinUpload] 验证码处理失败: {e}")
@@ -1003,6 +1022,18 @@ class DouyinUpload(BasePlatform):
         """点击发布按钮"""
         logger.info("[DouyinUpload] 准备点击发布按钮...")
 
+        async def record_response(response):
+            path = urlsplit(response.url).path
+            if response.request.method != "POST" or not re.search(r"verify|publish|aweme", path, re.I):
+                return
+            try:
+                result = _submission_response_summary(await response.json())
+                logger.info("[DouyinUpload] 平台提交响应 path=%s http=%s result=%s", path, response.status, result)
+            except Exception:
+                logger.info("[DouyinUpload] 平台提交响应 path=%s http=%s non_json", path, response.status)
+
+        page.on("response", record_response)
+
         # 等待发布按钮可用
         max_wait = 60
         start = time.monotonic()
@@ -1021,10 +1052,33 @@ class DouyinUpload(BasePlatform):
         await publish_button.click(timeout=5000)
         deadline = time.monotonic() + 30
         verification_attempts = 0
+        verified_submission_resumes = 0
         while "/creator-micro/content/manage" not in page.url:
+            if getattr(page, "_prism_publish_verified", False):
+                # Consume each confirmation, including confirmations completed by
+                # the shared watcher while a page wait was paused for user input.
+                page._prism_publish_verified = False
+                deadline = time.monotonic() + 30
+                # Allow the platform's verification callback to submit first.
+                await asyncio.sleep(3)
+                if "/creator-micro/content/manage" in page.url:
+                    break
+                if verified_submission_resumes >= 3:
+                    raise RuntimeError("抖音验证后仍未完成提交，已停止重复提交")
+                await dismiss_publish_guides(page)
+                if await publish_button.is_visible() and await publish_button.is_enabled():
+                    verified_submission_resumes += 1
+                    await publish_button.click(timeout=5000)
+                    deadline = time.monotonic() + 30
+                    logger.info("[DouyinUpload] 短信验证通过后继续提交作品")
+            if "/creator-micro/content/manage" in page.url:
+                break
             if account_id:
                 verification = page.get_by_text("接收短信验证码", exact=True)
                 if await verification.count() and await verification.first.is_visible():
+                    if verified_submission_resumes:
+                        await self._debug_dump(page, "douyin_repeated_verification")
+                        raise RuntimeError("抖音验证后再次要求短信，未确认发布成功；已停止自动重复发送验证码")
                     if verification_attempts >= 3:
                         raise RuntimeError("抖音短信验证未通过，已停止重复提交")
                     verification_attempts += 1
@@ -1033,6 +1087,7 @@ class DouyinUpload(BasePlatform):
                     await page.wait_for_timeout(1500)
                     continue
             if time.monotonic() >= deadline:
+                await self._debug_dump(page, "douyin_submission_unconfirmed")
                 raise RuntimeError(f"抖音提交后未确认成功，停止重复提交。当前页面：{page.url}")
             await page.wait_for_timeout(500)
         logger.info("[DouyinUpload] 已进入作品管理页，提交成功")

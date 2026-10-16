@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class VerificationManager:
-    ttl = 300
+    ttl = 1800
     index_key = "prism:verification:pending"
 
     def __init__(self, redis_client=None):

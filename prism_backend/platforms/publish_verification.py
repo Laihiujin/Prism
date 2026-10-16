@@ -64,6 +64,12 @@ async def verify_page(page, metadata, trigger_selector=None):
         event["can_resend"] = bool(await trigger.count())
         verification_manager.redis.set(verification_manager._key(request_id, "event"), json.dumps(event, ensure_ascii=False), ex=verification_manager.ttl)
         async def resend():
+            if metadata.get("platform") == 3:
+                from app_new.platforms.douyin_sms import perform_sms_action, inspect_sms
+                _, sms_state = await inspect_sms(page)
+                if sms_state:
+                    await perform_sms_action(page, "resend")
+                    return
             for index in range(await trigger.count()):
                 button = trigger.nth(index)
                 if await button.is_visible() and await button.is_enabled():
@@ -71,18 +77,39 @@ async def verify_page(page, metadata, trigger_selector=None):
                     return
             logging.getLogger(__name__).info("SMS resend button is still unavailable")
         try:
-            code = await verification_manager.wait_for_code(request_id, timeout=180, on_resend=resend)
+            code = await verification_manager.wait_for_code(request_id, timeout=verification_manager.ttl, on_resend=resend)
             if not code or page.is_closed():
                 return False
+            sms_state = None
+            if metadata.get("platform") == 3:
+                from app_new.platforms.douyin_sms import perform_sms_action, inspect_sms
+                _, sms_state = await inspect_sms(page)
+            if sms_state:
+                await perform_sms_action(page, "submit", code)
+                for _ in range(30):
+                    await asyncio.sleep(.5)
+                    _, sms_state = await inspect_sms(page)
+                    if sms_state and sms_state.get("error"):
+                        raise RuntimeError("抖音短信验证未通过：" + sms_state["error"])
+                    if sms_state is None and not await field.is_visible():
+                        page._prism_publish_verified = True
+                        return True
+                raise RuntimeError("抖音短信验证仍未完成，未确认通过")
             await field.fill(code, timeout=5000)
-            buttons = scope.locator('button, [role="button"], div.uc-ui-verify_sms-verify_button').filter(
-                has_text=re.compile(r'^(验证|提交|确定|确认|继续|Verify|Confirm|Continue|Submit)$', re.I))
+            buttons = scope.locator('div.uc-ui-verify_sms-verify_button').or_(
+                scope.locator('button, [role="button"]').filter(
+                    has_text=re.compile(r'^(验证(?:并发布)?|提交(?:验证码)?|确定|确认(?:发布)?|继续|Verify|Confirm|Continue|Submit)$', re.I)))
+            submitted = False
             for index in range(await buttons.count()):
                 button = buttons.nth(index)
                 if await button.is_visible() and await button.is_enabled():
                     await button.click(timeout=5000)
+                    submitted = True
                     break
+            if not submitted:
+                raise RuntimeError("验证码已填入，但未找到可用的验证确认按钮")
             await field.wait_for(state="hidden", timeout=15000)
+            page._prism_publish_verified = True
             return True
         finally:
             verification_manager.cleanup_queue(request_id)

@@ -193,7 +193,7 @@ class DouyinAdapter(PlatformAdapter):
                     return LoginResult(status=LoginStatus.SCANNED, message="已扫码，正在同步账号")
                 user_info = await self._extract_user_info(page, cookies_list)
                 try:
-                    full_state = await context.storage_state()
+                    full_state = await context.storage_state(indexed_db=True)
                 except Exception as e:
                     logger.error(f"[Douyin] storage_state failed: {e}")
                     full_state = None
