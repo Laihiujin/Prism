@@ -161,11 +161,21 @@ def install_component(env_dir: Path, comp: dict, mirror, dry_run: bool = False) 
 
 
 def log(*args) -> None:
-    print("[provision]", *args, flush=True)
+    _print_log(sys.stdout, "[provision]", *args)
 
 
 def warn(*args) -> None:
-    print("[provision][warn]", *args, file=sys.stderr, flush=True)
+    _print_log(sys.stderr, "[provision][warn]", *args)
+
+
+def _print_log(stream, *args) -> None:
+    text = ' '.join(str(arg) for arg in args)
+    try:
+        print(text, file=stream, flush=True)
+    except UnicodeEncodeError:
+        # Direct CLI use on English Windows may expose a legacy code page.
+        encoding = getattr(stream, 'encoding', None) or 'ascii'
+        print(text.encode(encoding, errors='backslashreplace').decode(encoding), file=stream, flush=True)
 
 
 # ---------------------------------------------------------------- mirror ----
