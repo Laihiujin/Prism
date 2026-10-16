@@ -48,7 +48,7 @@ MIRROR_FILE = PROVISION_DIR / "mirror.json"
 CONDA_DEPS_FILE = PROVISION_DIR / "conda-deps.txt"
 PIP_REQS_FILE = REPO_ROOT / "requirements.txt"
 COMPONENTS_DIR = PROVISION_DIR / "components"
-MICROMAMBA_ROOT = PROVISION_DIR / ".mamba"  # 自包含的 repodata 缓存根
+MICROMAMBA_ROOT = Path(os.environ.get("MAMBA_ROOT_PREFIX", REPO_ROOT / "runtime-data" / "mamba"))  # 自包含的 repodata 缓存根
 
 # 内嵌 micromamba 二进制统一放这里（可能按平台/架构分目录）
 EMBED_MICROMAMBA_DIR = PROVISION_DIR / "micromamba"
@@ -74,6 +74,11 @@ def load_components() -> dict:
 
 
 def resolve_component_src(src_rel: str) -> Path:
+    parts = Path(src_rel).parts
+    if len(parts) >= 2 and parts[0] == "tools":
+        key = {"hermes-agent": "HERMES", "hermes-webui": "HERMES_WEBUI", "persona-studio": "PERSONA"}.get(parts[1])
+        if key and os.environ.get(f"PRISM_{key}_SOURCE"):
+            return Path(os.environ[f"PRISM_{key}_SOURCE"]).joinpath(*parts[2:])
     return REPO_ROOT / src_rel
 
 
@@ -133,8 +138,13 @@ def install_component(env_dir: Path, comp: dict, mirror, dry_run: bool = False) 
             log("[dry-run]", py, "-m pip install -e", spec)
             return True
         log(f"安装组件 {name} -> {spec}")
-        rc = run([str(py), "-m", "pip", "install", "-e", spec],
-                 env_extra={"PIP_INDEX_URL": mirror["pypi"]}, check=False)
+        rc = 1
+        indexes = [mirror["pypi"], "https://mirrors.aliyun.com/pypi/simple", "https://pypi.org/simple"]
+        for index in dict.fromkeys(indexes):
+            rc = run([str(py), "-m", "pip", "install", "--timeout", "30", "--retries", "2", "-e", spec, *comp.get("runtime_dependencies", [])],
+                     env_extra={"PIP_INDEX_URL": index}, check=False)
+            if rc == 0:
+                break
         if rc == 0:
             log(f"组件 {name} 已安装（console-script 应已生成）")
             return True
@@ -276,7 +286,7 @@ def mimamba_env(extra=None) -> dict:
 def run(cmd, env_extra=None, check=True, cwd=None) -> int:
     log("$", " ".join(_shell_quote(c) for c in cmd))
     proc = subprocess.run(cmd, env=mimamba_env(env_extra), cwd=cwd,
-                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), timeout=900)
     if check and proc.returncode != 0:
         raise RuntimeError(f"命令失败（exit {proc.returncode}）: {cmd[0]}")
     return proc.returncode
@@ -297,7 +307,7 @@ def inputs_digest(mirror, conda_deps, pip_text, inject=None) -> str:
     h.update(pip_text.encode())
     if inject:
         for comp in inject:
-            h.update(("|" + str(comp.get("name")) + ":" + str(comp.get("src"))).encode())
+            h.update(("|" + str(comp.get("name")) + ":" + json.dumps(comp, sort_keys=True)).encode())
     return h.hexdigest()[:16]
 
 
@@ -411,8 +421,25 @@ def create_env(env_dir: Path, mm, mirror, conda_deps, pip_reqs_path: Path, force
             return env_python_path(env_dir)
 
         log(f"创建环境: {env_dir}")
-        run([mm, "--root-prefix", str(MICROMAMBA_ROOT), "env", "update" if kind == "conda" else "create", "-p", str(env_dir), "-f", str(env_yml_path), "-y"],
-            env_extra={"PIP_INDEX_URL": mirror["pypi"]})
+        providers = json.loads(MIRROR_FILE.read_text(encoding="utf-8"))["providers"]
+        base_env_text = env_yml_path.read_text(encoding="utf-8")
+        attempts = [mirror] + [v for v in providers.values() if v["pypi"] != mirror["pypi"]]
+        for index, provider in enumerate(attempts):
+            # Switch both conda and pip endpoints together; never mix insecure indexes.
+            if env_file is None:
+                env_yml_path.write_text(build_env_yml(provider, conda_deps, pip_reqs_path), encoding="utf-8")
+            else:
+                text = base_env_text
+                for channel, replacement in zip(mirror["channels"], provider["channels"] * len(mirror["channels"])):
+                    text = text.replace(channel, replacement)
+                env_yml_path.write_text(text, encoding="utf-8")
+            rc = run([mm, "--root-prefix", str(MICROMAMBA_ROOT), "env", "update" if env_kind(env_dir) == "conda" else "create",
+                      "-p", str(env_dir), "-f", str(env_yml_path), "-y"],
+                     env_extra={"PIP_INDEX_URL": provider["pypi"], "PIP_DEFAULT_TIMEOUT": "30", "PIP_RETRIES": "2"}, check=False)
+            if rc == 0:
+                break
+            if index == len(attempts) - 1:
+                raise RuntimeError("All conda/pip mirrors failed; installation stopped without starting services")
     finally:
         if tmp_path is not None:
             try:
@@ -426,7 +453,8 @@ def create_env(env_dir: Path, mm, mirror, conda_deps, pip_reqs_path: Path, force
 
     # 把需要 console-script 入口的组件以可编辑方式装进共享环境
     for comp in inject:
-        install_component(env_dir, comp, mirror, dry_run=dry_run)
+        if not install_component(env_dir, comp, mirror, dry_run=dry_run):
+            raise RuntimeError(f"Component installation failed: {comp.get('name')}")
 
     write_stamp(env_dir, digest, mirror, str(py), kind="conda")
     log(f"环境就绪: {env_dir} -> {py}")
@@ -775,32 +803,52 @@ def reset_component_deps(name: str, component_env_root) -> int:
     return 0
 
 
-def provision_component(mm, mirror, name, component_env_root, force, dry_run) -> int:
-    env_dir = Path(component_env_root) / name
-    yml = component_env_path(name)
-    content = yml.read_text(encoding="utf-8")
-    env_file = yml
-    tmp_path = None
-    if "{{CHANNELS}}" in content:
-        content = content.replace("{{CHANNELS}}", channels_block(mirror["channels"]))
-        tmp = tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8")
-        tmp.write(content)
-        tmp.flush()
-        tmp.close()
-        tmp_path = Path(tmp.name)
-        env_file = tmp_path
+def component_python_version(meta: dict) -> str:
+    """Choose a supported interpreter from the component's declared Requires-Python."""
+    import tomllib
     try:
-        meta = component_meta(name)
-        py = create_env(env_dir, mm, mirror, read_conda_deps(), PIP_REQS_FILE,
+        from packaging.specifiers import SpecifierSet
+    except ImportError:
+        from pip._vendor.packaging.specifiers import SpecifierSet
+    project = resolve_component_src(meta["src"]) / "pyproject.toml"
+    requirement = meta.get("requires_python", ">=3.11,<3.14")
+    if project.exists():
+        requirement = tomllib.loads(project.read_text(encoding="utf-8")).get("project", {}).get("requires-python", requirement)
+    spec = SpecifierSet(requirement)
+    preferred_file = project.parent / '.python-version'
+    preferred = preferred_file.read_text(encoding='utf-8').strip() if preferred_file.exists() else meta.get('python', '')
+    versions = ("3.11", "3.12", "3.13", "3.14")
+    if preferred:
+        preferred = '.'.join(preferred.split('.')[:2])
+        if preferred not in versions or not spec.contains(preferred + '.99'):
+            raise RuntimeError(f"Unsupported preferred Python for {meta['name']}: {preferred}")
+    for version in ([preferred] if preferred else []) + list(versions):
+        if spec.contains(version + ".99"):
+            return version
+    raise RuntimeError(f"Unsupported Python requirement for {meta['name']}: {requirement}")
+
+
+def provision_component(mm, mirror, name, component_env_root, force, dry_run) -> int:
+    meta = component_meta(name)
+    version = component_python_version(meta)
+    env_dir = Path(component_env_root) / name
+    if not resolve_component_src(meta["src"]).exists():
+        raise RuntimeError(f"Component source missing: {name}; download it before provisioning")
+    # Components never upgrade the shared backend interpreter.
+    content = component_env_path(name).read_text(encoding="utf-8")
+    import re
+    content = re.sub(r"python=3\.\d+", "python=" + version, content)
+    content = content.replace("{{CHANNELS}}", channels_block(mirror["channels"]))
+    with tempfile.TemporaryDirectory(prefix="prism-component-") as temp:
+        env_file = Path(temp) / "environment.yml"
+        env_file.write_text(content, encoding="utf-8")
+        py = create_env(env_dir, mm, mirror, ["python=" + version, "pip"], PIP_REQS_FILE,
                         force=force, component=name, inject=[meta], dry_run=dry_run, env_file=env_file)
-    finally:
-        if tmp_path is not None:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
     if not dry_run:
         write_manifest(env_dir, py, mirror, "micromamba", name)
+        if name == 'hermes':
+            run([str(py), '-c', 'import hermes_cli.main, dotenv, ruamel.yaml'])
+            (env_dir / '.hermes-runtime-ready').write_text(version + '\n', encoding='utf-8')
     return 0
 
 
@@ -810,8 +858,8 @@ def main(argv=None) -> int:
     parser.add_argument("--component", help="只供给某个隔离组件环境（components/<name>/env.yaml）")
     parser.add_argument("--uninstall", metavar="NAME", help="卸载组件：node 组件删整个 tools/<name>（含运行中/源码修改保护）；隔离组件删 prism_components/<name> 环境")
     parser.add_argument("--reset-deps", metavar="NAME", help="只清 node 组件依赖（node_modules），保留源码，用于依赖损坏后重装")
-    parser.add_argument("--env-dir", default=str(REPO_ROOT / "prismenv"), help="共享运行时环境目录")
-    parser.add_argument("--component-env-dir", default=str(REPO_ROOT / "prism_components"), help="组件环境根目录")
+    parser.add_argument("--env-dir", default=os.environ.get("PRISM_ENV_DIR", str(REPO_ROOT / "prismenv")), help="共享运行时环境目录")
+    parser.add_argument("--component-env-dir", default=os.environ.get("PRISM_COMPONENT_ENV_DIR", str(REPO_ROOT / "prism_components")), help="组件环境根目录")
     parser.add_argument("--print-python", action="store_true", help="只打印共享环境 python 路径（供壳捕获）")
     parser.add_argument("--list-components", action="store_true", help="列出可用隔离组件环境目录")
     parser.add_argument("--list", action="store_true", help="列出组件清单（inject + isolated）")

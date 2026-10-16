@@ -7,6 +7,7 @@ Persona 代理池：从 Persona 代理网关状态中，按国家动态查找可
 - direct: 直连（不注入代理，使用本机网络 + 本机 locale/时区）
 """
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -33,7 +34,7 @@ COUNTRY_PREFIXES = [
     ("🇭🇰 ", "hk"),
 ]
 
-PROXIES_STATE_PATH = Path(settings.BASE_DIR).parent / "tools" / "persona-studio" / "proxies" / "gateway.json"
+PROXIES_STATE_PATH = Path(os.environ.get("PRISM_PERSONA_SOURCE", Path(settings.BASE_DIR).parent / "tools" / "persona-studio")) / "proxies" / "gateway.json"
 
 
 def _load_gateway_state() -> Optional[Dict[str, Any]]:

@@ -12,6 +12,44 @@ spec.loader.exec_module(provision)
 
 
 class MicromambaRuntimeTests(unittest.TestCase):
+    def test_conda_mirrors_are_replaced_on_every_attempt(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            env = root / 'env'
+            (env / 'conda-meta').mkdir(parents=True)
+            py = provision.env_python_path(env)
+            py.parent.mkdir(parents=True, exist_ok=True)
+            py.touch()
+            recipe = root / 'component.yml'
+            mirror = provision.load_mirror('tuna')
+            recipe.write_text('channels:\n' + provision.channels_block(mirror['channels']) + 'dependencies:\n  - python=3.11\n')
+            seen = []
+            def attempt(*args, **kwargs):
+                seen.append(recipe.read_text())
+                return 0 if len(seen) == 3 else 1
+            with patch.object(provision, 'run', side_effect=attempt):
+                provision.create_env(env, 'micromamba', mirror, ['python=3.11'], root / 'requirements.txt', env_file=recipe)
+            self.assertIn('aliyun', seen[1])
+            self.assertIn('conda-forge', seen[2])
+            self.assertNotIn('aliyun', seen[2])
+            self.assertNotIn('tsinghua', seen[2])
+
+    def test_component_python_constraints(self):
+        for constraint, expected in [('>=3.11,<3.12', '3.11'), ('>=3.12,<3.13', '3.12'), ('>=3.13,<3.14', '3.13')]:
+            with self.subTest(constraint=constraint), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                (root / 'pyproject.toml').write_text('[project]\nrequires-python = "' + constraint + '"\n')
+                with patch.object(provision, 'resolve_component_src', return_value=root):
+                    self.assertEqual(provision.component_python_version({'name': 'test', 'src': 'test'}), expected)
+
+    def test_component_prefers_its_own_python_version(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'pyproject.toml').write_text('[project]\nrequires-python = ">=3.11,<3.15"\n')
+            (root / '.python-version').write_text('3.14')
+            with patch.object(provision, 'resolve_component_src', return_value=root):
+                self.assertEqual(provision.component_python_version({'name': 'hermes', 'src': 'test'}), '3.14')
+
     def test_platform_matrix(self):
         for system, arch, expected in [
             ("Windows", "AMD64", "win-64"), ("Darwin", "arm64", "osx-arm64"),

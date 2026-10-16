@@ -12,20 +12,21 @@ const fs = require('fs');
 const { spawnSync } = require('child_process');
 
 const ROOT = __dirname;                       // 本文件所在目录 = 项目根
-const PRISMENV = path.join(ROOT, 'prismenv');
+const PRISMENV = process.env.PRISM_ENV_DIR || path.join(ROOT, 'prismenv');
 const IS_WIN = process.platform === 'win32';
 const PY = IS_WIN
   ? path.join(PRISMENV, 'python.exe')
   : path.join(PRISMENV, 'bin', 'python');
 const NPM = IS_WIN ? 'npm.cmd' : 'npm';
-const COMPONENT_ENV_ROOT = path.join(ROOT, 'prism_components');
+const COMPONENT_ENV_ROOT = process.env.PRISM_COMPONENT_ENV_DIR || path.join(ROOT, 'prism_components');
 const BACKEND = path.join(ROOT, 'prism_backend');
 const RUNTIME_DATA = process.env.PRISM_RUNTIME_DATA_DIR || path.join(ROOT, 'runtime-data');
 const BROWSERS = path.join(RUNTIME_DATA, 'components', 'browsers', 'patchright', 'versions', 'current');
-const HERMES_AGENT = path.join(ROOT, 'tools', 'hermes-agent');
-const HERMES_WEBUI = path.join(ROOT, 'tools', 'hermes-webui');
+const HERMES_AGENT = process.env.PRISM_HERMES_SOURCE || path.join(ROOT, 'tools', 'hermes-agent');
+const HERMES_WEBUI = process.env.PRISM_HERMES_WEBUI_SOURCE || path.join(ROOT, 'tools', 'hermes-webui');
 const HERMES_HOME = path.join(ROOT, 'tools', 'hermes-home', 'webui');
-const PERSONA_PROXY = path.join(ROOT, 'tools', 'persona-studio', 'proxies', 'mihomo');
+const PERSONA_SOURCE = process.env.PRISM_PERSONA_SOURCE || path.join(ROOT, 'tools', 'persona-studio');
+const PERSONA_PROXY = path.join(PERSONA_SOURCE, 'proxies', 'mihomo');
 const DEEPSEEK_HARNESS = path.join(ROOT, 'tools', 'deepseek-harness');
 const DSH_CLI = path.join(DEEPSEEK_HARNESS, 'apps', 'cli', 'lib', 'bin.js');
 const runtime = JSON.parse(fs.readFileSync(path.join(ROOT, 'runtime-data', 'runtime.json'), 'utf8'));
@@ -49,9 +50,9 @@ function which(command, fallback) {
   return fallback || command;
 }
 const bundledRedis = path.join(ROOT, 'desktop-electron', 'resources', 'redis', 'redis-server.exe');
-const nativeRedis = path.join(PRISMENV, 'bin', 'redis-server');
-const REDIS = IS_WIN && fs.existsSync(bundledRedis) ? bundledRedis
-  : fs.existsSync(nativeRedis) ? nativeRedis : which('redis-server', 'redis-server');
+const nativeRedis = IS_WIN ? path.join(PRISMENV, 'Library', 'bin', 'redis-server.exe') : path.join(PRISMENV, 'bin', 'redis-server');
+const REDIS = process.env.PRISM_REDIS_SERVER || (IS_WIN && fs.existsSync(bundledRedis) ? bundledRedis
+  : fs.existsSync(nativeRedis) ? nativeRedis : which('redis-server', 'redis-server'));
 
 function pyCliIn(envDir, name) {
   // 优先 <envDir>/bin/<console-script>（macOS，带 shebang，PM2 可直接跑）
@@ -60,7 +61,7 @@ function pyCliIn(envDir, name) {
   const exeName = IS_WIN ? (name + '.exe') : name;
   const exe = path.join(envDir, binDir, exeName);
   if (fs.existsSync(exe)) return { script: exe, preArgs: [] };
-  return { script: PY, preArgs: ['-m', name] };
+  return { script: path.join(envDir, IS_WIN ? 'python.exe' : 'bin/python'), preArgs: ['-m', name] };
 }
 function pyCli(name) { return pyCliIn(PRISMENV, name); }
 function pyCliArgs(name, extraArgs) {
@@ -198,7 +199,7 @@ module.exports = {
     },
     {
       name: 'persona-dashboard',
-      cwd: './tools/persona-studio/dashboard',
+      cwd: path.join(PERSONA_SOURCE, 'dashboard'),
       script: NPM,
       // server.open=true 会让 Vite 自动弹浏览器到 5173；用 --no-open 覆盖，
       // 避免启动时浏览器抢走焦点（应停留/打开到主前端 http://localhost:3000）。
@@ -213,9 +214,9 @@ module.exports = {
     {
       name: 'hermes-dashboard',
       cwd: '.',
-      script: compPyCliArgs('hermes', 'hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build']).script,
+      script: compPyCliArgs('hermes', 'hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build', '--isolated']).script,
       interpreter: 'none',
-      args: compPyCliArgs('hermes', 'hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build']).args,
+      args: compPyCliArgs('hermes', 'hermes', ['dashboard', '--host', '127.0.0.1', '--port', '9119', '--no-open', '--skip-build', '--isolated']).args,
       autorestart: true,
       watch: false,
       restart_delay: 2000,
@@ -230,8 +231,8 @@ module.exports = {
     },
     {
       name: 'hermes-webui',
-      cwd: './tools/hermes-webui',
-      script: PY,
+      cwd: HERMES_WEBUI,
+      script: path.join(COMPONENT_ENV_ROOT, 'hermes', IS_WIN ? 'python.exe' : 'bin/python'),
       interpreter: 'none',
       args: 'server.py',
       autorestart: true,
@@ -268,7 +269,9 @@ module.exports = {
       error_file: './logs/deepseek-harness-error.log',
       out_file: './logs/deepseek-harness-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    }
+    },
+    { name: 'prism-recovery', script: process.execPath, args: [path.join(ROOT, 'scripts/runtime/pm2-recovery.cjs')],
+      env: { ...process.env, PRISM_APP_ROOT: ROOT }, max_restarts: 2 }
   ].map(app => ({
     interpreter: 'none',
     windowsHide: true,
@@ -276,12 +279,13 @@ module.exports = {
     max_restarts: 5,
     restart_delay: 3000,
     ...app,
+    max_restarts: Math.min(app.max_restarts || 5, 5),
     ...(IS_WIN && app.script === NPM ? {
       script: process.execPath,
       interpreter: 'none',
       args: app.name === 'prism-frontend'
         ? [path.join(ROOT, 'prism_frontend', 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev']
-        : [path.join(ROOT, 'tools', 'persona-studio', 'dashboard', 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', '5173', '--no-open'],
+        : [path.join(PERSONA_SOURCE, 'dashboard', 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', '5173', '--no-open'],
     } : {}),
   }))
 };
