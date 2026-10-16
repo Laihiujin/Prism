@@ -33,7 +33,7 @@ from fastapi_app.core.config import settings
 # Dashboard 目录（tools/persona-studio/dashboard）
 BACKEND_ROOT = Path(__file__).resolve().parents[2]  # fastapi_app/../.. = prism_backend
 REPO_ROOT = BACKEND_ROOT.parent
-DASHBOARD_DIR = REPO_ROOT / "tools" / "persona-studio" / "dashboard"
+DASHBOARD_DIR = Path(os.environ.get("PRISM_PERSONA_SOURCE", REPO_ROOT / "tools" / "persona-studio")) / "dashboard"
 
 # 与 dashboard/vite.config.js 保持一致
 DASHBOARD_PORT = 5173

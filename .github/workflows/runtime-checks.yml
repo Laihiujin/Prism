@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Packaging platform and clean configuration tests
-        run: node --test desktop-electron/scripts/after-pack.test.cjs
+        run: node --test desktop-electron/scripts/after-pack.test.cjs scripts/runtime/runtime.test.cjs
       - name: Micromamba provisioning tests
         run: python -m unittest discover -s scripts/tests -p test_micromamba_runtime.py
       - name: Background subprocess tests

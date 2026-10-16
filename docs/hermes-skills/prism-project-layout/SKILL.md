@@ -185,3 +185,15 @@ Hermes 通过 `tools/hermes-home/config.yaml` 的 `mcp_servers.prism` 注册了�
 4. **账号操作前**先 `list_accounts` 或 `prism <platform> check --account <name>` 验证。
 5. **登录产生二维码**时展示图片给用户；B 站登录必须在用户本地交互终端执行。
 6. 不提交任何本地数据（cookies、浏览器档案、指纹、代理、数据库、日志）到 Git。
+
+## 运行环境与进程
+
+Windows `start.bat` → 隐藏启动器 → `scripts/runtime/ensure-runtime.cjs`；
+macOS `start-mac.sh` 走相同供给器。安装包不携带 Python 虚拟环境。
+首次启动通过 micromamba 创建共享 Python 和独立的 Hermes、Persona 环境。
+组件优先采用 `.python-version`，并校验 `requires-python`，不改变后端解释器。
+实际路径由 `PRISM_ENV_DIR`、`PRISM_COMPONENT_ENV_DIR`、`PRISM_HERMES_PYTHON`
+及运行数据目录中的 `runtime-manifest.json` 指引。
+所有已启用服务由 PM2 托管，`prism-recovery` 检查反复重启，
+执行有限次数重启/依赖修复后熔断，主动停止的进程不自动拉起。
+详情见 `scripts/packaging/provision/README.md`。

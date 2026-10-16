@@ -1,0 +1,5 @@
+{
+  "hermes": {"directory": "hermes-agent", "repository": "NousResearch/hermes-agent", "revision": "71f8c60f6a6ab8f2fab1e4d5c22d6dd9c856b63e", "entry": "pyproject.toml"},
+  "hermes-webui": {"directory": "hermes-webui", "repository": "nesquena/hermes-webui", "revision": "e168b67e4278df618d1cab61fdb3a8dc55b29a81", "entry": "server.py"},
+  "persona": {"directory": "persona-studio", "repository": "TechQaiser/persona-studio", "revision": "36ef3e7dc603a6edf39eb5d45cbee3990f49e67f", "entry": "engine/pyproject.toml"}
+}
