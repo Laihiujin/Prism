@@ -23,6 +23,8 @@ Search in this order and log each result in the sheet's `sources` list (URL or f
 Rules:
 
 - Search in every language of the product's market (for a Chinese product, Chinese **and** English).
+- Always search brand **and** model together, and check every result is from that brand. Different brands reuse the same model names; record any such trap in `product.name_trap`.
+- Competitors and similar products are valuable for understanding how the category works (installation, interaction, how people use it), but stay `category` evidence and never become model facts.
 - If the exact model can't be found, record `"model_specific_found": false`, fall back to category facts, list what is still unknown in `unknowns`, and block any image that depends on an unknown.
 - Never copy images or text from sources into outputs. Research informs logic; product appearance comes only from verified source assets.
 
