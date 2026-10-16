@@ -12,7 +12,7 @@ from loguru import logger
 from utils.automation_provider import async_playwright, Page
 from myUtils.automation_context_factory import create_context_with_policy
 
-from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus, risk_control_detected
+from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus, risk_control_detected, scan_confirmation_visible
 from ..session_manager import tencent_session_manager
 
 
@@ -121,6 +121,9 @@ class TencentAdapter(PlatformAdapter):
 
             # 检查关键Cookie
             if any(c["name"] in ["session_key", "ticket", "ticket_id", "wxuin", "uin", "finder_username"] for c in cookies_list):
+                if not session.get("login_scan_reported"):
+                    session["login_scan_reported"] = True
+                    return LoginResult(status=LoginStatus.SCANNED, message="已扫码，正在同步账号")
                 # ⚠️ 关键修复：登录成功后主动导航到 /platform 页面，确保能看到 finder-uid-copy 元素
                 logger.info(f"[Tencent] Login detected, navigating to platform page")
                 try:
@@ -160,6 +163,10 @@ class TencentAdapter(PlatformAdapter):
             if risk_msg:
                 logger.warning(f"[Tencent] Risk control detected: {risk_msg}")
                 return LoginResult(status=LoginStatus.RISK_CONTROL, message=risk_msg)
+
+            if session.get("login_scan_reported") or await scan_confirmation_visible(page):
+                session["login_scan_reported"] = True
+                return LoginResult(status=LoginStatus.SCANNED, message="已扫码，请在手机上确认登录")
 
             return LoginResult(status=LoginStatus.WAITING, message="Waiting for scan")
 

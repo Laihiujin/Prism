@@ -54,6 +54,9 @@ class DeliveryTests(unittest.TestCase):
             adapter._extract_user_info = AsyncMock(return_value=UserInfo(user_id="fixture-user"))
             adapter.cleanup_session = AsyncMock()
             with patch('app_new.platforms.douyin.douyin_session_manager.get_session', return_value={"page": page, "context": context}), patch('app_new.platforms.douyin_sms.inspect_sms', AsyncMock(return_value=(None, None))):
+                progress = await adapter.poll_status("fixture")
+                self.assertEqual(progress.status, LoginStatus.SCANNED)
+                adapter._extract_user_info.assert_not_awaited()
                 result = await adapter.poll_status("fixture")
             self.assertEqual(result.status, LoginStatus.CONFIRMED)
             adapter.cleanup_session.assert_not_awaited()
