@@ -251,6 +251,7 @@ async def generate_qrcode(
     platform: PlatformType = Query(..., description="骞冲彴绫诲瀷"),
     account_id: str = Query(..., description="璐﹀彿ID"),
     login_role: str = Query("creator", pattern="^(creator|mcn)$"),
+    session_id: Optional[str] = Query(None, description="刷新现有扫码会话，复用原浏览器"),
     headless: Optional[bool] = Query(None, description="是否无头；false=弹真实浏览器窗口，风控时供人工验证"),
 ):
     """
@@ -276,10 +277,15 @@ async def generate_qrcode(
         account_key = (platform.value.lower(), account_id)
         stale_session_ids = []
         async with login_sessions_lock:
+            if session_id:
+                current = login_sessions.get(session_id)
+                current_platform = getattr((current or {}).get('platform'), 'value', (current or {}).get('platform'))
+                if not current or (current_platform, current.get('account_id')) != account_key or current.get('confirmed_response'):
+                    raise HTTPException(404, '原扫码会话不存在，请重新开始登录')
             for stale_id, stale in list(login_sessions.items()):
                 stale_platform = stale.get("platform")
                 stale_platform_value = getattr(stale_platform, "value", str(stale_platform)).lower()
-                if (stale_platform_value, stale.get("account_id")) == account_key:
+                if not session_id and (stale_platform_value, stale.get("account_id")) == account_key:
                     stale_session_ids.append(stale_id)
                     login_sessions.pop(stale_id, None)
         for stale_id in stale_session_ids:
@@ -293,6 +299,7 @@ async def generate_qrcode(
             headless=get_playwright_headless() if headless is None else bool(headless),
             mode=settings.PRISM_DOUYIN_LOGIN_MODE,
             login_role=login_role,
+            session_id=session_id,
         )
 
         session_id = result["session_id"]

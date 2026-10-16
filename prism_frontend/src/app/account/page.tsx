@@ -225,7 +225,7 @@ function AccountPageContent() {
   const selectedLoginAccountRef = useRef<{ account_id: string; name: string; avatar: string } | null>(null)
   const smsLoginStartedRef = useRef<number | null>(null)
 
-  const stopPolling = useCallback(() => {
+  const stopPolling = useCallback((preserveSession = false) => {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current)
       pollIntervalRef.current = null
@@ -234,8 +234,10 @@ function AccountPageContent() {
       clearTimeout(pollTimeoutRef.current)
       pollTimeoutRef.current = null
     }
-    activeSessionRef.current = null
-    sessionStorage.removeItem("prism-active-login")
+    if (!preserveSession) {
+      activeSessionRef.current = null
+      sessionStorage.removeItem("prism-active-login")
+    }
     smsLoginStartedRef.current = null
     setSmsVerification(null)
     setSmsCode("")
@@ -388,6 +390,13 @@ function AccountPageContent() {
   }
 
   const startBinding = async () => {
+    if (loginMode === "qrcode" && activeSessionRef.current && loginAccountIdRef.current) {
+      const sessionId = activeSessionRef.current
+      stopPolling(true)
+      setBindingStatus("pending")
+      await startApiLogin(loginAccountIdRef.current, sessionId)
+      return
+    }
     await cancelBinding()
     if (formState.platform === "twitter") return  // 推特走专用绑定面板（TwitterBindPanel）
     if (formState.platform === "tiktok" || formState.platform === "youtube") {
@@ -656,7 +665,7 @@ function AccountPageContent() {
             // 风控等待人工验证时不断刷新超时，避免 5 分钟到点被误杀
             armTimeout()
           } else if (statusData.status === 'expired') {
-            stopPolling()
+            stopPolling(true)
             setRiskNotice(null)
             setBindingStatus("error")
             toast({
@@ -686,7 +695,7 @@ function AccountPageContent() {
         if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
         pollTimeoutRef.current = setTimeout(() => {
           if (activeSessionRef.current !== sessionId) return
-          stopPolling()
+          stopPolling(true)
           setBindingStatus("error")
           setRiskNotice(null)
           toast({
@@ -726,7 +735,7 @@ function AccountPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const startApiLogin = async (loginId: string) => {
+  const startApiLogin = async (loginId: string, refreshSessionId?: string) => {
     loginAccountIdRef.current = loginId
     selectedLoginAccountRef.current = null
     identityStageSeenRef.current = false
@@ -752,7 +761,7 @@ function AccountPageContent() {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ platform, account_id: loginId, phone: loginPhone, login_role: loginRole }),
           })
-        : await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}&login_role=${loginRole}`, { method: "POST" })
+        : await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/generate?platform=${platform}&account_id=${encodeURIComponent(loginId)}&login_role=${loginRole}${refreshSessionId ? `&session_id=${encodeURIComponent(refreshSessionId)}` : ""}`, { method: "POST" })
 
       let qrData: any = null
       let rawText = ""

@@ -21,7 +21,7 @@ def build_workflow_tool_specs():
         ("list_publish_verifications", "列出待人工验证的发布任务；含账号、任务与重发状态。关闭UI不影响查询。", "GET", "/verification/otp-events", {}, [], "json"),
         ("submit_publish_verification", "回传用户提供的发布验证码；account_id使用待验证事件中的标识，不要猜测验证码。", "POST", "/verification/submit-code", {"account_id": S, "code": {"type": "string", "pattern": "^[0-9]{4,8}$"}}, ["account_id", "code"], "json"),
         ("resend_publish_verification", "通知该发布任务重新获取验证码；受平台及服务冷却限制。", "POST", "/verification/resend-code", {"account_id": S}, ["account_id"], "json"),
-        ("start_login_qrcode", "开始浏览器扫码登录；返回session_id和二维码。由用户扫码确认。", "POST", "/auth/qrcode/generate", {"platform": PLATFORM, "account_id": S}, ["platform", "account_id"], "json"),
+        ("start_login_qrcode", "开始扫码登录；传session_id时在原浏览器刷新二维码。由用户扫码确认。", "POST", "/auth/qrcode/generate", {"platform": PLATFORM, "account_id": S, "session_id": S}, ["platform", "account_id"], "query"),
         ("get_login_status", "查询扫码/待确认/人工验证/成功状态，并完成账号同步。", "GET", "/auth/qrcode/poll", {"session_id": S}, ["session_id"], "json"),
         ("start_login_sms", "使用用户提供的手机号开始短信登录。", "POST", "/auth/sms/start", {"platform": {"type": "string", "enum": ["douyin", "kuaishou", "xiaohongshu", "bilibili"]}, "account_id": S, "phone": {"type": "string", "pattern": "^1[0-9]{10}$"}, "login_role": {"type": "string", "enum": ["creator", "mcn"]}}, ["platform", "account_id", "phone"], "json"),
         ("login_verification_action", "登录验证码获取/重发/回传、账号选择、身份验证二维码。验证码必须由用户提供。", "POST", "/auth/qrcode/sms", {"session_id": S, "action": {"type": "string", "enum": ["request", "resend", "submit", "select_account", "identity_qr"]}, "code": {"type": "string", "pattern": "^[0-9]{4,8}$"}, "account_choice": {"type": "string", "pattern": "^[0-9]{1,30}$"}}, ["session_id", "action"], "json"),
@@ -64,7 +64,7 @@ def build_workflow_tool_specs():
                 path = route
                 for key in re.findall(r"\{(\w+)\}", route):
                     path = path.replace("{" + key + "}", quote(str(body.pop(key)), safe=""))
-                request = {"params": body} if method == "GET" else {"data" if encoding == "form" else "json": body.get("preferences") if encoding == "unwrap" else body}
+                request = {"params": body} if method == "GET" or encoding == "query" else {"data" if encoding == "form" else "json": body.get("preferences") if encoding == "unwrap" else body}
                 async with httpx.AsyncClient(base_url=get_backend_url(), timeout=60) as client:
                     response = await client.request(method, "/api/v1" + path, **request)
                 payload = response.json()
