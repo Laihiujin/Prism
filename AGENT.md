@@ -48,3 +48,14 @@ The following are local runtime data and must stay out of GitHub:
 - Before commit or push, run `git status --short`.
 - If a runtime or sensitive file appears in Git tracking, remove it from the index with `git rm --cached <path>` and add or fix the ignore rule.
 - If an example file is required for documentation or onboarding, create a sanitized template such as `*.example.*` instead of pushing real data.
+
+## Third-Party Skill Licensing
+
+`docs/hermes-skills/` is Prism-authored (MIT) and safe to publish. Third-party agent skills referenced by it stay **outside** the repo:
+
+- Never copy third-party skill files, references, or assets into this repository unless the license clearly permits redistribution.
+- `op7418/guizang-social-card-skill` is **AGPL-3.0** — reference its method in prose only; never vendor its code or assets into a product repo.
+- `jackbauerxu/workbuddy-xhs-skills` has **no LICENSE file** (all rights reserved by default) — local reference only; never commit or redistribute.
+- MIT-licensed sources (`lhg-plugs/lhg-headline`, `JuneYaooo/self-media-compliance-review`) may be adapted with attribution.
+- When adapting an external skill's method, record the source repo, license, and pinned commit in the adopting skill's "参考来源与许可" section (see `docs/hermes-skills/prism-title-topic/SKILL.md` §11).
+- Local clones live outside the repo, e.g. `E:\Laihiujin\Git\<repo>`; they are never added as submodules or vendored directories.

@@ -35,6 +35,11 @@ OpenClaw / Prism HermesAgent）与开发者。更具体的指令优先于本文�
 
 ## 其他
 
+- 新增业务功能时，必须同时提供 Agent 调用入口：登记共用 `tool_catalog`
+  （复杂工作流放在 `services/agent_workflow_tools.py`），确保 MCP `tools/list`
+  / `tools/call`、`prism_cli.py tool list/invoke` 和工具目录 API 同时可发现、可调用。
+  仅新增 HTTP 路由或前端入口不算完成。补充参数 schema、调用文档及发现/执行测试。
+
 - `reverse_api/` 下逆向产物的归档/验证/回滚流程（`artifacts/*/VERIFICATION.txt`
   + `ROLLBACK.sh`）应保持；新逆向改动请遵循同样的验证与回滚约定。
 - 修改登录相关代码前，先读 `DOUYIN_HTTP_2156_FINDINGS.md` 与本文件。

@@ -711,7 +711,9 @@ async def generate_cover(request: GenerateCoverRequest):
         api_key = config['api_key']
         base_url = _normalize_images_base_url(config.get('base_url'))
         model_name = config.get('model_name')
-        extra_config = config.get('extra_config', {})
+        # extra_config 在库里可能是 NULL：`dict.get(k, {})` 对「键存在但值为 None」仍返回 None，
+        # 必须用 `or {}` 兜底，否则下方 extra_config.get(...) 会抛 AttributeError。
+        extra_config = config.get('extra_config') or {}
         
         # 根据提供商调用不同的 API
         async with httpx.AsyncClient() as client:
@@ -1865,7 +1867,8 @@ async def generate_video(request: VideoGenerationRequest):
         api_key = config['api_key']
         base_url = config.get('base_url')
         model_name = config.get('model_name')
-        extra_config = config.get('extra_config', {})
+        # 同 generate-cover：extra_config 可能为 NULL，需 `or {}` 兜底。
+        extra_config = config.get('extra_config') or {}
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             if provider == "runwayml":

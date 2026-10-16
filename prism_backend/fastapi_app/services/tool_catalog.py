@@ -429,5 +429,11 @@ for _host_spec in build_platform_api_tool_specs():
         TOOLS[_host_spec.name] = _host_spec
 
 
+from .agent_workflow_tools import build_workflow_tool_specs
+
+for _workflow_spec in build_workflow_tool_specs():
+    if _workflow_spec.name not in TOOLS:
+        TOOLS[_workflow_spec.name] = _workflow_spec
+
 if __name__ == "__main__":
     _main()

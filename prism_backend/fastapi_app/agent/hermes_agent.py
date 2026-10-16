@@ -109,6 +109,11 @@ def _collect_project_tool_catalog() -> List[Dict[str, Any]]:
             )
             seen.add(tool_name)
 
+    from fastapi_app.services.tool_catalog import all_tools
+    for spec in all_tools():
+        if spec.name not in seen:
+            catalog.append({"name": spec.name, "description": spec.description, "parameters": list(spec.parameters.get("properties", {}))})
+            seen.add(spec.name)
     catalog.sort(key=lambda item: item["name"])
     _project_tool_catalog_cache = catalog
     return catalog
@@ -663,6 +668,7 @@ async def _start_dashboard_backend(
                 str(port),
                 "--no-open",
                 "--skip-build",
+                "--isolated",
             ),
             cwd=str(source_path),
             env=env,

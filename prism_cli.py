@@ -128,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
     tool_invoke = tool_sub.add_parser("invoke", help="调用指定工具（参数用 JSON 对象传）")
     tool_invoke.add_argument("name", help="工具名（见 prism tool list）")
     tool_invoke.add_argument("--json", default="{}", help='工具参数 JSON 对象，如 \'{"file_path":"/abs/video.mp4"}\'')
+    tool_invoke.add_argument("--json-file", help="从UTF-8文件读取参数，使用 - 从标准输入读取（适用于验证码）")
 
     # 跨平台查询（类似 MatrixMedia 的 `cli accounts --json` / `cli history --json`）
     accounts_cmd = roots.add_parser("accounts", help="列出所有平台账号（JSON）")
@@ -345,11 +346,13 @@ async def dispatch_tool(args: argparse.Namespace) -> int:
     from fastapi_app.services.tool_catalog import all_tools, invoke
 
     if args.action == "list":
-        items = [{"name": t.name, "category": t.category, "description": t.description} for t in all_tools()]
+        items = [{"name": t.name, "category": t.category, "description": t.description, "inputSchema": t.parameters} for t in all_tools()]
         print(json.dumps(items, ensure_ascii=False, indent=2))
         return 0
     if args.action == "invoke":
-        params = json.loads(args.json) if getattr(args, "json", None) else {}
+        source = getattr(args, "json_file", None)
+        raw = sys.stdin.read() if source == "-" else Path(source).read_text(encoding="utf-8-sig") if source else args.json
+        params = json.loads(raw or "{}")
         if not isinstance(params, dict):
             print(json.dumps({"ok": False, "message": "--json 必须是 JSON 对象", "data": None}, ensure_ascii=False))
             return EXIT_USAGE
@@ -384,9 +387,8 @@ async def dispatch_history(args: argparse.Namespace) -> int:
 
 async def dispatch_mcp(args: argparse.Namespace) -> int:
     """prism mcp -> 启动 MCP stdio 服务（阻塞直到客户端断开）"""
-    from mcp_server import server
-    await server.run_stdio_async()
-    return EXIT_OK
+    from fastapi_app.agent.mcp_server import main as mcp_main
+    return await asyncio.to_thread(mcp_main)
 
 
 async def dispatch_twitter(args: argparse.Namespace) -> int:
