@@ -54,7 +54,6 @@ import { cn } from "@/lib/utils"
 import { MaterialPresetMenu } from "@/components/material-preset-menu"
 import { MaterialEditorSheet } from "@/components/material-editor-sheet"
 import { PageHeader } from "@/components/layout/page-scaffold"
-import Link from "next/link"
 
 type MaterialView = "all" | "image" | "video"
 
@@ -809,11 +808,6 @@ function MaterialsPageContent({ view }: { view: MaterialView }) {
       />
 
       {/* Filter Toolbar */}
-      <nav className="flex flex-wrap gap-2" aria-label="素材分类">
-        {([{ key: "all", href: "/materials", label: "全部素材" }, { key: "image", href: "/materials/images", label: "图片" }, { key: "video", href: "/materials/videos", label: "视频" }] as const).map(item => (
-          <Button key={item.key} asChild variant={view === item.key ? "default" : "outline"} size="sm"><Link href={item.href}>{item.label}</Link></Button>
-        ))}
-      </nav>
       <Card className="flex-1 border-border/70 bg-card flex flex-col min-h-0 shadow-none">
         <CardHeader className="flex-shrink-0 border-b border-border/60 pb-4">
           <div className="flex flex-col md:flex-row gap-4 justify-between items-center">

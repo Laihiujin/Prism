@@ -67,10 +67,11 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
         setDashboardUrl(runtimeUrl)
       }
 
-      const running = Boolean(runtime?.dashboard_running) || Boolean(runtimeUrl)
+      const installed = runtime?.agent_installed !== false && runtime?.official_dashboard_installed !== false
+      const running = installed && Boolean(runtime?.dashboard_running)
       setReady(running)
       if (!running && runtime && (!runtime.agent_installed || !runtime.official_dashboard_installed)) {
-        setStartupError("Hermes Agent 或 Dashboard 尚未安装。请先完成本地 Hermes 运行时安装。")
+        setStartupError("Hermes 尚未安装，请在开发者工具中下载。")
       }
       return running
     }
@@ -101,6 +102,7 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
         if (applyRuntime(currentRuntime)) {
           return
         }
+        if (currentRuntime && (currentRuntime.agent_installed === false || currentRuntime.official_dashboard_installed === false)) return
 
         const response = await fetch(`${baseUrl}/api/v1/agent/config/hermes/dashboard/start`, {
           method: "POST",
@@ -154,12 +156,6 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
     }
   }, [active, retryToken])
 
-  useEffect(() => {
-    if (active) {
-      setRetryToken((current) => current + 1)
-    }
-  }, [active])
-
   const iframeSrc = useMemo(() => dashboardUrl, [dashboardUrl])
 
   return (
@@ -193,8 +189,8 @@ export function HermesEmbeddedHost({ active }: { active: boolean }) {
               >
                 重试启动
               </button>
-              <a href="/ai-agent/settings" className="rounded-xl bg-foreground px-4 py-2 text-sm text-background">
-                打开运行时设置
+              <a href="/tools" className="rounded-xl bg-foreground px-4 py-2 text-sm text-background">
+                打开开发者工具
               </a>
             </div>
           </div>
