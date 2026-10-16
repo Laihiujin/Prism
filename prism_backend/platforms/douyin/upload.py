@@ -175,6 +175,7 @@ class DouyinUpload(BasePlatform):
                     cover_orientation: str = "",
                     cover_file: str = "",
                     miniprogram_object: Optional[Dict[str, Any]] = None,
+                    description: str = "",
                     **kwargs) -> Dict[str, Any]:
         """
         上传并发布抖音视频
@@ -310,7 +311,7 @@ class DouyinUpload(BasePlatform):
                 await self.dismiss_version_prompt(page)
 
                 # 填充标题和标签
-                await self._fill_title_and_tags(page, title, tags, enable_third_party=enable_third_party)
+                await self._fill_title_and_tags(page, title, tags, enable_third_party=enable_third_party, description=description)
                 
                 # 等待视频上传完成
                 await self._wait_for_video_upload(page)
@@ -420,7 +421,7 @@ class DouyinUpload(BasePlatform):
                     if (val or "") == desired or desired in (val or ""):
                         return True
                 except Exception:
-                    return True
+                    continue
             except Exception:
                 continue
 
@@ -430,11 +431,11 @@ class DouyinUpload(BasePlatform):
             if await titlecontainer.count() and await titlecontainer.is_visible():
                 await titlecontainer.click()
                 # 使用 JavaScript 直接设置 textContent/innerText（快速）
-                await titlecontainer.evaluate(f"el => {{ el.textContent = '{desired}'; el.innerText = '{desired}'; }}")
+                await titlecontainer.evaluate("(el, value) => { el.textContent = value; }", desired)
                 # 触发 input 事件让前端感知变化
                 await titlecontainer.evaluate("el => el.dispatchEvent(new Event('input', { bubbles: true }))")
                 await page.wait_for_timeout(100)
-                return True
+                return (await titlecontainer.inner_text()).strip() == desired
         except Exception:
             pass
         return False
@@ -722,10 +723,17 @@ class DouyinUpload(BasePlatform):
 
             await asyncio.sleep(0.5)
     
-    async def _fill_title_and_tags(self, page: Page, title: str, tags: list, enable_third_party: bool = False):
+    async def _fill_title_and_tags(self, page: Page, title: str, tags: list, enable_third_party: bool = False, description: str = ""):
         """填充标题和标签"""
         logger.info("[DouyinUpload] 填充标题和标签...")
-        await self._fill_title_best_effort(page, title)
+        title_filled = False
+        for attempt in range(10):
+            if await self._fill_title_best_effort(page, title):
+                title_filled = True
+                break
+            await asyncio.sleep(1)
+        if not title_filled:
+            raise RuntimeError("抖音标题未正确填入，已停止发布")
 
         # 🆕 标签去重与数量限制（从旧版迁移）
         seen = set()
@@ -744,13 +752,15 @@ class DouyinUpload(BasePlatform):
             if max_tags > 0 and len(normalized_tags) >= max_tags:
                 break
 
-        logger.info(f"[DouyinUpload] 标签已去重: {len(tags)} -> {len(normalized_tags)} 个")
+        logger.info(f"[DouyinUpload] 标签已去重: {len(tags or [])} -> {len(normalized_tags)} 个")
 
         # 添加话题标签 (在描述框中)
         # 用户确认描述框位置为 zone-container
         css_selector = ".zone-container"
         try:
             zone = page.locator(css_selector).first
+            if (description or normalized_tags) and (await zone.count() == 0 or not await zone.is_visible()):
+                raise RuntimeError("抖音简介和话题输入框不可用")
             if await zone.count() > 0 and await zone.is_visible():
                 await zone.click()
                 await page.wait_for_timeout(200)
@@ -760,6 +770,8 @@ class DouyinUpload(BasePlatform):
                 await page.keyboard.press("Delete")
                 await page.wait_for_timeout(100)
 
+                if description:
+                    await page.keyboard.insert_text(description.strip() + "\n")
                 # ⚠️ 逐个输入标签，触发抖音的补全下拉框
                 for idx, tag in enumerate(normalized_tags):
                     # 输入 #标签名
@@ -787,8 +799,15 @@ class DouyinUpload(BasePlatform):
                     logger.info(f"[DouyinUpload] 已添加标签 {idx+1}/{len(normalized_tags)}: #{tag}")
 
                 logger.info(f"[DouyinUpload] 已添加 {len(normalized_tags)} 个标签")
+                rendered = await zone.inner_text()
+                if description and description.strip() not in rendered:
+                    raise RuntimeError("抖音简介未完整填入")
+                missing_tags = [tag for tag in normalized_tags if f"#{tag}" not in rendered]
+                if missing_tags:
+                    raise RuntimeError(f"抖音话题未正确填入: {', '.join(missing_tags)}")
         except Exception as e:
             logger.error(f"[DouyinUpload] 填充标签失败: {e}")
+            raise
 
         # 🆕 第三方平台同步（头条/西瓜）（从旧版迁移）
         if enable_third_party:
