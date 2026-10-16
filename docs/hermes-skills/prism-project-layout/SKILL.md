@@ -15,6 +15,13 @@ prerequisites:
 
 # Prism 项目布局与调用指南
 
+创作者中心远程画面：`POST /api/v1/accounts/{account_id}/creator-center/open`
+返回 `data.session_id`。前端自动展开浏览器面板，并复用
+`GET /api/v1/auth/qrcode/view/{session_id}` 与
+`POST /api/v1/auth/qrcode/pointer/{session_id}` 的实时截图和人工点击、拖动接口。
+Agent 可用现有 `get_login_browser_frame` / `login_browser_pointer` 工具操作同一会话。
+创作者中心会话默认保留一小时；过期或页面已关闭时须重新打开，关闭面板不关闭浏览器。
+
 Prism 是一个多平台内容编排与发布项目（矩阵调度 + AI 服务 + 账号/代理/运行时管理），
 技术栈为 FastAPI（后端）、Next.js（前端）、Celery/Redis（任务队列）、Patchright（浏览器自动化）、
 Electron（桌面端）、Hermes Agent（内置 AI 助手）。本技能描述项目布局，以及 Hermes 可用的
