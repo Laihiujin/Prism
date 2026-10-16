@@ -1,8 +1,11 @@
 @echo off
 chcp 65001 >nul
 setlocal
+set "PYTHONUTF8=1"
 set "ROOT=%~dp0"
-cd /d "%ROOT%"
+rem pushd maps a UNC share to a temporary drive; cmd cannot cd to UNC paths.
+pushd "%ROOT%" || exit /b 1
+set "ROOT=%CD%\"
 
 rem ============================================================
 rem  Prism 一键部署（Windows）—— 一步到位
@@ -44,4 +47,7 @@ if not defined PYEXE set "PYEXE=python"
 
 :run
 "%PYEXE%" "%ROOT%bootstrap.py" %*
-exit /b %ERRORLEVEL%
+set "RESULT=%ERRORLEVEL%"
+if not "%RESULT%"=="0" pause
+rem Keep the mapped drive available to PM2 and its long-running children.
+exit /b %RESULT%

@@ -39,7 +39,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent
+# Preserve the drive created by start.bat's pushd. resolve() dereferences
+# mapped network drives back to UNC, which cmd.exe cannot use as its cwd.
+REPO_ROOT = Path(os.path.abspath(__file__)).parent
 VENV_NAME = "prismenv"
 VENV_DIR = REPO_ROOT / VENV_NAME
 FRONTEND_DIR = REPO_ROOT / "prism_frontend"
@@ -73,6 +75,12 @@ def _log(msg: str) -> None:
 
 
 def _run(cmd: list[str], *, check: bool = True, **kwargs) -> subprocess.CompletedProcess:
+    kwargs.setdefault("cwd", str(REPO_ROOT))
+    # Windows utilities may emit GBK even when the parent uses PYTHONUTF8.
+    if kwargs.get("text") or kwargs.get("universal_newlines") or kwargs.get("encoding"):
+        kwargs.setdefault("errors", "replace")
+    if os.name == "nt" and isinstance(cmd, list) and cmd[0].lower().endswith((".cmd", ".bat")):
+        kwargs.setdefault("shell", True)
     return subprocess.run(cmd, check=check, **kwargs)
 
 
@@ -101,7 +109,7 @@ def _iter_python_candidates() -> list[str]:
 
 def _python_version(exe: str) -> str | None:
     try:
-        out = subprocess.run(
+        out = _run(
             [exe, "-c", "import sys;print('%d.%d'%sys.version_info[:2])"],
             check=True, capture_output=True, text=True,
         ).stdout.strip()
@@ -265,6 +273,9 @@ def ensure_node_deps() -> None:
 
 def _redis_status() -> tuple[bool, str]:
     cli = shutil.which("redis-cli")
+    bundled = REPO_ROOT / "desktop-electron" / "resources" / "redis"
+    if not cli and os.name == "nt" and (bundled / "redis-cli.exe").is_file():
+        cli = str(bundled / "redis-cli.exe")
     if cli:
         try:
             out = _run([cli, "ping"], check=False, capture_output=True, text=True).stdout.strip()
@@ -272,7 +283,7 @@ def _redis_status() -> tuple[bool, str]:
                 return True, "已运行"
         except Exception:
             pass
-    if shutil.which("redis-server"):
+    if shutil.which("redis-server") or (os.name == "nt" and (bundled / "redis-server.exe").is_file()):
         return False, "已安装未运行"
     return False, "未安装"
 
@@ -303,6 +314,9 @@ def ensure_redis() -> bool:
     """确保 Redis 可用；缺失则尽量自动安装，已装未运行则尝试拉起。"""
     running, state = _redis_status()
     if running:
+        return True
+    if os.name == "nt" and (REPO_ROOT / "desktop-electron" / "resources" / "redis" / "redis-server.exe").is_file():
+        _log("项目内置 Redis 已就绪，将由 PM2 启动")
         return True
     if shutil.which("redis-server"):
         _log("检测到 redis-server 未运行，尝试启动 ...")
@@ -443,19 +457,36 @@ def _pm2_start() -> int:
     _run([py, runtime, "prepare"], check=False, env=env, capture_output=True)
 
     _log("启动 PM2 栈（Redis + 后端 ...）")
-    _run([pm2, "start", "ecosystem.config.js", "--only", "prism-redis,prism-backend", "--update-env"], check=False, env=env)
+    # An externally managed Redis may already own 6379; do not start a competing server.
+    core = "prism-backend" if _redis_status()[0] else "prism-redis,prism-backend"
+    if _run([pm2, "start", str(REPO_ROOT / "ecosystem.config.js"), "--only", core, "--update-env"], check=False, env=env).returncode != 0:
+        return 1
     if _run([py, runtime, "health", "--timeout", "60"], check=False, env=env, capture_output=True).returncode != 0:
         _log("[WARN] 后端未绑定所选端口，重选端口并重试一次 ...")
         _run([pm2, "delete", "prism-backend"], check=False, env=env)
         _run([py, runtime, "prepare"], check=False, env=env, capture_output=True)
-        _run([pm2, "start", "ecosystem.config.js", "--only", "prism-backend", "--update-env"], check=False, env=env)
+        _run([pm2, "start", str(REPO_ROOT / "ecosystem.config.js"), "--only", "prism-backend", "--update-env"], check=False, env=env)
         if _run([py, runtime, "health", "--timeout", "60"], check=False, env=env, capture_output=True).returncode != 0:
             _log("[ERROR] 后端健康检查仍失败")
             return 1
 
     _log("启动其余服务（Worker/Celery/前端/Persona/Hermes ...）")
-    _run([pm2, "start", "ecosystem.config.js", "--only",
-          "prism-worker,prism-celery,prism-frontend,persona-api,persona-proxy,persona-dashboard,hermes-dashboard,hermes-webui,deepseek-harness",
+    services = ["prism-worker", "prism-celery", "prism-frontend"]
+    optional = {
+        "persona-api": REPO_ROOT / "prism_components" / "persona" / ("Scripts/persona.exe" if os.name == "nt" else "bin/persona"),
+        "persona-proxy": REPO_ROOT / "tools" / "persona-studio" / "proxies" / "mihomo",
+        "persona-dashboard": REPO_ROOT / "tools" / "persona-studio" / "dashboard" / "node_modules" / "vite" / "bin" / "vite.js",
+        "hermes-dashboard": REPO_ROOT / "prism_components" / "hermes" / ("Scripts/hermes.exe" if os.name == "nt" else "bin/hermes"),
+        "hermes-webui": REPO_ROOT / "tools" / "hermes-webui" / "server.py",
+        "deepseek-harness": REPO_ROOT / "tools" / "deepseek-harness" / "apps" / "cli" / "lib" / "bin.js",
+    }
+    for name, entry in optional.items():
+        if entry.is_file():
+            services.append(name)
+        else:
+            _log(f"跳过尚未安装的可选服务: {name}")
+    _run([pm2, "start", str(REPO_ROOT / "ecosystem.config.js"), "--only",
+          ",".join(services),
           "--update-env"], check=False, env=env)
 
     try:
@@ -521,8 +552,8 @@ def _bootstrap(*, dev: bool, no_browsers: bool, check: bool) -> int:
 
     _log("=" * 60)
     running, state = _redis_status()
-    if running:
-        _log(f"全部就绪。Redis {state}。")
+    if running or state == "已安装未运行":
+        _log(f"环境就绪。Redis {state}，未运行时由 PM2 启动。")
         _log("部署:  python3 bootstrap.py   |   下次启动:  python3 bootstrap.py start")
     else:
         _log("环境基本就绪，但 Redis 尚未就绪。")

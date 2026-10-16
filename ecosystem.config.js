@@ -39,12 +39,13 @@ const backendEnv = {
 // redis-server 从 PATH 解析，便于换机器/换安装位置也能用
 function which(command, fallback) {
   try {
-    const res = spawnSync('which', [command], { encoding: 'utf8' });
-    if (res.status === 0 && res.stdout.trim()) return res.stdout.trim();
+    const res = spawnSync(IS_WIN ? 'where' : 'which', [command], { encoding: 'utf8', windowsHide: true });
+    if (res.status === 0 && res.stdout.trim()) return res.stdout.trim().split(/\r?\n/)[0];
   } catch (_) { /* ignore */ }
   return fallback || command;
 }
-const REDIS = which('redis-server', IS_WIN ? 'redis-server' : '/opt/homebrew/bin/redis-server');
+const bundledRedis = path.join(ROOT, 'desktop-electron', 'resources', 'redis', 'redis-server.exe');
+const REDIS = which('redis-server', IS_WIN && fs.existsSync(bundledRedis) ? bundledRedis : (IS_WIN ? 'redis-server' : '/opt/homebrew/bin/redis-server'));
 
 function pyCliIn(envDir, name) {
   // 优先 <envDir>/bin/<console-script>（macOS，带 shebang，PM2 可直接跑）
@@ -73,7 +74,7 @@ module.exports = {
       cwd: '.',
       script: REDIS,
       interpreter: 'none',
-      args: '--bind 127.0.0.1 --port 6379 --save "" --appendonly no',
+      args: [path.join(ROOT, 'scripts', 'prism-redis.conf')],
       autorestart: true,
       watch: false,
       restart_delay: 2000,
@@ -118,6 +119,8 @@ module.exports = {
       max_memory_restart: '2G',
       env: {
         ...backendEnv,
+          PYTHONUTF8: '1',
+          PYTHONIOENCODING: 'utf-8',
         PYTHONUNBUFFERED: '1',
         PYTHONPATH: BACKEND,
         PLAYWRIGHT_BROWSERS_PATH: BROWSERS,
@@ -135,6 +138,8 @@ module.exports = {
       watch: false,
       env: {
         ...backendEnv,
+          PYTHONUTF8: '1',
+          PYTHONIOENCODING: 'utf-8',
         PYTHONUNBUFFERED: '1',
         PYTHONPATH: BACKEND,
       },
@@ -144,9 +149,10 @@ module.exports = {
     },
     {
       name: 'prism-frontend',
-      cwd: './prism_frontend',
-      script: NPM,
-      args: 'run dev',
+      cwd: path.join(ROOT, 'prism_frontend'),
+      script: path.join(ROOT, 'prism_frontend', 'node_modules', 'next', 'dist', 'bin', 'next'),
+      interpreter: process.execPath,
+      args: 'dev --hostname 0.0.0.0 --port 3000',
       autorestart: true,
       watch: false,
       env: {
@@ -257,5 +263,19 @@ module.exports = {
       out_file: './logs/deepseek-harness-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     }
-  ]
+  ].map(app => ({
+    interpreter: 'none',
+    windowsHide: true,
+    min_uptime: '30s',
+    max_restarts: 5,
+    restart_delay: 3000,
+    ...app,
+    ...(IS_WIN && app.script === NPM ? {
+      script: process.execPath,
+      interpreter: 'none',
+      args: app.name === 'prism-frontend'
+        ? [path.join(ROOT, 'prism_frontend', 'node_modules', 'next', 'dist', 'bin', 'next'), 'dev']
+        : [path.join(ROOT, 'tools', 'persona-studio', 'dashboard', 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', '5173', '--no-open'],
+    } : {}),
+  }))
 };

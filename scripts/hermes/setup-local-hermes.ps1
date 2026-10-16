@@ -88,6 +88,8 @@ pyproject = pathlib.Path("pyproject.toml")
 data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
 project = data.get("project", {})
 deps = list(project.get("dependencies", []))
+deps.append("ruamel.yaml==0.18.16")
+deps.append("mcp==2.3.0")
 deps.extend((project.get("optional-dependencies") or {}).get("web", []))
 print(json.dumps(deps, ensure_ascii=True))
 '@ | & $pythonExe -
