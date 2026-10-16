@@ -201,8 +201,9 @@ macOS `start-mac.sh` 走相同供给器。安装包不携带 Python 虚拟环境
 ## CMS 访问安全
 
 `/cms` 跳转到独立 CMS 密码入口（源码默认 `http://127.0.0.1:8441/cms`，安装包默认 8442，冲突时自动选择空闲端口）。
-`prism-cms` 和 `prism-cms-tunnel` 均由 PM2 管理，公网仅连接 CMS 网关，
-网关只允许登录后的 CMS 设置接口，不转发账号、文件或任意后端 API。
+`prism-cms` 和 `prism-cms-tunnel` 均由 PM2 管理，公网连接统一密码网关；登录后根路径 `/` 进入完整工作台，`/cms` 为访问安全配置页。
+应用页面、静态资源、业务 API、上传与 WebSocket 均在会话验证后转发到本机前端，
+未登录时页面跳转登录页、API 返回 401。业务写请求校验同源，CMS 安全设置另校验 CSRF。
 运行数据目录的 `cms/` 保存加盐密码哈希、访问设置、临时公网链接与安全审计，
 这些均为本机私有数据，不提交 Git。新安装需先在本机初始化 CMS 密码，再开启公网。
 安装包通过 `PRISM_RUNTIME_MODE=production` 标记生产模式；源码启动为 development。

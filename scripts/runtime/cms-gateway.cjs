@@ -1,5 +1,6 @@
-// Dedicated CMS boundary. Only the explicit CMS settings API is forwarded.
+// Password boundary for the entire application, with CMS access controls at /cms.
 const http = require('node:http');
+const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -36,6 +37,34 @@ function createGateway(options = {}) {
   const configFile = path.join(dirs.cms, 'config.json');
   let config = { securityReminder: true, publicEnabled: false, ...readJson(configFile) };
   const sessions = new Map(); const attempts = new Map(); let globalAttempts = [];
+  const frontend = new URL(options.frontend || env.PRISM_FRONTEND_URL || `http://127.0.0.1:${env.PRISM_FRONTEND_PORT || 3000}`);
+  const proxyHeaders = req => {
+    const headers = { ...req.headers, host: frontend.host };
+    delete headers['x-cms-csrf'];
+    if (headers.cookie) headers.cookie = headers.cookie.split(';').filter(value => !value.trim().startsWith('prism_cms_session=')).join(';');
+    if (headers.origin) headers.origin = frontend.origin;
+    if (headers.referer) { try { const url = new URL(headers.referer); headers.referer = frontend.origin + url.pathname + url.search; } catch { delete headers.referer; } }
+    headers['x-forwarded-host'] = frontend.host;
+    headers['x-forwarded-proto'] = frontend.protocol.slice(0, -1);
+    return headers;
+  };
+  const proxy = (req, res) => {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.removeHeader('Content-Security-Policy'); // Next renders its own scripts and styles.
+    const upstream = (frontend.protocol === 'https:' ? https : http).request({ protocol: frontend.protocol,
+      hostname: frontend.hostname, port: frontend.port, path: req.url, method: req.method, headers: proxyHeaders(req) }, incoming => {
+      for (const [key, value] of Object.entries(incoming.headers)) {
+        if (!['connection', 'keep-alive', 'transfer-encoding', 'cache-control'].includes(key) && value !== undefined) res.setHeader(key, value);
+      }
+      const location = incoming.headers.location;
+      if (location?.startsWith(frontend.origin)) res.setHeader('Location', location.slice(frontend.origin.length) || '/');
+      res.statusCode = incoming.statusCode || 502;
+      incoming.pipe(res);
+    });
+    upstream.on('error', () => { if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('应用暂时不可用，请稍后重试'); });
+    res.once('close', () => upstream.destroy());
+    req.pipe(upstream);
+  };
   const audit = event => fs.appendFileSync(path.join(dirs.cms, 'security.jsonl'), JSON.stringify({ at: new Date().toISOString(), event }) + '\n');
   const sessionFor = req => {
     const cookie = String(req.headers.cookie || '').split(';').map(value => value.trim()).find(value => value.startsWith('prism_cms_session='));
@@ -46,7 +75,10 @@ function createGateway(options = {}) {
     return null;
   };
   const body = async req => {
-    let text = ''; for await (const chunk of req) { text += chunk; if (Buffer.byteLength(text) > 8192) throw Object.assign(new Error('请求过大'), { status: 413 }); }
+    let text = '';
+    const timer = setTimeout(() => req.destroy(), 20000);
+    try { for await (const chunk of req) { text += chunk; if (Buffer.byteLength(text) > 8192) throw Object.assign(new Error('请求过大'), { status: 413 }); } }
+    finally { clearTimeout(timer); }
     return String(req.headers['content-type'] || '').includes('application/json') ? JSON.parse(text || '{}') : Object.fromEntries(new URLSearchParams(text));
   };
   const tunnel = options.tunnel || (async enabled => {
@@ -74,19 +106,19 @@ function createGateway(options = {}) {
     const redirect = target => { res.writeHead(303, { Location: target }); res.end(); };
     try {
       const pathname = new URL(req.url, 'http://localhost').pathname;
-      if (!['GET', 'HEAD', 'POST', 'PUT'].includes(req.method)) return json(405, { error: 'Method not allowed' });
+      if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(req.method)) return json(405, { error: 'Method not allowed' });
       const session = sessionFor(req);
-      if (['POST', 'PUT'].includes(req.method)) {
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
         let origin; try { origin = new URL(req.headers.origin).host; } catch {}
         if (origin !== req.headers.host) return json(403, { error: '来源验证失败' });
-        if (session && req.headers['x-cms-csrf'] !== session.csrf) return json(403, { error: '请求验证失败，请刷新页面' });
+        if (session && (pathname.startsWith('/api/cms/') || pathname.startsWith('/auth/')) && req.headers['x-cms-csrf'] !== session.csrf) return json(403, { error: '请求验证失败，请刷新页面' });
       }
       if (req.method === 'GET' && pathname === '/login') {
-        if (session) return redirect('/cms');
+        if (session) return redirect('/');
         const localHost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.host || '') && !req.headers['cf-connecting-ip'];
         const setup = !readJson(path.join(dirs.cms, 'auth.json')).hash && !config.publicEnabled && localHost;
         let html = fs.readFileSync(path.join(__dirname, 'cms-login.html'), 'utf8').replaceAll('__NONCE__', nonce).replaceAll('__MODE__', runtimeMode(env) === 'production' ? '生产模式' : '开发模式');
-        if (setup) html = html.replace('/auth/login', '/auth/setup').replace('访问密码后继续。', '新的访问密码以完成初始化。').replace('登录后台</button>', '设置密码</button>');
+        if (setup) html = html.replace('/auth/login', '/auth/setup').replace('访问密码后继续。', '新的访问密码以完成初始化。').replace('进入工作台</button>', '设置密码</button>');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html);
       }
       if (pathname === '/auth/setup' && req.method === 'POST') {
@@ -125,7 +157,7 @@ function createGateway(options = {}) {
         res.setHeader('Set-Cookie', 'prism_cms_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
         return json(200, { success: true });
       }
-      if ((pathname === '/' || pathname === '/cms') && req.method === 'GET') {
+      if (pathname === '/cms' && req.method === 'GET') {
         const html = fs.readFileSync(path.join(__dirname, 'cms-admin.html'), 'utf8').replaceAll('__NONCE__', nonce);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html);
       }
@@ -156,9 +188,14 @@ function createGateway(options = {}) {
         ['/api/cms/channels', '/api/v1/system/channels'],
         ['/api/cms/channels/visibility', '/api/v1/system/channels/visibility'],
       ]);
-      if (!api.has(pathname) || !['GET', 'PUT'].includes(req.method)) return json(404, { error: 'Not found' });
+      if (/^\/api\/(?:v1\/)+system\/douyin-login-mode\/?$/.test(pathname)) api.set(pathname, '/api/v1/system/douyin-login-mode');
+      if (!api.has(pathname)) {
+        if (pathname.startsWith('/api/cms/') || pathname.startsWith('/auth/')) return json(404, { error: 'Not found' });
+        return proxy(req, res);
+      }
+      if (!['GET', 'PUT'].includes(req.method)) return json(405, { error: 'Method not allowed' });
       const payload = req.method === 'PUT' ? await body(req) : undefined;
-      if (pathname === '/api/cms/login-mode' && payload && runtimeMode(env) === 'production' && payload.mode !== 'browser') return json(403, { error: '生产模式仅允许浏览器登录' });
+      if (api.get(pathname) === '/api/v1/system/douyin-login-mode' && payload && runtimeMode(env) === 'production' && payload.mode !== 'browser') return json(403, { error: '生产模式仅允许浏览器登录' });
       const backend = options.backend || env.PRISM_BACKEND_URL || 'http://127.0.0.1:7000';
       const response = await fetch(new URL(api.get(pathname), backend), { method: req.method, signal: AbortSignal.timeout(15000),
         headers: { 'Content-Type': 'application/json' }, ...(payload ? { body: JSON.stringify(payload) } : {}) });
@@ -166,7 +203,23 @@ function createGateway(options = {}) {
       return json(response.status, await response.json());
     } catch (error) { return json(error.status || 500, { error: error.status ? error.message : '操作失败，请查看本机 CMS 日志' }); }
   });
-  server.requestTimeout = 20000; server.headersTimeout = 10000;
+  server.on('upgrade', (req, socket, head) => {
+    let origin; try { origin = new URL(req.headers.origin).host; } catch {}
+    if (!sessionFor(req) || origin !== req.headers.host) { socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); return; }
+    const upstream = (frontend.protocol === 'https:' ? https : http).request({ protocol: frontend.protocol,
+      hostname: frontend.hostname, port: frontend.port, path: req.url, method: 'GET', headers: proxyHeaders(req) });
+    upstream.on('upgrade', (response, peer, upstreamHead) => {
+      socket.write(`HTTP/1.1 ${response.statusCode} Switching Protocols\r\n` + Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join('\r\n') + '\r\n\r\n');
+      if (upstreamHead.length) socket.write(upstreamHead);
+      if (head.length) peer.write(head);
+      peer.pipe(socket); socket.pipe(peer);
+      socket.on('end', () => peer.destroy()); peer.on('end', () => socket.destroy());
+      peer.on('error', () => socket.destroy()); socket.on('error', () => peer.destroy()); socket.on('close', () => peer.destroy());
+    });
+    upstream.on('response', response => { response.resume(); socket.end('HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n'); });
+    upstream.on('error', () => socket.destroy()); upstream.end();
+  });
+  server.requestTimeout = 900000; server.headersTimeout = 10000;
   return server;
 }
 module.exports = { createGateway, setPassword, passwordHash, passwordMatches, runtimeMode, locations, readJson, writeJson };

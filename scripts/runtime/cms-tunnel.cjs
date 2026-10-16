@@ -1,4 +1,4 @@
-// The public connector is a separate PM2 process; it forwards only the CMS gateway.
+// The public connector is a separate PM2 process; it forwards the password-protected application gateway.
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
