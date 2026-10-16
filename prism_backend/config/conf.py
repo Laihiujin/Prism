@@ -2,7 +2,7 @@ from pathlib import Path
 import glob
 import os
 import sys
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -73,6 +73,39 @@ _normalize_env_path("PLAYWRIGHT_BROWSERS_PATH")
 _normalize_env_path("LOCAL_CHROME_PATH")
 _normalize_env_path("LOCAL_CHROME_HEADLESS_SHELL_PATH")
 _normalize_env_path("LOCAL_FIREFOX_PATH")
+
+
+def _repair_playwright_browsers_path() -> None:
+    """Point PLAYWRIGHT_BROWSERS_PATH at the browsers that actually exist.
+
+    `.env` ships a repo-root default (`PLAYWRIGHT_BROWSERS_PATH=browsers`), but the
+    bundled Patchright browsers are installed under the runtime-data components
+    dir (the same path Electron and `ecosystem.config.js` export). When the
+    configured directory is missing, every Playwright launch fails with
+    "Executable doesn't exist at <repo>/browsers/chromium-<rev>/..." even though
+    a working Chromium/Firefox is present. Resolve to the real directory instead
+    of leaving a dangling path in the environment.
+    """
+    raw = os.getenv("PLAYWRIGHT_BROWSERS_PATH")
+    if raw:
+        try:
+            if Path(raw).is_dir():
+                return
+        except OSError:
+            pass
+    candidates = [
+        Path(os.getenv("PRISM_RUNTIME_DATA_DIR", "")).expanduser() / "components" / "browsers" / "patchright" / "versions" / "current"
+        if os.getenv("PRISM_RUNTIME_DATA_DIR", "").strip()
+        else None,
+        APP_ROOT / "runtime-data" / "components" / "browsers" / "patchright" / "versions" / "current",
+    ]
+    for candidate in candidates:
+        if candidate and candidate.is_dir():
+            os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(candidate)
+            return
+
+
+_repair_playwright_browsers_path()
 
 def _find_preferred_local_chrome() -> str | None:
     # 适配用户电脑端：优先使用系统已安装的 Chrome，其次才使用项目内置浏览器。
@@ -171,7 +204,20 @@ def _env_bool(name: str, default: bool) -> bool:
 
 # Playwright Headless Mode
 # `PLAYWRIGHT_HEADLESS=true` => 无头；`false` => 显示浏览器窗口
-PLAYWRIGHT_HEADLESS = _env_bool("PLAYWRIGHT_HEADLESS", True)
+def get_playwright_headless(default: bool = True) -> bool:
+    """Read the latest CMS preference for each newly launched browser."""
+    raw = dotenv_values(_root_env).get("PLAYWRIGHT_HEADLESS") if _root_env.exists() else None
+    if raw is None:
+        return _env_bool("PLAYWRIGHT_HEADLESS", default)
+    value = str(raw).strip().lower()
+    if value in {"1", "true", "yes", "y", "on"}:
+        return True
+    if value in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
+PLAYWRIGHT_HEADLESS = get_playwright_headless()
 
 # Shared uploader defaults.  The upstream refactored CLI names these values
 # explicitly; keeping aliases here lets Prism expose the same platform-level

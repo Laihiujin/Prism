@@ -24,6 +24,8 @@ import hashlib
 import platform
 import tempfile
 import urllib.request
+import urllib.error
+import urllib.parse
 import zipfile
 import re
 import tarfile
@@ -286,8 +288,37 @@ def _install_github_provider(provider_id: str) -> Dict[str, Any]:
         f"https://api.github.com/repos/{provider['repository']}/releases/latest",
         headers={"Accept": "application/vnd.github+json", "User-Agent": "Prism-browser-manager"},
     )
-    with urllib.request.urlopen(req, timeout=30) as response:
-        release = json.load(response)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            release = json.load(response)
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (403, 429):
+            raise
+        # Public release pages remain available when the unauthenticated API
+        # quota is exhausted. Keep downloads on the official GitHub host.
+        repository = provider["repository"]
+        latest = urllib.request.Request(
+            f"https://github.com/{repository}/releases/latest",
+            headers={"User-Agent": "Prism-browser-manager"},
+        )
+        with urllib.request.urlopen(latest, timeout=30) as response:
+            release_url = response.geturl()
+        tag_prefix = f"https://github.com/{repository}/releases/tag/"
+        if not release_url.startswith(tag_prefix):
+            raise RuntimeError("无法获取浏览器版本，请稍后重试") from exc
+        tag = release_url[len(tag_prefix):]
+        expanded = urllib.request.Request(
+            f"https://github.com/{repository}/releases/expanded_assets/{tag}",
+            headers={"User-Agent": "Prism-browser-manager"},
+        )
+        with urllib.request.urlopen(expanded, timeout=30) as response:
+            markup = response.read().decode("utf-8")
+        links = re.findall(r'href="([^"\s]+)"', markup)
+        prefix = f"/{repository}/releases/download/"
+        release = {"tag_name": urllib.parse.unquote(tag), "assets": [
+            {"name": urllib.parse.unquote(link.rsplit("/", 1)[-1]), "browser_download_url": "https://github.com" + link}
+            for link in dict.fromkeys(links) if link.startswith(prefix)
+        ]}
     asset = next((a for a in release.get("assets", []) if re.search(asset_pattern, a.get("name", ""))), None)
     if not asset:
         raise RuntimeError(f"release_asset_missing:{asset_key}")
@@ -378,6 +409,17 @@ def _install_github_provider(provider_id: str) -> Dict[str, Any]:
 
 
 def apply_provider(provider_id: str) -> Dict[str, Any]:
+    if provider_id in {"chromium", "firefox", "patchright"}:
+        kind = "firefox" if provider_id == "firefox" else "chromium"
+        executable = resolve_firefox_path() if kind == "firefox" else resolve_chromium_path()
+        if not executable:
+            return {"success": False, "error": "provider_not_installed", "browserRuntimeInfo": browser_runtime_info()}
+        state = {"provider": provider_id, "name": "Chrome for Testing" if kind == "chromium" else "Firefox", "kind": kind, "version": _extract_version(executable), "executablePath": str(executable)}
+        component_root().mkdir(parents=True, exist_ok=True)
+        temp = component_root() / "active.json.tmp"
+        temp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+        temp.replace(component_root() / "active.json")
+        return {"success": True, "active": state, "browserRuntimeInfo": browser_runtime_info()}
     root = provider_root(provider_id)
     selected = None
     try:
