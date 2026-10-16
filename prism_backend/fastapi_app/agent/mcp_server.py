@@ -71,8 +71,10 @@ def _collect_tools() -> Dict[str, Any]:
         if spec.name in tools:
             continue  # 避免与手写 BaseTool 重名冲突
 
-        async def _execute(spec=spec, **kw: Any) -> Any:  # noqa: ANN401
-            return await _catalog_invoke(spec.name, **kw)
+        def bind_execute(tool_name):
+            async def execute(self, **kw: Any) -> Any:
+                return await _catalog_invoke(tool_name, **kw)
+            return execute
 
         cls = type(
             f"{spec.name.title().replace('_', '')}Tool",
@@ -81,7 +83,7 @@ def _collect_tools() -> Dict[str, Any]:
                 "name": spec.name,
                 "description": spec.description,
                 "parameters": spec.parameters,
-                "execute": _execute,
+                "execute": bind_execute(spec.name),
             },
         )
         parameters = spec.parameters or {}
@@ -119,7 +121,7 @@ async def _call_tool(tool: Dict[str, Any], arguments: Dict[str, Any]) -> Dict[st
         text = json.dumps(result, ensure_ascii=False, default=str)
     else:
         text = str(result)
-    return {"content": [{"type": "text", "text": text}], "isError": bool(result.get("error")) if isinstance(result, dict) else False}
+    return {"content": [{"type": "text", "text": text}], "isError": bool(result.get("error") or result.get("ok") is False or result.get("success") is False) if isinstance(result, dict) else False}
 
 
 def _handle_request(method: str, params: Any, req_id: Any, tools: Dict[str, Any]) -> Optional[Dict[str, Any]]:

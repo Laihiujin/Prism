@@ -15,7 +15,18 @@ class PhoneLoginTests(unittest.TestCase):
     def test_kuaishou_challenge_response_does_not_claim_sms_sent(self):
         async def run():
             adapter = PhoneLoginAdapter("kuaishou")
-            adapter.page = SimpleNamespace(locator=lambda selector: SimpleNamespace(inner_text=AsyncMock(return_value="获取验证码")))
+            # phone_login queries the page through get_by_text / get_by_placeholder,
+            # so the stub must expose those too, not just locator().
+            page_stub = SimpleNamespace(
+                locator=lambda selector: SimpleNamespace(
+                    count=AsyncMock(return_value=0),
+                    inner_text=AsyncMock(return_value="获取验证码"),
+                    first=SimpleNamespace(is_visible=AsyncMock(return_value=False)),
+                )
+            )
+            page_stub.get_by_text = lambda *args, **kwargs: page_stub.locator(None)
+            page_stub.get_by_placeholder = lambda *args, **kwargs: page_stub.locator(None)
+            adapter.page = page_stub
             response = SimpleNamespace(url="https://passport.kuaishou.com/pass/kuaishou/sms/requestMobileCode", json=AsyncMock(return_value={"result": 400002, "error_msg": "需要进行滑块验证"}))
             await adapter._observe_sms_response(response)
             state = await adapter.verification_state()
