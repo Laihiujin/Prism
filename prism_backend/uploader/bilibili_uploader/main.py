@@ -3,8 +3,38 @@ import pathlib
 import random
 import asyncio
 import aiohttp
-from biliup.plugins.bili_webup import BiliBili as BaseBiliBili, Data
+from dataclasses import dataclass
+from biliup.plugins.bili_webup import BiliBili as BaseBiliBili, Data as BaseData
 from uploader.bilibili_uploader.line_probe import probe_upload_lines
+
+
+@dataclass
+class Data(BaseData):
+    """biliup `Data` plus the submission fields biliup-rs `Studio` sends.
+
+    python biliup 1.2.x only declares a subset of the archive fields, so
+    asdict() silently dropped options like no_reprint. Declaring them here puts
+    them into the submit payload with the same names and defaults as biliup-rs.
+    """
+    no_reprint: int = 0
+    is_only_self: int = 0
+    dolby: int = 0
+    lossless_music: int = 0
+    up_selection_reply: bool = False
+    up_close_reply: bool = False
+    up_close_danmu: bool = False
+
+
+# Archive options accepted from platform settings, mapped to Data fields.
+STUDIO_FLAG_FIELDS = {
+    "no_reprint": int,
+    "is_only_self": int,
+    "dolby": int,
+    "lossless_music": int,
+    "up_selection_reply": bool,
+    "up_close_reply": bool,
+    "up_close_danmu": bool,
+}
 
 
 class BiliBili(BaseBiliBili):
@@ -139,9 +169,9 @@ class BilibiliUploader(object):
             part_titles: 各分P标题（缺省使用统一 title）
             extra: 稿件级附加配置 dict，key 与 biliup Data 声明字段同名：
                    copyright(1自制/2转载), source, cover(URL 或 cover_local 本地图),
-                   dynamic, desc_v2, subtitle/open_subtitle。
-                   （注意：no_reprint/open_elec/up_close_* 等未在 python biliup
-                   Data 中声明，无法随 submit 提交，不要传。）
+                   dynamic, desc_v2, subtitle/open_subtitle，以及与 biliup-rs
+                   Studio 同名的 no_reprint/is_only_self/dolby/lossless_music/
+                   up_selection_reply/up_close_reply/up_close_danmu。
         """
         self.upload_thread_num = 3
         self.copyright = 1
@@ -163,10 +193,7 @@ class BilibiliUploader(object):
         self.data = Data()
         self.data.title = self.title[:80]
         # 稿件级字段：版权 / 来源 / 封面 / 简介富文本 / 粉丝动态
-        # 仅设置 python biliup `Data` 声明过、submit 会随 asdict 提交的字段
-        # （biliup-app/Rust 的 no_reprint/open_elec/interactive 等字段在 python
-        #  biliup 1.2.x 的 Data 中未声明，setattr 不会进入 asdict —— 不在此设置，
-        #  前端面板也不展示这些无效项）。
+        # 只设置本文件 Data 声明过、submit 会随 asdict 提交的字段。
         extra = self.extra or {}
         copyright_val = extra.get("copyright", self.copyright)
         self.data.copyright = int(copyright_val) if copyright_val else 2
@@ -181,6 +208,11 @@ class BilibiliUploader(object):
             self.data.subtitle = extra["subtitle"]
         elif extra.get("open_subtitle") is not None:
             self.data.subtitle = {"open": int(bool(extra["open_subtitle"])), "lan": ""}
+        for name, cast in STUDIO_FLAG_FIELDS.items():
+            if extra.get(name) is not None:
+                setattr(self.data, name, cast(extra[name]))
+        if self.data.copyright != 1:
+            self.data.no_reprint = 0  # 禁止转载仅对自制稿件有效
         self.data.tid = int(self.tid) if str(self.tid).isdigit() else self.tid
         self.data.set_tag(self.tags or [])
         if self.dtime:

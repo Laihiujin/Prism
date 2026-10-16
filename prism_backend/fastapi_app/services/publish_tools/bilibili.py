@@ -3,7 +3,8 @@
 说明：
 - 单视频默认路径：biliup CLI（`run_biliup_command`），与历史一致（参数仅用
   CLI 确定支持的 --title/--desc/--tid/--tag/--cover/--dtime）。
-- 分P/多P发布与稿件级配置（copyright/source/cover_local/dynamic）：走
+- 分P/多P发布与稿件级配置（copyright/source/cover_local/dynamic，以及
+  no_reprint/is_only_self/dolby/lossless_music/up_close_* 等 biliup-rs 同名字段）：走
   python biliup 库（platforms/bilibili/upload.py 的 BilibiliUploader，
   支持 files 列表分P + 本地封面上传）。
 - 登录：本地交互终端 biliup login；或走账号页统一扫码流程。短信/账密登录已移除。
@@ -20,6 +21,17 @@ from ._base import (
 
 NAME = "bilibili"
 
+# biliup-rs Studio 同名的稿件开关；任一开启时走 python biliup 库提交。
+_STUDIO_FLAG_PARAMS: Dict[str, Any] = {
+    "no_reprint": {"type": "integer", "description": "1=禁止转载（自制稿件）", "default": 0},
+    "is_only_self": {"type": "integer", "description": "1=仅自己可见", "default": 0},
+    "dolby": {"type": "integer", "description": "1=开启杜比音效", "default": 0},
+    "lossless_music": {"type": "integer", "description": "1=开启 Hi-Res 无损音质", "default": 0},
+    "up_selection_reply": {"type": "boolean", "description": "开启精选评论", "default": False},
+    "up_close_reply": {"type": "boolean", "description": "关闭评论", "default": False},
+    "up_close_danmu": {"type": "boolean", "description": "关闭弹幕", "default": False},
+}
+
 
 def _video_params() -> Dict[str, Any]:
     props = _common_video_params()
@@ -29,6 +41,7 @@ def _video_params() -> Dict[str, Any]:
         "copyright": {"type": "integer", "description": "版权：1=自制 2=转载（走 python 库时生效）", "default": 1},
         "source": {"type": "string", "description": "转载来源（copyright=2 时建议填写）", "default": ""},
         "dynamic": {"type": "string", "description": "粉丝动态文案（可选）", "default": ""},
+        **_STUDIO_FLAG_PARAMS,
     })
     return {"type": "object", "properties": props, "required": ["account_file", "file_path", "title", "tid"]}
 
@@ -59,6 +72,7 @@ def _multipart_params() -> Dict[str, Any]:
             "source": {"type": "string", "description": "转载来源", "default": ""},
             "cover": {"type": "string", "description": "封面 URL 或本地图片路径（可选）", "default": ""},
             "dynamic": {"type": "string", "description": "粉丝动态（可选）", "default": ""},
+            **_STUDIO_FLAG_PARAMS,
         },
         "required": ["account_file", "files", "title", "tid"],
     }
@@ -76,6 +90,9 @@ def _python_upload_kwargs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
         extra["source"] = str(kwargs["source"])
     if kwargs.get("dynamic"):
         extra["dynamic"] = str(kwargs["dynamic"])
+    for name in _STUDIO_FLAG_PARAMS:
+        if kwargs.get(name):
+            extra[name] = kwargs[name]
     cover = str(kwargs.get("cover") or "")
     if cover:
         if cover.startswith("http"):
@@ -136,6 +153,7 @@ def _video_handler() -> Callable[..., Any]:
             or kwargs.get("copyright") not in (None, "", 1)
             or kwargs.get("source")
             or kwargs.get("dynamic")
+            or any(kwargs.get(name) for name in _STUDIO_FLAG_PARAMS)
         )
         if needs_python_lib:
             return await _run_python_upload(
