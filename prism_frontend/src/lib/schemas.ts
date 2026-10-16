@@ -184,6 +184,7 @@ export const tasksResponseSchema = z.object({
   msg: z.string().nullable(),
   data: z.array(z.object({
     id: z.string(),
+    verificationTaskId: z.string().optional(),
     title: z.string(),
     platform: z.string(),
     account: z.string(),

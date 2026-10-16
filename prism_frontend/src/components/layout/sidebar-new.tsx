@@ -121,7 +121,6 @@ const navSections: NavSection[] = [
     items: [
       { label: "账号管理", href: "/account", icon: UsersRound },
       { label: "素材管理", href: "/materials", icon: FolderKanban, children: [
-        { label: "全部素材", href: "/materials", icon: FolderKanban },
         { label: "图片素材", href: "/materials/images", icon: ImageIcon },
         { label: "视频素材", href: "/materials/videos", icon: Video },
       ] },
@@ -151,9 +150,7 @@ const navSections: NavSection[] = [
         ] },
         { label: "B站分P", href: "/publish/bilibili", icon: Layers },
       ] },
-      { label: "任务管理", href: "/tasks", icon: ClipboardList, children: [
-        { label: "任务发布人工验证", href: "/tasks/verification", icon: Fingerprint },
-      ] },
+      { label: "任务管理", href: "/tasks", icon: ClipboardList },
     ],
   },
   {
@@ -402,14 +399,6 @@ export function SidebarNew({
 
         {showCollapseToggle && (
           <div className="border-t border-border/80 p-3">
-            {!collapsed && (
-              <div className="mb-3 flex items-center justify-between px-2 text-[10px] uppercase tracking-[0.16em] text-foreground/35">
-                <span>System</span>
-                <span className="flex items-center gap-1.5 normal-case tracking-normal text-emerald-400/80">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Online
-                </span>
-              </div>
-            )}
             <Button
               variant="ghost"
               size="icon"

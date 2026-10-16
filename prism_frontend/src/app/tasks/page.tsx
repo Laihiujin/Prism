@@ -423,6 +423,7 @@ export default function TasksPage() {
       cell: ({ row }) => (
         <div className="min-w-0 max-w-[340px]">
           <div className="truncate font-medium" title={row.original.title}>{row.original.title}</div>
+          <TaskVerifications taskId={row.original.verificationTaskId || row.original.id} />
         </div>
       ),
     },
@@ -816,10 +817,6 @@ export default function TasksPage() {
         </Card>
       </div>
 
-      <a href="/tasks/verification" className="flex items-center justify-between rounded-lg border border-border p-4 text-sm hover:bg-accent">
-        <span>任务发布人工验证 · 验证码回传 / 重新获取</span><span>进入 →</span>
-      </a>
-      <TaskVerifications />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid h-9 w-full grid-cols-2 rounded-sm border border-border bg-card">
           <TabsTrigger value="auto">自动任务</TabsTrigger>

@@ -105,6 +105,7 @@ const formatTaskQueueRow = (row: any, accountMap: Map<string, string>, materialM
 
   return {
     id: String(row?.task_id ?? crypto.randomUUID()),
+    verificationTaskId: String(row?.celery_task_id ?? row?.task_id ?? ""),
     title: ((payload.title as string) ?? (payload.name as string) ?? (row?.task_type as string) ?? "任务").trim() || "任务",
     platform: resolvePlatformName(platformRaw),
     account: accountMap.get(accountId) || accountId || "-",
@@ -205,6 +206,7 @@ const fetchPublishHistory = async (accountMap: Map<string, string>, materialMap:
 
       return {
         id: String(row?.task_id ?? crypto.randomUUID()),
+        verificationTaskId: String(row?.celery_task_id ?? row?.task_id ?? ""),
         title: (String(row?.title ?? "发布任务").trim() || "发布任务"),
         platform: platformName,
         account: accountMap.get(accountId) || accountId || "-",

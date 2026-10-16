@@ -5,6 +5,7 @@ export type TaskStatus = "pending" | "success" | "error" | "scheduled" | "runnin
 
 export interface TaskRecord {
   id: string
+  verificationTaskId?: string
   title: string
   platform: string
   account: string

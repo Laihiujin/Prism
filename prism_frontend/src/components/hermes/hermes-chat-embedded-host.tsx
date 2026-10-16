@@ -69,11 +69,12 @@ export function HermesChatEmbeddedHost({ active }: { active: boolean }) {
           setWebuiUrl(runtimeUrl)
         }
 
-        const running = Boolean(runtime?.webui_running) || Boolean(runtimeUrl)
+        const installed = runtime?.agent_installed !== false && runtime?.webui_installed !== false
+        const running = installed && Boolean(runtime?.webui_running)
         setReady(running)
 
-        if (!running && runtime && !runtime.webui_installed) {
-          setStartupError("Hermes WebUI 尚未安装。请先完成本地 Hermes 运行时安装。")
+        if (!installed) {
+          setStartupError("Hermes 尚未安装，请在开发者工具中下载。")
         } else if (!running) {
           setStartupError(STARTUP_ERROR_FALLBACK)
         }
@@ -81,10 +82,9 @@ export function HermesChatEmbeddedHost({ active }: { active: boolean }) {
         if (!activeRequest) {
           return
         }
-        // Backend unreachable — keep the fallback URL so the chat iframe still
-        // loads when the desktop pm2 is already serving the WebUI.
-        setReady(true)
-        setStartupError("")
+        // Do not embed an unchecked fallback when runtime status is unavailable.
+        setReady(false)
+        setStartupError("无法读取 Hermes 运行状态，请检查后端连接后重试。")
       }
     }
 
@@ -93,12 +93,6 @@ export function HermesChatEmbeddedHost({ active }: { active: boolean }) {
       activeRequest = false
     }
   }, [active, retryToken])
-
-  useEffect(() => {
-    if (active) {
-      setRetryToken((current) => current + 1)
-    }
-  }, [active])
 
   return (
     <div
@@ -130,10 +124,10 @@ export function HermesChatEmbeddedHost({ active }: { active: boolean }) {
                 重试
               </button>
               <a
-                href="/ai-agent/settings"
+                href="/tools"
                 className="rounded-xl bg-foreground px-4 py-2 text-sm text-background"
               >
-                打开运行时设置
+                打开开发者工具
               </a>
             </div>
           </div>

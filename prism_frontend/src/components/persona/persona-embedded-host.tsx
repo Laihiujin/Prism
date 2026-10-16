@@ -63,7 +63,7 @@ export function PersonaEmbeddedHost({ active }: { active: boolean }) {
         setDashboardUrl(statusUrl)
       }
       setApiOnline(status?.api_online)
-      const running = Boolean(status?.running) || Boolean(statusUrl)
+      const running = Boolean(status?.running)
       setReady(running)
       return running
     }
@@ -146,12 +146,6 @@ export function PersonaEmbeddedHost({ active }: { active: boolean }) {
       activeRequest = false
     }
   }, [active, retryToken])
-
-  useEffect(() => {
-    if (active) {
-      setRetryToken((current) => current + 1)
-    }
-  }, [active])
 
   const iframeSrc = useMemo(() => dashboardUrl, [dashboardUrl])
 

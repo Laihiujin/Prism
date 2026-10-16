@@ -8,12 +8,12 @@ import { platformLabel } from "@/lib/platform-label"
 
 type Verification = { id: string; task_id?: string; account?: string; platform?: number; message?: string; code_length?: number; expires_at?: number; can_resend?: boolean }
 
-export function TaskVerifications({ showEmpty = false }: { showEmpty?: boolean }) {
+export function TaskVerifications({ showEmpty = false, taskId }: { showEmpty?: boolean; taskId?: string }) {
   const client = useQueryClient()
   const [codes, setCodes] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string[]>([])
-  const { data: events = [], isError, isPending, refetch } = useQuery<Verification[]>({
+  const { data: allEvents = [], isError, isPending, refetch } = useQuery<Verification[]>({
     queryKey: ["publish-verifications"],
     queryFn: async () => {
       const response = await fetch("/api/publish/otp-events", { cache: "no-store" })
@@ -23,6 +23,7 @@ export function TaskVerifications({ showEmpty = false }: { showEmpty?: boolean }
     },
     refetchInterval: 2000,
   })
+  const events = taskId ? allEvents.filter(event => event.task_id === taskId) : allEvents
   async function submit(event: Verification) {
     setBusy(previous => [...previous, event.id])
     setErrors(previous => ({ ...previous, [event.id]: "" }))
@@ -49,9 +50,9 @@ export function TaskVerifications({ showEmpty = false }: { showEmpty?: boolean }
     } catch (error) { setErrors(previous => ({ ...previous, [event.id]: error instanceof Error ? error.message : "重新获取失败" })) }
     finally { setBusy(previous => previous.filter(id => id !== event.id)) }
   }
-  if (!events.length && !isError && !showEmpty) return null
+  if (!events.length && !showEmpty && (taskId || !isError)) return null
   return <section aria-label="发布任务身份验证" className="space-y-3 rounded-xl border border-zinc-600 p-4">
-    <h2 className="font-semibold">发布任务等待验证（{events.length}）</h2>
+    <h2 className="font-semibold">{taskId ? "等待短信验证" : `发布任务等待验证（${events.length}）`}</h2>
     {showEmpty && <Button variant="outline" onClick={() => void refetch()}>刷新验证请求</Button>}
     {showEmpty && isPending && <p className="text-sm text-muted-foreground">正在加载验证请求…</p>}
     {showEmpty && !isPending && !isError && !events.length && <p className="text-sm text-muted-foreground">暂无等待回传的验证码。发布触发验证后，对应平台、账号和任务会自动出现在这里；已过期或失败的任务请回到任务管理重试。</p>}
