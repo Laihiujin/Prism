@@ -186,6 +186,17 @@ def ensure_python_deps(*, dev: bool) -> None:
 
 def ensure_env() -> None:
     """若缺失 .env，则从 env.example 复制。"""
+    crawler_root = REPO_ROOT / "prism_backend" / "douyin_tiktok_api" / "crawlers" / "tiktok"
+    for kind in ("web", "app"):
+        crawler_config = crawler_root / kind / "config.yaml"
+        if not crawler_config.exists():
+            crawler_config.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(crawler_root / "web" / "config.example.yaml", crawler_config)
+            _log(f"已生成 TikTok {kind} 爬虫空配置（使用该功能时填写登录态/代理）")
+    bili_dir = crawler_root.parent / "bilibili" / "web"
+    if not (bili_dir / "config.yaml").exists():
+        shutil.copyfile(bili_dir / "config.example.yaml", bili_dir / "config.yaml")
+        _log("已生成 Bilibili 爬虫空配置")
     env = REPO_ROOT / ".env"
     example = REPO_ROOT / "env.example"
     if env.exists():
