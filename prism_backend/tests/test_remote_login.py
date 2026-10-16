@@ -45,6 +45,14 @@ class RemoteLoginTests(unittest.TestCase):
                             self.assertFalse(worker.sessions[sid]['pointer_down'])
                             invalid = await api.post(f'/api/v1/auth/qrcode/pointer/{public}', json={'action':'move','x':2,'y':0})
                             self.assertEqual(invalid.status_code, 422)
+                            await page.set_content('<div style="height:1200px"></div><input placeholder="验证码">')
+                            await page.locator('input').focus()
+                            focused = await api.get(f'/api/v1/auth/qrcode/view/{public}')
+                            self.assertIsNotNone(focused.json()['focus'])
+                            self.assertLess(focused.json()['focus']['y'], 600)
+                            for payload in [{'action':'type','text':'123456'}, {'action':'key','key':'Backspace'}, {'action':'type','text':'7'}]:
+                                self.assertEqual((await api.post(f'/api/v1/auth/qrcode/pointer/{public}', json=payload)).status_code, 200)
+                            self.assertEqual(await page.locator('input').input_value(), '123457')
                             self.assertEqual((await api.get('/api/v1/auth/qrcode/view/other-session')).status_code, 404)
                             worker.sessions[sid]['created_at'] -= 601
                             self.assertEqual((await api.get(f'/api/v1/auth/qrcode/view/{public}')).status_code, 410)

@@ -1479,7 +1479,7 @@ class SmsActionRequest(BaseModel):
     code: str | None = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
 
 
-from automation_worker.remote_login import PointerInput, viewport_frame, pointer_input
+from automation_worker.remote_login import BrowserInput, viewport_frame, pointer_input
 
 @app.get('/qrcode/view/{session_id}')
 async def login_view(session_id: str):
@@ -1490,7 +1490,7 @@ async def login_view(session_id: str):
         return await viewport_frame(session, session_id)
 
 @app.post('/qrcode/pointer/{session_id}')
-async def login_pointer(session_id: str, payload: PointerInput):
+async def login_pointer(session_id: str, payload: BrowserInput):
     session = sessions.get(session_id)
     if not session:
         raise HTTPException(404, '登录会话不存在')

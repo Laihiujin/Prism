@@ -560,7 +560,7 @@ async def sms_verification(payload: SmsVerificationRequest):
     return response["body"]
 
 
-from automation_worker.remote_login import PointerInput
+from automation_worker.remote_login import BrowserInput
 
 async def _remote_login_proxy(session_id, payload=None):
     session = login_sessions.get(session_id)
@@ -583,7 +583,7 @@ async def remote_login_view(session_id: str):
     return await _remote_login_proxy(session_id)
 
 @router.post('/qrcode/pointer/{session_id}')
-async def remote_login_pointer(session_id: str, payload: PointerInput):
+async def remote_login_pointer(session_id: str, payload: BrowserInput):
     return await _remote_login_proxy(session_id, payload.model_dump())
 
 @router.post("/sms/start", summary="Start browser SMS login")
