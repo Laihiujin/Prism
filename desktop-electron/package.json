@@ -79,7 +79,11 @@
           "!**/.venv/**",
           "!**/.hermes/**",
           "!**/*.egg-info/**",
-          "!**/nul"
+          "!**/nul",
+          "!**/.env*",
+          "!**/*.db",
+          "!**/*.db-*",
+          "!**/*.sqlite*"
         ]
       },
       {
@@ -94,7 +98,11 @@
           "!**/*.pyo",
           "!**/tests/**",
           "!**/docs/**",
-          "!**/nul"
+          "!**/nul",
+          "!**/.env*",
+          "!**/*.db",
+          "!**/*.db-*",
+          "!**/*.sqlite*"
         ]
       },
       {
@@ -108,7 +116,11 @@
           "!**/dashboard/logs/**",
           "!**/data/**",
           "!**/tests/**",
-          "!**/nul"
+          "!**/nul",
+          "!**/.env*",
+          "!**/*.db",
+          "!**/*.db-*",
+          "!**/*.sqlite*"
         ]
       },
       {
@@ -152,7 +164,14 @@
           "!**/config/hermes_agent.toml",
           "!**/crawlers/**/config.yaml",
           "!**/backups/**",
-          "!**/nul"
+          "!**/nul",
+          "!**/.env*",
+          "!**/*.db",
+          "!**/*.db-*",
+          "!**/*.sqlite*",
+          "!**/data/**",
+          "!**/storage/**",
+          "!**/reverse_api/artifacts/**"
         ]
       },
       {
@@ -180,7 +199,8 @@
         "from": "../config",
         "to": "config",
         "filter": [
-          "**/*"
+          "conf.py",
+          "conf.example.py"
         ]
       }
     ],
