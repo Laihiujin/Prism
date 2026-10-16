@@ -246,17 +246,6 @@
           ]
         },
         {
-          "from": "resources/redis",
-          "to": "redis",
-          "filter": [
-            "redis-server.exe",
-            "redis-cli.exe",
-            "redis.windows.conf",
-            "redis.windows-service.conf",
-            "EventLog.dll"
-          ]
-        },
-        {
           "from": "node_modules/7zip-bin/win/x64",
           "to": "tools/7zip",
           "filter": [
