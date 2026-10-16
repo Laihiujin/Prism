@@ -11,12 +11,12 @@ class PointerInput(BaseModel):
     y: float = Field(ge=0, le=1, allow_inf_nan=False)
 
 def login_page(session, sid):
-    if session.get('type') == 'creator_center' or session.get('terminal_result'):
+    if session.get('terminal_result'):
         raise HTTPException(410, '登录会话已结束')
     if asyncio.get_running_loop().time() - session.get('created_at', 0) > session.get('expires_in', 600):
         raise HTTPException(410, '登录会话已过期')
-    adapter = session['adapter']
-    page = getattr(adapter, 'page', None)
+    adapter = session.get('adapter')
+    page = session.get('page') if session.get('type') == 'creator_center' else getattr(adapter, 'page', None)
     if page is None and session.get('platform') in ('douyin', 'kuaishou', 'xiaohongshu'):
         from app_new import session_manager
         manager = getattr(session_manager, session['platform'] + '_session_manager')

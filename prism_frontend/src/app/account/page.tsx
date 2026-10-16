@@ -561,6 +561,7 @@ function AccountPageContent() {
       stopPolling()
       activeSessionRef.current = sessionId
       setBindingStatus("code")
+      sessionStorage.removeItem("prism-active-browser")
       sessionStorage.setItem("prism-active-login", JSON.stringify({id: sessionId, platform: formState.platform, mode: loginMode, role: loginRole, selected: selectedLoginAccountRef.current, accountId: loginAccountIdRef.current || bindAccountId}))
       setSmsVerification(initialVerification)
       let pollInFlight = false
@@ -889,10 +890,11 @@ function AccountPageContent() {
         throw new Error(openResult?.detail || openResult?.message || "启动 Chromium 失败")
       }
 
-      toast({
-        title: "已请求打开创作者中心",
-        description: `${account.platform} 已打开`,
-      })
+      const sessionId = openResult?.data?.session_id
+      if (typeof sessionId !== "string" || !sessionId) throw new Error("浏览器未返回可连接的会话")
+      sessionStorage.setItem("prism-active-browser", JSON.stringify({ id: sessionId, platform: account.platform, kind: "creator" }))
+      window.dispatchEvent(new Event("prism-browser-open"))
+      toast({ title: "创作者中心已连接", description: "正在远程浏览器面板中显示" })
     } catch (e) {
       console.error("Open Creator Center Error:", e)
       toast({ variant: "destructive", title: "打开失败", description: String(e) })

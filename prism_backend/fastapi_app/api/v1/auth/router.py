@@ -557,6 +557,9 @@ from automation_worker.remote_login import PointerInput
 
 async def _remote_login_proxy(session_id, payload=None):
     session = login_sessions.get(session_id)
+    # Creator sessions live in the worker, which validates their lifetime/page.
+    if session_id.startswith('creator_'):
+        session = {'worker_session_id': session_id}
     if not session or session.get('confirmed_response'):
         raise HTTPException(404, '登录会话已过期或结束')
     from automation_worker.client import get_worker_client

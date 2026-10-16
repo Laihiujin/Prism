@@ -42,7 +42,7 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
     const refresh = async () => {
       try {
         const response = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/view/${encodeURIComponent(sessionId)}`, { signal: controller.signal, cache: "no-store" })
-        if (!response.ok) throw new Error("登录会话已结束或画面暂不可用，请重新开始登录。")
+        if (!response.ok) throw new Error("浏览器会话已结束或画面暂不可用，请重新打开创作者中心或开始登录。")
         const next = await response.json() as Frame
         if (!cancelled) { setFrame(next); setError("") }
       } catch (problem) {
@@ -76,11 +76,11 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
   }
 
   return <div className="w-full space-y-2 rounded-xl border border-border p-3">
-    <p className="text-sm font-semibold">远程手动验证</p>
-    <p className="text-xs text-muted-foreground">在画面上点击或拖动即可操作当前登录浏览器。安全验证需由你手动完成。</p>
+    <p className="text-sm font-semibold">远程浏览器实时画面</p>
+    <p className="text-xs text-muted-foreground">在画面上点击或拖动即可操作浏览器。安全验证需由你手动完成。</p>
     {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     <button type="button" className="text-xs underline" onClick={() => setZoom(value => !value)}>{zoom ? "恢复大小" : "放大画面"}</button>
-    {frame ? <div className="max-h-[60vh] overflow-auto"><img src={frame.image} alt="当前平台登录浏览器实时画面" draggable={false}
+    {frame ? <div className="max-h-[60vh] overflow-auto"><img src={frame.image} alt="当前平台浏览器实时画面" draggable={false}
       className="max-w-none select-none touch-none rounded border border-border"
       style={{ width: zoom ? "200%" : "100%", aspectRatio: `${frame.width}/${frame.height}` }}
       onPointerDown={event => { if (event.button !== 0 || dragging.current || failed.current) return; dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); send("down", position(event)) }}
