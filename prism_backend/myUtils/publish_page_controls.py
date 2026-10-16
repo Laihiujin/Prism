@@ -19,6 +19,7 @@ async def douyin_video_upload_input(page):
 
 
 GUIDE_SELECTORS = (
+    '.semi-popover-content',
     '[id^="react-joyride-step"], .react-joyride__tooltip',
     '.shepherd-element, [class*="guide-modal"], [class*="tour-tooltip"], [class*="mention-wrapper"]',
     '[role="dialog"], [role="alertdialog"]',
