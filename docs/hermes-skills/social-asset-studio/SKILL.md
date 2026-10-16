@@ -12,6 +12,7 @@ One workflow for covers, titles, descriptions, tags and brand alignment. State w
 
 - Copy only, or a multi-platform publish package: [titles and fields](references/title-copy.md).
 - Covers or multiple versions: [platform concepts](references/platform-design.md) and [quality gates](references/quality-gates.md).
+- Doors and smart locks: [door, lock and person logic](references/door-lock-physics.md).
 - Any real product in the image: [product research](references/product-research.md) **first**, then [source assets](references/source-assets.md). Both are mandatory before generating.
 - Brand work: [brand profile](references/brand-profile.md). Brand guidelines make results better when you have them; the skill still works without them.
 - Prism MCP/CLI: [tool adapter](references/prism-tools.md). A standalone install can use the host's own image tools; the Prism service is not required.
