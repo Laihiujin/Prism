@@ -80,20 +80,6 @@ jobs:
         working-directory: desktop-electron
         run: npm ci
 
-      - name: 下载 Redis Windows 二进制 (tporadowski/redis)
-        shell: pwsh
-        run: |
-          $headers = @{ "User-Agent" = "Prism-build" }
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/tporadowski/redis/releases/latest" -Headers $headers
-          $asset = $release.assets | Where-Object { $_.name -like "Redis-x64-*.zip" } | Select-Object -First 1
-          if (-not $asset) { throw "redis release 无 Redis-x64 zip 资产" }
-          $zip = Join-Path $env:RUNNER_TEMP "redis-win.zip"
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip
-          $dest = "desktop-electron/resources/redis"
-          New-Item -ItemType Directory -Force -Path $dest | Out-Null
-          Expand-Archive -Path $zip -DestinationPath $dest -Force
-          Get-ChildItem $dest | Select-Object -ExpandProperty Name
-
       - name: 拉取外部工具 (tools/)
         shell: bash
         run: |
