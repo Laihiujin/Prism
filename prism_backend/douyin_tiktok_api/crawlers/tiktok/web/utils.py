@@ -71,6 +71,8 @@ class TokenManager:
         (Generate a real msToken and return a false value when an error occurs)
         """
 
+        if not cls.token_conf.get("url"):
+            return cls.gen_false_msToken()
         payload = json.dumps(
             {
                 "magic": cls.token_conf["magic"],
