@@ -1,0 +1,30 @@
+name: Native runtime checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Packaging platform and clean configuration tests
+        run: node --test desktop-electron/scripts/after-pack.test.cjs
+      - name: Micromamba provisioning tests
+        run: python -m unittest discover -s scripts/tests -p test_micromamba_runtime.py
+      - name: Background subprocess tests
+        env:
+          PYTHONPATH: prism_backend
+        run: python -m unittest discover -s prism_backend/tests -p test_hidden_subprocesses.py
