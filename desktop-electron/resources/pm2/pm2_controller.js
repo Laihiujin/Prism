@@ -49,7 +49,7 @@ const SERVICE_TO_PM2 = {
 const pm2NameFor = (service) => SERVICE_TO_PM2[service];
 
 // ── pm2 上报/控制的“服务型”进程（redis/前端也交由 PM2 托管）──
-const MANAGED_PM2_SERVICES = ['prism-backend', 'prism-worker', 'prism-celery', 'hermes-dashboard', 'hermes-webui', 'deepseek-harness', 'prism-frontend', 'prism-redis', 'persona-api', 'persona-dashboard', 'prism-recovery'];
+const MANAGED_PM2_SERVICES = ['prism-backend', 'prism-worker', 'prism-celery', 'hermes-dashboard', 'hermes-webui', 'deepseek-harness', 'prism-frontend', 'prism-redis', 'persona-api', 'persona-dashboard', 'prism-recovery', 'prism-cms', 'prism-cms-tunnel'];
 
 const LAUNCH_TOKEN = crypto.randomBytes(16).toString('hex');
 const STARTED_AT = Date.now();

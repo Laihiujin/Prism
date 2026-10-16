@@ -246,6 +246,40 @@ _register(ToolSpec(
 
 
 # ---------------------------------------------------------------------------
+# CMS 访问状态（只读；密码和会话不会通过工具目录返回）
+# ---------------------------------------------------------------------------
+
+def _cms_access_status_handler() -> Dict[str, Any]:
+    import json
+    import os
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[3]
+    directory = Path(os.environ.get('PRISM_RUNTIME_DATA_DIR', root / 'runtime-data')) / 'cms'
+    def read(name):
+        try:
+            return json.loads((directory / name).read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            return {}
+    config = read('config.json')
+    public = read('public.json')
+    return {'success': True, 'data': {
+        'mode': 'production' if os.environ.get('PRISM_RUNTIME_MODE') == 'production' else 'development',
+        'password_configured': bool(read('auth.json').get('hash')),
+        'public_enabled': bool(config.get('publicEnabled')),
+        'security_reminder': config.get('securityReminder', True),
+        'public_url': public.get('url') if config.get('publicEnabled') else None,
+        'local_url': f"http://127.0.0.1:{os.environ.get('PRISM_CMS_PORT', '8441')}/cms",
+    }}
+
+
+_register(ToolSpec(
+    name='cms_access_status', description='只读查询 CMS 的公网连接、密码配置状态和生产/开发模式，不返回密码或会话。',
+    category='system', parameters={'type': 'object', 'properties': {}, 'additionalProperties': False},
+    handler=_cms_access_status_handler,
+))
+
+
+# ---------------------------------------------------------------------------
 # 访问与调用
 # ---------------------------------------------------------------------------
 

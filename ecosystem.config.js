@@ -270,6 +270,14 @@ module.exports = {
       out_file: './logs/deepseek-harness-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
     },
+    { name: 'prism-cms', script: process.execPath, args: [path.join(ROOT, 'scripts/runtime/cms-gateway.cjs')],
+      env: { ...process.env, PRISM_APP_ROOT: ROOT, PRISM_RUNTIME_DATA_DIR: RUNTIME_DATA,
+        PRISM_RUNTIME_MODE: 'development', PRISM_BACKEND_URL: runtime.backend_url },
+      error_file: './logs/cms-error.log', out_file: './logs/cms-out.log' },
+    { name: 'prism-cms-tunnel', script: process.execPath, args: [path.join(ROOT, 'scripts/runtime/cms-tunnel.cjs')],
+      env: { ...process.env, PRISM_APP_ROOT: ROOT, PRISM_RUNTIME_DATA_DIR: RUNTIME_DATA, PRISM_RUNTIME_MODE: 'development' },
+      max_restarts: 3, restart_delay: 10000, stop_exit_codes: [0, 78],
+      error_file: './logs/cms-tunnel-error.log', out_file: './logs/cms-tunnel-out.log' },
     { name: 'prism-recovery', script: process.execPath, args: [path.join(ROOT, 'scripts/runtime/pm2-recovery.cjs')],
       env: { ...process.env, PRISM_APP_ROOT: ROOT }, max_restarts: 2 }
   ].map(app => ({

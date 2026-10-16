@@ -197,3 +197,16 @@ macOS `start-mac.sh` 走相同供给器。安装包不携带 Python 虚拟环境
 所有已启用服务由 PM2 托管，`prism-recovery` 检查反复重启，
 执行有限次数重启/依赖修复后熔断，主动停止的进程不自动拉起。
 详情见 `scripts/packaging/provision/README.md`。
+
+## CMS 访问安全
+
+`/cms` 跳转到独立 CMS 密码入口（源码默认 `http://127.0.0.1:8441/cms`，安装包默认 8442，冲突时自动选择空闲端口）。
+`prism-cms` 和 `prism-cms-tunnel` 均由 PM2 管理，公网仅连接 CMS 网关，
+网关只允许登录后的 CMS 设置接口，不转发账号、文件或任意后端 API。
+运行数据目录的 `cms/` 保存加盐密码哈希、访问设置、临时公网链接与安全审计，
+这些均为本机私有数据，不提交 Git。新安装需先在本机初始化 CMS 密码，再开启公网。
+安装包通过 `PRISM_RUNTIME_MODE=production` 标记生产模式；源码启动为 development。
+生产 CMS 禁止切换到实验性的 HTTP 抖音登录。
+Agent/CLI 可调用 `cms_access_status` 查询访问状态和链接；不会返回密码与会话。
+外部托管的前端可通过 `PRISM_CMS_URL` 指定对应 CMS 地址。
+默认 Quick Tunnel 链接在连接器重建后改变；固定域名需配置自己的 Cloudflare Tunnel。

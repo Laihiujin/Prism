@@ -92,6 +92,7 @@ const frontendExe = process.env.PRISM_FRONTEND_EXEC || process.execPath;
 const baseEnv = {
   ...process.env,
   PRISM_PM2_MANAGES_HERMES_UI: '1',
+  PRISM_RUNTIME_MODE: process.env.PRISM_RUNTIME_MODE || 'production',
   PATH: (process.platform === 'win32'
     ? [envRoot, path.join(envRoot, 'Library', 'bin'), path.join(envRoot, 'Scripts'), process.env.PATH || '']
     : [pythonDir, process.env.PATH || '']).join(path.delimiter),
@@ -126,6 +127,12 @@ function dashboardLaunch() {
 
 // PM2 app 定义。所有进程都由 PM2 托管（start/stop/restart/restart-count/logs）。
 const apps = [
+  { name: 'prism-cms', script: process.execPath, args: [resolveRel('scripts/runtime/cms-gateway.cjs')],
+    exec_interpreter: 'none', env: { ...baseEnv, ELECTRON_RUN_AS_NODE: '1' } },
+  { name: 'prism-cms-tunnel', script: process.execPath, args: [resolveRel('scripts/runtime/cms-tunnel.cjs')],
+    exec_interpreter: 'none', env: { ...baseEnv, ELECTRON_RUN_AS_NODE: '1' }, max_restarts: 3,
+    restart_delay: 10000, stop_exit_codes: [0, 78] },
+
   {
     name: 'prism-redis',
     script: REDIS,
@@ -250,6 +257,9 @@ const apps = [
 
 module.exports = {
   apps: [...apps, { name: 'prism-recovery', script: process.execPath, args: [resolveRel('scripts/runtime/pm2-recovery.cjs')], env: { ...baseEnv, ELECTRON_RUN_AS_NODE: '1' }, exec_interpreter: 'none', max_restarts: 2 }].filter(app => {
+    if (app.name === 'prism-cms-tunnel') {
+      try { return JSON.parse(fs.readFileSync(path.join(process.env.PRISM_RUNTIME_DATA_DIR, 'cms/config.json'), 'utf8')).publicEnabled === true; } catch { return false; }
+    }
     if (app.name === 'deepseek-harness') return fs.existsSync(path.join(DEEPSEEK_HARNESS, 'apps/cli/lib/bin.js'));
     if (app.name === 'hermes-webui') return fs.existsSync(path.join(HERMES_WEBUI, 'server.py'));
     if (app.name === 'hermes-dashboard') return fs.existsSync(path.join(HERMES_AGENT, 'hermes_cli', 'main.py'));
