@@ -454,6 +454,15 @@ _PROJECT_SKILLS: tuple[dict, ...] = (
         "category": "software-development",
     }
     for platform in _PUBLISH_PLATFORMS
+) + tuple(
+    {
+        # Pinned open-source cover/thumbnail skills; see each SOURCE.md for provenance.
+        "name": name,
+        "source_rel": Path("docs") / "hermes-skills" / name / "SKILL.md",
+        "category": "creative",
+        "tree": True,
+    }
+    for name in ("baoyu-cover-image", "baoyu-xhs-images", "create-social-thumbnails", "video-thumbnail")
 )
 _PROJECT_SKILL_ROOTS = (
     Path("tools") / "hermes-home" / "skills",

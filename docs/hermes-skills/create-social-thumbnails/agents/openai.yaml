@@ -1,0 +1,8 @@
+interface:
+  display_name: "自媒体爆款封面"
+  short_description: "Create high-CTR creator covers from real assets"
+  brand_color: "#1458E8"
+  default_prompt: "Use $create-social-thumbnails to choose a click-driving style and ratio, then create a high-CTR creator cover from my real assets."
+
+policy:
+  allow_implicit_invocation: true
