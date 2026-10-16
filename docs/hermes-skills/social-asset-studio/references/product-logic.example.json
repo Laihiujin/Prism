@@ -1,0 +1,55 @@
+{
+  "product": {
+    "name": "Example two-unit smart door lock",
+    "variant": "REPLACE",
+    "archetypes": ["two-sided installed"],
+    "model_specific_found": false
+  },
+  "sources": [
+    {"id": "s1", "ref": "https://example.com/manual.pdf", "confirms": "exterior and interior assemblies mount on opposite faces, cables pass through the door bore", "level": "category", "checked": "YYYY-MM-DD"}
+  ],
+  "purpose": {
+    "job": "Lets the household see who is at the door and unlock without a key.",
+    "claims": [{"text": "REPLACE with a sourced claim", "source": "s1"}]
+  },
+  "units": [
+    {
+      "id": "exterior_unit",
+      "label": "exterior unit",
+      "side": "outside face of the door",
+      "orientation": "vertical, camera at the top facing outward",
+      "height": "door-hardware height, about hand height",
+      "visible_parts": ["camera module", "keypad", "fingerprint sensor"],
+      "environment": "corridor, porch or building entrance"
+    },
+    {
+      "id": "interior_unit",
+      "label": "interior unit",
+      "side": "inside face of the door",
+      "orientation": "vertical, screen at the top facing into the home",
+      "height": "door-hardware height",
+      "visible_parts": ["display screen", "push-pull handle", "thumb-turn knob"],
+      "environment": "entry hall inside the home"
+    }
+  ],
+  "interaction": [
+    {"step": "Visitor approaches the closed door", "visible_units": ["exterior_unit"]},
+    {"step": "Resident checks the indoor screen", "visible_units": ["interior_unit"]}
+  ],
+  "constraints": [
+    {"id": "c1", "applies_to": ["*"], "rule": "A closed door shows at most one unit in one view.", "prompt": "only one side of the closed door is visible", "check": "No two units of the lock appear on the same face of a door.", "source": "s1"},
+    {"id": "c2", "applies_to": ["exterior_unit"], "rule": "Exterior unit camera faces the visitor.", "prompt": "the camera module at the top faces outward toward the corridor", "check": "Camera faces outward, not into the home.", "source": "s1"},
+    {"id": "c3", "applies_to": ["interior_unit"], "rule": "Interior unit belongs to the home side.", "prompt": "mounted on the inside face of the door, home interior around it", "check": "Background is the home interior, not a corridor or garden.", "source": "s1"}
+  ],
+  "forbidden": [
+    {"text": "exterior and interior units side by side on the same face of a door", "negative": "two lock panels on the same side of the door"},
+    {"text": "parts borrowed from other models (round screens, mascots)", "negative": "round screen, cartoon mascot"}
+  ],
+  "liberties": [
+    {"id": "packshot", "text": "Both units side by side on a neutral background, clearly not installed.", "allows_units": ["exterior_unit", "interior_unit"], "prompt": "studio product layout on a seamless neutral background, not installed on a door"},
+    {"id": "split", "text": "Divided split frame: outside on one half, inside on the other, with a visible divider.", "allows_units": ["exterior_unit", "interior_unit"], "prompt": "split-screen composition with a clear divider, outside view on the left, inside view on the right"}
+  ],
+  "unknowns": [
+    {"question": "Handle side vs door handing options", "blocks": "close-ups of the handle on a specific door"}
+  ]
+}

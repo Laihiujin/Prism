@@ -19,7 +19,7 @@ One workflow for covers, titles, descriptions, tags and brand alignment. State w
 ## Order of work
 
 1. **Facts.** Extract content facts, user references, target platforms, ratios, counts, mandatory copy, prior approvals and budget. Don't re-ask what the user already gave. A general creative brief is enough to start reversible preparation; publishing needs its own authorization.
-2. **Product logic.** If a product appears, write the product logic sheet from [product research](references/product-research.md): what it is, how it works, where and how it is installed or used, who uses it, and the physical constraints any scene must respect. No product image is generated until this sheet exists.
+2. **Product logic.** If a product appears, follow [product research](references/product-research.md): search the web and the user's material for the exact model, think the product through (parts, placement, interaction, impossible views, traps), then write the JSON product logic sheet. Each concept's scene is compiled from that sheet with `scripts/compile_product_rules.py` into prompt constraints and a review checklist, so the rules adapt to each product. No product image is generated until the sheet exists and the scene compiles.
 3. **Concept cards.** One short card per platform: viewer motivation, content promise, cover copy, single hero visual, scene mechanism, title structure, source images, and what substantively differs from the other platforms. Every scene is checked against the product logic sheet before it is approved for generation. Platform tone is an editorial choice, not an algorithm guarantee.
 4. **Representative draft.** Make one representative draft, review it for real, then expand. If the user asked to approve before continuing, stop at a viewable draft and wait. No explicit approval means not approved, and approval of one draft does not extend to every platform.
 
@@ -35,7 +35,7 @@ Lock structure, components, wordmark and proportions, then still compare the act
 
 Save concept cards, the product logic sheet, full prompts and a local manifest in the task output folder. For each call, list the originals actually passed in and their role (product / style / logo). Never claim a tool received an image parameter it doesn't support.
 
-Record the real provider, tool, job/path and reference links. Review the full image, the side-by-side with originals, the product-logic checklist and a phone-size thumbnail before writing a verdict. Locate the defect (product, logic, fusion, composition, copy, mark) instead of regenerating the whole batch. If the same defect survives two revisions, report the blocker and candidates and stop spending credits.
+Record the real provider, tool, job/path and reference links. Review the full image, the side-by-side with originals, the compiled product-logic checklist and a phone-size thumbnail before writing a verdict. Locate the defect (product, logic, fusion, composition, copy, mark) instead of regenerating the whole batch. If the same defect survives two revisions, report the blocker and candidates and stop spending credits.
 
 Use the structure in [manifest.example.json](references/manifest.example.json). `python scripts/check_delivery.py <manifest.json>` checks local files, source hashes, per-attempt references, the product-logic review, counts and ratios. It does not replace visual judgment or user approval.
 

@@ -9,7 +9,7 @@ Install by copying this repository into the host's skill folder as `social-asset
 ```text
 SKILL.md
 references/       # platforms, titles, product research, source assets, brand profile, tools, quality gates, manifest template
-scripts/          # local delivery-evidence checker and tests
+scripts/          # product-rule compiler, delivery-evidence checker and tests
 agents/           # agent metadata
 third-party/      # MIT notices for method references
 ```
@@ -18,6 +18,8 @@ third-party/      # MIT notices for method references
 
 ```sh
 python scripts/test_check_delivery.py
+python scripts/test_compile_product_rules.py
+python scripts/compile_product_rules.py product-logic.json --visible <unit ids> [--liberty <id>]
 python scripts/check_delivery.py path/to/manifest.json
 python scripts/check_delivery.py path/to/manifest.json --require-approved
 ```

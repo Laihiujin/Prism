@@ -7,7 +7,7 @@ Verify facts, product originals, logo and style sources, and record the original
 ## Look at the actual image
 
 1. **Source comparison:** model, silhouette, components, lens/windows, keys, screen, knob and wordmark, item by item.
-2. **Product logic:** every rule in the product logic sheet. Correct face visible from the camera position, correct mounting surface and side, orientation, scale, reach height, a realistic usage moment. Parts that belong on opposite sides are never shown together on one side.
+2. **Product logic:** every item of the checklist compiled for this scene by `scripts/compile_product_rules.py`. Correct face visible from the camera position, correct mounting surface and side, orientation, scale, reach height, a realistic usage moment. Parts that belong on opposite sides are never shown together on one side.
 3. **Fusion:** perspective/scale, installation structure, light direction/color temperature, material reflections, contact shadows, occlusion edges. The product must not float or look cut from another picture.
 4. **Brand:** transparent logo structure, size, position and clear space; exact text; color aligned with the brand guidelines when available. No fake transparency with a backing plate; the logo never overpowers the title.
 5. **Visual:** one focal point, clear hierarchy, appropriate negative space, no crop accidents, title correct character by character.
