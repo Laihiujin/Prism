@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from utils.subprocesses import hidden_process_kwargs
+
 import json
 import os
 import subprocess
@@ -153,7 +155,7 @@ def get_hermes_webui_state_path() -> Path:
 def get_hermes_python_path() -> Path:
     prismenv_root = get_prismenv_root()
     candidates = [
-        prismenv_root / "Scripts" / "python.exe",
+        prismenv_root / "python.exe" if os.name == "nt" else prismenv_root / "bin" / "python",
         prismenv_root / "bin" / "python",
     ]
     for candidate in candidates:
@@ -241,6 +243,7 @@ def get_gateway_platform_status() -> Dict[str, Any]:
                 env=env,
                 cwd=hermes_source_str,
                 check=True,
+                **hidden_process_kwargs(),
             )
             payload = json.loads((result.stdout or "").strip() or "{}")
             platforms = payload.get("platforms", [])

@@ -31,6 +31,7 @@ PM2 启动、健康检查）编排成可重复执行的步骤；并暴露给 `we
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import platform
@@ -102,7 +103,7 @@ def _live_env(extra: dict | None = None) -> dict:
     for p in (TOOLS_DIR / "node" / "bin", TOOLS_DIR / "node", TOOLS_DIR / "redis",
               TOOLS_DIR / "python" / "bin", TOOLS_DIR / "python",
               REPO_ROOT / "node_modules" / ".bin",
-              PRISMENV / "bin", PRISMENV / "Scripts"):
+              PRISMENV, PRISMENV / "Library" / "bin", PRISMENV / "bin", PRISMENV / "Scripts"):
         if p.exists():
             path_dirs.append(str(p))
     env["PATH"] = os.pathsep.join(path_dirs + [env.get("PATH", "")])
@@ -278,8 +279,7 @@ def _system_chrome() -> str | None:
 
 
 def _prismenv_python() -> Path | None:
-    for cand in (PRISMENV / "bin" / "python", PRISMENV / "Scripts" / "python.exe",
-                 PRISMENV / "python.exe"):
+    for cand in (PRISMENV / "bin" / "python", PRISMENV / "python.exe"):
         if cand.exists():
             return cand
     return None
@@ -314,9 +314,18 @@ def compute_plan() -> dict:
     data["git"] = git
     xurl = _detect_xurl()
     data["xurl"] = xurl
-    data["micromamba"] = {"embedded": (REPO_ROOT / "scripts" / "packaging" / "provision" /
-                                        "micromamba" / "micromamba").exists(),
-                          "path": which("micromamba")}
+    provision_path = REPO_ROOT / "scripts/packaging/provision/provision.py"
+    spec = importlib.util.spec_from_file_location("prism_provision", provision_path)
+    provision = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(provision)
+    try:
+        mm_path = provision.resolve_micromamba()  # 只读探测，不下载。
+    except RuntimeError:
+        mm_path = None
+    data["micromamba"] = {
+        "embedded": bool(mm_path and Path(mm_path).is_relative_to(provision.EMBED_MICROMAMBA_DIR)),
+        "path": mm_path,
+    }
     data["prismenv_python"] = str(_prismenv_python()) if _prismenv_python() else None
     data["frontend_node_modules"] = (FRONTEND / "node_modules").exists()
     data["root_pm2"] = (REPO_ROOT / "node_modules" / ".bin" /
@@ -493,21 +502,16 @@ def cmd_install_tools(args) -> int:
 # --------------------------------------------------------------- bootstrap ----
 
 def ensure_python_runtime(mirror: str) -> Path:
-    if _prismenv_python() and _prismenv_python().exists():
+    if (PRISMENV / "conda-meta").is_dir() and (PRISMENV / "prism-runtime.json").is_file() and _prismenv_python():
         log(f"复用 prismenv: {_prismenv_python()}")
         return _prismenv_python()
-    mm_embedded = REPO_ROOT / "scripts" / "packaging" / "provision" / "micromamba" / "micromamba"
-    mm = str(mm_embedded) if mm_embedded.exists() else which("micromamba")
-    if not mm:
-        err("未找到 micromamba，且无 prismenv。请先在 provision/micromamba/ 放入对应平台二进制。")
-        raise RuntimeError("micromamba missing")
     base = _detect_python()
     if base["kind"] != "system":
         err("未找到可用的 Python 来运行 provision.py。")
         raise RuntimeError("python missing")
     log(f"用 micromamba 自供给 prismenv（python=3.11, mirror={mirror}）...")
     prov = REPO_ROOT / "scripts" / "packaging" / "provision" / "provision.py"
-    run([base["python"], str(prov), "--all", "--mirror", mirror],
+    run([base["python"], str(prov), "--all", "--force", "--mirror", mirror],
         desc="  供给共享运行时 + 隔离组件环境(provision.py --all) ...")
     py = _prismenv_python()
     if not py or not py.exists():

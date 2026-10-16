@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from utils.subprocesses import hidden_process_kwargs
+
 import asyncio
 import inspect
 import json
@@ -355,6 +357,7 @@ class HermesAgentWrapper:
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            **hidden_process_kwargs(),
         )
 
         output_bytes, _ = await process.communicate()
@@ -401,6 +404,7 @@ class HermesAgentWrapper:
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            **hidden_process_kwargs(),
         )
 
         transcript_parts: List[str] = []
@@ -674,6 +678,7 @@ async def _start_dashboard_backend(
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            **hidden_process_kwargs(),
         )
     else:
         webui_path = get_hermes_webui_path()
@@ -695,6 +700,7 @@ async def _start_dashboard_backend(
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            **hidden_process_kwargs(),
         )
 
     if backend == "official":
@@ -767,6 +773,7 @@ async def _stop_spawned_process(
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
+                **hidden_process_kwargs(),
             )
             try:
                 await asyncio.wait_for(process.wait(), timeout=5)

@@ -6,9 +6,8 @@
 #   .\deploy.ps1 full         # 无界面一键部署（plan->install-tools->bootstrap->start）
 #   .\deploy.ps1 plan|status|start|stop|bootstrap|install-tools
 #
-# 说明：Windows 上仓库内嵌的 micromamba 是 macOS 二进制，不能直接用来跑部署器，
-#       所以这里在没有系统 Python 时自动下载一份「便携 cpPython」(python-build-standalone)
-#       到 .tools\python，再调用 deploy\deploy.py。
+# 说明：没有系统 Python 时，便携 CPython 仅用于运行引导器；
+#       Prism 运行环境由供给器下载对应平台 micromamba 并构建 conda prismenv。
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -70,7 +69,7 @@ if(Test-Path (Join-Path $ToolsNode "node.exe")){ $env:Path = "$ToolsNode;" + $en
 if(Test-Path (Join-Path $ToolsRedis "redis-server.exe")){ $env:Path = "$ToolsRedis;" + $env:Path }
 
 # --- 2) 转发到 bootstrap.py（PowerShell 已自给 Python，无需预装）---
-$Cmd = if($args.Count -gt 0){ $args[0] } else { "bootstrap" }   # 不带参数 = 完整部署(venv 路径，Windows 安全)
+$Cmd = if($args.Count -gt 0){ $args[0] } else { "bootstrap" }   # 不带参数 = micromamba 环境完整部署
 $Extra = if($args.Count -gt 1){ $args[1..($args.Count-1)] } else { @() }
 # check / plan 是只读探测，转到 bootstrap.py --check
 if($Cmd -eq "check" -or $Cmd -eq "plan"){ $Cmd = "--check"; $Extra = @() }

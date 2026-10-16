@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 set "ROOT=%~dp0"
-set "PY=%ROOT%prismenv\Scripts\python.exe"
+set "PY=%ROOT%prismenv\python.exe"
 rem 默认后端地址：优先取 runtime.json 的动态端口；无栈/未引导时回退 :7000。
 rem 外部可通过 PRISM_BACKEND_URL / PRISM_BACKEND_PORT 显式指定，仍生效。
 if not defined PRISM_BACKEND_URL (

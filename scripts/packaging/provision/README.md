@@ -15,7 +15,6 @@ scripts/packaging/provision/
   provision.py                # 主供给器
   mirror.json                 # 镜像提供方（tuna / aliyun / official，默认 tuna）
   conda-deps.txt              # conda 层依赖（python=3.11 + 原生包候选）
-  requirements.prism.lock.txt # pip 层依赖（当前为 requirements.txt 拷贝；生产应换 lockfile）
   components.json             # 组件清单：inject（装进共享 env） / isolated（独立 env）
   components/
     <name>/env.yaml           # 隔离组件环境的 micromamba environment.yml（persona / hermes …）
@@ -63,18 +62,21 @@ python3 scripts/packaging/provision/provision.py --with persona --with hermes
 # 只打印共享环境 python 路径（供壳捕获）
 python3 scripts/packaging/provision/provision.py --print-python
 
-# 把已有旧 venv 迁移为 micromamba conda 环境（先备份为 prismenv.venv.bak）
+# 强制重新供给 conda 环境（不生成环境备份）
 python3 scripts/packaging/provision/provision.py --force
 ```
 
 ## 关键行为
 
-- **环境识别**：目标目录若是旧 venv（`pyvenv.cfg`），默认**不破坏**——仅注入
-  组件入口（`bin/persona`、`bin/hermes`），不重建 conda；`--force` 才迁移。
+- **环境识别**：只供给 conda 环境；旧 venv 必须先清理，不再注入组件或创建备份。
 - **幂等**：`<env>/`.prism-provision-ready 记录镜像 + 输入散列，未变则跳过。
 - **镜像**：`--mirror tuna|aliyun|official`，或环境变量 `PRISM_PROVISION_MIRROR`;
   pip 层走对应 pypi 镜像。
-- **micromamba 解析**：内嵌 `provision/micromamba/` → `PRISM_MICROMAMBA` → `PATH`。
+- **micromamba 解析**：`PRISM_MICROMAMBA` → 内嵌 `provision/micromamba/<平台>/` → 当前系统同名内嵌文件 → `PATH`。
+  实际供给时若缺失，自动从 `micro.mamba.pm` 下载当前平台二进制；检查和 dry-run 不下载。
+  支持 Windows x64、macOS Intel/Apple Silicon、Linux x64/ARM64。
+- **统一部署入口**：`bootstrap.py` 与 `deploy/deploy.py` 统一调用 micromamba 供给器。
+- **Python 入口**：Windows conda 为 `prismenv/python.exe`，macOS/Linux 为 `prismenv/bin/python`。
 - **入口路径**：Unix = `bin/<ep>`，Windows conda = `Scripts/<ep>.exe`（自动兼容）。
 
 ## 新增一个开源组件
@@ -85,7 +87,7 @@ python3 scripts/packaging/provision/provision.py --force
   每个组件一个自己的 conda env（`prism_components/<name>`），入口 `bin/<name>`；来了装一套、
   卸载删一套。互不污染共享 `prismenv`。
 - **被后端 import 的库 / 内嵌子应用**（`biliup`、`douyin_tiktok_api`）→ **留在 `prismenv`**，
-  不隔离（隔离会让后端进程 import 不到）。这类冲突靠 `requirements.prism.lock.txt` 锁版本解决。
+  不隔离（隔离会让后端进程 import 不到）。这类冲突由根目录唯一的 `requirements.txt` 约束版本。
 
 新增一个独立进程组件：
 
@@ -124,9 +126,17 @@ mihomo 二进制从 `tools/persona-studio/proxies/` 已知路径检测。Python 
 
 ## 生产化待办
 
-- 将 `requirements.prism.lock.txt` 换成真正 lockfile（`uv pip freeze` /
+- 为根目录 `requirements.txt` 增加完整依赖锁定（`uv pip freeze` /
   `conda list --explicit`），锁定精确版本消除“依赖坑”。
 - `conda-deps.txt` 若取消注释原生包（numpy/opencv/ffmpeg 等），要从
-  `requirements.prism.lock.txt` 删除同名项，避免 pip 覆盖 conda 版本。
+  `requirements.txt` 删除同名项，避免 pip 覆盖 conda 版本。
 - 内嵌 `micromamba/` 二进制 + 首次运行供给钩子（安装后进度提示）。
 - 弱网/离线兜底：离线 wheels 包，`pip install` 与 conda pkgs 走本地源。
+
+## 桌面构建
+
+在 `desktop-electron/` 运行 `npm run build`，默认构建当前系统和 CPU 架构的软件；
+`npm run build:dir` 只生成可运行目录。Windows x64、macOS Intel、Apple Silicon
+各自独立供给原生 micromamba 环境，禁止跨架构复用。构建器使用 conda-pack 生成临时
+可迁移运行时，首次启动执行 conda-unpack；不清理或复制本机账号、Cookie、日志、数据库。
+此命令默认不发布；GitHub tag 发布流程负责上传正式资产。
