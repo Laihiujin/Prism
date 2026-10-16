@@ -123,6 +123,13 @@ def _load_platform_browser_preferences() -> Dict[str, str]:
 def _resolve_platform_browser_choice(platform: str | None) -> str:
     normalized_platform = _normalize_platform_key(platform)
     try:
+        from tools.browser_provider_registry import runtime_data_root
+        saved = json.loads((runtime_data_root() / "platform-browser-preferences.json").read_text(encoding="utf-8"))
+        if saved.get(normalized_platform) in {"chromium", "firefox"}:
+            return saved[normalized_platform]
+    except (OSError, ValueError):
+        pass
+    try:
         # The active local/provider selection is global; an explicit platform
         # preference still wins when configured below.
         active_state_path = __import__('tools.browser_provider_registry', fromlist=['browsers_root']).browsers_root() / 'active.json'
@@ -149,6 +156,13 @@ def _resolve_platform_browser_choice(platform: str | None) -> str:
 
 
 def _resolve_local_firefox_path() -> str | None:
+    from tools.browser_provider_registry import active_provider_executable
+    from tools.browser_components import resolve_firefox_path
+    active = active_provider_executable("firefox")
+    managed = active or resolve_firefox_path()
+    if managed:
+        return str(managed)
+
     def _normalize(candidate: str | Path | None) -> Path | None:
         if not candidate:
             return None
@@ -214,6 +228,17 @@ def _resolve_local_chrome_path(headless: bool) -> str | None:
         if active:
             return str(active)
     except Exception:
+        pass
+
+    # Browser components are installed under runtime-data, outside the legacy
+    # project browsers directory. Prefer that managed runtime to system Chrome.
+    try:
+        from tools.browser_components import resolve_chromium_path
+
+        managed = resolve_chromium_path()
+        if managed and Path(managed).is_file():
+            return str(managed)
+    except (ImportError, OSError, ValueError):
         pass
 
     def _normalize(candidate: str | Path | None) -> Path | None:

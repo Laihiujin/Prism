@@ -192,6 +192,9 @@ if _ROOT_ENV.exists():
 
 
 def _env_bool(name: str, default: bool) -> bool:
+    if name == "PLAYWRIGHT_HEADLESS":
+        from config.conf import get_playwright_headless
+        return get_playwright_headless(default)
     raw = os.getenv(name)
     if raw is None:
         return default

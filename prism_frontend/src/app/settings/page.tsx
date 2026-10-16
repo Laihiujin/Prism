@@ -694,15 +694,15 @@ export default function SettingsPage() {
                     onValueChange={(value) =>
                       void setPlatformBrowserPreference(platform.key, value as PlatformBrowserChoice)
                     }
-                    disabled={loading.setPlatformBrowser || !isElectronApp}
+                    disabled={loading.setPlatformBrowser}
                   >
                     <SelectTrigger className="h-10 rounded-lg border-border/70 bg-card">
                       <SelectValue placeholder="选择浏览器" />
                     </SelectTrigger>
                     <SelectContent>
                       {(["auto", "chromium", "firefox"] as PlatformBrowserChoice[]).map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {platformBrowserLabels[option]}
+                        <SelectItem key={option} value={option} disabled={option === "firefox" && !browserRuntimeInfo?.browsers?.firefox?.installed}>
+                          {option === "chromium" ? chromiumVersionLabel : platformBrowserLabels[option]}{option === "firefox" && !browserRuntimeInfo?.browsers?.firefox?.installed ? "（请在开发者工具中下载）" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>

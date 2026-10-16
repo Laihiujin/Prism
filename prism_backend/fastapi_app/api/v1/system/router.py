@@ -302,6 +302,30 @@ async def browser_runtime_status():
         raise HTTPException(status_code=500, detail=f"????????????: {str(e)}")
 
 
+@router.get("/browser-runtime/platform-preferences")
+def browser_platform_preferences():
+    import json
+    from tools.browser_provider_registry import runtime_data_root
+    path = runtime_data_root() / "platform-browser-preferences.json"
+    return {"success": True, "preferences": json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}}
+
+
+@router.put("/browser-runtime/platform-preferences")
+def update_browser_platform_preferences(payload: Dict[str, str] = Body(...)):
+    import json
+    from tools.browser_provider_registry import runtime_data_root
+    if any(k not in {"douyin", "kuaishou", "xiaohongshu", "channels", "bilibili", "tiktok", "youtube"} or v not in {"auto", "chromium", "firefox"} for k, v in payload.items()):
+        raise HTTPException(status_code=400, detail="无效的浏览器偏好")
+    path = runtime_data_root() / "platform-browser-preferences.json"
+    current = browser_platform_preferences()["preferences"]
+    current.update(payload)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(".tmp")
+    temp.write_text(json.dumps(current), encoding="utf-8")
+    temp.replace(path)
+    return {"success": True, "preferences": current}
+
+
 @router.post("/browser-runtime/install/{target}", summary="下载并安装浏览器组件")
 async def browser_runtime_install(target: str):
     target = (target or "").strip().lower()
@@ -382,14 +406,14 @@ async def get_browser_headless():
 
 @router.put("/browser-headless", summary="设置浏览器无头模式")
 async def set_browser_headless(headless: bool = Body(..., embed=True)):
-    """写入 .env 的 PLAYWRIGHT_HEADLESS。修改后需重启后端才生效。"""
+    """写入 .env 的 PLAYWRIGHT_HEADLESS。下一次创建浏览器时生效。"""
     env_file = _repo_root() / ".env"
     try:
         from dotenv import set_key
         set_key(str(env_file), "PLAYWRIGHT_HEADLESS", "true" if headless else "false", quote_mode="never")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"写入 .env 失败: {str(e)}")
-    return {"success": True, "headless": bool(headless), "restart_required": True}
+    return {"success": True, "headless": bool(headless), "restart_required": False}
 
 
 @router.get("/douyin-login-mode", summary="获取抖音登录模式")

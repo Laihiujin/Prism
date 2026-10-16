@@ -328,6 +328,11 @@ export function useSettingsActions() {
         }
       } else {
         setStatus(null)
+        const preferenceResponse = await fetch(`${apiBase}/api/v1/system/browser-runtime/platform-preferences`, { cache: "no-store" })
+        if (preferenceResponse.ok) {
+          const saved = await preferenceResponse.json()
+          updateAppInfo({ runtimeSettings: { browserHeadless: appInfo?.runtimeSettings?.browserHeadless ?? true, platformBrowserPreferences: saved.preferences } })
+        }
         // web 版：从后端读取无头模式设置
         try {
           const res = await fetch(`${apiBase}/api/v1/system/browser-headless`, { cache: "no-store" })
@@ -362,7 +367,7 @@ export function useSettingsActions() {
     } finally {
       setLoadingState("refreshStatus", false)
     }
-  }, [loadBrowserRuntimeInfo, syncBrowserRuntimeInfo, toast, updateAppInfo])
+  }, [apiBase, appInfo?.runtimeSettings?.browserHeadless, loadBrowserRuntimeInfo, syncBrowserRuntimeInfo, toast, updateAppInfo])
 
   useEffect(() => {
     void refreshStatus({ silent: true })
@@ -541,7 +546,13 @@ export function useSettingsActions() {
   ) => {
     await handleAction("setPlatformBrowser", async () => {
       if (!isElectron) {
-        throw new Error("平台浏览器切换仅桌面版可用")
+        const response = await fetch(`${apiBase}/api/v1/system/browser-runtime/platform-preferences`, {
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [platform]: browser }),
+        })
+        const result = await response.json()
+        if (!response.ok || !result.success) throw new Error(result.detail || "浏览器偏好保存失败")
+        updateAppInfo({ runtimeSettings: { ...appInfo?.runtimeSettings, browserHeadless: appInfo?.runtimeSettings?.browserHeadless ?? true, platformBrowserPreferences: result.preferences } })
+        return
       }
 
       const currentPreferences = {
@@ -571,7 +582,7 @@ export function useSettingsActions() {
       }
 
       await refreshStatus({ silent: true })
-    }, "平台浏览器设置已更新，服务已重启")
+    }, "平台浏览器设置已更新，新会话生效")
   }
 
   const setPlatformProxyPreference = async (

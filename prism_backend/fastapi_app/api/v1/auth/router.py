@@ -286,11 +286,11 @@ async def generate_qrcode(
             await worker.cancel_session(stale_id)
 
         # 璋冪敤 Worker 鐢熸垚浜岀淮鐮?
-        from config.conf import PLAYWRIGHT_HEADLESS
+        from config.conf import get_playwright_headless
         result = await worker.generate_qrcode(
             platform=platform.value.lower(),
             account_id=account_id,
-            headless=bool(PLAYWRIGHT_HEADLESS) if headless is None else bool(headless),
+            headless=get_playwright_headless() if headless is None else bool(headless),
             mode=settings.PRISM_DOUYIN_LOGIN_MODE,
             login_role=login_role,
         )
@@ -373,7 +373,7 @@ async def _poll_login_status_impl(session_id: str = Query(..., description="鐧�
             # 璇存槑锛歱oll_status 涓凡缁忓湪棣栨娴忚鍣ㄤ細璇濅腑鎻愬彇浜?user_info锛?
             # 浠呭綋鍏抽敭瀛楁纭疄缂哄け鏃舵墠闇€瑕佸啀娆″惎鍔ㄦ祻瑙堝櫒琛ュ叏
             try:
-                from config.conf import PLAYWRIGHT_HEADLESS
+                from config.conf import get_playwright_headless
 
                 user_info = data["user_info"] or {}
                 full_state = data.get("full_state")
@@ -579,7 +579,7 @@ async def remote_login_pointer(session_id: str, payload: PointerInput):
 @router.post("/sms/start", summary="Start browser SMS login")
 async def start_sms_login(payload: SmsLoginRequest):
     from automation_worker.client import get_worker_client
-    from config.conf import PLAYWRIGHT_HEADLESS
+    from config.conf import get_playwright_headless
     try:
         response = await get_worker_client().start_sms_login({
             "platform": payload.platform, "account_id": payload.account_id,
