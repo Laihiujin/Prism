@@ -9,14 +9,15 @@
     "start": "electron .",
     "dev": "cross-env PRISM_START_SERVICES=1 PRISM_START_FRONTEND=1 electron .",
     "dev:watch": "node scripts/dev-watch.js",
-    "build": "electron-builder --win --x64",
-    "build:dir": "electron-builder --win --x64 --dir",
-    "pack": "electron-builder --dir",
+    "build": "node scripts/build-native.cjs",
+    "build:dir": "node scripts/build-native.cjs --dir",
+    "pack": "node scripts/build-native.cjs --dir",
     "postinstall": "electron-builder install-app-deps",
-    "release:win": "npm run build",
+    "release:win": "node scripts/build-native.cjs --platform=win32",
     "release:finalize": "node scripts/finalize-windows-release.mjs",
     "release:verify": "node scripts/verify-release-assets.mjs",
-    "release:version-index": "node scripts/build-version-index.mjs"
+    "release:version-index": "node scripts/build-version-index.mjs",
+    "release:mac": "node scripts/build-native.cjs --platform=darwin"
   },
   "dependencies": {
     "electron-log": "^5.0.1",
@@ -32,6 +33,7 @@
     "productName": "Prism",
     "artifactName": "Prism-${version}-setup.${ext}",
     "asar": true,
+    "afterPack": "scripts/after-pack.cjs",
     "asarUnpack": [
       "src/renderer/**",
       "src/preload/**"
@@ -56,7 +58,9 @@
           "!**/__pycache__/**",
           "!**/*.pyc",
           "!**/*.pyo",
-          "!**/nul"
+          "!**/nul",
+          "!**/.prism-relocated",
+          "!**/prism-runtime.json.bak"
         ]
       },
       {
@@ -73,6 +77,7 @@
           "!**/node_modules/**",
           "!**/web/**",
           "!**/.venv/**",
+          "!**/.hermes/**",
           "!**/*.egg-info/**",
           "!**/nul"
         ]
@@ -143,6 +148,9 @@
           "!**/db/*.sqlite",
           "!**/db/*.sqlite-*",
           "!**/db/frontend_accounts_snapshot.json",
+          "!**/config/llm_config.toml",
+          "!**/config/hermes_agent.toml",
+          "!**/crawlers/**/config.yaml",
           "!**/backups/**",
           "!**/nul"
         ]
@@ -217,14 +225,6 @@
           ]
         },
         {
-          "from": "../dist/services",
-          "to": "services",
-          "filter": [
-            "**/*",
-            "!**/nul"
-          ]
-        },
-        {
           "from": "node_modules/7zip-bin/win/x64",
           "to": "tools/7zip",
           "filter": [
@@ -258,23 +258,10 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "build/icon.png",
       "artifactName": "Prism-${version}-${arch}-setup.${ext}",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        "dmg",
+        "zip"
       ],
       "hardenedRuntime": false,
       "gatekeeperAssess": false,

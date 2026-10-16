@@ -3,7 +3,7 @@
 //
 // 说明：
 // - 所有 Python 解释器统一取 <repo>/prismenv/bin/python（macOS/Linux）
-//   或 <repo>/prismenv/Scripts/python.exe（Windows），不再用 .venv。
+//   或 <repo>/prismenv/python.exe（Windows conda），不再用 .venv。
 // - npm 在 Windows 下解析为 npm.cmd，console-script 在 Windows 下解析为 Scripts/*.exe。
 // - 所有绝对路径都相对本文件目录（__dirname）计算，因此整个仓库移到任意路径都能直接跑，
 //   不再依赖某台机器上的 /Users/<user>/... 硬编码路径。
@@ -15,7 +15,7 @@ const ROOT = __dirname;                       // 本文件所在目录 = 项目�
 const PRISMENV = path.join(ROOT, 'prismenv');
 const IS_WIN = process.platform === 'win32';
 const PY = IS_WIN
-  ? path.join(PRISMENV, 'Scripts', 'python.exe')
+  ? path.join(PRISMENV, 'python.exe')
   : path.join(PRISMENV, 'bin', 'python');
 const NPM = IS_WIN ? 'npm.cmd' : 'npm';
 const COMPONENT_ENV_ROOT = path.join(ROOT, 'prism_components');
@@ -30,6 +30,10 @@ const DEEPSEEK_HARNESS = path.join(ROOT, 'tools', 'deepseek-harness');
 const DSH_CLI = path.join(DEEPSEEK_HARNESS, 'apps', 'cli', 'lib', 'bin.js');
 const runtime = JSON.parse(fs.readFileSync(path.join(ROOT, 'runtime-data', 'runtime.json'), 'utf8'));
 const backendEnv = {
+  PRISM_PM2_MANAGES_HERMES_UI: '1',
+  PATH: (IS_WIN
+    ? [PRISMENV, path.join(PRISMENV, 'Library', 'bin'), path.join(PRISMENV, 'Scripts'), process.env.PATH || '']
+    : [path.join(PRISMENV, 'bin'), process.env.PATH || '']).join(path.delimiter),
   PRISM_BACKEND_HOST: String(runtime.backend_host),
   PRISM_BACKEND_PORT: String(runtime.backend_port),
   PRISM_BACKEND_URL: runtime.backend_url,
@@ -45,7 +49,9 @@ function which(command, fallback) {
   return fallback || command;
 }
 const bundledRedis = path.join(ROOT, 'desktop-electron', 'resources', 'redis', 'redis-server.exe');
-const REDIS = which('redis-server', IS_WIN && fs.existsSync(bundledRedis) ? bundledRedis : (IS_WIN ? 'redis-server' : '/opt/homebrew/bin/redis-server'));
+const nativeRedis = path.join(PRISMENV, 'bin', 'redis-server');
+const REDIS = IS_WIN && fs.existsSync(bundledRedis) ? bundledRedis
+  : fs.existsSync(nativeRedis) ? nativeRedis : which('redis-server', 'redis-server');
 
 function pyCliIn(envDir, name) {
   // 优先 <envDir>/bin/<console-script>（macOS，带 shebang，PM2 可直接跑）

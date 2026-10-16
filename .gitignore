@@ -149,6 +149,7 @@ scripts/packaging/*
 scripts/packaging/provision/micromamba/*
 scripts/packaging/provision/.mamba/
 !scripts/packaging/build-package.bat
+!scripts/packaging/prepare_runtime.py
 !scripts/packaging/build-version.json
 !scripts/packaging/build_exclude.txt
 !scripts/packaging/build_services.ps1
@@ -221,6 +222,9 @@ LaunchScript/python-3.11.9-embed-amd64.zip
 
 # Hermes runtime venv (created by scripts/hermes/setup_local_hermes.py)
 /prismenv/
+/prismenv.venv.bak*/
+/scripts/packaging/provision/micromamba/
+/scripts/packaging/provision/.mamba/
 
 # Patchright/Playwright downloaded browser & CLI runtime state
 /.playwright-cli/
@@ -267,5 +271,5 @@ _scan.sh
 _sub.sh
 _precise.sh
 
-# Runtime staging helper shipped with the packaging scripts
-!scripts/packaging/stage_python_runtime.py
+# Local deployment audits and integration patches
+/docs/audit/*.patch

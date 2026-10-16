@@ -15,6 +15,8 @@ Persona Studio 自带一个独立 Vite + React Dashboard（tools/persona-studio/
 """
 from __future__ import annotations
 
+from utils.subprocesses import hidden_process_kwargs
+
 import asyncio
 import os
 import socket
@@ -129,6 +131,7 @@ async def _ensure_dashboard_deps() -> None:
         cwd=str(DASHBOARD_DIR),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
+        **hidden_process_kwargs(),
     )
     output_bytes, _ = await proc.communicate()
     if proc.returncode != 0:
@@ -166,6 +169,7 @@ async def start_persona_dashboard() -> Dict[str, Any]:
         env=env,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
+        **hidden_process_kwargs(),
     )
     _dashboard_process = process
     _dashboard_log_task = asyncio.create_task(_pump_dashboard_logs(process))
@@ -194,6 +198,7 @@ async def _stop_spawned_process(process: asyncio.subprocess.Process) -> None:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
+                **hidden_process_kwargs(),
             )
             try:
                 await asyncio.wait_for(process.wait(), timeout=5)

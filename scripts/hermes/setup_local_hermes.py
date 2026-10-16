@@ -28,7 +28,7 @@ STAMP = PRISMENV_ROOT / ".hermes-runtime-ready"
 
 def _prismenv_python() -> Path:
     if sys.platform == "win32":
-        return PRISMENV_ROOT / "Scripts" / "python.exe"
+        return PRISMENV_ROOT / "python.exe"
     return PRISMENV_ROOT / "bin" / "python"
 
 
@@ -122,7 +122,8 @@ def install() -> int:
 
     if not python_exe.exists():
         print(f"[1/3] Creating prismenv from {base_python} ...")
-        subprocess.run([base_python, "-m", "venv", str(PRISMENV_ROOT)], check=True)
+        subprocess.run([base_python, str(REPO_ROOT / "scripts/packaging/provision/provision.py"),
+                        "--force", "--skip-inject"], check=True)
 
     print("[2/3] Installing Hermes dependencies into prismenv ...")
     subprocess.run([str(python_exe), "-m", "pip", "install", "--upgrade", "pip", "wheel"], check=True)

@@ -51,12 +51,21 @@
 
 ## 快速开始
 
+Windows 本地运行直接双击 `start.bat`：后台启动服务并打开控制台，输出写入
+`logs/startup.log`，错误写入 `logs/startup-error.log`。无需构建或安装桌面安装包。
+
 ### 零前置：一条命令，什么都不用装，全程只有一条命令。
 
 `deploy.cmd`（Windows）和 `./deploy.sh`（macOS/Linux）是**唯一入口**。
 它们**不需要你预装 Python、Node 或 Redis**
 PowerShell / shell 会先把缺的运行时自动补齐（Windows 下载便携 Python + Node + Redis；
 macOS 用系统自带 python3 或内嵌 micromamba），再交给 `bootstrap.py` 装齐依赖、并用 PM2 拉起整套进程。
+
+Windows、macOS、Linux 的 Prism 运行环境统一由 **micromamba** 构建为
+`prismenv` conda 环境。引导 Python 仅负责运行部署脚本；缺少 micromamba 时按系统和架构自动下载。
+运行时只支持 micromamba conda 环境，不再复用旧 venv 或自动创建旧环境备份。
+Windows 的解释器入口为 `prismenv/python.exe`，macOS/Linux 为 `prismenv/bin/python`；
+PM2 和桌面端均使用此布局。各平台需要分别构建自己的环境，不能跨系统复制 Python 二进制。
 
 | 平台 | 一条命令 | 效果 |
 |---|---|---|

@@ -25,7 +25,7 @@ function firstExisting(candidates) {
 
 function prismenvPython() {
   const win = process.platform === 'win32';
-  const relPython = win ? path.join('prismenv', 'Scripts', 'python.exe') : path.join('prismenv', 'bin', 'python');
+  const relPython = win ? path.join('prismenv', 'python.exe') : path.join('prismenv', 'bin', 'python');
   const candidates = [resolveIn(RESOURCES, relPython), resolveIn(REPO_ROOT, relPython)];
   return firstExisting(candidates) || path.join(RESOURCES, relPython);
 }
@@ -61,16 +61,21 @@ const FRONTEND_STANDALONE = resolveRel(path.join('frontend', 'standalone'));
 const FRONTEND_SERVER = path.join(FRONTEND_STANDALONE, 'server.js');
 
 const pythonDir = path.dirname(PY);
-const sitePackages = path.join(pythonDir, process.platform === 'win32' ? 'Lib' : 'lib', 'python3.11', 'site-packages');
+const envRoot = process.platform === 'win32' ? pythonDir : path.dirname(pythonDir);
 
 function which(command, fallback) {
   try {
-    const res = spawnSync(process.platform === 'win32' ? 'where' : 'which', [command], { encoding: 'utf8' });
+    const res = spawnSync(process.platform === 'win32' ? 'where' : 'which', [command], { encoding: 'utf8', windowsHide: true });
     if (res.status === 0 && res.stdout.trim()) return res.stdout.trim().split(/\r?\n/)[0];
   } catch (_) { /* ignore */ }
   return fallback || command;
 }
-const REDIS = which('redis-server', process.platform === 'win32' ? 'redis-server' : '/opt/homebrew/bin/redis-server');
+const bundledRedis = resolveRel(path.join('redis', process.platform === 'win32' ? 'redis-server.exe' : 'redis-server'));
+const REDIS = fs.existsSync(bundledRedis)
+  ? bundledRedis
+  : fs.existsSync(path.join(envRoot, 'bin', 'redis-server'))
+    ? path.join(envRoot, 'bin', 'redis-server')
+    : which('redis-server', 'redis-server');
 
 // 前端 standalone / DSH CLI 的运行时：用“当前运行 controller 的运行时”来执行。
 // 在 Electron 打包下 process.execPath 即 Electron 二进制，设置 ELECTRON_RUN_AS_NODE=1 让其以 node 模式
@@ -81,9 +86,13 @@ const frontendExe = process.env.PRISM_FRONTEND_EXEC || process.execPath;
 // 并补齐 Python 运行时与端口。
 const baseEnv = {
   ...process.env,
+  PRISM_PM2_MANAGES_HERMES_UI: '1',
+  PATH: (process.platform === 'win32'
+    ? [envRoot, path.join(envRoot, 'Library', 'bin'), path.join(envRoot, 'Scripts'), process.env.PATH || '']
+    : [pythonDir, process.env.PATH || '']).join(path.delimiter),
   PYTHONUTF8: '1',
   PYTHONIOENCODING: 'utf-8',
-  PYTHONPATH: [BACKEND, sitePackages].filter(Boolean).join(path.delimiter),
+  PYTHONPATH: BACKEND,
   PRISM_APP_ROOT: RESOURCES,
   PRISM_RESOURCES_PATH: RESOURCES,
   BACKEND_PORT: String(BACKEND_PORT),
@@ -132,7 +141,7 @@ const apps = [
     autorestart: true,
     restart_delay: 2000,
     max_restarts: 10,
-    env: { ...baseEnv, PYTHONPATH: [BACKEND, sitePackages].filter(Boolean).join(path.delimiter), PRISM_BACKEND_URL: `http://127.0.0.1:${BACKEND_PORT}` },
+    env: { ...baseEnv, PYTHONPATH: BACKEND, PRISM_BACKEND_URL: `http://127.0.0.1:${BACKEND_PORT}` },
   },
   {
     name: 'prism-worker',
@@ -143,7 +152,7 @@ const apps = [
     autorestart: true,
     restart_delay: 2000,
     max_restarts: 10,
-    env: { ...baseEnv, PYTHONPATH: [BACKEND, sitePackages].filter(Boolean).join(path.delimiter) },
+    env: { ...baseEnv, PYTHONPATH: BACKEND },
   },
   {
     name: 'prism-celery',
@@ -154,7 +163,7 @@ const apps = [
     autorestart: true,
     restart_delay: 2000,
     max_restarts: 10,
-    env: { ...baseEnv, PYTHONPATH: [BACKEND, sitePackages].filter(Boolean).join(path.delimiter), C_FORCE_ROOT: 'true', REDIS_HOST: '127.0.0.1', REDIS_PORT: '6379' },
+    env: { ...baseEnv, PYTHONPATH: BACKEND, C_FORCE_ROOT: 'true', REDIS_HOST: '127.0.0.1', REDIS_PORT: '6379' },
   },
   {
     name: 'hermes-dashboard',
@@ -167,7 +176,7 @@ const apps = [
     max_restarts: 5,
     env: {
       ...baseEnv,
-      PYTHONPATH: [HERMES_AGENT, sitePackages].filter(Boolean).join(path.delimiter),
+      PYTHONPATH: HERMES_AGENT,
       HERMES_WEB_DIST: path.join(HERMES_AGENT, 'hermes_cli', 'web_dist'),
       HERMES_WEBUI_AGENT_DIR: HERMES_AGENT,
     },
@@ -183,7 +192,7 @@ const apps = [
     max_restarts: 5,
     env: {
       ...baseEnv,
-      PYTHONPATH: [HERMES_AGENT, sitePackages].filter(Boolean).join(path.delimiter),
+      PYTHONPATH: HERMES_AGENT,
       HERMES_WEBUI_AGENT_DIR: HERMES_AGENT,
       HERMES_WEBUI_PYTHON: PY,
       HERMES_WEBUI_HOST: '127.0.0.1',
@@ -225,7 +234,12 @@ const apps = [
 ];
 
 module.exports = {
-  apps,
+  apps: apps.filter(app => {
+    if (app.name === 'hermes-webui') return fs.existsSync(path.join(HERMES_WEBUI, 'server.py'));
+    if (app.name === 'hermes-dashboard') return fs.existsSync(path.join(HERMES_AGENT, 'hermes_cli', 'main.py'));
+    return true;
+  }).map(app => ({ min_uptime: '60s', max_restarts: 5, restart_delay: 3000,
+    windowsHide: true, ...app })),
   // 供 pm2_controller 使用的服务元数据：pm2 服务名 -> PM2 进程名
   _prism: {
     resourceRoot: RESOURCES,

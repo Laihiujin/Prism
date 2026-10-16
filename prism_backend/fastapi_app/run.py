@@ -20,7 +20,6 @@ if sys.platform == "win32":
 
 # Set UTF-8 encoding for Windows console
 if sys.platform == "win32":
-    os.system("chcp 65001 >nul 2>&1")
     import codecs
 
     sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer, "strict")

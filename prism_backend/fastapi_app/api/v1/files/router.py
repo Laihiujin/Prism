@@ -1,3 +1,5 @@
+
+from utils.subprocesses import hidden_process_kwargs
 import os
 import uuid
 import asyncio
@@ -1416,7 +1418,7 @@ async def transcribe_audio(
                 "-vn", "-acodec", "libmp3lame",
                 "-q:a", "2", temp_audio_path,
                 "-y"
-            ], check=True, capture_output=True)
+            ], check=True, capture_output=True, **hidden_process_kwargs())
 
             # 调用Whisper API（配置统一走 model-configs 单一配置源，service_type=speech，缺省回退 chat）
             # 注意：需要支持Whisper的提供商（如OpenAI兼容接口）
@@ -1456,7 +1458,7 @@ async def transcribe_audio(
                     "-show_entries", "format=duration",
                     "-of", "default=noprint_wrappers=1:nokey=1",
                     file_path
-                ], capture_output=True, text=True, check=True)
+                ], capture_output=True, text=True, check=True, **hidden_process_kwargs())
                 duration = float(result.stdout.strip())
 
                 # 更新数据库

@@ -31,11 +31,14 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import shutil
 import socket
 import subprocess
 import sys
 import tempfile
+import tarfile
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -43,7 +46,7 @@ REPO_ROOT = HERE.parents[2]  # scripts/packaging/provision -> repo root
 PROVISION_DIR = HERE
 MIRROR_FILE = PROVISION_DIR / "mirror.json"
 CONDA_DEPS_FILE = PROVISION_DIR / "conda-deps.txt"
-PIP_REQS_FILE = PROVISION_DIR / "requirements.prism.lock.txt"
+PIP_REQS_FILE = REPO_ROOT / "requirements.txt"
 COMPONENTS_DIR = PROVISION_DIR / "components"
 MICROMAMBA_ROOT = PROVISION_DIR / ".mamba"  # 自包含的 repodata 缓存根
 
@@ -184,29 +187,72 @@ def read_conda_deps() -> list[str]:
         if not line or line.startswith("#"):
             continue
         out.append(line)
-    return out or ["python=3.11", "pip"]
+    out = out or ["python=3.11", "pip"]
+    if os.name != "nt" and "redis-server" not in out:
+        out.append("redis-server")
+    return out
 
 
 # ---------------------------------------------------------- micromamba ----
 
-def resolve_micromamba() -> str:
-    """按优先级找 micromamba：内嵌 -> PRISM_MICROMAMBA env -> PATH。"""
+def micromamba_platform() -> str:
+    machine = platform.machine().lower()
+    arch = "arm64" if machine in ("arm64", "aarch64") else "64" if machine in ("amd64", "x86_64") else None
+    system = platform.system()
+    if system == "Linux" and arch == "arm64":
+        return "linux-aarch64"
+    prefix = {"Windows": "win", "Darwin": "osx", "Linux": "linux"}.get(system)
+    if not prefix or not arch or (system == "Windows" and arch != "64"):
+        raise RuntimeError(f"不支持的 micromamba 平台: {system}/{machine}")
+    return f"{prefix}-{arch}"
+
+
+def resolve_micromamba(download: bool = False) -> str:
+    """显式覆盖 -> 当前平台内嵌文件 -> PATH；实际供给可自动下载。"""
     env_path = os.environ.get("PRISM_MICROMAMBA")
     if env_path and Path(env_path).exists():
         return env_path
 
+    target = micromamba_platform()
+    executable = "micromamba.exe" if os.name == "nt" else "micromamba"
     if EMBED_MICROMAMBA_DIR.exists():
-        candidates = [
-            EMBED_MICROMAMBA_DIR / "micromamba.exe",   # Windows
-            EMBED_MICROMAMBA_DIR / "micromamba",        # macOS/Linux
-        ]
+        candidates = [EMBED_MICROMAMBA_DIR / target / executable,
+                      EMBED_MICROMAMBA_DIR / executable]
         for c in candidates:
             if c.exists():
-                return str(c)
+                try:
+                    probe = subprocess.run([str(c), "--version"], capture_output=True, timeout=15)
+                    if probe.returncode == 0:
+                        return str(c)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass  # 旧包可能内嵌了其他系统/架构的同名二进制。
 
     found = shutil.which("micromamba")
     if found:
         return found
+
+    if download:
+        destination = EMBED_MICROMAMBA_DIR / target / executable
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        url = f"https://micro.mamba.pm/api/micromamba/{target}/latest"
+        log(f"下载 micromamba ({target}): {url}")
+        # 只提取指定可执行文件，不解包归档中的其他路径。
+        with tempfile.TemporaryDirectory() as temp:
+            archive = Path(temp) / "micromamba.tar.bz2"
+            with urllib.request.urlopen(url, timeout=120) as response, archive.open("wb") as out:
+                shutil.copyfileobj(response, out)
+            with tarfile.open(archive, "r:bz2") as package:
+                member = package.getmember(f"Library/bin/{executable}" if os.name == "nt" else f"bin/{executable}")
+                if not member.isfile():
+                    raise RuntimeError("micromamba 归档缺少可执行文件")
+                with package.extractfile(member) as source:
+                    staged = Path(temp) / executable
+                    with staged.open("wb") as out:
+                        shutil.copyfileobj(source, out)
+                staged.chmod(0o755)
+                subprocess.run([str(staged), "--version"], check=True, timeout=15)
+                shutil.copy2(staged, destination)
+        return str(destination)
 
     # 给出清晰的安装指引（内嵌方式附后）
     raise RuntimeError(
@@ -229,7 +275,8 @@ def mimamba_env(extra=None) -> dict:
 
 def run(cmd, env_extra=None, check=True, cwd=None) -> int:
     log("$", " ".join(_shell_quote(c) for c in cmd))
-    proc = subprocess.run(cmd, env=mimamba_env(env_extra), cwd=cwd)
+    proc = subprocess.run(cmd, env=mimamba_env(env_extra), cwd=cwd,
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if check and proc.returncode != 0:
         raise RuntimeError(f"命令失败（exit {proc.returncode}）: {cmd[0]}")
     return proc.returncode
@@ -283,7 +330,7 @@ def build_env_yml(mirror, conda_deps, pip_reqs_path: Path) -> str:
         lines.append(f"  - {dep}")
     lines.append("  - pip:")
     # 用绝对路径，避免 micromamba 相对当前工作目录找不到
-    lines.append(f'      - "-r {str(pip_reqs_path.resolve())}"')
+    lines.append("      - " + json.dumps("-r " + pip_reqs_path.resolve().as_posix()))
     return "\n".join(lines) + "\n"
 
 
@@ -291,7 +338,6 @@ def env_python_path(env_dir: Path) -> Path:
     candidates = [
         env_dir / "bin" / "python",          # Unix venv/conda
         env_dir / "python.exe",              # Windows conda
-        env_dir / "Scripts" / "python.exe",  # Windows venv
     ]
     for c in candidates:
         if c.exists():
@@ -336,32 +382,13 @@ def create_env(env_dir: Path, mm, mirror, conda_deps, pip_reqs_path: Path, force
         env_text = pip_text
     digest = inputs_digest(mirror, conda_deps, env_text, inject)
 
-    # 旧 venv（bootstrap.py 生成）保护：默认不破坏运行中的环境，仅注入组件入口；
-    # 需要真正迁移为 micromamba conda 环境时用 --force。
-    if kind == "venv" and not force:
-        warn("检测到旧 venv（bootstrap.py 生成）。为不破坏运行中环境，跳过 conda 重建，仅注入组件入口到该 venv。")
-        warn("如需迁移为 micromamba conda 环境，请用 --force（会先把旧 venv 备份为 *.venv.bak）。")
-        py = env_python_path(env_dir)
-        for comp in inject:
-            install_component(env_dir, comp, mirror, dry_run=dry_run)
-        if py.exists():
-            if not dry_run:
-                write_stamp(env_dir, digest, mirror, str(py), kind="venv")
-            return py
-        raise RuntimeError(f"prismenv 是 venv 但 python 缺失: {py}")
+    if kind == "venv":
+        raise RuntimeError(f"仅支持 micromamba conda 环境，请先清理旧 venv: {env_dir}")
 
-    if not force and is_provisioned(env_dir, digest):
+    if not force and is_provisioned(env_dir, digest) and env_python_path(env_dir).is_file():
         py = env_python_path(env_dir)
         log(f"已就绪，跳过供给（{env_dir}）python={py if py.exists() else '(缺失?)'}")
         return py
-
-    # --force 且目标已被旧 venv 占用：先备份，再全新建 conda 环境
-    if force and kind == "venv":
-        backup = env_dir.with_name(env_dir.name + ".venv.bak")
-        log(f"迁移：将现有 venv 备份到 {backup}")
-        shutil.rmtree(backup, ignore_errors=True)
-        env_dir.rename(backup)
-        env_dir.mkdir(parents=True, exist_ok=True)
 
     tmp_path = None
     try:
@@ -384,7 +411,7 @@ def create_env(env_dir: Path, mm, mirror, conda_deps, pip_reqs_path: Path, force
             return env_python_path(env_dir)
 
         log(f"创建环境: {env_dir}")
-        run([mm, "--root-prefix", str(MICROMAMBA_ROOT), "env", "create", "-p", str(env_dir), "-f", str(env_yml_path), "-y"],
+        run([mm, "--root-prefix", str(MICROMAMBA_ROOT), "env", "update" if kind == "conda" else "create", "-p", str(env_dir), "-f", str(env_yml_path), "-y"],
             env_extra={"PIP_INDEX_URL": mirror["pypi"]})
     finally:
         if tmp_path is not None:
@@ -658,11 +685,6 @@ def _filter_inject(inject, with_names, skip_inject) -> list:
 def provision_shared(mm, mirror, env_dir, inject, force, dry_run) -> int:
     conda_deps = read_conda_deps()
     if dry_run:
-        if env_kind(Path(env_dir)) == "venv":
-            warn("检测到旧 venv；dry-run：将不会重建 conda 环境，仅注入组件入口。用 --force 才会迁移为 conda。")
-            for comp in inject:
-                install_component(Path(env_dir), comp, mirror, dry_run=True)
-            return 0
         print(build_env_yml(mirror, conda_deps, PIP_REQS_FILE))
         for comp in inject:
             install_component(Path(env_dir), comp, mirror, dry_run=True)
@@ -853,7 +875,7 @@ def main(argv=None) -> int:
         return reset_component_deps(config.reset_deps, Path(config.component_env_dir))
 
     try:
-        mm = resolve_micromamba()
+        mm = resolve_micromamba(download=not (config.dry_run or config.check))
     except RuntimeError as exc:
         if config.dry_run or config.check:
             warn(str(exc))

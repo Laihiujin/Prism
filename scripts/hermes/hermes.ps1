@@ -15,7 +15,7 @@ $hermesHome = if ($env:PRISM_HERMES_HOME) {
 $pythonExe = if ($env:PRISM_HERMES_PYTHON -and (Test-Path $env:PRISM_HERMES_PYTHON)) {
     $env:PRISM_HERMES_PYTHON
 } else {
-    Join-Path $appRoot "prismenv\Scripts\python.exe"
+    Join-Path $appRoot "prismenv\python.exe"
 }
 
 if (-not (Test-Path $pythonExe)) {

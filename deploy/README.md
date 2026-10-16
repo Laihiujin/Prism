@@ -82,7 +82,7 @@ deploy.ps1           Windows PowerShell 引导器（含便携 Python 自给）
 
 ## 已知边界
 
-- 未内置 Windows 的 `micromamba`（仓库内嵌的是 macOS 二进制）；Windows 走
-  `deploy.ps1` 的便携 CPython + tporadowski Redis 路径。
+- Windows 的便携 CPython 仅用于引导部署；应用环境与 macOS/Linux 一样由 micromamba 构建。
+  供给器自动下载当前平台的 micromamba；Redis 仍使用独立组件。
 - macOS/Linux 的 Redis 仍要求 `brew/apt` 或由你放入 PATH（脚本只检测/启动，不自动装系统包）。
 - 门户/账号登录（抖音/小红书等）首次仍需要浏览器扫码,部署本身不涉及。

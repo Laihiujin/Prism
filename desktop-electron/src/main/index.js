@@ -113,9 +113,7 @@ class PrismApp {
       console.log('Starting services...');
       log.info('Starting services...');
       try {
-        // The bundled venv manifest carries package-time paths; repoint it before
-        // any Python service spawns so prismenv resolves its stdlib in place.
-        this.ensurePrismenvHome();
+        this.prepareCondaRuntime();
         await this.startServices();
       } catch (error) {
         // 失败根因上报：弹窗展示诊断摘要 + 写入日志
@@ -636,39 +634,6 @@ class PrismApp {
     return path.join(this.getResourcesRoot(), 'prismenv', 'prism-runtime.json');
   }
 
-  // prismenv/pyvenv.cfg is generated at PACKAGE time, so its `home` points at the
-  // build machine's staged interpreter (e.g. E:\...\prismenv\_python). Installed
-  // anywhere else, Python cannot resolve its stdlib and the app silently falls
-  // back to a machine Python (or fails outright). Rewrite it at startup so the
-  // bundled interpreter is always used.
-  ensurePrismenvHome() {
-    try {
-      const prismenvDir = path.join(this.getResourcesRoot(), 'prismenv');
-      const bundledBase = path.join(prismenvDir, '_python');
-      const manifestPath = path.join(prismenvDir, 'pyvenv.cfg');
-      if (!fs.existsSync(path.join(bundledBase, 'python.exe')) || !fs.existsSync(manifestPath)) {
-        return;
-      }
-      const expectedHome = bundledBase;
-      const current = fs.readFileSync(manifestPath, 'utf8');
-      const homeMatch = current.match(/^\s*home\s*=\s*(.+?)\s*$/m);
-      const versionMatch = current.match(/^\s*version\s*=\s*(.+?)\s*$/m);
-      if (homeMatch && path.resolve(homeMatch[1]) === path.resolve(expectedHome)) {
-        return; // already correct
-      }
-      const lines = [
-        `home = ${expectedHome}`,
-        `executable = ${path.join(expectedHome, 'python.exe')}`,
-        'include-system-site-packages = false',
-        `version = ${versionMatch ? versionMatch[1] : process.versions.python || '3.13'}`
-      ];
-      fs.writeFileSync(manifestPath, lines.join('\r\n') + '\r\n', 'utf8');
-      log.info('Repointed prismenv base interpreter to bundled runtime:', expectedHome);
-    } catch (error) {
-      log.warn('Failed to repoint prismenv base interpreter:', error?.message);
-    }
-  }
-
   getRuntimeManifest() {
     // 供给模块（scripts/packaging/provision）写出的运行时清单：
     // { manager, mirror, envDir, python, component }
@@ -681,6 +646,28 @@ class PrismApp {
     }
   }
 
+  prepareCondaRuntime() {
+    const runtime = path.join(this.getResourcesRoot(), 'prismenv');
+    const python = path.join(runtime, process.platform === 'win32' ? 'python.exe' : 'bin/python');
+    const unpack = path.join(runtime, process.platform === 'win32' ? 'Scripts/conda-unpack-script.py' : 'bin/conda-unpack');
+    if (!fs.existsSync(unpack)) return; // Source development runtime is already provisioned in place.
+    const stamp = path.join(runtime, '.prism-relocated');
+    if (fs.existsSync(stamp)) {
+      if (fs.readFileSync(stamp, 'utf8') !== runtime) {
+        throw new Error('The unpacked Python runtime moved. Reinstall Prism at the new location.');
+      }
+      return;
+    }
+    const result = spawnSync(python, [unpack], {
+      cwd: runtime, env: this.buildPythonEnv(), windowsHide: true,
+      encoding: 'utf8', timeout: 120000,
+    });
+    if (result.error || result.status !== 0) {
+      throw new Error(`Python runtime relocation failed: ${result.error?.message || result.stderr || result.status}`);
+    }
+    fs.writeFileSync(stamp, runtime);
+  }
+
   getPrismenvSitePackagesPath() {
     const candidates = [
       path.join(this.getResourcesRoot(), 'prismenv', 'Lib', 'site-packages'),
@@ -690,17 +677,13 @@ class PrismApp {
   }
 
   buildPythonEnv(baseEnv = process.env) {
-    const sitePackagesPath = this.getPrismenvSitePackagesPath();
-    if (!sitePackagesPath) {
-      return baseEnv;
-    }
-
-    const existing = String(baseEnv.PYTHONPATH || '')
-      .split(path.delimiter)
-      .filter((entry) => entry && entry !== sitePackagesPath);
+    const envRoot = path.join(this.getResourcesRoot(), 'prismenv');
+    const runtimePaths = process.platform === 'win32'
+      ? [envRoot, path.join(envRoot, 'Library', 'bin'), path.join(envRoot, 'Scripts')]
+      : [path.join(envRoot, 'bin')];
     return {
       ...baseEnv,
-      PYTHONPATH: [sitePackagesPath, ...existing].join(path.delimiter)
+      PATH: [...runtimePaths, baseEnv.PATH || ''].join(path.delimiter)
     };
   }
 
@@ -751,7 +734,9 @@ class PrismApp {
     // 若清单缺失或其中 python 不可用，则回退到下面的探测逻辑。
     const manifest = this.getRuntimeManifest();
     if (manifest && manifest.python) {
-      const manifestPython = path.resolve(manifest.python);
+      // 打包后位置会改变；只采用当前 resources 中的环境。
+      const manifestPython = path.join(this.getResourcesRoot(), 'prismenv',
+        process.platform === 'win32' ? 'python.exe' : 'bin/python');
       const probe = this.testPythonExecutable(manifestPython, []);
       if (probe.ok) {
         this.pythonRuntimeCache = {
@@ -769,12 +754,12 @@ class PrismApp {
       log.warn('prism-runtime.json python unavailable, falling back:', manifestPython);
     }
 
-    const packagedPython = path.join(this.getResourcesRoot(), 'prismenv', 'Scripts', 'python.exe');
+    const packagedPython = path.join(this.getResourcesRoot(), 'prismenv',
+      process.platform === 'win32' ? 'python.exe' : 'bin/python');
     const candidates = [];
     if (fs.existsSync(packagedPython)) {
       candidates.push({ path: packagedPython, args: [], source: 'prismenv' });
     }
-    candidates.push({ path: 'python', args: [], source: 'system' });
 
     const failures = [];
     for (const candidate of candidates) {
@@ -2144,7 +2129,7 @@ class PrismApp {
     }
 
     try {
-      execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+      execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore', windowsHide: true });
       return true;
     } catch (error) {
       log.warn(`Failed to terminate PID ${pid}:`, error);
@@ -2336,7 +2321,7 @@ class PrismApp {
           path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
         ]) || 'powershell.exe';
         const killCmd = "Get-CimInstance Win32_Process | Where-Object { ($_.Name -match 'python|celery-worker') -and ($_.CommandLine -match 'fastapi_app.tasks.celery_app' -or $_.CommandLine -match 'prism-worker') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
-        execSync(`"${powershellPath}" -NoProfile -Command "${killCmd}"`, { stdio: 'ignore' });
+        execSync(`"${powershellPath}" -NoProfile -Command "${killCmd}"`, { stdio: 'ignore', windowsHide: true });
         log.info('Existing Celery workers stopped (if any).');
       } catch (error) {
         log.warn('Failed to stop existing Celery workers.', error);
@@ -3279,7 +3264,7 @@ class PrismApp {
       try {
         log.info(`Stopping ${label} process...`);
         if (process.platform === 'win32' && proc.pid) {
-          execSync(`taskkill /F /T /PID ${proc.pid}`, { stdio: 'ignore' });
+          execSync(`taskkill /F /T /PID ${proc.pid}`, { stdio: 'ignore', windowsHide: true });
         } else if (!proc.killed) {
           proc.kill();
         }
