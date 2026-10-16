@@ -468,7 +468,10 @@ def _pm2_start() -> int:
             return 1
 
     _log("启动其余服务（Worker/Celery/前端/Persona/Hermes ...）")
-    services = ["prism-worker", "prism-celery", "prism-frontend", "prism-recovery"]
+    services = ["prism-worker", "prism-celery", "prism-frontend", "prism-recovery", "prism-cms"]
+    cms_config = REPO_ROOT / "runtime-data" / "cms" / "config.json"
+    if cms_config.exists() and json.loads(cms_config.read_text(encoding="utf-8")).get("publicEnabled"):
+        services.append("prism-cms-tunnel")
     optional = {
         "persona-api": Path(os.environ.get("PRISM_COMPONENT_ENV_DIR", REPO_ROOT / "prism_components")) / "persona" / ("Scripts/persona.exe" if os.name == "nt" else "bin/persona"),
         "persona-proxy": REPO_ROOT / "tools" / "persona-studio" / "proxies" / "mihomo",
