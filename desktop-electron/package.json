@@ -194,7 +194,9 @@
         "to": "scripts/runtime",
         "filter": [
           "*.cjs",
-          "*.json"
+          "*.json",
+          "*.html",
+          "!*.test.cjs"
         ]
       },
       {

@@ -1940,6 +1940,9 @@ class PrismApp {
       this.isAutomationWorkerOnPort.bind(this),
       reservedPorts
     );
+    reservedPorts.add(this.automationWorkerPort);
+    const preferredCmsPort = Number.parseInt(process.env.PRISM_CMS_PORT || (this.isPackagedRuntime ? '8442' : '8441'), 10);
+    this.cmsPort = await this.resolveManagedPort(preferredCmsPort, async () => false, reservedPorts);
 
     log.info('Managed service ports prepared:', {
       backendPort: this.backendPort,
@@ -2182,6 +2185,8 @@ class PrismApp {
     const env = {
       ...process.env,
       PM2_HOME: path.join(userData, 'pm2'),
+      PRISM_RUNTIME_MODE: this.isPackagedRuntime ? 'production' : 'development',
+      PRISM_CMS_PORT: String(this.cmsPort || (this.isPackagedRuntime ? 8442 : 8441)),
       PRISM_PM2_STATE_PATH: path.join(userData, 'pm2-state.json'),
       PM2_API_PORT: String(this.getPM2ApiPort()),
       ELECTRON_RUN_AS_NODE: '1',
