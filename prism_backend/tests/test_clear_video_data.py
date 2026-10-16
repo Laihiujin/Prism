@@ -1,17 +1,20 @@
-"""测试清除视频数据功能"""
+"""Manual maintenance CLI; importing or collecting this module never clears data.
+
+Run explicitly with `python -m prism_backend.tests.test_clear_video_data --confirm`.
+Backups are enabled unless --no-backup is supplied.
+"""
+__test__ = False
+
 import sys
 from pathlib import Path
 
-# 添加项目路径
-sys.path.insert(0, str(Path(__file__).parent))
-
-from fastapi_app.core.config import settings
-from fastapi_app.db.session import main_db_pool
 import shutil
 from datetime import datetime
 
-def test_clear_video_data(backup=True):
-    """测试清除视频数据"""
+def clear_video_data(backup=True):
+    """Clear real video data only when deliberately invoked by maintenance CLI."""
+    from fastapi_app.core.config import settings
+    from fastapi_app.db.session import main_db_pool
     print("=" * 60)
     print("视频数据清除测试")
     print("=" * 60)
@@ -115,8 +118,19 @@ def test_clear_video_data(backup=True):
             "message": str(e)
         }
 
+def main(argv=None):
+    import argparse
+    parser = argparse.ArgumentParser(description="Clear real video files and analytics data.")
+    parser.add_argument("--confirm", action="store_true", help="Explicitly authorize clearing video data")
+    parser.add_argument("--no-backup", action="store_true")
+    args = parser.parse_args(argv)
+    if not args.confirm:
+        parser.error("No data changed. Pass --confirm to authorize cleanup.")
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    result = clear_video_data(backup=not args.no_backup)
+    print(result)
+    return 0 if result["status"] == "success" else 1
+
+
 if __name__ == "__main__":
-    import sys
-    backup = "--no-backup" not in sys.argv
-    result = test_clear_video_data(backup=backup)
-    print(f"\n最终结果: {result}")
+    raise SystemExit(main())
