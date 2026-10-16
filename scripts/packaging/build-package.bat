@@ -45,7 +45,27 @@ echo.
 echo [0.25/7] Prepare packaged prismenv and Hermes runtime...
 echo.
 if not exist "%PROJECT_ROOT%prismenv\Scripts\python.exe" (
-    python -m venv "%PROJECT_ROOT%prismenv"
+    :: Resolve a REPO-INDEPENDENT python: never inherit an ambient VIRTUAL_ENV/conda
+    :: interpreter, or prismenv becomes a nested venv whose base_prefix points at
+    :: the caller's toolchain and the packaged app breaks on other machines.
+    call :ResolveBuildPython
+    if errorlevel 1 (
+        echo ERROR: no usable Python found for creating prismenv.
+        echo        Install Python 3.11-3.13, or set PRISM_BUILD_PYTHON to its python.exe
+        pause
+        exit /b 1
+    )
+    if not defined BUILD_PYTHON (
+        echo ERROR: python resolver returned an empty path.
+        pause
+        exit /b 1
+    )
+    echo Creating prismenv with !BUILD_PYTHON!
+    set "PYTHONNOUSERSITE=1"
+    set "PYTHONHOME="
+    set "VIRTUAL_ENV="
+    set "CONDA_PREFIX="
+    "!BUILD_PYTHON!" -m venv "%PROJECT_ROOT%prismenv"
     if errorlevel 1 (
         echo ERROR: failed to create prismenv virtual environment
         pause
@@ -67,13 +87,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-"%PROJECT_ROOT%prismenv\Scripts\python.exe" -m pip uninstall -y playwright
-if errorlevel 1 (
-    echo ERROR: failed to remove conflicting playwright package from prismenv
-    pause
-    exit /b 1
-)
-
+:: Keep upstream Playwright installed for the Firefox provider.
 "%PROJECT_ROOT%prismenv\Scripts\python.exe" -m pip install pyinstaller psutil patchright==1.59.1
 if errorlevel 1 (
     echo ERROR: failed to install packaged runtime dependencies into prismenv
@@ -100,6 +114,13 @@ if not exist "%PROJECT_ROOT%prismenv\Scripts\python.exe" (
     pause
     exit /b 1
 )
+"%PROJECT_ROOT%prismenv\Scripts\python.exe" "%PROJECT_ROOT%scripts\packaging\stage_python_runtime.py" "%PROJECT_ROOT%prismenv"
+if errorlevel 1 (
+    echo ERROR: unable to stage a self-contained Python runtime.
+    pause
+    exit /b 1
+)
+
 if not exist "%PROJECT_ROOT%prismenv\_python\python.exe" (
     echo ERROR: embedded runtime missing base python home: %PROJECT_ROOT%prismenv\_python\python.exe
     pause
@@ -571,3 +592,50 @@ echo.
 if /I "%AUTO_YES%"=="1" goto :EOF
 pause
 goto :EOF
+
+:: ============================================
+:: ResolveBuildPython
+::   Picks a standalone (non-venv, non-conda) interpreter and returns it in
+::   BUILD_PYTHON. Prefers:
+::     1. %PRISM_BUILD_PYTHON%                 (explicit override)
+::     2. py -3.13 / -3.12 / -3.11             (launcher, real installs only)
+::     3. well-known install paths, skipping any interpreter whose sys.prefix
+::        differs from sys.base_prefix (= a venv) or that lacks venv/pip.
+::   Skipping venv interpreters is what keeps the packaged prismenv from
+::   inheriting the build machine's VIRTUAL_ENV toolchain.
+:: ============================================
+:ResolveBuildPython
+set "BUILD_PYTHON="
+if defined PRISM_BUILD_PYTHON (
+    if exist "%PRISM_BUILD_PYTHON%" (
+        set "BUILD_PYTHON=%PRISM_BUILD_PYTHON%"
+        exit /b 0
+    )
+)
+for %%V in (3.13 3.12 3.11) do (
+    if not defined BUILD_PYTHON (
+        for /f "delims=" %%P in ('py -%%V -c "import sys,venv,ensurepip;print(sys.executable) if sys.prefix==sys.base_prefix else print('')" 2^>nul') do (
+            if not "%%P"=="" set "BUILD_PYTHON=%%P"
+        )
+    )
+)
+if not defined BUILD_PYTHON (
+    for %%P in (
+        "%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
+        "%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+        "%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+        "C:\Python313\python.exe"
+        "C:\Python312\python.exe"
+        "C:\Python311\python.exe"
+    ) do (
+        if not defined BUILD_PYTHON (
+            if exist %%P (
+                for /f "delims=" %%R in ('"%%~fP" -c "import sys,venv,ensurepip;print(sys.executable) if sys.prefix==sys.base_prefix else print('')" 2^>nul') do (
+                    if not "%%R"=="" set "BUILD_PYTHON=%%R"
+                )
+            )
+        )
+    )
+)
+if not defined BUILD_PYTHON exit /b 1
+exit /b 0

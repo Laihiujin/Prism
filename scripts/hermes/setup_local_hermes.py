@@ -127,6 +127,10 @@ def install() -> int:
     print("[2/3] Installing Hermes dependencies into prismenv ...")
     subprocess.run([str(python_exe), "-m", "pip", "install", "--upgrade", "pip", "wheel"], check=True)
     deps = _hermes_dependencies()
+    # Recent upstream dependency markers skip ruamel.yaml on Python 3.13,
+    # although hermes_yaml imports it unconditionally.
+    deps.append("ruamel.yaml==0.18.16")
+    deps.append("mcp==2.3.0")
     subprocess.run([str(python_exe), "-m", "pip", "install", *deps], check=True)
 
     print("[3/3] Stamping Hermes runtime as ready ...")
