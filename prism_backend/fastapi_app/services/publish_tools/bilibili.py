@@ -4,7 +4,7 @@
 - 单视频默认路径：biliup CLI（`run_biliup_command`），与历史一致（参数仅用
   CLI 确定支持的 --title/--desc/--tid/--tag/--cover/--dtime）。
 - 分P/多P发布与稿件级配置（copyright/source/cover_local/dynamic，以及
-  no_reprint/is_only_self/dolby/lossless_music/up_close_* 等 biliup-rs 同名字段）：走
+  no_reprint/is_only_self/dolby/lossless_music 等 biliup-rs 同名字段）：走
   python biliup 库（platforms/bilibili/upload.py 的 BilibiliUploader，
   支持 files 列表分P + 本地封面上传）。
 - 登录：本地交互终端 biliup login；或走账号页统一扫码流程。短信/账密登录已移除。
@@ -27,9 +27,6 @@ _STUDIO_FLAG_PARAMS: Dict[str, Any] = {
     "is_only_self": {"type": "integer", "description": "1=仅自己可见", "default": 0},
     "dolby": {"type": "integer", "description": "1=开启杜比音效", "default": 0},
     "lossless_music": {"type": "integer", "description": "1=开启 Hi-Res 无损音质", "default": 0},
-    "up_selection_reply": {"type": "boolean", "description": "开启精选评论", "default": False},
-    "up_close_reply": {"type": "boolean", "description": "关闭评论", "default": False},
-    "up_close_danmu": {"type": "boolean", "description": "关闭弹幕", "default": False},
 }
 
 

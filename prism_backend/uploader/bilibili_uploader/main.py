@@ -20,9 +20,9 @@ class Data(BaseData):
     is_only_self: int = 0
     dolby: int = 0
     lossless_music: int = 0
-    up_selection_reply: bool = False
-    up_close_reply: bool = False
-    up_close_danmu: bool = False
+    # up_selection_reply / up_close_reply / up_close_danmu are left out: a test
+    # submission through the web API (BV1P3Jt6MEYE) kept comments open, matching
+    # biliup-rs' note that they only apply via the app submit API.
 
 
 # Archive options accepted from platform settings, mapped to Data fields.
@@ -31,9 +31,6 @@ STUDIO_FLAG_FIELDS = {
     "is_only_self": int,
     "dolby": int,
     "lossless_music": int,
-    "up_selection_reply": bool,
-    "up_close_reply": bool,
-    "up_close_danmu": bool,
 }
 
 
@@ -170,8 +167,7 @@ class BilibiliUploader(object):
             extra: 稿件级附加配置 dict，key 与 biliup Data 声明字段同名：
                    copyright(1自制/2转载), source, cover(URL 或 cover_local 本地图),
                    dynamic, desc_v2, subtitle/open_subtitle，以及与 biliup-rs
-                   Studio 同名的 no_reprint/is_only_self/dolby/lossless_music/
-                   up_selection_reply/up_close_reply/up_close_danmu。
+                   Studio 同名的 no_reprint/is_only_self/dolby/lossless_music。
         """
         self.upload_thread_num = 3
         self.copyright = 1

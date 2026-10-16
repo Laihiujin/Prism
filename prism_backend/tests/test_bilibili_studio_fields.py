@@ -21,11 +21,9 @@ def test_studio_flags_reach_submit_payload():
         "copyright": 1,
         "no_reprint": 1,
         "is_only_self": "1",
-        "up_close_danmu": True,
         "lossless_music": 1,
     })
     assert payload["no_reprint"] == 1
     assert payload["is_only_self"] == 1
-    assert payload["up_close_danmu"] is True
     assert payload["lossless_music"] == 1
-    assert payload["up_close_reply"] is False
+    assert payload["dolby"] == 0

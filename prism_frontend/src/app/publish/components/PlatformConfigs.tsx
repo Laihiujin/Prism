@@ -707,16 +707,10 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
     const [isOnlySelf, setIsOnlySelf] = usePlatformField(data, onChange, "bilibili", "is_only_self", 0)
     const [dolby, setDolby] = usePlatformField(data, onChange, "bilibili", "dolby", 0)
     const [losslessMusic, setLosslessMusic] = usePlatformField(data, onChange, "bilibili", "lossless_music", 0)
-    const [upSelectionReply, setUpSelectionReply] = usePlatformField(data, onChange, "bilibili", "up_selection_reply", false)
-    const [upCloseReply, setUpCloseReply] = usePlatformField(data, onChange, "bilibili", "up_close_reply", false)
-    const [upCloseDanmu, setUpCloseDanmu] = usePlatformField(data, onChange, "bilibili", "up_close_danmu", false)
 
     const studioToggles: { label: string; checked: boolean; set: (value: boolean) => void; hidden?: boolean }[] = [
         { label: "禁止转载", checked: noReprint === 1, set: v => setNoReprint(v ? 1 : 0), hidden: copyright !== 1 },
         { label: "仅自己可见", checked: isOnlySelf === 1, set: v => setIsOnlySelf(v ? 1 : 0) },
-        { label: "精选评论", checked: !!upSelectionReply, set: setUpSelectionReply },
-        { label: "关闭评论", checked: !!upCloseReply, set: setUpCloseReply },
-        { label: "关闭弹幕", checked: !!upCloseDanmu, set: setUpCloseDanmu },
         { label: "杜比音效", checked: dolby === 1, set: v => setDolby(v ? 1 : 0) },
         { label: "Hi-Res 无损音质", checked: losslessMusic === 1, set: v => setLosslessMusic(v ? 1 : 0) },
     ]

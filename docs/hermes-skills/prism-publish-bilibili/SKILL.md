@@ -45,10 +45,10 @@ B站 专属：
 | `cover` | 封面：http URL（CLI）或本地图片路径（库上传，自动 cover_up） |
 | `no_reprint` | 1=禁止转载（仅自制稿件生效） |
 | `is_only_self` | 1=仅自己可见（适合发布前自测） |
-| `up_selection_reply` / `up_close_reply` / `up_close_danmu` | 精选评论 / 关闭评论 / 关闭弹幕 |
 | `dolby` / `lossless_music` | 1=杜比音效 / 1=Hi-Res 无损音质 |
 
-> 以上稿件开关与 biliup-rs `Studio` 字段同名，随投稿一起提交。
+> 以上稿件开关与 biliup-rs `Studio` 字段同名，随投稿一起提交（`is_only_self` 已实测生效）。
+> 关闭评论/弹幕、精选评论走网页投稿接口不生效，未提供。
 > 封面传本地路径 / 设置 copyright/source/dynamic 或任一稿件开关时自动切换 python biliup 库路径；
 > 纯 URL 封面 + 默认版权仍走 biliup CLI（历史一致）。
 
