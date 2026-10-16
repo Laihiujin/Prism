@@ -113,6 +113,9 @@ class PrismApp {
       console.log('Starting services...');
       log.info('Starting services...');
       try {
+        // The bundled venv manifest carries package-time paths; repoint it before
+        // any Python service spawns so prismenv resolves its stdlib in place.
+        this.ensurePrismenvHome();
         await this.startServices();
       } catch (error) {
         // 失败根因上报：弹窗展示诊断摘要 + 写入日志
@@ -631,6 +634,39 @@ class PrismApp {
 
   getRuntimeManifestPath() {
     return path.join(this.getResourcesRoot(), 'prismenv', 'prism-runtime.json');
+  }
+
+  // prismenv/pyvenv.cfg is generated at PACKAGE time, so its `home` points at the
+  // build machine's staged interpreter (e.g. E:\...\prismenv\_python). Installed
+  // anywhere else, Python cannot resolve its stdlib and the app silently falls
+  // back to a machine Python (or fails outright). Rewrite it at startup so the
+  // bundled interpreter is always used.
+  ensurePrismenvHome() {
+    try {
+      const prismenvDir = path.join(this.getResourcesRoot(), 'prismenv');
+      const bundledBase = path.join(prismenvDir, '_python');
+      const manifestPath = path.join(prismenvDir, 'pyvenv.cfg');
+      if (!fs.existsSync(path.join(bundledBase, 'python.exe')) || !fs.existsSync(manifestPath)) {
+        return;
+      }
+      const expectedHome = bundledBase;
+      const current = fs.readFileSync(manifestPath, 'utf8');
+      const homeMatch = current.match(/^\s*home\s*=\s*(.+?)\s*$/m);
+      const versionMatch = current.match(/^\s*version\s*=\s*(.+?)\s*$/m);
+      if (homeMatch && path.resolve(homeMatch[1]) === path.resolve(expectedHome)) {
+        return; // already correct
+      }
+      const lines = [
+        `home = ${expectedHome}`,
+        `executable = ${path.join(expectedHome, 'python.exe')}`,
+        'include-system-site-packages = false',
+        `version = ${versionMatch ? versionMatch[1] : process.versions.python || '3.13'}`
+      ];
+      fs.writeFileSync(manifestPath, lines.join('\r\n') + '\r\n', 'utf8');
+      log.info('Repointed prismenv base interpreter to bundled runtime:', expectedHome);
+    } catch (error) {
+      log.warn('Failed to repoint prismenv base interpreter:', error?.message);
+    }
   }
 
   getRuntimeManifest() {

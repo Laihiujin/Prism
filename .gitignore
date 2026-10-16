@@ -1,4 +1,6 @@
 # Temporary files
+/desktop-electron/silently
+/prism_backend/videoFile/covers/library_*.json
 temp/
 temp_*.txt
 temp_*.py
@@ -194,6 +196,8 @@ data/crawler_output/
 data/videos/
 tmp-runtime-data/
 /tmp-runtime-data/
+# Runtime data backups written by maintenance scripts (test_clear_video_data.py)
+prism_backend/backups/
 /runtime-data/
 # Deploy toolbar/one-click portables (downloaded at deploy time, not committed)
 /.tools/
@@ -262,3 +266,6 @@ prism_backend/douyin_tiktok_api/crawlers/**/config.yaml
 _scan.sh
 _sub.sh
 _precise.sh
+
+# Runtime staging helper shipped with the packaging scripts
+!scripts/packaging/stage_python_runtime.py
