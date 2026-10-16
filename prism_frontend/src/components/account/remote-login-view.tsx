@@ -14,7 +14,7 @@ export function RemoteLoginView({ sessionId, openByDefault = false }: { sessionI
   </div>
 }
 
-function BrowserViewport({ sessionId }: { sessionId: string }) {
+export function BrowserViewport({ sessionId }: { sessionId: string }) {
   const [frame, setFrame] = useState<Frame | null>(null)
   const [error, setError] = useState("")
   const [zoom, setZoom] = useState(false)
@@ -44,7 +44,7 @@ function BrowserViewport({ sessionId }: { sessionId: string }) {
         const response = await fetch(`${backendBaseUrl}/api/v1/auth/qrcode/view/${encodeURIComponent(sessionId)}`, { signal: controller.signal, cache: "no-store" })
         if (!response.ok) throw new Error("登录会话已结束或画面暂不可用，请重新开始登录。")
         const next = await response.json() as Frame
-        if (!cancelled) setFrame(next)
+        if (!cancelled) { setFrame(next); setError("") }
       } catch (problem) {
         if (!cancelled) setError(problem instanceof Error ? problem.message : "画面连接失败")
       } finally {
