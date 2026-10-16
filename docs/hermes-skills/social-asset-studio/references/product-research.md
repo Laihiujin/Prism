@@ -8,11 +8,24 @@ Pipeline: **research (web + user material) → think it through → product logi
 
 Whenever a real product (or its packaging, interface or installation) appears in a generated or edited image. Pure studio packshots still need the sheet, but only identity, units and allowed liberties apply.
 
+## 0. Two ways in: a model name or product images
+
+The user may start from either; both end in the same research and the same sheet.
+
+- **Model name given.** Search brand + model directly (section 1). Ask for the brand if only a bare model name is given, because names collide across brands.
+- **Product images uploaded (no model, or to confirm one).** Analyse the images first, then search:
+  1. Read identity clues: wordmark, model text on the product or packaging, distinctive silhouette, colourway, ports and buttons.
+  2. Decompose what is visible into units, faces and parts, and pick the archetype (section 3). Note which faces the images do **not** show.
+  3. Turn the clues into searches (brand + visible features, reverse image search when the host has it) to find the exact model, then continue with section 1.
+  4. Record facts read from the images as `level: "image"` sources. They are good for appearance, but placement, installation, interaction and specs stay unconfirmed until a model or category source confirms them.
+  5. If no model can be identified, keep `model_specific_found: false`, say which candidates were considered, and ask the user to confirm the model before final delivery.
+- **Both given.** Check the images match the named model; if they don't, stop and ask which one is right.
+
 ## 1. Research (web search is mandatory)
 
 Do real searches every time a product is new to you, or the sheet predates the product's latest version. Use the host's web search and fetch tools; don't answer from model memory.
 
-Search in this order and log each result in the sheet's `sources` list (URL or file, what it confirmed, `model` or `category` level, date checked):
+Search in this order and log each result in the sheet's `sources` list (URL or file, what it confirmed, `model`, `category` or `image` level, date checked):
 
 1. User-supplied material: spec sheets, manuals, installation guides, launch decks, real photos.
 2. Official brand pages, manuals and installation diagrams. Search the model name with words like manual, installation, dimensions, specs, 说明书, 安装, 尺寸, 参数.
