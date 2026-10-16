@@ -109,7 +109,7 @@ export default function CmsPage() {
             const payload = await res.json().catch(() => ({}))
             if (!res.ok) throw new Error(payload?.detail || "保存失败")
             setSettings((s) => ({ ...s, headless }))
-            toast({ title: "无头模式已保存", description: "需重启后端生效" })
+            toast({ title: "浏览器模式已保存", description: "下一次启动浏览器时生效，无需重启服务" })
         } catch (err) {
             toast({ variant: "destructive", title: "保存失败", description: String(err) })
         } finally {
@@ -248,7 +248,7 @@ export default function CmsPage() {
                                 浏览器无头模式
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
-                                后台运行（无头）或弹出可见浏览器窗口。修改后需重启后端生效。
+                                后台运行（无头）或弹出可见浏览器窗口。修改后对新登录立即生效，已打开的窗口保持原模式。
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
