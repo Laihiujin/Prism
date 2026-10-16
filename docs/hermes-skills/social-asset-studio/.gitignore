@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+local-assets/
+outputs/
+*.local.json

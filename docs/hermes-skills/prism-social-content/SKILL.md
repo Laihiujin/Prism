@@ -5,6 +5,8 @@ description: 为抖音、B站、视频号、小红书制作差异化标题、简
 
 # 四平台内容与封面工作流
 
+> 封面、带产品的画面和多平台发布包请改用 `social-asset-studio`（含产品研究与产品逻辑校验）；本技能保留为兼容入口。
+
 先读 `prism-title-topic`，按项目实际上传器限制生成字段；按目标平台读取对应
 `prism-publish-douyin/bilibili/channels/xiaohongshu`。平台推荐口吻是编辑策略，不是流量保证。
 
