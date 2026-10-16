@@ -12,7 +12,7 @@ from loguru import logger
 from utils.automation_provider import async_playwright, Page
 from myUtils.automation_context_factory import create_context_with_policy
 
-from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus, risk_control_detected
+from .base import PlatformAdapter, QRCodeData, UserInfo, LoginResult, LoginStatus, risk_control_detected, scan_confirmation_visible
 from ..session_manager import xiaohongshu_session_manager
 
 
@@ -147,6 +147,9 @@ class XiaohongshuAdapter(PlatformAdapter):
                 and "login" not in page.url.lower()
             ):
                 cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+                if not session.get("login_scan_reported"):
+                    session["login_scan_reported"] = True
+                    return LoginResult(status=LoginStatus.SCANNED, message="已扫码，正在同步账号")
 
                 # 提取用户信息
                 user_info = await self._extract_user_info(page, cookies)
@@ -177,6 +180,10 @@ class XiaohongshuAdapter(PlatformAdapter):
             if risk_msg:
                 logger.warning(f"[Xiaohongshu] Risk control detected: {risk_msg}")
                 return LoginResult(status=LoginStatus.RISK_CONTROL, message=risk_msg)
+
+            if session.get("login_scan_reported") or await scan_confirmation_visible(page):
+                session["login_scan_reported"] = True
+                return LoginResult(status=LoginStatus.SCANNED, message="已扫码，请在手机上确认登录")
 
             return LoginResult(status=LoginStatus.WAITING, message="Waiting for scan")
 

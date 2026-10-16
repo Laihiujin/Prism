@@ -599,6 +599,8 @@ function AccountPageContent() {
           if (statusData.status !== "risk_control") setRiskNotice(null)
 
           if (statusData.status === 'confirmed') {
+            setBindingStatus("logging_in")
+            setQrImage("")
             const selected = selectedLoginAccountRef.current
             if (selected) {
               const stored = sessionStorage.getItem("prism-active-login")
@@ -643,13 +645,13 @@ function AccountPageContent() {
               })
             }, 500)
           } else if (statusData.status === 'scanned') {
-            toast({
-              title: "Scanned",
-              description: "Confirm login on your phone.",
-            })
+            setBindingStatus("logging_in")
+            setQrImage("")
           } else if (statusData.status === 'risk_control') {
             // 风控/验证码：不停止轮询，展示人工验证横幅并等待用户在前端远程画面完成
             setRiskNotice(statusData.message || "平台触发风控/验证码，请在下方远程验证画面中手动完成验证")
+            setBindingStatus("code")
+            setQrImage("")
             // 风控等待人工验证时不断刷新超时，避免 5 分钟到点被误杀
             armTimeout()
           } else if (statusData.status === 'expired') {
@@ -1314,8 +1316,8 @@ function AccountPageContent() {
                           <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 py-8 text-sm text-foreground/70">
                             {activeSessionRef.current ? <>
                               <Loader2 className="h-8 w-8 animate-spin text-foreground" />
-                              <span className="font-medium text-foreground">登录中…</span>
-                              <span>正在确认验证结果并同步账号，请稍候</span>
+                              <span className="font-medium text-foreground">{loginMode === "qrcode" ? "已扫码，正在确认登录…" : "登录中…"}</span>
+                              <span>{loginMode === "qrcode" ? "请在手机上确认登录，确认后会自动同步账号" : "正在确认验证结果并同步账号，请稍候"}</span>
                             </> : <>
                               <p>登录连接已中断，请重新开始登录。</p>
                               <Button variant="secondary" onClick={startBinding}>重新开始登录</Button>
@@ -1326,7 +1328,7 @@ function AccountPageContent() {
                             </div>}
                           </div>
                         )}
-                        {bindingStatus === "code" && (qrImage || smsVerification) && (
+                        {bindingStatus === "code" && (qrImage || smsVerification || riskNotice) && (
                           <div className="flex flex-col items-center gap-3">
                             {!smsVerification && qrImage && <>
                             <NextImage
@@ -1412,7 +1414,7 @@ function AccountPageContent() {
                         )}
                         {bindingStatus === "success" && (
                           <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-black p-3 text-sm text-white">
-                            <span>已完成扫码，可点击下一步完成绑定</span>
+                            <span>登录成功，账号已验证</span>
                           </div>
                         )}
                         {bindingStatus === "error" && (

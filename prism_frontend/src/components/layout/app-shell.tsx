@@ -9,6 +9,7 @@ import { SidebarNew } from "@/components/layout/sidebar-new"
 import { NavbarNew } from "@/components/layout/navbar-new"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { PublishOtpDialog } from "@/components/publish/publish-otp-dialog"
+import { BrowserPanel } from "@/components/layout/browser-panel"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground selection:bg-black selection:text-foreground md:min-h-screen md:w-full">
       <PublishOtpDialog />
+      <BrowserPanel />
       {/* Pure black minimal background */}
       <div className="fixed inset-0 z-0 pointer-events-none bg-black" />
 

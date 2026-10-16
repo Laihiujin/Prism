@@ -50,6 +50,21 @@ class LoginResult:
     verification: Optional[Dict[str, Any]] = None
 
 
+async def scan_confirmation_visible(page) -> bool:
+    """Recognize the platform's visible post-scan confirmation, including QR iframes."""
+    import re
+    confirmation = re.compile(r"扫码成功|扫描成功|已扫码|已扫描|请在(?:手机|微信|APP|App|抖音|快手|小红书).*确认|请在.*确认登录")
+    for frame in page.frames:
+        try:
+            matches = frame.get_by_text(confirmation)
+            for index in range(min(await matches.count(), 8)):
+                if await matches.nth(index).is_visible():
+                    return True
+        except Exception:
+            continue
+    return False
+
+
 class PlatformAdapter(ABC):
     """平台适配器抽象基类"""
 
