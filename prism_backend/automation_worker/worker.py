@@ -1280,7 +1280,7 @@ async def enrich_account(req: EnrichAccountRequest):
 
 
 @app.post("/qrcode/generate")
-async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None, mode: str = "browser", login_role: str = Query("creator", pattern="^(creator|mcn)$")):
+async def generate_qrcode(platform: str, account_id: str, headless: bool | None = None, mode: str = "browser", login_role: str = Query("creator", pattern="^(creator|mcn)$"), session_id: str | None = None):
     """
     生成登录二维码
 
@@ -1291,6 +1291,15 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
     """
     try:
         logger.info(f"[Worker] Generate QR: platform={platform} account={account_id}")
+
+        if session_id:
+            from automation_worker.remote_login import refresh_qrcode
+            session = sessions.get(session_id)
+            if not session or session.get('platform') != platform or session.get('account_id') != account_id:
+                raise HTTPException(404, '原登录会话不存在，请重新开始登录')
+            async with session.setdefault('interaction_lock', asyncio.Lock()):
+                data = await refresh_qrcode(session, session_id)
+            return {'success': True, 'data': data}
 
         # One active login attempt per platform/account. Starting a new QR for
         # the same account supersedes the old browser session, while different
@@ -1344,7 +1353,7 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
                 "adapter": adapter,
                 "qr_data": qr_data,
                 "created_at": asyncio.get_running_loop().time(),
-                "expires_in": int(qr_data.expires_in or 300),
+                "expires_in": 3600,  # Browser lifetime is independent of the QR's TTL.
                 "interaction_lock": asyncio.Lock(),
             }
 
@@ -1404,10 +1413,11 @@ async def poll_qrcode_status(session_id: str):
                         # a browser that has already been closed.
                         session["terminal_result"] = result
                         session["created_at"] = asyncio.get_running_loop().time()
-                        session["expires_in"] = 120
-                        task = asyncio.create_task(_cleanup_session(session_id, session))
-                        session["terminal_cleanup_task"] = task
-                        task.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
+                        session["expires_in"] = 3600 if result.status == LoginStatus.EXPIRED else 120
+                        if result.status != LoginStatus.EXPIRED:
+                            task = asyncio.create_task(_cleanup_session(session_id, session))
+                            session["terminal_cleanup_task"] = task
+                            task.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
                         logger.info(f"[Worker] Login result ready: {session_id[:8]} status={result.status.value}")
         except asyncio.TimeoutError:
             logger.warning(f"[Worker] QR poll timed out: session={session_id[:8]}")

@@ -20,7 +20,8 @@ class AutomationWorkerClient:
         account_id: str,
         headless: bool = True,
         mode: str = "browser",
-        login_role: str = "creator"
+        login_role: str = "creator",
+        session_id: str | None = None,
     ) -> Dict[str, Any]:
         """
         请求 Worker 生成二维码
@@ -42,6 +43,7 @@ class AutomationWorkerClient:
                 "headless": headless,
                 "mode": mode,
                 "login_role": login_role,
+                "session_id": session_id,
             }
 
             logger.info(f"[WorkerClient] Requesting QR: {platform} {account_id}")

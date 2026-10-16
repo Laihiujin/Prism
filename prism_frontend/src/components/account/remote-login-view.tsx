@@ -18,6 +18,9 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
   const [frame, setFrame] = useState<Frame | null>(null)
   const [error, setError] = useState("")
   const [zoom, setZoom] = useState(false)
+  const [pan, setPan] = useState(false)
+  const viewport = useRef<HTMLDivElement>(null)
+  const panStart = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const dragging = useRef(false)
   const latestMove = useRef<Position | null>(null)
   const queue = useRef(Promise.resolve())
@@ -79,14 +82,23 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
     <p className="text-sm font-semibold">远程浏览器实时画面</p>
     <p className="text-xs text-muted-foreground">在画面上点击或拖动即可操作浏览器。安全验证需由你手动完成。</p>
     {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
-    <button type="button" className="text-xs underline" onClick={() => setZoom(value => !value)}>{zoom ? "恢复大小" : "放大画面"}</button>
-    {frame ? <div className="max-h-[60vh] overflow-auto"><img src={frame.image} alt="当前平台浏览器实时画面" draggable={false}
+    <button type="button" className="text-xs underline" onClick={() => { setZoom(value => !value); setPan(!zoom) }}>{zoom ? "恢复大小" : "放大画面"}</button>
+    {zoom && <button type="button" className="ml-4 text-xs underline" onClick={() => setPan(value => !value)}>{pan ? "切换为操作网页" : "切换为移动画面"}</button>}
+    {zoom && <p className="text-xs text-muted-foreground">{pan ? "拖动画面可查看放大后的任意位置；需要点击网页时切换为操作网页。" : "当前手势会操作远程网页。"}</p>}
+    {frame ? <div ref={viewport} className="max-h-[60vh] w-full min-w-0 overflow-auto"><img src={frame.image} alt="当前平台浏览器实时画面" draggable={false}
       className="max-w-none select-none touch-none rounded border border-border"
       style={{ width: zoom ? "200%" : "100%", aspectRatio: `${frame.width}/${frame.height}` }}
-      onPointerDown={event => { if (event.button !== 0 || dragging.current || failed.current) return; dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); send("down", position(event)) }}
-      onPointerMove={event => { if (!dragging.current) return; latestMove.current = position(event); flushMove() }}
-      onPointerUp={event => { if (!dragging.current) return; latestMove.current = null; send("up", position(event)); dragging.current = false; event.currentTarget.releasePointerCapture(event.pointerId) }}
-      onPointerCancel={event => { latestMove.current = null; send("cancel", position(event)); dragging.current = false }}
+      onPointerDown={event => {
+        if (event.button !== 0) return
+        if (pan && viewport.current) { panStart.current = { x: event.clientX, y: event.clientY, left: viewport.current.scrollLeft, top: viewport.current.scrollTop }; event.currentTarget.setPointerCapture(event.pointerId); return }
+        if (dragging.current || failed.current) return; dragging.current = true; event.currentTarget.setPointerCapture(event.pointerId); send("down", position(event))
+      }}
+      onPointerMove={event => {
+        if (panStart.current && viewport.current) { viewport.current.scrollLeft = panStart.current.left + panStart.current.x - event.clientX; viewport.current.scrollTop = panStart.current.top + panStart.current.y - event.clientY; return }
+        if (!dragging.current) return; latestMove.current = position(event); flushMove()
+      }}
+      onPointerUp={event => { if (panStart.current) { panStart.current = null; event.currentTarget.releasePointerCapture(event.pointerId); return }; if (!dragging.current) return; latestMove.current = null; send("up", position(event)); dragging.current = false; event.currentTarget.releasePointerCapture(event.pointerId) }}
+      onPointerCancel={event => { if (panStart.current) { panStart.current = null; return }; latestMove.current = null; send("cancel", position(event)); dragging.current = false }}
     /></div> : <p role="status" className="text-xs">正在连接浏览器画面…</p>}
   </div>
 }
