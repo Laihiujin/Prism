@@ -11,6 +11,7 @@ class CreatorViewportTests(unittest.IsolatedAsyncioTestCase):
     def session(self):
         page = Mock()
         page.is_closed.return_value = False
+        page.frames = []
         page.evaluate = AsyncMock(return_value={"width": 100, "height": 80})
         page.screenshot = AsyncMock(return_value=b"jpeg")
         page.mouse.move = AsyncMock()

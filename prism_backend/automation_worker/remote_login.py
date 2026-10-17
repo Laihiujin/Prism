@@ -24,6 +24,29 @@ class PointerInput(BaseModel):
             raise ValueError('请输入文字')
         return self
 
+async def focused_input(page):
+    """Scroll the focused editable into view; return geometry only, never values."""
+    for frame in page.frames:
+        box = await frame.evaluate('''() => {
+            let e = document.activeElement;
+            while (e?.shadowRoot?.activeElement) e = e.shadowRoot.activeElement;
+            if (!e || !(e.matches('input,textarea') || e.isContentEditable)) return null;
+            e.scrollIntoView({block:'nearest', inline:'nearest'});
+            const r=e.getBoundingClientRect();
+            return {x:r.x,y:r.y,width:r.width,height:r.height};
+        }''')
+        if box:
+            if frame != page.main_frame:
+                element = await frame.frame_element()
+                await element.scroll_into_view_if_needed()
+                outer = await element.bounding_box()
+                if not outer:
+                    continue
+                box['x'] += outer['x']
+                box['y'] += outer['y']
+            return box
+    return None
+
 def login_page(session, sid):
     terminal = session.get('terminal_result')
     if terminal and getattr(terminal.status, 'value', terminal.status) != 'expired':
@@ -45,12 +68,16 @@ async def viewport_frame(session, sid):
     if session.get('pointer_down') and asyncio.get_running_loop().time() - session.get('pointer_at', 0) > 5:
         await page.mouse.up()
         session['pointer_down'] = False
+    focus = await focused_input(page)
     size = await page.evaluate('({width:innerWidth,height:innerHeight})')
     image = await page.screenshot(type='jpeg', quality=65, full_page=False)
-    return {**size, 'image': 'data:image/jpeg;base64,' + base64.b64encode(image).decode()}
+    return {**size, 'focus': focus, 'image': 'data:image/jpeg;base64,' + base64.b64encode(image).decode()}
 
 async def pointer_input(session, sid, event):
     page = login_page(session, sid)
+    if event.action in ('text', 'key') and session.get('pointer_down'):
+        await page.mouse.up()
+        session['pointer_down'] = False
     if event.action == 'text':
         await page.keyboard.insert_text(event.text)
         return {'success': True}

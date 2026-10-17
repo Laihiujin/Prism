@@ -47,16 +47,14 @@ class PhoneLoginTests(unittest.TestCase):
                 try:
                     for platform in ("douyin", "kuaishou", "xiaohongshu", "bilibili"):
                         page = await browser.new_page()
-                        await page.set_content('''<input placeholder="请输入手机号"><input placeholder="请输入验证码">
-                            <button onclick="this.innerText='60秒后重新发送'">获取验证码</button>
+                        await page.set_content('''<input placeholder="请输入手机号"><div><input placeholder="请输入验证码">
+                            <button onclick="this.innerText='60秒后重新发送'">获取验证码</button></div>
                             <button onclick="document.body.dataset.received=document.querySelector('input[placeholder*=验证码]').value">登录</button>''')
                         adapter = PhoneLoginAdapter(platform)
                         adapter.page = page
                         adapter.session_id = "fixture"
                         adapter.context = SimpleNamespace(cookies=AsyncMock(return_value=[{"name": "a1", "value": "visitor"}]))
-                        self.assertEqual((await adapter.verification_state())["stage"], "choose")
-                        with self.assertRaises(ValueError):
-                            await adapter.sms_action("fixture", "submit", "123456")
+                        self.assertEqual((await adapter.verification_state())["stage"], "code")
                         await adapter.sms_action("fixture", "request")
                         self.assertEqual((await adapter.verification_state())["stage"], "code")
                         with self.assertRaises(ValueError):
@@ -67,6 +65,17 @@ class PhoneLoginTests(unittest.TestCase):
                         self.assertEqual(await page.locator('body').get_attribute('data-received'), "123456")
                         self.assertNotEqual((await adapter.poll_status("fixture")).status, LoginStatus.CONFIRMED)
                         await page.close()
+                    # Xiaohongshu's live form: code input beside the send control, and the
+                    # login button label padded inside a span (" 登 录 ").
+                    page = await browser.new_page()
+                    await page.set_content('''<div><div><input placeholder="手机号"></div><div><input placeholder="验证码">
+                        <div class="slot-right"><div>发送验证码</div></div></div></div>
+                        <button onclick="document.body.dataset.received=document.querySelector('input[placeholder=验证码]').value"><span class="btn-content"> 登 录 </span></button>''')
+                    adapter = PhoneLoginAdapter("xiaohongshu")
+                    adapter.page, adapter.session_id = page, "fixture"
+                    await adapter.sms_action("fixture", "submit", "654321")
+                    self.assertEqual(await page.locator('body').get_attribute('data-received'), "654321")
+                    await page.close()
                 finally:
                     await browser.close()
         asyncio.run(run())

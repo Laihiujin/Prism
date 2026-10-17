@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import { backendBaseUrl } from "@/lib/env"
 
 type Position = { x: number; y: number }
-type Frame = { image: string; width: number; height: number }
+type FocusBox = Position & { width: number; height: number }
+type Frame = { image: string; width: number; height: number; focus?: FocusBox | null }
 
 export function RemoteLoginView({ sessionId, openByDefault = false }: { sessionId: string; openByDefault?: boolean }) {
   const [open, setOpen] = useState(openByDefault)
@@ -27,6 +28,12 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
   const queue = useRef(Promise.resolve())
   const failed = useRef(false)
   const moving = useRef(false)
+  const focusMarker = useRef<HTMLDivElement>(null)
+  const focusKey = frame?.focus ? JSON.stringify(frame.focus) + zoom : ""
+
+  useEffect(() => {
+    if (focusKey) focusMarker.current?.scrollIntoView({ block: "nearest", inline: "nearest" })
+  }, [focusKey])
 
   const send = useCallback((action: "down" | "move" | "up" | "cancel" | "wheel" | "text" | "key", position: Partial<Position> & { delta_x?: number; delta_y?: number; text?: string; key?: string }) => {
     queue.current = queue.current.then(async () => {
@@ -94,7 +101,7 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
 
   return <div className="w-full space-y-2 rounded-xl border border-border p-3">
     <p className="text-sm font-semibold">远程浏览器实时画面</p>
-    <p className="text-xs text-muted-foreground">点击、拖动、滚轮和键盘均可操作网页。中文或多行文字可在下方输入后发送。</p>
+    <p className="text-xs text-muted-foreground">点击、拖动、滚轮和键盘均可操作网页。中文或多行文字可在下方输入后发送。蓝框标出网页当前聚焦的输入框。</p>
     {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     <button type="button" className="text-xs underline" onClick={() => { setZoom(value => !value); setPan(!zoom) }}>{zoom ? "恢复大小" : "放大画面"}</button>
     {zoom && <button type="button" className="ml-4 text-xs underline" onClick={() => setPan(value => !value)}>{pan ? "切换为操作网页" : "切换为移动画面"}</button>}
@@ -117,9 +124,9 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
         const key = [event.ctrlKey && "Control", event.metaKey && "Meta", event.altKey && "Alt", event.shiftKey && "Shift", event.key === " " ? "Space" : event.key].filter(Boolean).join("+")
         void send("key", { key })
       }}
- className="max-h-[60vh] w-full min-w-0 overflow-auto"><img src={frame.image} alt="当前平台浏览器实时画面" draggable={false}
+ className="max-h-[60vh] w-full min-w-0 overflow-auto"><div className="relative" style={{ width: zoom ? "200%" : "100%" }}><img src={frame.image} alt="当前平台浏览器实时画面" draggable={false}
       className="max-w-none select-none touch-none rounded border border-border"
-      style={{ width: zoom ? "200%" : "100%", aspectRatio: `${frame.width}/${frame.height}` }}
+      style={{ width: "100%", aspectRatio: `${frame.width}/${frame.height}` }}
       onPointerDown={event => {
         if (event.button !== 0) return
         viewport.current?.focus({ preventScroll: true })
@@ -132,6 +139,7 @@ export function BrowserViewport({ sessionId }: { sessionId: string }) {
       }}
       onPointerUp={event => { if (panStart.current) { panStart.current = null; event.currentTarget.releasePointerCapture(event.pointerId); return }; if (!dragging.current) return; latestMove.current = null; send("up", position(event)); dragging.current = false; event.currentTarget.releasePointerCapture(event.pointerId) }}
       onPointerCancel={event => { if (panStart.current) { panStart.current = null; return }; latestMove.current = null; send("cancel", position(event)); dragging.current = false }}
-    /></div> : <p role="status" className="text-xs">正在连接浏览器画面…</p>}
+    />{frame.focus && <div ref={focusMarker} aria-label="网页当前输入位置" className="pointer-events-none absolute rounded outline outline-2 outline-blue-500"
+      style={{ left: `${100 * frame.focus.x / frame.width}%`, top: `${100 * frame.focus.y / frame.height}%`, width: `${100 * frame.focus.width / frame.width}%`, height: `${100 * frame.focus.height / frame.height}%` }} />}</div></div> : <p role="status" className="text-xs">正在连接浏览器画面…</p>}
   </div>
 }
