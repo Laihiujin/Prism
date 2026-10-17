@@ -27,6 +27,9 @@ _STUDIO_FLAG_PARAMS: Dict[str, Any] = {
     "is_only_self": {"type": "integer", "description": "1=仅自己可见", "default": 0},
     "dolby": {"type": "integer", "description": "1=开启杜比音效", "default": 0},
     "lossless_music": {"type": "integer", "description": "1=开启 Hi-Res 无损音质", "default": 0},
+    "up_selection_reply": {"type": "boolean", "description": "开启精选评论（需 B站 App 登录凭据）", "default": False},
+    "up_close_reply": {"type": "boolean", "description": "关闭评论（需 B站 App 登录凭据）", "default": False},
+    "up_close_danmu": {"type": "boolean", "description": "关闭弹幕（需 B站 App 登录凭据）", "default": False},
 }
 
 
