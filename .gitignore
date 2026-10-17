@@ -277,3 +277,6 @@ _precise.sh
 # Local-only client adapters and source assets
 private-brand-adapters/
 *.brand.local.json
+
+# Independently loaded skills stay outside the application source
+/docs/hermes-skills/social-asset-studio/
