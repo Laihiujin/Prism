@@ -166,10 +166,15 @@ class PhoneLoginAdapter(PlatformAdapter):
         targets = []
         for scope in scopes:
             fields = scope.locator('input[placeholder*="验证码"], input[autocomplete="one-time-code"]')
-            for i in range(await fields.count()):
-                field = fields.nth(i)
-                if await field.is_visible() and await field.is_enabled():
-                    targets.append((scope, field, secondary is not None))
+            try:
+                for i in range(await fields.count()):
+                    field = fields.nth(i)
+                    if await field.is_visible() and await field.is_enabled():
+                        targets.append((scope, field, secondary is not None))
+            except Exception:  # patchright or playwright, depending on runtime
+                # A frame navigating away after submit (e.g. into the logged-in
+                # page) has no code field; skip it instead of failing the poll.
+                continue
         if len(targets) != 1:
             return None
         return targets[0]
