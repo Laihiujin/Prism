@@ -2,13 +2,27 @@
 import asyncio
 import base64
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from fastapi import HTTPException
 
 class PointerInput(BaseModel):
-    action: Literal['down', 'move', 'up', 'cancel']
-    x: float = Field(ge=0, le=1, allow_inf_nan=False)
-    y: float = Field(ge=0, le=1, allow_inf_nan=False)
+    action: Literal['down', 'move', 'up', 'cancel', 'wheel', 'text', 'key']
+    x: float = Field(default=0.5, ge=0, le=1, allow_inf_nan=False)
+    y: float = Field(default=0.5, ge=0, le=1, allow_inf_nan=False)
+    delta_x: float = Field(default=0, ge=-2000, le=2000, allow_inf_nan=False)
+    delta_y: float = Field(default=0, ge=-2000, le=2000, allow_inf_nan=False)
+    text: str = Field(default='', max_length=4000, repr=False)
+    key: str = Field(default='', max_length=60)
+
+    @model_validator(mode='after')
+    def validate_keyboard(self):
+        if self.action == 'key':
+            import re
+            if not re.fullmatch(r'(?:(?:Control|Meta|Alt|Shift)\+)*(?:[a-zA-Z0-9]|Enter|Tab|Backspace|Delete|Escape|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Home|End|PageUp|PageDown|Space)', self.key):
+                raise ValueError('不支持的按键')
+        if self.action == 'text' and not self.text:
+            raise ValueError('请输入文字')
+        return self
 
 def login_page(session, sid):
     terminal = session.get('terminal_result')
@@ -18,7 +32,7 @@ def login_page(session, sid):
         raise HTTPException(410, '登录会话已过期')
     adapter = session.get('adapter')
     page = session.get('page') if session.get('type') == 'creator_center' else getattr(adapter, 'page', None)
-    if page is None and session.get('platform') in ('douyin', 'kuaishou', 'xiaohongshu'):
+    if page is None and session.get('platform') in ('douyin', 'kuaishou', 'xiaohongshu', 'tencent'):
         from app_new import session_manager
         manager = getattr(session_manager, session['platform'] + '_session_manager')
         page = (manager.get_session(sid) or {}).get('page')
@@ -37,6 +51,12 @@ async def viewport_frame(session, sid):
 
 async def pointer_input(session, sid, event):
     page = login_page(session, sid)
+    if event.action == 'text':
+        await page.keyboard.insert_text(event.text)
+        return {'success': True}
+    if event.action == 'key':
+        await page.keyboard.press(event.key)
+        return {'success': True}
     size = await page.evaluate('({width:innerWidth,height:innerHeight})')
     # Release a stale drag when the client disappears, even without a cancel.
     now = asyncio.get_running_loop().time()
@@ -46,7 +66,9 @@ async def pointer_input(session, sid, event):
     if event.action == 'down' and session.get('pointer_down'):
         raise HTTPException(409, '已有拖动操作进行中')
     await page.mouse.move(event.x * (size['width'] - 1), event.y * (size['height'] - 1))
-    if event.action == 'down':
+    if event.action == 'wheel':
+        await page.mouse.wheel(event.delta_x, event.delta_y)
+    elif event.action == 'down':
         await page.mouse.down()
         session['pointer_down'] = True
     elif event.action in ('up', 'cancel'):
@@ -54,6 +76,20 @@ async def pointer_input(session, sid, event):
         session['pointer_down'] = False
     session['pointer_at'] = now
     return {'success': True}
+
+
+async def qrcode_image(session, sid):
+    """Read the current QR without reloading or navigating the login page."""
+    page = login_page(session, sid)
+    selector = 'img[alt="Scan me!"], img[aria-label="二维码"], img[alt*="二维码"], img[alt="qrcode"], img[src*="qrcode"], .qrcode img, #animate_qrcode_container img, .login-scan-box img, .login-scan-box canvas, .qrcode canvas, canvas[id*="qrcode"], canvas[class*="qrcode"], img.js_qrcode_img.web_qrcode_img'
+    for frame in page.frames:
+        candidates = frame.locator(selector)
+        for index in range(min(await candidates.count(), 12)):
+            element = candidates.nth(index)
+            if await element.is_visible():
+                image = base64.b64encode(await element.screenshot(type='png')).decode()
+                return {'qr_image': 'data:image/png;base64,' + image}
+    raise HTTPException(409, '当前页面未显示二维码')
 
 
 async def refresh_qrcode(session, sid):
@@ -70,8 +106,18 @@ async def refresh_qrcode(session, sid):
     try:
         page = login_page(session, sid)
         await page.reload(wait_until='domcontentloaded', timeout=20000)
-        selector = 'img[aria-label="二维码"], img[alt*="二维码"], img[src*="qrcode"], .qrcode img, #animate_qrcode_container img, .qrcode canvas, canvas[id*="qrcode"], canvas[class*="qrcode"]'
-        element = page.locator(selector).first
+        selector = 'img[alt="Scan me!"], img[aria-label="二维码"], img[alt*="二维码"], img[src*="qrcode"], .qrcode img, .login-scan-box img, .login-scan-box canvas, #animate_qrcode_container img, .qrcode canvas, canvas[id*="qrcode"], canvas[class*="qrcode"]'
+        if session.get('platform') in ('tiktok', 'youtube'):
+            image = 'data:image/png;base64,' + base64.b64encode(await page.screenshot(type='png')).decode()
+            return {'session_id': sid, 'qr_url': page.url, 'qr_image': image, 'expires_in': 3600}
+        element = None
+        for frame in page.frames:
+            candidate = frame.locator(selector + ', img.js_qrcode_img.web_qrcode_img').first
+            if await candidate.count() and await candidate.is_visible():
+                element = candidate
+                break
+        if element is None:
+            element = page.locator(selector).first
         await element.wait_for(state='visible', timeout=15000)
         image = 'data:image/png;base64,' + base64.b64encode(await element.screenshot(type='png')).decode()
         qr = QRCodeData(session_id=sid, qr_url=page.url, qr_image=image, expires_in=300)

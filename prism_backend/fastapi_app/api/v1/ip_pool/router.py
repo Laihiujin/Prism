@@ -124,7 +124,10 @@ async def delete_ip(
     service: IPPoolService = Depends(get_ip_pool_service)
 ):
     """删除IP"""
-    success = service.delete_ip(ip_id)
+    try:
+        success = service.delete_ip(ip_id)
+    except ValueError as error:
+        raise HTTPException(409, str(error))
     if not success:
         raise HTTPException(status_code=404, detail="IP不存在")
     

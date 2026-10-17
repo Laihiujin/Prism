@@ -60,8 +60,8 @@ api_router.include_router(files_router, tags=["文件管理"])  # router 已自�
 api_router.include_router(analytics_router)  # router 已自带 /analytics 前缀
 api_router.include_router(scripts_router)  # router 已自带 /scripts 前缀
 api_router.include_router(publish_router, tags=["视频发布"])  # router 已自带 /publish 前缀
-api_router.include_router(tasks_router)  # router 已自带 /tasks 前缀
-api_router.include_router(distribution_router)  # /tasks/distribution (当前实现为占位)
+api_router.include_router(distribution_router)  # /tasks/distribution 扫码登录与账号任务包
+api_router.include_router(tasks_router)  # 通用 /tasks/{task_id} 必须排在分发路由之后
 api_router.include_router(recovery_router)  # router 已自带 /recovery 前缀
 api_router.include_router(data_router)  # router 已自带 /data 前缀
 api_router.include_router(ai_router)  # router 已自带 /ai 前缀

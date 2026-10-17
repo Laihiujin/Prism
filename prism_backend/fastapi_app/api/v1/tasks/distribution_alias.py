@@ -1,62 +1,43 @@
-"""
-Tasks Distribution 路由别名
-提供 /api/tasks/distribution 端点
-"""
+"""QR distribution API, backed by durable assignments and the publishing queue."""
+from typing import Literal
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
+from datetime import datetime
+from fastapi_app.db.session import get_main_db
+from fastapi_app.services.qr_distribution import DistributionRequest, get_qr_distribution_service
 
-from fastapi import APIRouter, HTTPException
-from typing import Dict, Any, List
-from pydantic import BaseModel
-
-router = APIRouter(prefix="/tasks", tags=["任务管理"])
+router = APIRouter(prefix="/tasks", tags=["扫码分发"])
 
 
-class DistributionTaskRequest(BaseModel):
-    name: str
-    platform: str
-    accounts: List[str]
-    materials: List[str]
-    schedule_type: str = "immediate"  # immediate, scheduled
-    schedule_time: str = None
+class PackageSchedule(BaseModel):
+    schedule_type: Literal["immediate", "scheduled"] = "immediate"
+    scheduled_time: datetime | None = None
+    interval_seconds: int = Field(default=600, ge=60, le=86400)
+    item_count: int = Field(ge=1, le=100)
+
+
+class DistributionAction(BaseModel):
+    action: Literal["refresh", "stop", "configure", "publish"]
+    platform: str | None = None
+    package_id: str | None = None
+    schedule: PackageSchedule | None = None
 
 
 @router.get("/distribution")
 async def list_distribution_tasks():
-    """获取派发任务列表"""
-    # TODO: 实现实际的任务列表逻辑
-    return {
-        "status": "success",
-        "result": {
-            "success": True,
-            "items": []
-        }
-    }
+    return {"success": True, "data": get_qr_distribution_service().list()}
 
 
 @router.post("/distribution")
-async def create_distribution_task(request: DistributionTaskRequest):
-    """创建派发任务"""
-    # TODO: 实现实际的任务创建逻辑
-    return {
-        "status": "success",
-        "result": {
-            "success": True,
-            "task_id": "task_" + request.name
-        }
-    }
+async def create_distribution_task(request: DistributionRequest, db=Depends(get_main_db)):
+    return {"success": True, "data": get_qr_distribution_service().create(request, db)}
 
 
 @router.get("/distribution/{task_id}")
 async def get_distribution_task(task_id: str):
-    """获取派发任务详情"""
-    # TODO: 实现实际的任务详情逻辑
-    return {
-        "status": "success",
-        "result": {
-            "success": True,
-            "task": {
-                "id": task_id,
-                "name": "示例任务",
-                "status": "pending"
-            }
-        }
-    }
+    return {"success": True, "data": get_qr_distribution_service().get(task_id)}
+
+
+@router.post("/distribution/{task_id}/action")
+async def distribution_action(task_id: str, request: DistributionAction):
+    return {"success": True, "data": await get_qr_distribution_service().action(task_id, **request.model_dump(mode="json", exclude_none=True))}

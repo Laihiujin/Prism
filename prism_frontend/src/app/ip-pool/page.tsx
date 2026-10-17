@@ -81,7 +81,7 @@ interface ProxyIP {
     ip: string
     port: number
     protocol: string
-    status: "available" | "in_use" | "failed" | "banned" | "checking"
+    status: "available" | "in_use" | "failed" | "banned" | "checking" | "degraded" | "auth_failed"
     ip_type: string
     country: string
     region?: string
@@ -117,6 +117,7 @@ interface Account {
     account_id?: string
     platform: string
     name: string
+    nickname?: string
     avatar_url?: string
 }
 
@@ -426,6 +427,13 @@ export default function IPPoolPage() {
                 }
             />
 
+            <div className="space-y-2 rounded-xl border border-border bg-card/40 p-4 text-sm">
+                <p className="font-medium">使用顺序：添加代理 → 检测出口 → 绑定账号 → 在账号管理打开浏览器</p>
+                <p className="text-muted-foreground">IP 池负责账号固定网络出口；代理网关把已有线路转换为可连接的代理入口；Persona 保存每个账号独立的浏览器环境和登录状态。</p>
+                <p className="text-muted-foreground">一个账号固定一个代理。节点异常时先检查线路，系统不自动换 IP。删除节点前请先解绑账号。</p>
+                <a href="/persona" className="inline-block underline">查看 Persona 与账号环境</a>
+            </div>
+
             {/* Stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatsCard
@@ -444,7 +452,7 @@ export default function IPPoolPage() {
                     title="平均成功率"
                     value={`${stats?.avg_success_rate || 0}%`}
                     icon={Activity}
-                    description="最近24小时"
+                    description="累计发布成功率"
                 />
                 <StatsCard
                     title="异常/失效"
@@ -904,7 +912,6 @@ function BindAccountSheet({
 
         allAccounts.forEach(acc => {
             // 兼容 account_id (API返回) 和 id (类型定义)
-            // @ts-ignore
             const rawId = acc.account_id || acc.id
             if (rawId === undefined || rawId === null) return
             const idStr = String(rawId)
@@ -913,7 +920,6 @@ function BindAccountSheet({
 
             // Ensure ID is set on object for display
             if (!acc.id) {
-                // @ts-ignore
                 acc.id = idStr
             }
 
@@ -921,7 +927,6 @@ function BindAccountSheet({
             if (searchTerm) {
                 const term = searchTerm.toLowerCase()
 
-                // @ts-ignore
                 const name = acc.name || acc.nickname || ''
                 const matchName = name.toLowerCase().includes(term)
 

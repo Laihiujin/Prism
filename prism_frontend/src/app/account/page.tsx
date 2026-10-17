@@ -400,7 +400,8 @@ function AccountPageContent() {
     await cancelBinding()
     if (formState.platform === "twitter") return  // 推特走专用绑定面板（TwitterBindPanel）
     if (formState.platform === "tiktok" || formState.platform === "youtube") {
-      await startBrowserLogin()
+      setBindingStatus("pending")
+      await startApiLogin(formState.name || bindAccountId)
       return
     }
     setBindingStatus("pending")
@@ -1339,9 +1340,10 @@ function AccountPageContent() {
                             </div>}
                           </div>
                         )}
+                        {!isQrPlatform && activeSessionRef.current && ["code", "logging_in"].includes(bindingStatus) && <RemoteLoginView sessionId={activeSessionRef.current} openByDefault />}
                         {bindingStatus === "code" && (qrImage || smsVerification || riskNotice) && (
                           <div className="flex flex-col items-center gap-3">
-                            {!smsVerification && qrImage && <>
+                            {!smsVerification && qrImage && isQrPlatform && <>
                             <NextImage
                               src={qrImage}
                               alt="登录二维码"
