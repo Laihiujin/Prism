@@ -244,13 +244,17 @@ sessions_lock = asyncio.Lock()
 _cleanup_task: asyncio.Task | None = None
 
 # 平台适配器映射
+from app_new.platforms.browser_manual import TikTokBrowserAdapter, YouTubeBrowserAdapter, BilibiliBrowserAdapter
+
 PLATFORM_ADAPTERS = {
+    "tiktok": TikTokBrowserAdapter,
+    "youtube": YouTubeBrowserAdapter,
     "tencent": TencentAdapter,
     "channels": TencentAdapter,  # alias for WeChat Channels
-    "douyin": DouyinHttpAdapter,
+    "douyin": DouyinAdapter,
     "kuaishou": KuaishouAdapter,
     "xiaohongshu": XiaohongshuAdapter,
-    "bilibili": BilibiliAdapter,
+    "bilibili": BilibiliBrowserAdapter,
 }
 
 
@@ -1369,6 +1373,8 @@ async def generate_qrcode(platform: str, account_id: str, headless: bool | None 
             }
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         err = str(e) or type(e).__name__
         if isinstance(e, NotImplementedError) and sys.platform == "win32":
@@ -1479,7 +1485,15 @@ class SmsActionRequest(BaseModel):
     code: str | None = Field(default=None, pattern=r"^[0-9]{4,8}$", repr=False)
 
 
-from automation_worker.remote_login import BrowserInput, viewport_frame, pointer_input
+from automation_worker.remote_login import PointerInput, viewport_frame, pointer_input, qrcode_image
+
+@app.get('/qrcode/image/{session_id}')
+async def login_qrcode_image(session_id: str):
+    session = sessions.get(session_id)
+    if not session:
+        raise HTTPException(404, '登录会话不存在')
+    async with session.setdefault('interaction_lock', asyncio.Lock()):
+        return await qrcode_image(session, session_id)
 
 @app.get('/qrcode/view/{session_id}')
 async def login_view(session_id: str):
@@ -1490,7 +1504,7 @@ async def login_view(session_id: str):
         return await viewport_frame(session, session_id)
 
 @app.post('/qrcode/pointer/{session_id}')
-async def login_pointer(session_id: str, payload: BrowserInput):
+async def login_pointer(session_id: str, payload: PointerInput):
     session = sessions.get(session_id)
     if not session:
         raise HTTPException(404, '登录会话不存在')

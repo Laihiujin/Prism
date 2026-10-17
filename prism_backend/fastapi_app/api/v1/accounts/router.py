@@ -936,7 +936,6 @@ async def rebind_account_proxy(account_id: str, request: _RebindProxyRequest):
     """换绑：解绑原代理并绑定到新代理。"""
     try:
         service = _proxy_service()
-        service.unbind_account(account_id)
         success = service.bind_account_to_ip(request.proxy_id, account_id)
         return {"status": "success", "result": {"success": success, "message": "账号已换绑到新代理"}}
     except ValueError as e:

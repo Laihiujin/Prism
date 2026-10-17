@@ -14,6 +14,7 @@ class PlatformType(str, Enum):
     KUAISHOU = "kuaishou"
     TENCENT = "tencent"
     YOUTUBE = "youtube"
+    TIKTOK = "tiktok"
 
 
 class LoginMethod(str, Enum):

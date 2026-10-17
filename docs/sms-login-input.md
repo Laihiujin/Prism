@@ -25,23 +25,15 @@ The submit control is scoped to the code field's nearest ancestor containing the
 submit label, following the existing Douyin form-scoping approach. The smaller
 code-field wrapper can contain a send button; that wrapper is not the login form.
 
-## Remote input contract
+## Remote focus marker
 
-`POST /api/v1/auth/qrcode/pointer/{session_id}` retains pointer payloads and adds:
-
-```json
-{"action":"type","text":"user-provided text"}
-```
-
-```json
-{"action":"key","key":"Shift+Tab"}
-```
-
-Both travel through the existing API proxy, worker interaction lock, and session
-expiry checks. Text uses `keyboard.insert_text`; keys use `keyboard.press`.
-The frontend shares the ordered pointer queue, supports direct image keyboard
-input/paste, and provides a separate text area for IME/mobile text input. `focus`
-in the frame response contains geometry only; input values are never returned.
+Typing, keys and wheel go through main's `login_browser_pointer` actions
+(`text`, `key`, `wheel`; see `prism-project-layout`). This change adds the
+`focus` rectangle to `GET /api/v1/auth/qrcode/view/{session_id}`: geometry of
+the focused input in viewport pixels (iframes included), never its value. The
+worker scrolls that input into view, and the frontend outlines it in blue and
+keeps it visible in normal, zoom and pan modes. A stale drag is released before
+text or key input.
 
 ## Manual acceptance (user account required)
 

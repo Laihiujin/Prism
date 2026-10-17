@@ -122,6 +122,11 @@ class AutomationWorkerClient:
             response = await self.client.post(f'{self.worker_url}/qrcode/pointer/{session_id}', json=payload)
         return {'status_code': response.status_code, 'body': response.json()}
 
+    async def qrcode_image(self, session_id: str):
+        response = await self.client.get(f'{self.worker_url}/qrcode/image/{session_id}')
+        response.raise_for_status()
+        return response.json()
+
     async def cancel_session(self, session_id: str) -> bool:
         """
         取消登录会话
