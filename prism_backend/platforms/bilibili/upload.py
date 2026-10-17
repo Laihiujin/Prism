@@ -73,6 +73,11 @@ class BilibiliUpload(BasePlatform):
             "dynamic": kwargs.get("dynamic") or ps.get("dynamic"),
             "open_subtitle": kwargs.get("open_subtitle", ps.get("open_subtitle", False)),
         }
+        from uploader.bilibili_uploader.main import STUDIO_FLAG_FIELDS
+        for name in STUDIO_FLAG_FIELDS:
+            value = kwargs.get(name, ps.get(name))
+            if value not in (None, ""):
+                extra[name] = value
         # cover_local：本地封面文件路径（优先于 URL）
         cover_local = kwargs.get("cover_local") or ps.get("cover_local")
         cover = str(extra.get("cover") or "")

@@ -43,15 +43,22 @@ B站 专属：
 | `source` | 转载来源（copyright=2 时建议） |
 | `dynamic` | 粉丝动态文案 |
 | `cover` | 封面：http URL（CLI）或本地图片路径（库上传，自动 cover_up） |
+| `no_reprint` | 1=禁止转载（仅自制稿件生效） |
+| `is_only_self` | 1=仅自己可见（适合发布前自测） |
+| `dolby` / `lossless_music` | 1=杜比音效 / 1=Hi-Res 无损音质 |
 
-> 封面传本地路径 / 设置 copyright/source/dynamic 时自动切换 python biliup 库路径；
+> 以上稿件开关与 biliup-rs `Studio` 字段同名，随投稿一起提交（`is_only_self` 已实测生效）。
+| `up_selection_reply` / `up_close_reply` / `up_close_danmu` | 精选评论 / 关闭评论 / 关闭弹幕 |
+
+> 关闭评论已实测生效（网页接口，对照稿评论开启）；关闭弹幕、精选评论随投稿提交但未实测。
+> 封面传本地路径 / 设置 copyright/source/dynamic 或任一稿件开关时自动切换 python biliup 库路径；
 > 纯 URL 封面 + 默认版权仍走 biliup CLI（历史一致）。
 
 ## 分P 发布（`publish_multipart_to_bilibili`）
 
 参数：`account_file`、`title`（稿件主标题）、`tid`（必填）、`files`（数组，顺序 = P1..Pn；
 每项 `{path, title?}`，title 缺省 = 主标题 + P序号）、`description`/`tags`/`schedule`/
-`copyright`/`source`/`cover`/`dynamic`。走 python biliup 库，一次 submit 整稿；
+`copyright`/`source`/`cover`/`dynamic` 及上表稿件开关。走 python biliup 库，一次 submit 整稿；
 任一分P失败则不提交（平台不产生残稿）。
 
 ## 登录（`login_to_bilibili`）

@@ -9,6 +9,8 @@
 
 ## Repo Hygiene
 
+- 品牌专属配置、产品原图、品牌手册与生成样稿只放私有仓库，不进入本公开仓库。
+
 - GitHub only carries source code, docs, sanitized examples, and build scripts.
 - Never commit or push real account data, cookies, browser profiles, fingerprints, proxy/IP pool data, logs, local databases, or other runtime artifacts.
 - Do not include raw account identifiers, cookie values, proxy IPs, or local-only paths in commit messages, PR descriptions, screenshots, or copied debug output.
