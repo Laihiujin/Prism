@@ -257,7 +257,8 @@ class PhoneLoginAdapter(PlatformAdapter):
         predicate = " or ".join(f"translate(normalize-space(.), ' ', '')='{label}'" for label in labels)
         scope = field.locator(f"xpath=ancestor::*[.//*[{predicate}]][1]")
         await field.fill(code, timeout=3000)
-        button = await visible_one(scope.get_by_text(re.compile(r"^确定$" if secondary else r"^登\s*录$")))
+        # Labels are often padded (Xiaohongshu renders " 登 录 "); anchor around the whitespace.
+        button = await visible_one(scope.get_by_text(re.compile(r"^\s*确定\s*$" if secondary else r"^\s*登\s*录\s*$")))
         if not await button.is_enabled():
             raise ValueError("登录按钮不可用，请检查验证码和用户协议")
         await button.click(timeout=5000)
