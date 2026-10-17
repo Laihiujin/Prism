@@ -65,6 +65,17 @@ class PhoneLoginTests(unittest.TestCase):
                         self.assertEqual(await page.locator('body').get_attribute('data-received'), "123456")
                         self.assertNotEqual((await adapter.poll_status("fixture")).status, LoginStatus.CONFIRMED)
                         await page.close()
+                    # Xiaohongshu's live form: code input beside the send control, and the
+                    # login button label padded inside a span (" 登 录 ").
+                    page = await browser.new_page()
+                    await page.set_content('''<div><div><input placeholder="手机号"></div><div><input placeholder="验证码">
+                        <div class="slot-right"><div>发送验证码</div></div></div></div>
+                        <button onclick="document.body.dataset.received=document.querySelector('input[placeholder=验证码]').value"><span class="btn-content"> 登 录 </span></button>''')
+                    adapter = PhoneLoginAdapter("xiaohongshu")
+                    adapter.page, adapter.session_id = page, "fixture"
+                    await adapter.sms_action("fixture", "submit", "654321")
+                    self.assertEqual(await page.locator('body').get_attribute('data-received'), "654321")
+                    await page.close()
                 finally:
                     await browser.close()
         asyncio.run(run())
