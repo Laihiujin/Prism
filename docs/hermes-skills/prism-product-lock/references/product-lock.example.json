@@ -1,0 +1,17 @@
+{
+  "product": {"id": "PROP-LOCK", "name": "two-panel push-pull smart door lock"},
+  "memory": "a two-panel push-pull smart lock; the exterior panel (top camera, keypad, fingerprint window, bottom camera) lives on the outside face of the door, the interior panel (screen, ribbed push-pull handle, deadlock knob) on the inside face of the same door, at the same height near the lock edge",
+  "originals": [
+    {"id": "ext_front", "path": "originals/exterior-front.png", "view": "exterior panel, front view", "provenance": "original",
+     "governs_units": ["exterior_unit"], "governs": ["silhouette", "component order", "keypad layout", "camera ring", "wordmark", "material and colour"]},
+    {"id": "int_front", "path": "originals/interior-front.png", "view": "interior panel, front view", "provenance": "original",
+     "governs_units": ["interior_unit"], "governs": ["silhouette", "screen", "handle ribs", "knob", "material and colour"]},
+    {"id": "ext_side", "path": "originals/exterior-side.png", "view": "exterior panel, three-quarter side view", "provenance": "original",
+     "governs_units": ["exterior_unit"], "governs": ["thickness", "edge profile"]}
+  ],
+  "identity": [
+    {"unit": "exterior_unit", "keep": ["round metal ring around the top camera", "keypad of backlit icons in four rows", "rectangular fingerprint window below the keypad", "small downward camera at the bottom end"]},
+    {"unit": "interior_unit", "keep": ["portrait screen at the top", "circular touch button below the screen", "broad vertically ribbed push-pull handle", "round deadlock knob with white marks"]}
+  ],
+  "drift_traps": ["the lock drawn as a generic short lever or bar handle", "the panel shrunk to doorbell size", "an intercom or keypad added on the wall beside the door", "interior and exterior features mixed on one panel"]
+}

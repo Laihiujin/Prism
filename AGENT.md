@@ -11,6 +11,7 @@
 
 - 通用标题、简介与标签参考 `docs/hermes-skills/prism-title-topic/SKILL.md` 和 `prism-social-content/SKILL.md`。产品、客户及品牌专属技能在私有环境单独加载，不随应用内嵌、自动同步或发布。
 - 品牌专属配置、产品原图、品牌手册与生成样稿只放私有仓库，不进入本公开仓库。
+- 生图或改图里出现真实产品（产品图、带产品的场景图、人物与产品交互图）时，按 `docs/hermes-skills/prism-product-lock/SKILL.md`：每次先附产品原图，场景与人物作为槽位整套替换。
 
 - GitHub only carries source code, docs, sanitized examples, and build scripts.
 - Never commit or push real account data, cookies, browser profiles, fingerprints, proxy/IP pool data, logs, local databases, or other runtime artifacts.

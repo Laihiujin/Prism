@@ -1,0 +1,24 @@
+{
+  "product": {"name": "Generic two-panel push-pull smart door lock", "archetypes": ["two-sided installed"], "model_specific_found": false, "name_trap": "Different brands reuse the same model names; always search brand plus model."},
+  "sources": [
+    {"id": "kirz-pp9000", "ref": "https://htdocs.kirz.com/HTHMKT/manual/ddl/PP9000-installation-en.pdf", "confirms": "interior and exterior bodies mount on opposite door faces; connection wire passes through the door bore", "level": "category", "checked": "2026-10-17"},
+    {"id": "philips-ddl801", "ref": "https://www.documents.philips.com/assets/20241230/5e7daa1319c64137b8d7b25600230a0f.pdf", "confirms": "mortise cut to door thickness; exterior assembly seated on the outside face", "level": "category", "checked": "2026-10-17"}
+  ],
+  "purpose": {"job": "Recognise the visitor and unlock without a key.", "claims": []},
+  "barriers": [{"id": "door", "sides": ["outside", "inside"], "states": ["closed", "open"]}],
+  "units": [
+    {"id": "exterior_unit", "label": "exterior lock panel", "side": "outside face of the door", "viewed_from": "outside", "orientation": "vertical, camera at the top facing the visitor, keypad below", "height": "door-hardware height", "visible_parts": ["camera module", "keypad"], "environment": "corridor or porch"},
+    {"id": "interior_unit", "label": "interior lock panel", "side": "inside face of the door", "viewed_from": "inside", "orientation": "vertical, screen at the top, push-pull handle in the middle", "height": "door-hardware height", "visible_parts": ["screen", "push-pull handle", "knob"], "environment": "entry hall inside the home"}
+  ],
+  "interaction": [
+    {"step": "Visitor approaches the closed door", "visible_units": ["exterior_unit"]},
+    {"step": "Resident checks the indoor screen", "visible_units": ["interior_unit"]}
+  ],
+  "constraints": [
+    {"id": "p1", "applies_to": ["*"], "rule": "A closed door shows at most one panel in one view.", "prompt": "only one side of the closed door is visible", "check": "The two panels never appear on the same face of a door.", "source": "kirz-pp9000"},
+    {"id": "p2", "applies_to": ["exterior_unit"], "rule": "Camera faces the visitor.", "prompt": "the camera module faces outward toward the corridor", "check": "Camera faces the corridor, not the home.", "source": "philips-ddl801"}
+  ],
+  "forbidden": [{"text": "both panels side by side on the same face of a door", "negative": "two lock panels on the same side of the door"}],
+  "liberties": [{"id": "split", "text": "Divided split frame, outside and inside halves.", "allows_units": ["exterior_unit", "interior_unit"], "prompt": "split-screen with a clear divider, outside view on one half, inside view on the other"}],
+  "unknowns": [{"question": "Door handing for this model", "blocks": "handle-direction close-ups"}]
+}

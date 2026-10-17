@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cineforge.local/schemas/product-lock.schema.json",
+  "title": "CineForge Product Lock Card",
+  "description": "Original product images and the fixed product memory that every product shot carries first. See knowledge/product-reference-lock.md.",
+  "type": "object",
+  "required": ["product", "memory", "originals"],
+  "properties": {
+    "product": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "logic_card": {"type": "string"}}
+    },
+    "memory": {"type": "string", "minLength": 1},
+    "originals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "view", "provenance", "governs_units"],
+        "properties": {
+          "id": {"type": "string"},
+          "path": {"type": "string"},
+          "view": {"type": "string"},
+          "provenance": {"const": "original"},
+          "governs_units": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+          "governs": {"type": "array", "items": {"type": "string"}},
+          "sha256": {"type": "string"}
+        }
+      }
+    },
+    "identity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["unit", "keep"],
+        "properties": {"unit": {"type": "string"}, "keep": {"type": "array", "items": {"type": "string"}, "minItems": 1}}
+      }
+    },
+    "drift_traps": {"type": "array", "items": {"type": "string"}}
+  }
+}

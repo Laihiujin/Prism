@@ -1,0 +1,192 @@
+{
+  "product_lock": "product-lock.example.json",
+  "product_logic": "product-logic.example.json",
+  "platform_parameters": {
+    "aspect_ratio": "9:16"
+  },
+  "bindings": {
+    "home": "SCENE-COURTYARD",
+    "office": "OFFICE-A",
+    "lead": "CHAR-MOTHER",
+    "remote": "CHAR-DAUGHTER"
+  },
+  "scenes": {
+    "SCENE-COURTYARD": {
+      "label": "a walled courtyard house on a tree-lined city street",
+      "light": "warm low evening sun from the left",
+      "mount": {
+        "outside": "the exterior panel sits on the left lock edge of the flat wooden entrance door, hinges on the right",
+        "inside": "seen from inside, the hinges are on the left and the interior panel sits on the right lock edge"
+      },
+      "plates": {
+        "approach": {
+          "ref": "scenes/courtyard/approach.png",
+          "side": "outside",
+          "description": "courtyard seen from the open gate"
+        },
+        "outside_door": {
+          "ref": "scenes/courtyard/outside-door.png",
+          "side": "outside",
+          "description": "closed entrance door seen from the courtyard"
+        },
+        "inside_door": {
+          "ref": "scenes/courtyard/inside-door.png",
+          "side": "inside",
+          "description": "closed entrance door seen from the entry hall"
+        }
+      }
+    },
+    "SCENE-APARTMENT": {
+      "label": "a high-rise apartment with a warm minimalist corridor",
+      "light": "warm linear cove light",
+      "mount": {
+        "outside": "the exterior panel sits on the left lock edge of the dark matte entrance door, hinges on the right",
+        "inside": "seen from the foyer, the hinges are on the left and the interior panel sits on the right lock edge"
+      },
+      "plates": {
+        "approach": {
+          "ref": "scenes/apartment/approach.png",
+          "side": "outside",
+          "description": "long corridor toward the door",
+          "status": "to_generate"
+        },
+        "outside_door": {
+          "ref": "scenes/apartment/outside-door.png",
+          "side": "outside",
+          "description": "closed entrance door seen from the corridor"
+        },
+        "inside_door": {
+          "ref": "scenes/apartment/inside-door.png",
+          "side": "inside",
+          "description": "closed entrance door seen from the foyer"
+        }
+      }
+    },
+    "SCENE-STUDIO": {
+      "label": "a studio flat",
+      "plates": {
+        "approach": {
+          "ref": "scenes/studio/approach.png",
+          "side": "outside",
+          "description": "stair landing"
+        }
+      }
+    },
+    "OFFICE-A": {
+      "label": "an open-plan office",
+      "plates": {
+        "desk": {
+          "ref": "scenes/office/desk.png",
+          "description": "desk with monitor by a window"
+        }
+      }
+    }
+  },
+  "characters": {
+    "CHAR-MOTHER": {
+      "label": "the mother",
+      "ref": "cast/mother.png",
+      "description": "sixties, short curled hair, black-and-gold qipao",
+      "carry": {
+        "left": "a small handbag"
+      }
+    },
+    "CHAR-DAUGHTER": {
+      "label": "the daughter",
+      "ref": "cast/daughter.png",
+      "description": "thirty, shoulder-length dark hair, light blue shirt"
+    },
+    "CHAR-LADY": {
+      "label": "the lady",
+      "ref": "cast/lady.png",
+      "description": "early thirties, cat-eye sunglasses, wide-brim hat",
+      "carry": {
+        "left": "a leash"
+      }
+    },
+    "CHAR-SHOPPER": {
+      "label": "the shopper",
+      "ref": "cast/shopper.png",
+      "description": "late twenties, shopping bags",
+      "carry": {
+        "left": "shopping bags",
+        "right": "shopping bags"
+      }
+    }
+  },
+  "shots": [
+    {
+      "id": "SH-01",
+      "class": "product_in_scene",
+      "visible_units": [
+        "interior_unit"
+      ],
+      "path": [
+        "inside"
+      ],
+      "location": "home",
+      "plate": "inside_door",
+      "roles": [
+        "lead"
+      ],
+      "action": "the indoor screen wakes and shows the lead arriving outside",
+      "camera": "static close shot of the screen"
+    },
+    {
+      "id": "SH-02",
+      "class": "no_product",
+      "location": "home",
+      "plate": "approach",
+      "roles": [
+        "lead"
+      ],
+      "action": "the lead walks toward the door",
+      "camera": "gentle follow"
+    },
+    {
+      "id": "SH-03",
+      "class": "no_product",
+      "location": "office",
+      "plate": "desk",
+      "roles": [
+        "remote"
+      ],
+      "action": "the remote checks the phone and smiles",
+      "camera": "over the shoulder"
+    },
+    {
+      "id": "SH-04",
+      "class": "interaction",
+      "visible_units": [
+        "exterior_unit"
+      ],
+      "path": [
+        "outside"
+      ],
+      "barrier_state": "open",
+      "location": "home",
+      "plate": "outside_door",
+      "roles": [
+        "lead"
+      ],
+      "actor": "lead",
+      "hand": "right",
+      "action": "the lead touches the fingerprint window with the right hand and pushes the door open",
+      "camera": "slightly high three-quarter follow"
+    },
+    {
+      "id": "SH-05",
+      "class": "product",
+      "visible_units": [
+        "exterior_unit"
+      ],
+      "path": [
+        "outside"
+      ],
+      "location": "home",
+      "plate": "outside_door",
+      "action": "the door settles shut",
+      "camera": "slow push to a frontal hero close-up of the exterior panel"
+    }
+  ]
+}

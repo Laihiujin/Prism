@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cineforge.local/schemas/product-shot-plan.schema.json",
+  "title": "CineForge Product-Locked Shot Plan",
+  "description": "Shot list whose scenes and characters are slots, compiled with scripts/compile_product_lock.py. See knowledge/product-reference-lock.md.",
+  "type": "object",
+  "required": [
+    "product_lock",
+    "bindings",
+    "scenes",
+    "shots"
+  ],
+  "properties": {
+    "product_lock": {
+      "type": "string"
+    },
+    "product_logic": {
+      "type": "string"
+    },
+    "platform_parameters": {
+      "type": "object"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "scenes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "label",
+          "plates"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "light": {
+            "type": "string"
+          },
+          "mount": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "plates": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "ref",
+                "description"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string"
+                },
+                "side": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "ready",
+                    "to_generate"
+                  ]
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "characters": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "label",
+          "ref",
+          "description"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "carry": {
+            "type": "object",
+            "properties": {
+              "left": {
+                "type": "string"
+              },
+              "right": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "release": {
+            "type": "object",
+            "properties": {
+              "left": {
+                "type": "string"
+              },
+              "right": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "class"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "class": {
+            "enum": [
+              "product",
+              "product_in_scene",
+              "interaction",
+              "no_product"
+            ]
+          },
+          "visible_units": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "liberty": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "barrier_state": {
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "location": {
+            "type": "string"
+          },
+          "plate": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "actor": {
+            "type": "string"
+          },
+          "hand": {
+            "enum": [
+              "left",
+              "right"
+            ]
+          },
+          "composition_ref": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "camera": {
+            "type": "string"
+          },
+          "duration_s": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
