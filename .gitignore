@@ -273,3 +273,7 @@ _precise.sh
 
 # Local deployment audits and integration patches
 /docs/audit/*.patch
+
+# Local-only client adapters and source assets
+private-brand-adapters/
+*.brand.local.json
