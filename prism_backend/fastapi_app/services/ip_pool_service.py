@@ -128,6 +128,8 @@ class IPPoolService:
         """删除代理"""
         if ip_id in self.ips:
             ip = self.ips[ip_id]
+            if ip.bound_account_ids:
+                raise ValueError("请先解绑该代理的账号，再删除节点")
             del self.ips[ip_id]
             self._save_ips()
             logger.info(f"删除代理: {ip.name} ({ip.ip}:{ip.port})")
@@ -169,6 +171,9 @@ class IPPoolService:
         if ip.status in (IPStatus.FAILED, IPStatus.BANNED, IPStatus.AUTH_FAILED):
             raise ValueError(f"代理 {ip.name or ip_id} 当前状态 {ip.status}，不可绑定")
         
+        if account_id in ip.bound_account_ids:
+            return True
+
         # 检查绑定上限
         if len(ip.bound_account_ids) >= ip.max_bindings:
             raise ValueError(f"代理已达到绑定上限 ({ip.max_bindings})")
@@ -201,7 +206,7 @@ class IPPoolService:
                 ip.bound_account_ids.remove(account_id)
                 ip.updated_at = datetime.now()
                 # 如果没有绑定账号了，恢复可用状态
-                if not ip.bound_account_ids:
+                if not ip.bound_account_ids and ip.status == IPStatus.IN_USE:
                     ip.status = IPStatus.AVAILABLE
                 self._save_ips()
                 logger.info(f"解绑账号 {account_id} ← 代理 {ip.name}")
@@ -259,7 +264,7 @@ class IPPoolService:
         if prefer_region:
             candidates = [
                 ip for ip in self.ips.values()
-                if ip.region == prefer_region
+                if ip.region == prefer_region and ip.is_enabled
                 and len(ip.bound_account_ids) < ip.max_bindings
                 and ip.status in (IPStatus.AVAILABLE, IPStatus.IN_USE)
             ]
@@ -267,7 +272,7 @@ class IPPoolService:
         if not candidates:
             candidates = [
                 ip for ip in self.ips.values()
-                if len(ip.bound_account_ids) < ip.max_bindings
+                if ip.is_enabled and len(ip.bound_account_ids) < ip.max_bindings
                 and ip.status in (IPStatus.AVAILABLE, IPStatus.IN_USE)
             ]
         

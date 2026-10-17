@@ -297,7 +297,7 @@ async def generate_qrcode(
             platform=platform.value.lower(),
             account_id=account_id,
             headless=get_playwright_headless() if headless is None else bool(headless),
-            mode=settings.PRISM_DOUYIN_LOGIN_MODE,
+            mode="browser",  # Formal login/distribution always uses the browser.
             login_role=login_role,
             session_id=session_id,
         )
@@ -323,6 +323,8 @@ async def generate_qrcode(
             qr_image=result["qr_image"],
             expires_in=result.get("expires_in", 300)
         )
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         err = str(e) or type(e).__name__
@@ -508,6 +510,8 @@ async def _poll_login_status_impl(session_id: str = Query(..., description="鐧�
                 await _save_kuaishou_login(session, data)
             elif platform == PlatformType.TENCENT:
                 await _save_tencent_login(session, data)
+            elif platform in (PlatformType.TIKTOK, PlatformType.YOUTUBE):
+                await _save_manual_browser_login(session, data)
 
             async with login_sessions_lock:
                 login_sessions.pop(session_id, None)
@@ -907,6 +911,20 @@ async def _save_kuaishou_login(session: dict, login_data: dict):
     except Exception as e:
         logger.error(f"[Login] Save Kuaishou login failed: {e}")
         raise
+
+async def _save_manual_browser_login(session: dict, login_data: dict):
+    from myUtils.cookie_manager import cookie_manager
+    platform = session["platform"].value
+    info = login_data.get("user_info") or {}
+    if not info.get("user_id"):
+        raise HTTPException(409, "尚未识别平台账号，请完成创作者中心登录")
+    state = dict(login_data.get("full_state") or {"cookies": _normalize_cookie_list(login_data.get("cookies")), "origins": []})
+    state["user_info"] = info
+    cookie_manager.add_account(platform_name=platform, account_details={
+        "id": session["account_id"], "user_id": info["user_id"],
+        "name": info.get("name") or info["user_id"], "avatar": info.get("avatar") or "",
+        "status": "valid", "cookie": state, "note": "-"})
+
 
 async def _save_tencent_login(session: dict, login_data: dict):
     """Save Tencent login data."""

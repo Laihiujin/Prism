@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages"
 import { Send, Settings, Sparkles, PlayCircle, Ban, RefreshCcw } from "lucide-react"
 import createAgent from "@/lib/agent/agent"
@@ -41,6 +41,24 @@ const formatTime = (value?: string) => {
   })
 }
 
+const fetchModels = async (endpoint: string, apiKey: string) => {
+  const resp = await fetch(`${endpoint}/models`, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+  })
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+  const data = await resp.json()
+  if (Array.isArray(data?.data)) {
+    return data.data.map((model: any) => ({
+      value: model.id,
+      label: model.id,
+    }))
+  }
+  return []
+}
+
 export function AIAgentChat() {
   const [messages, setMessages] = useState<AnyMessage[]>([])
   const [inputMessage, setInputMessage] = useState("")
@@ -59,6 +77,21 @@ export function AIAgentChat() {
   const firstMessageRef = useRef(true)
   const messageContainerRef = useRef<HTMLDivElement | null>(null)
   const messagesRef = useRef<AnyMessage[]>([])
+
+  const loadModels = useCallback(async (endpoint?: string, apiKey?: string) => {
+    if (!endpoint || !apiKey) return
+    setIsLoadingModels(true)
+    try {
+      const models = await fetchModels(endpoint, apiKey)
+      if (models.length) {
+        setAvailableModels(models)
+      }
+    } catch (err) {
+      console.error("Failed to load models", err)
+    } finally {
+      setIsLoadingModels(false)
+    }
+  }, [])
 
   const hasAgent = !!agentRef.current
 
@@ -120,7 +153,7 @@ export function AIAgentChat() {
     if (storedToolStates) {
       setToolCallStates(JSON.parse(storedToolStates))
     }
-  }, [])
+  }, [loadModels])
 
   const scrollToBottom = () => {
     if (messageContainerRef.current) {
@@ -130,39 +163,6 @@ export function AIAgentChat() {
           behavior: "smooth",
         })
       }, 120)
-    }
-  }
-
-  const fetchModels = async (endpoint: string, apiKey: string) => {
-    const resp = await fetch(`${endpoint}/models`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-    })
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-    const data = await resp.json()
-    if (Array.isArray(data?.data)) {
-      return data.data.map((model: any) => ({
-        value: model.id,
-        label: model.id,
-      }))
-    }
-    return []
-  }
-
-  const loadModels = async (endpoint?: string, apiKey?: string) => {
-    if (!endpoint || !apiKey) return
-    setIsLoadingModels(true)
-    try {
-      const models = await fetchModels(endpoint, apiKey)
-      if (models.length) {
-        setAvailableModels(models)
-      }
-    } catch (err) {
-      console.error("Failed to load models", err)
-    } finally {
-      setIsLoadingModels(false)
     }
   }
 
@@ -478,7 +478,7 @@ export function AIAgentChat() {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.isComposing) return
+              if (e.nativeEvent.isComposing) return
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
                 sendMessage()

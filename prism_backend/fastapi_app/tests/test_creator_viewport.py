@@ -51,6 +51,7 @@ class CreatorViewportTests(unittest.IsolatedAsyncioTestCase):
         session = self.session()
         page = session.pop('page')
         page.url = 'https://example.test/login'
+        page.frames = []
         page.reload = AsyncMock()
         qr = Mock(wait_for=AsyncMock(), screenshot=AsyncMock(return_value=b'qr'))
         page.locator.return_value.first = qr

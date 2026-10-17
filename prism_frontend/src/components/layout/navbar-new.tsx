@@ -1,6 +1,6 @@
 "use client"
 
-import type { ElementType, HTMLAttributes } from "react"
+import type { ComponentType, HTMLAttributes } from "react"
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react"
 import {
   BarChart3,
@@ -37,7 +37,7 @@ interface SearchRoute {
   category: string
   description: string
   href: string
-  icon: ElementType
+  icon: ComponentType<{ className?: string }>
   keywords: string[]
   label: string
 }
@@ -82,6 +82,14 @@ const ROUTE_CATALOG: SearchRoute[] = [
     href: "/publish/matrix",
     icon: LayoutGrid,
     keywords: ["publish", "matrix", "distribution", "发布", "矩阵"],
+  },
+  {
+    category: "分发",
+    label: "扫码分发",
+    description: "平台登录后领取素材并安排发布",
+    href: "/qr-distribution",
+    icon: ClipboardList,
+    keywords: ["qr", "扫码", "派发", "分发"],
   },
   {
     category: "分发",

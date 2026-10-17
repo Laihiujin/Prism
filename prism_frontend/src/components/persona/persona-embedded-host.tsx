@@ -158,11 +158,21 @@ export function PersonaEmbeddedHost({ active }: { active: boolean }) {
       }
       data-backend-base={backendBase}
     >
+      <details className="absolute left-4 right-4 top-3 z-20 rounded-lg border border-border bg-card p-3 text-sm shadow">
+        <summary className="cursor-pointer font-medium">Persona 怎么用：每个账号保留一套独立浏览器环境</summary>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground">
+          <li>先到代理管理添加线路、检测出口，并把账号绑定到固定代理；直连账号可跳过。</li>
+          <li>到系统设置将浏览器后端选为 Persona，再到账号管理打开该账号的浏览器。Prism 自动关联环境。</li>
+          <li>在该环境完成平台登录，后续继续使用同一账号、环境和代理。关闭窗口会保留登录状态。</li>
+          <li>下方 Dashboard 用于查看环境和服务状态。已绑定 Persona 的账号需要 Persona 服务在线。</li>
+        </ol>
+        <div className="mt-3 flex gap-4"><a className="underline" href="/settings">浏览器设置</a><a className="underline" href="/account">账号管理</a><a className="underline" href="/ip-pool">代理管理</a></div>
+      </details>
       {ready ? (
         <iframe
           src={iframeSrc}
           title="Persona Studio Dashboard"
-          className="block h-full w-full border-0 bg-card"
+          className="block h-full w-full border-0 bg-card pt-16"
         />
       ) : (
         <div className="grid h-full place-items-center bg-card px-6 text-foreground">
