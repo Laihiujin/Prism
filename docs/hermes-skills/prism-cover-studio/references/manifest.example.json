@@ -1,0 +1,24 @@
+{
+  "expected_count": 1,
+  "assets": [
+    {"id": "product-front", "role": "product_original", "path": "local-assets/product-front.png", "sha256": "REPLACE_WITH_LOCAL_SOURCE_SHA256"},
+    {"id": "brand-logo", "role": "logo_original", "path": "local-assets/brand-logo.png", "sha256": "REPLACE_WITH_LOCAL_SOURCE_SHA256"}
+  ],
+  "covers": [
+    {
+      "id": "douyin-A-portrait",
+      "platform": "douyin",
+      "version": "A",
+      "ratio": "3:4",
+      "concept_key": "douyin-A-close-encounter",
+      "path": "outputs/douyin-A-3x4.png",
+      "required_product_ids": ["product-front"],
+      "attempts": [
+        {"tool": "actual-host-image-tool", "provider_record": "local-call-record-or-job-id", "original_asset_ids": ["product-front", "brand-logo"]}
+      ],
+      "visual_review": "pending",
+      "approved_by_user": false,
+      "approved_sha256": null
+    }
+  ]
+}

@@ -9,8 +9,8 @@
 
 ## Repo Hygiene
 
-- 通用标题、简介与标签参考 `docs/hermes-skills/prism-title-topic/SKILL.md` 和 `prism-social-content/SKILL.md`。产品、客户及品牌专属技能在私有环境单独加载，不随应用内嵌、自动同步或发布。
-- 品牌专属配置、产品原图、品牌手册与生成样稿只放私有仓库，不进入本公开仓库。
+- 封面、标题、简介、标签流程统一入口：`docs/hermes-skills/prism-cover-studio/SKILL.md`；旧 `prism-title-topic` / `prism-social-content` 仅作兼容路由。
+- 真实产品生图必须先找到并核对原文件，每次生成/修订实际引用原始产品图，缓存或模型记忆不能替代。产品准确性与场景融合均须检查，多平台不得共用一个模板换字冒充独立设计。
 
 - GitHub only carries source code, docs, sanitized examples, and build scripts.
 - Never commit or push real account data, cookies, browser profiles, fingerprints, proxy/IP pool data, logs, local databases, or other runtime artifacts.

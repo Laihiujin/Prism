@@ -9,13 +9,14 @@ def _norm(path: Path | str) -> str:
     return os.path.normcase(os.path.normpath(str(path)))
 
 
-def test_sync_project_skill_tree_copies_nested_references_and_license(monkeypatch, tmp_path):
+def test_sync_project_skill_includes_nested_references_and_license(monkeypatch, tmp_path):
     source_dir = tmp_path / "docs" / "hermes-skills" / "baoyu-cover-image"
     reference = source_dir / "references" / "palettes" / "warm.md"
     reference.parent.mkdir(parents=True)
     (source_dir / "SKILL.md").write_text("cover entry", encoding="utf-8")
     (source_dir / "LICENSE").write_text("MIT copyright", encoding="utf-8")
     reference.write_text("warm palette", encoding="utf-8")
+    (source_dir / "not-installed.py").write_text("raise RuntimeError", encoding="utf-8")
     monkeypatch.setattr(hermes_config, "get_repo_root", lambda: tmp_path)
     monkeypatch.setattr(hermes_config, "get_source_repo_root", lambda: tmp_path)
 
@@ -24,7 +25,12 @@ def test_sync_project_skill_tree_copies_nested_references_and_license(monkeypatc
         target = tmp_path / root / "creative" / "baoyu-cover-image"
         assert (target / "SKILL.md").read_text(encoding="utf-8") == "cover entry"
         assert (target / "LICENSE").read_text(encoding="utf-8") == "MIT copyright"
-        assert (target / "references" / "palettes" / "warm.md").read_text(encoding="utf-8") == "warm palette"
+        copied = target / "references" / "palettes" / "warm.md"
+        assert copied.read_text(encoding="utf-8") == "warm palette"
+        assert not (target / "not-installed.py").exists()
+        modified = copied.stat().st_mtime_ns
+        hermes_config.sync_prism_project_skill()
+        assert copied.stat().st_mtime_ns == modified
     reference.write_text("updated palette", encoding="utf-8")
     hermes_config.sync_prism_project_skill()
     for root in hermes_config._PROJECT_SKILL_ROOTS:
