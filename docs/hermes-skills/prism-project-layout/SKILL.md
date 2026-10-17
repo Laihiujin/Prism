@@ -20,6 +20,7 @@ prerequisites:
 `GET /api/v1/auth/qrcode/view/{session_id}` 与
 `POST /api/v1/auth/qrcode/pointer/{session_id}` 的实时截图和人工点击、拖动接口。
 Agent 可用现有 `get_login_browser_frame` / `login_browser_pointer` 工具操作同一会话。
+实时画面返回可选 `focus` 矩形（x/y/width/height，视口像素），并将聚焦输入框滚动到可见位置。
 创作者中心会话默认保留一小时；过期或页面已关闭时须重新打开，关闭面板不关闭浏览器。
 远程画面放大后默认进入平移模式，触屏拖动只移动本地画面；切换“操作网页”后才发送远程手势。
 扫码刷新：`POST /api/v1/auth/qrcode/generate` 传原 `session_id`、相同 `platform/account_id`，
