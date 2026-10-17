@@ -6,13 +6,30 @@ import httpx
 S = {"type": "string", "minLength": 1}
 ID = {"type": "integer", "minimum": 1}
 B = {"type": "boolean"}
-PLATFORM = {"type": "string", "enum": ["douyin", "kuaishou", "xiaohongshu", "bilibili", "tencent", "youtube"]}
+PLATFORM = {"type": "string", "enum": ["douyin", "kuaishou", "xiaohongshu", "bilibili", "tencent", "tiktok", "youtube"]}
 
 
 def build_workflow_tool_specs():
     from .tool_catalog import ToolSpec
+    from .qr_distribution import DistributionRequest
+
+    schema = DistributionRequest.model_json_schema()
+    definitions_by_name = schema.pop("$defs", {})
+    def expand(value):
+        if isinstance(value, dict):
+            if "$ref" in value:
+                return expand(definitions_by_name[value["$ref"].rsplit("/", 1)[-1]])
+            return {key: expand(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [expand(item) for item in value]
+        return value
+    configuration_schema = expand(schema)
 
     definitions = [
+        ("list_qr_distributions", "列出扫码分发、平台登录状态和账号任务包。", "GET", "/tasks/distribution", {}, [], "json"),
+        ("create_qr_distribution", "固定素材与平台预设并创建扫码分发；默认不自动执行。", "POST", "/tasks/distribution", {"configuration": configuration_schema}, ["configuration"], "configuration"),
+        ("get_qr_distribution", "读取扫码分发详情、二维码和任务包。", "GET", "/tasks/distribution/{task_id}", {"task_id": S}, ["task_id"], "json"),
+        ("qr_distribution_action", "刷新登录、停止分发、保存安排或执行任务包。schedule可设置数量、间隔及定时。", "POST", "/tasks/distribution/{task_id}/action", {"task_id": S, "action": {"type": "string", "enum": ["refresh", "stop", "configure", "publish"]}, "platform": PLATFORM, "package_id": S, "schedule": {"type": "object", "properties": {"schedule_type": {"type": "string", "enum": ["immediate", "scheduled"]}, "scheduled_time": S, "interval_seconds": {"type": "integer", "minimum": 60, "maximum": 86400}, "item_count": {"type": "integer", "minimum": 1, "maximum": 100}}, "required": ["schedule_type", "interval_seconds", "item_count"]}}, ["task_id", "action"], "json"),
         ("generate_cover", "生成AI封面，返回job_id；使用get_cover_job查询进度。会使用配置的图像生成服务。", "POST", "/files/{file_id}/ai-cover-job", {"file_id": ID, "platform_name": S, "aspect_ratio": {"type": "string", "enum": ["3:4", "4:3"]}, "prompt": S, "style_hint": S, "use_first_frame": B}, ["file_id"], "form"),
         ("get_cover_job", "查询封面生成状态、错误及封面路径。", "GET", "/files/ai-cover-jobs/{job_id}", {"job_id": S}, ["job_id"], "json"),
         ("list_material_covers", "查看素材的封面库与已选封面。", "GET", "/files/{file_id}/covers", {"file_id": ID}, ["file_id"], "json"),
@@ -26,8 +43,7 @@ def build_workflow_tool_specs():
         ("start_login_sms", "使用用户提供的手机号开始短信登录。", "POST", "/auth/sms/start", {"platform": {"type": "string", "enum": ["douyin", "kuaishou", "xiaohongshu", "bilibili"]}, "account_id": S, "phone": {"type": "string", "pattern": "^1[0-9]{10}$"}, "login_role": {"type": "string", "enum": ["creator", "mcn"]}}, ["platform", "account_id", "phone"], "json"),
         ("login_verification_action", "登录验证码获取/重发/回传、账号选择、身份验证二维码。验证码必须由用户提供。", "POST", "/auth/qrcode/sms", {"session_id": S, "action": {"type": "string", "enum": ["request", "resend", "submit", "select_account", "identity_qr"]}, "code": {"type": "string", "pattern": "^[0-9]{4,8}$"}, "account_choice": {"type": "string", "pattern": "^[0-9]{1,30}$"}}, ["session_id", "action"], "json"),
         ("get_login_browser_frame", "获取指定登录或创作者中心会话的实时截图。创作者中心打开接口返回session_id。", "GET", "/auth/qrcode/view/{session_id}", {"session_id": S}, ["session_id"], "json"),
-        ("login_browser_pointer", "操作登录浏览器：down/move/up/cancel，坐标0到1。人工验证码交给用户处理。", "POST", "/auth/qrcode/pointer/{session_id}", {"session_id": S, "action": {"type": "string", "enum": ["down", "move", "up", "cancel"]}, "x": {"type": "number", "minimum": 0, "maximum": 1}, "y": {"type": "number", "minimum": 0, "maximum": 1}}, ["session_id", "action", "x", "y"], "json"),
-        ("login_browser_input", "Type text or press a key in the focused login browser element.", "POST", "/auth/qrcode/pointer/{session_id}", {"session_id": S, "action": {"type": "string", "enum": ["type", "key"]}, "text": {"type": "string", "minLength": 1, "maxLength": 4096}, "key": {"type": "string"}}, ["session_id", "action"], "json"),
+        ("login_browser_pointer", "操作登录浏览器：点击拖动、wheel滚动、text文字、key按键；坐标0到1。人工验证码交给用户处理。", "POST", "/auth/qrcode/pointer/{session_id}", {"session_id": S, "action": {"type": "string", "enum": ["down", "move", "up", "cancel", "wheel", "text", "key"]}, "x": {"type": "number", "minimum": 0, "maximum": 1}, "y": {"type": "number", "minimum": 0, "maximum": 1}, "delta_x": {"type": "number", "minimum": -2000, "maximum": 2000}, "delta_y": {"type": "number", "minimum": -2000, "maximum": 2000}, "text": S, "key": S}, ["session_id", "action"], "json"),
         ("get_browser_runtime", "查询已安装浏览器及当前Provider。", "GET", "/system/browser-runtime/status", {}, [], "json"),
         ("get_platform_browser_preferences", "读取各平台浏览器选择。", "GET", "/system/browser-runtime/platform-preferences", {}, [], "json"),
         ("set_platform_browser_preferences", "设置各平台auto/chromium/firefox偏好。", "PUT", "/system/browser-runtime/platform-preferences", {"preferences": {"type": "object", "additionalProperties": {"type": "string", "enum": ["auto", "chromium", "firefox"]}}}, ["preferences"], "unwrap"),
@@ -65,7 +81,7 @@ def build_workflow_tool_specs():
                 path = route
                 for key in re.findall(r"\{(\w+)\}", route):
                     path = path.replace("{" + key + "}", quote(str(body.pop(key)), safe=""))
-                request = {"params": body} if method == "GET" or encoding == "query" else {"data" if encoding == "form" else "json": body.get("preferences") if encoding == "unwrap" else body}
+                request = {"params": body} if method == "GET" or encoding == "query" else {"data" if encoding == "form" else "json": body.get("preferences") if encoding == "unwrap" else body.get("configuration") if encoding == "configuration" else body}
                 async with httpx.AsyncClient(base_url=get_backend_url(), timeout=60) as client:
                     response = await client.request(method, "/api/v1" + path, **request)
                 payload = response.json()

@@ -50,7 +50,7 @@ class RemoteLoginTests(unittest.TestCase):
                             focused = await api.get(f'/api/v1/auth/qrcode/view/{public}')
                             self.assertIsNotNone(focused.json()['focus'])
                             self.assertLess(focused.json()['focus']['y'], 600)
-                            for payload in [{'action':'type','text':'123456'}, {'action':'key','key':'Backspace'}, {'action':'type','text':'7'}]:
+                            for payload in [{'action':'text','text':'123456'}, {'action':'key','key':'Backspace'}, {'action':'text','text':'7'}]:
                                 self.assertEqual((await api.post(f'/api/v1/auth/qrcode/pointer/{public}', json=payload)).status_code, 200)
                             self.assertEqual(await page.locator('input').input_value(), '123457')
                             self.assertEqual((await api.get('/api/v1/auth/qrcode/view/other-session')).status_code, 404)

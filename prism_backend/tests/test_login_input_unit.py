@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pydantic import TypeAdapter, ValidationError
 from fastapi import HTTPException
 from app_new.platforms.phone_login import PhoneLoginAdapter
-from automation_worker.remote_login import BrowserInput, pointer_input, viewport_frame
+from automation_worker.remote_login import PointerInput, pointer_input, viewport_frame
 
 
 class Fields:
@@ -60,20 +60,20 @@ class LoginInputTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await adapter._code_target())[1], field)
 
     async def test_type_key_and_session_validation(self):
-        schema = TypeAdapter(BrowserInput)
+        schema = TypeAdapter(PointerInput)
         page = SimpleNamespace(is_closed=lambda: False, keyboard=SimpleNamespace(insert_text=AsyncMock(), press=AsyncMock()), mouse=SimpleNamespace(up=AsyncMock()))
         session = {'adapter': SimpleNamespace(page=page), 'created_at': asyncio.get_running_loop().time(), 'pointer_down': True}
-        await pointer_input(session, 'fixture', schema.validate_python({'action': 'type', 'text': '123456'}))
+        await pointer_input(session, 'fixture', schema.validate_python({'action': 'text', 'text': '123456'}))
         await pointer_input(session, 'fixture', schema.validate_python({'action': 'key', 'key': 'Shift+Tab'}))
         page.keyboard.insert_text.assert_awaited_once_with('123456')
         page.keyboard.press.assert_awaited_once_with('Shift+Tab')
         self.assertFalse(session['pointer_down'])
-        for payload in ({'action': 'type', 'text': ''}, {'action': 'type', 'text': 'x'*4097}, {'action': 'key', 'key': 'BadKey'}, {'action': 'key'}, {'action': 'down', 'x': 2, 'y': 0}):
+        for payload in ({'action': 'text', 'text': ''}, {'action': 'text', 'text': 'x'*4001}, {'action': 'key', 'key': 'BadKey'}, {'action': 'down', 'x': 2, 'y': 0}):
             with self.assertRaises(ValidationError):
                 schema.validate_python(payload)
         session['created_at'] -= 601
         with self.assertRaises(HTTPException) as error:
-            await pointer_input(session, 'fixture', schema.validate_python({'action': 'type', 'text': 'x'}))
+            await pointer_input(session, 'fixture', schema.validate_python({'action': 'text', 'text': 'x'}))
         self.assertEqual(error.exception.status_code, 410)
 
     async def test_bare_seconds_countdown(self):
@@ -102,13 +102,12 @@ class LoginInputTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((box['x'], box['y']), (54,78))
         outer.scroll_into_view_if_needed.assert_awaited_once()
 
-    async def test_input_through_public_api_worker_and_tool(self):
+    async def test_input_through_public_api_and_worker(self):
         import httpx
         from fastapi import FastAPI
         from automation_worker import worker
         from automation_worker.client import AutomationWorkerClient
         from fastapi_app.api.v1.auth import router as auth
-        from fastapi_app.services.agent_workflow_tools import build_workflow_tool_specs
         page = SimpleNamespace(is_closed=lambda: False, keyboard=SimpleNamespace(insert_text=AsyncMock(), press=AsyncMock()))
         sid, public = 'unit-input-worker', 'unit-input-api'
         worker.sessions[sid] = {'adapter': SimpleNamespace(page=page), 'created_at': asyncio.get_running_loop().time()}
@@ -122,21 +121,13 @@ class LoginInputTests(unittest.IsolatedAsyncioTestCase):
             with patch('automation_worker.client.get_worker_client', return_value=client):
                 async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://api') as api:
                     url = f'/api/v1/auth/qrcode/pointer/{public}'
-                    for payload in ({'action':'type','text':'123456'}, {'action':'key','key':'Enter'}):
+                    for payload in ({'action':'text','text':'123456'}, {'action':'key','key':'Enter'}):
                         self.assertEqual((await api.post(url, json=payload)).status_code, 200)
                     self.assertEqual((await api.post(url, json={'action':'key','key':'BadKey'})).status_code, 422)
                     worker.sessions[sid]['created_at'] -= 601
-                    self.assertEqual((await api.post(url, json={'action':'type','text':'x'})).status_code, 410)
+                    self.assertEqual((await api.post(url, json={'action':'text','text':'x'})).status_code, 410)
             page.keyboard.insert_text.assert_awaited_once_with('123456')
             page.keyboard.press.assert_awaited_once_with('Enter')
-            spec = next(s for s in build_workflow_tool_specs() if s.name == 'login_browser_input')
-            self.assertEqual(spec.parameters['properties']['action']['enum'], ['type', 'key'])
-            request = SimpleNamespace(request=AsyncMock(return_value=SimpleNamespace(is_success=True, json=lambda: {'success': True})))
-            from unittest.mock import MagicMock
-            context = MagicMock(__aenter__=AsyncMock(return_value=request), __aexit__=AsyncMock())
-            with patch('fastapi_app.services.agent_workflow_tools.httpx.AsyncClient', return_value=context):
-                self.assertTrue((await spec.handler(session_id='fixture', action='type', text='123456'))['ok'])
-            self.assertEqual(request.request.call_args.kwargs['json']['text'], '123456')
         finally:
             worker.sessions.pop(sid, None)
             auth.login_sessions.pop(public, None)

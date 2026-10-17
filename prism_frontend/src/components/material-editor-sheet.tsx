@@ -330,7 +330,8 @@ export function MaterialEditorContent({
         setActivePreset(initialPresetId)
         setPresetPlatform(preset.platform)
         setCoverPlatform(preset.platform)
-        if (preset.data.form) setEditForm(prev => ({ ...prev, ...preset.data.form, cover_image: preset.data.form.cover_image || "" }))
+        const presetForm = preset.data.form
+        if (presetForm) setEditForm(prev => ({ ...prev, ...presetForm, cover_image: presetForm.cover_image || "" }))
         setCoverPrompt(preset.data.coverPrompt || "")
         setCoverAspectOverride(preset.data.coverAspect || null)
     }, [initialPresetId, presets])
@@ -767,7 +768,8 @@ export function MaterialEditorContent({
                             setCoverPlatform(target?.platform || "all")
                             setCoverAspectOverride(target?.data.coverAspect || null)
                             setCoverPrompt(target?.data.coverPrompt || "")
-                            if (target?.data.form) setEditForm(prev => ({ ...prev, ...target.data.form, cover_image: target.data.form.cover_image || "" }))
+                            const targetForm = target?.data.form
+                            if (targetForm) setEditForm(prev => ({ ...prev, ...targetForm, cover_image: targetForm.cover_image || "" }))
                         }}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent><SelectItem value="default">通用配置</SelectItem>{Object.entries(presets).filter(([id]) => id !== "default").map(([id, preset]) => <SelectItem key={id} value={id}>{preset.name}</SelectItem>)}</SelectContent>

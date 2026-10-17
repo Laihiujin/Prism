@@ -1,5 +1,9 @@
 # Persona Studio 集成指南
 
+操作顺序：代理管理添加并检测节点 → 绑定账号 → 系统设置选择 Persona 后端 → 账号管理打开账号浏览器。Persona 页上方提供可展开的使用说明。
+
+IP pool 管网络出口，Persona 管浏览器环境和登录状态。扫码分发流程见 [扫码分发](qr-distribution.md)。
+
 最终架构：**Prism + Persona Studio + Patchright + Proxy Manager**
 
 Persona Studio（[TechQaiser/persona-studio](https://github.com/TechQaiser/persona-studio)，MIT）是
@@ -58,9 +62,8 @@ persona default-engine patchright
 # 或每个 Profile 单独指定：persona create <name> --engine patchright
 ```
 
-> 不装 Persona Studio 时，Prism 自动回退 **PatchrightBackend 直连模式**
-> （每账号独立 `data/browser_profiles/<account>/` persistent context），
-> 功能不中断，只是少了相干指纹/持久会话增强。
+> 在系统设置选择 Patchright 时，可直接使用每账号独立的浏览器环境。
+> 已绑定 Persona 的账号要求 Persona 服务在线；服务离线时应先恢复服务，或显式修改浏览器后端设置。
 
 ---
 

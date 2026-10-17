@@ -282,6 +282,9 @@ async def startup_event():
     # 不再在启动时初始化独立的 AIClient / ModelManager（旧的 ai_service/config.json 已废弃）。
 
 
+    from fastapi_app.services.qr_distribution import get_qr_distribution_service
+    await get_qr_distribution_service().start()
+
     # Initialize OpenClaw/Hermes agent
     try:
         from fastapi_app.agent.openclaw_agent import get_openclaw_agent
@@ -325,6 +328,8 @@ async def startup_event():
 async def shutdown_event():
     """应用关闭事件"""
     logger.info("应用正在关闭...")
+    from fastapi_app.services.qr_distribution import get_qr_distribution_service
+    await get_qr_distribution_service().close()
 
     try:
         from fastapi_app.agent.hermes_update import stop_hermes_update_scheduler
