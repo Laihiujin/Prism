@@ -442,20 +442,18 @@ _PROJECT_SKILLS: tuple[dict, ...] = (
     },
 ) + tuple(
     {
+        "name": name,
+        "source_rel": Path("docs") / "hermes-skills" / name / "SKILL.md",
+        "category": "creative",
+    }
+    for name in ("prism-cover-studio", "baoyu-cover-image", "baoyu-xhs-images", "create-social-thumbnails", "video-thumbnail")
+) + tuple(
+    {
         "name": f"prism-publish-{platform}",
         "source_rel": Path("docs") / "hermes-skills" / f"prism-publish-{platform}" / "SKILL.md",
         "category": "software-development",
     }
     for platform in _PUBLISH_PLATFORMS
-) + tuple(
-    {
-        # Pinned open-source cover/thumbnail skills; see each SOURCE.md for provenance.
-        "name": name,
-        "source_rel": Path("docs") / "hermes-skills" / name / "SKILL.md",
-        "category": "creative",
-        "tree": True,
-    }
-    for name in ("baoyu-cover-image", "baoyu-xhs-images", "create-social-thumbnails", "video-thumbnail")
 )
 _PROJECT_SKILL_ROOTS = (
     Path("tools") / "hermes-home" / "skills",
@@ -492,7 +490,7 @@ def sync_prism_project_skill() -> Path:
     """Copy each project skill from docs/ into the Hermes runtime roots.
 
     Runs on every Hermes session setup (see _ensure_runtime_home) so editing a
-    docs/hermes-skills/.../SKILL.md is enough to update what Hermes preloads or
+    docs/hermes-skills/.../ is enough to update what Hermes preloads or
     discovers; no manual copy needed. No-op when a source is missing (e.g. a
     packaged build without the docs tree). Returns the project-layout source path
     for backwards compatibility.
@@ -504,16 +502,17 @@ def sync_prism_project_skill() -> Path:
             continue
         if skill["name"] == "prism-project-layout":
             layout_source = source
-        files = [source]
-        if skill.get("tree"):
-            files = [
-                path for path in source.parent.rglob("*")
-                if path.is_file() and "__pycache__" not in path.parts
-            ]
         for root in _PROJECT_SKILL_ROOTS:
             target_dir = get_repo_root() / root / skill["category"] / skill["name"]
-            for path in files:
-                _sync_project_skill_file(path, target_dir / path.relative_to(source.parent))
+            # Skills carry design references and licensing alongside the entrypoint.
+            # Copy maintained text resources without deleting runtime-only files.
+            for resource in source.parent.rglob("*"):
+                if resource.is_file() and not resource.is_symlink() and (
+                    resource.suffix.lower() in {".md", ".txt", ".yaml", ".yml", ".json"}
+                    or (resource.suffix.lower() == ".py" and resource.relative_to(source.parent).parts[0] == "scripts")
+                ):
+                    _sync_project_skill_file(resource, target_dir / resource.relative_to(source.parent))
+            _sync_project_skill_file(source.parent / "LICENSE", target_dir / "LICENSE")
     return layout_source
 
 
