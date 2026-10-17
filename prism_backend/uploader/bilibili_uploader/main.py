@@ -20,8 +20,8 @@ class Data(BaseData):
     is_only_self: int = 0
     dolby: int = 0
     lossless_music: int = 0
-    # Only honoured by the App submit API; archives that set them go through
-    # app_submit (official biliup CLI). The web API ignores them.
+    # A private test with a comments-closed control (BV1SXJe6YEqS open vs
+    # BV1P3Jt6MEYE closed) showed the web API honours up_close_reply.
     up_selection_reply: bool = False
     up_close_reply: bool = False
     up_close_danmu: bool = False
@@ -218,30 +218,6 @@ class BilibiliUploader(object):
         self.data.set_tag(self.tags or [])
         if self.dtime:
             self.data.delay_time(int(self.dtime))
-
-    def upload_via_app(self, account_file):
-        """Submit with the official biliup CLI (App API) for App-only archive switches."""
-        import os
-        from .app_submit import app_cookie_file, build_upload_command
-        from .runtime import run_biliup_command
-
-        app_file = app_cookie_file(account_file)
-        cover_url = ""
-        cover_local = (self.extra or {}).get("cover_local") or ""
-        if cover_local and os.path.isfile(str(cover_local)):
-            with BiliBili(self.data) as bili:
-                bili.login_by_cookies(to_biliup_cookie_format(self.cookie_data or {}))
-                cover_url = bili.cover_up(str(cover_local))
-        paths = [p for p in [self.file, *self.files] if p and os.path.isfile(str(p))]
-        if not paths:
-            raise FileNotFoundError(f"没有可上传的视频文件: {self.file}")
-        if self.part_titles:
-            bilibili_logger.warning('[+] App 投稿使用文件名作为分P标题，自定义分P标题不会生效')
-        result = run_biliup_command(build_upload_command(app_file, paths, self.data, cover_url))
-        if result.returncode:
-            raise RuntimeError((result.stderr or result.stdout or "B站 App 投稿失败").strip()[-500:])
-        bilibili_logger.success(f'[+] App 接口投稿成功: {self.title}')
-        return True
 
     def upload(self):
         import sys

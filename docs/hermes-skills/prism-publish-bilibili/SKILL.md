@@ -48,11 +48,9 @@ B站 专属：
 | `dolby` / `lossless_music` | 1=杜比音效 / 1=Hi-Res 无损音质 |
 
 > 以上稿件开关与 biliup-rs `Studio` 字段同名，随投稿一起提交（`is_only_self` 已实测生效）。
-| `up_selection_reply` / `up_close_reply` / `up_close_danmu` | 精选评论 / 关闭评论 / 关闭弹幕（仅 App 接口生效） |
+| `up_selection_reply` / `up_close_reply` / `up_close_danmu` | 精选评论 / 关闭评论 / 关闭弹幕 |
 
-> 关闭评论/弹幕、精选评论在网页投稿接口不生效（实测）。设置任一项时改走官方 biliup 命令行的 App 接口，
-> 需要账号 cookie 旁的 `<账号文件名>.biliup.json`：在本机终端运行 `biliup -u <该文件> login` 用 B站 App 扫码生成。
-> 缺少该文件时直接报错并给出命令，不会退回网页接口悄悄丢掉开关。App 投稿时分P标题使用文件名。
+> 关闭评论已实测生效（网页接口，对照稿评论开启）；关闭弹幕、精选评论随投稿提交但未实测。
 > 封面传本地路径 / 设置 copyright/source/dynamic 或任一稿件开关时自动切换 python biliup 库路径；
 > 纯 URL 封面 + 默认版权仍走 biliup CLI（历史一致）。
 

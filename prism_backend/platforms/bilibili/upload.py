@@ -149,12 +149,8 @@ class BilibiliUpload(BasePlatform):
             extra=extra or None,
         )
 
-        from uploader.bilibili_uploader.app_submit import needs_app_submit
         loop = asyncio.get_running_loop()
-        if needs_app_submit(extra):
-            await loop.run_in_executor(None, uploader.upload_via_app, account_file)
-        else:
-            await loop.run_in_executor(None, uploader.upload)
+        await loop.run_in_executor(None, uploader.upload)
         parts_desc = f"（含 {1 + len(video_parts)} 个分P）" if video_parts else ""
         return {"success": True, "message": f"上传成功{parts_desc}"}
 
