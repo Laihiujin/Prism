@@ -76,6 +76,15 @@ class LoginInputTests(unittest.IsolatedAsyncioTestCase):
             await pointer_input(session, 'fixture', schema.validate_python({'action': 'text', 'text': 'x'}))
         self.assertEqual(error.exception.status_code, 410)
 
+    async def test_navigating_frame_is_skipped(self):
+        adapter = PhoneLoginAdapter('xiaohongshu')
+        field = SimpleNamespace(is_visible=AsyncMock(return_value=True), is_enabled=AsyncMock(return_value=True))
+        gone = SimpleNamespace(is_visible=AsyncMock(side_effect=RuntimeError('frame detached')))
+        live = SimpleNamespace(locator=lambda *a: Fields([field]))
+        leaving = SimpleNamespace(locator=lambda *a: Fields([gone]))
+        adapter.page = SimpleNamespace(frames=[leaving, live], get_by_text=lambda *a, **k: Fields())
+        self.assertEqual((await adapter._code_target())[1], field)
+
     async def test_bare_seconds_countdown(self):
         adapter = PhoneLoginAdapter('xiaohongshu')
         adapter.page = SimpleNamespace(locator=lambda *a: SimpleNamespace(inner_text=AsyncMock(return_value='59s')))
