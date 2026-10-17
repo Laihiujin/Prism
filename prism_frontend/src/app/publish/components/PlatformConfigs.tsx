@@ -702,6 +702,24 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
     const [description, setDescription] = usePlatformField(data, onChange, "bilibili", "description", "")
     const [tags, setTags] = usePlatformField(data, onChange, "bilibili", "tags", "")
     const [openSubtitle, setOpenSubtitle] = usePlatformField(data, onChange, "bilibili", "open_subtitle", false)
+    // 与 biliup-rs Studio 同名的稿件开关（0/1 或布尔），后端原样随投稿提交
+    const [noReprint, setNoReprint] = usePlatformField(data, onChange, "bilibili", "no_reprint", 0)
+    const [isOnlySelf, setIsOnlySelf] = usePlatformField(data, onChange, "bilibili", "is_only_self", 0)
+    const [dolby, setDolby] = usePlatformField(data, onChange, "bilibili", "dolby", 0)
+    const [losslessMusic, setLosslessMusic] = usePlatformField(data, onChange, "bilibili", "lossless_music", 0)
+    const [upSelectionReply, setUpSelectionReply] = usePlatformField(data, onChange, "bilibili", "up_selection_reply", false)
+    const [upCloseReply, setUpCloseReply] = usePlatformField(data, onChange, "bilibili", "up_close_reply", false)
+    const [upCloseDanmu, setUpCloseDanmu] = usePlatformField(data, onChange, "bilibili", "up_close_danmu", false)
+
+    const studioToggles: { label: string; checked: boolean; set: (value: boolean) => void; hidden?: boolean }[] = [
+        { label: "禁止转载", checked: noReprint === 1, set: v => setNoReprint(v ? 1 : 0), hidden: copyright !== 1 },
+        { label: "仅自己可见", checked: isOnlySelf === 1, set: v => setIsOnlySelf(v ? 1 : 0) },
+        { label: "杜比音效", checked: dolby === 1, set: v => setDolby(v ? 1 : 0) },
+        { label: "Hi-Res 无损音质", checked: losslessMusic === 1, set: v => setLosslessMusic(v ? 1 : 0) },
+        { label: "精选评论", checked: !!upSelectionReply, set: setUpSelectionReply },
+        { label: "关闭评论", checked: !!upCloseReply, set: setUpCloseReply },
+        { label: "关闭弹幕", checked: !!upCloseDanmu, set: setUpCloseDanmu },
+    ]
 
     // B站分区（tid）常用列表：与 category 文案联动
     const bilibiliCategories: { label: string; tid: number }[] = [
@@ -836,6 +854,12 @@ export function BilibiliConfig({ data, onChange }: ConfigProps) {
                     <Label className="text-xs text-muted-foreground">允许观众投稿字幕</Label>
                     <Switch checked={openSubtitle} onCheckedChange={setOpenSubtitle} />
                 </div>
+                {studioToggles.filter(t => !t.hidden).map(toggle => (
+                    <div key={toggle.label} className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">{toggle.label}</Label>
+                        <Switch checked={toggle.checked} onCheckedChange={toggle.set} />
+                    </div>
+                ))}
 
                 {/* 分P提示 */}
                 <div className="rounded-xl border border-dashed border-border/70 bg-card/20 px-3 py-2 text-[11px] leading-4 text-muted-foreground">

@@ -5,6 +5,7 @@ description: 为抖音、B站、视频号、小红书制作差异化标题、简
 
 # 四平台内容与封面工作流
 
+
 先读 `prism-title-topic`，按项目实际上传器限制生成字段；按目标平台读取对应
 `prism-publish-douyin/bilibili/channels/xiaohongshu`。平台推荐口吻是编辑策略，不是流量保证。
 
