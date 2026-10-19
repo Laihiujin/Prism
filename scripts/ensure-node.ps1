@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $node = Get-Command node.exe -ErrorAction SilentlyContinue
 if ($node) {
-    $major = & $node.Source -p 'process.versions.node.split(".")[0]'
+    $major = & $node.Source -p 'parseInt(process.versions.node)'
     if ([int]$major -ge 22) { return $node.Source }
 }
 $data = if ($env:PRISM_RUNTIME_DATA_DIR) { $env:PRISM_RUNTIME_DATA_DIR } else { Join-Path (Split-Path -Parent $PSScriptRoot) 'runtime-data' }
