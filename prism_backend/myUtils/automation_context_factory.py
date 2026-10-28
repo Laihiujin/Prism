@@ -440,6 +440,15 @@ async def create_context_with_policy(
         except Exception as e:
             logger.warning(f"[fp] apply failed: {e}")
 
+    # Headed browsers must resize with the native window, including Firefox.
+    # Apply after fingerprints, which may otherwise reinstate a fixed viewport.
+    if not headless:
+        context_opts.pop("viewport", None)
+        context_opts.pop("screen", None)
+        context_opts.pop("device_scale_factor", None)
+        context_opts.pop("is_mobile", None)
+        context_opts["no_viewport"] = True
+
     if use_persistent_profile:
         profile_root = policy.get("persistent_profile_dir") or "browser_profiles"
         try:

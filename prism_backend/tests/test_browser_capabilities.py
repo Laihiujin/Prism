@@ -14,6 +14,15 @@ def test_persistent_context_uses_resolved_engine():
     firefox.launch_persistent_context.assert_awaited_once_with(headless=True)
 
 
+def test_headed_firefox_viewport_tracks_native_window():
+    firefox = SimpleNamespace(launch_persistent_context=AsyncMock(return_value="context"))
+    options = {"headless": False, "viewport": {"width": 1280, "height": 800},
+               "device_scale_factor": 1, "screen": {"width": 1280, "height": 900}}
+    with patch("myUtils.browser_context.resolve_browser_launch_opts", return_value=("firefox", options)):
+        asyncio.run(launch_persistent_browser_context(SimpleNamespace(firefox=firefox), platform="channels"))
+    firefox.launch_persistent_context.assert_awaited_once_with(headless=False, no_viewport=True)
+
+
 def test_cdp_rejects_non_chromium_engine():
     with patch("myUtils.browser_context.resolve_browser_launch_opts", return_value=("firefox", {})):
         try:

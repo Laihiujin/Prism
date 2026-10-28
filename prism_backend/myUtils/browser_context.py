@@ -435,6 +435,10 @@ async def launch_persistent_browser_context(
         **launch_options,
     )
     from platforms.publish_verification import attach_context
+    if not resolved.get("headless", False):
+        for key in ("viewport", "screen", "device_scale_factor", "is_mobile"):
+            resolved.pop(key, None)
+        resolved["no_viewport"] = True
     return attach_context(await getattr(playwright, engine).launch_persistent_context(**resolved))
 
 
